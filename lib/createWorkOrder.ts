@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { buildSeedRowPayloads, dateRange, toStudioLetter } from '@/lib/seedStudioTimeRows'
+import { logWoActivity, buildWoSnapshot } from '@/lib/woActivity'
 
 // Equipment items seeded onto every work order (one condition row per item per date).
 // Mirrors EQUIPMENT_ITEMS in WorkOrderPopup.tsx and EQUIPMENT in the runner WO page.
@@ -39,7 +40,12 @@ export function bookingShouldHaveWorkOrder(booking: Pick<Booking, 'status'>): bo
  * buildSeedRowPayloads (lib/seedStudioTimeRows.ts), so there is no second copy
  * of the seeding logic; the RPC is a dumb all-or-nothing applier.
  */
-export async function createWorkOrderForBooking(booking: Booking): Promise<{ workOrderId: string }> {
+export async function createWorkOrderForBooking(
+  booking: Booking,
+  // WO history (2026-09-01): who pressed the button, when the caller knows.
+  // Optional so no call site breaks; absent → the entry carries no name.
+  actor?: { id: string | null; name: string },
+): Promise<{ workOrderId: string }> {
   const studioLetter = booking.studio ? toStudioLetter(booking.studio) : ''
 
   const woPayload = {
@@ -127,5 +133,22 @@ export async function createWorkOrderForBooking(booking: Booking): Promise<{ wor
   if (!workOrderId) {
     throw new Error('create_work_order_atomic returned no work_order_id for booking ' + booking.id)
   }
+
+  // WO HISTORY — entry zero, the paper original (Eli, 2026-09-01). Only on a
+  // FRESH create (the RPC says which): adopting an existing WO is not a
+  // creation, and logging one would stamp a false original over the real one.
+  // Fire-and-forget: history must never fail the create it describes.
+  if ((data as any)?.created === true) {
+    void logWoActivity({
+      workOrderId,
+      actorId: actor?.id ?? null,
+      actorName: actor?.name ?? '',
+      source: actor ? 'office' : 'system',
+      kind: 'created',
+      changes: null,
+      snapshot: buildWoSnapshot(woPayload as Record<string, unknown>, stPayloads as any[], booking.location),
+    })
+  }
+
   return { workOrderId }
 }

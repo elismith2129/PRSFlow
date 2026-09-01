@@ -12,7 +12,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
-import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday } from '@/lib/time'
+import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
 import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO } from '@/lib/woTotals'
 import {
@@ -24,6 +24,8 @@ import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
+import { WoHistoryModal } from '@/components/calendar/WoHistoryModal'
+import { woAuditView, diffWoForSave, buildWoSnapshot, logWoActivity } from '@/lib/woActivity'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
 // into the full room label the calendar filters on ('Studio X', 'North'), within
@@ -783,6 +785,22 @@ export function WorkOrderPopup({
   const originalStRowsRef = useRef<StRow[]>([])
   const deletedRowsRef = useRef<StRow[]>([])
 
+  // ── WO history (Eli, 2026-09-01 — lib/woActivity, options A + C) ───────────
+  // The WO-field baseline for the save diff. Rows already have one
+  // (originalStRowsRef, kept for Cancel-revert); this is its WO-fields twin.
+  // Captured once, on the first non-null `wo` (the loaded record, before any
+  // edit), and re-baselined after every successful save. A live-merge from the
+  // other side between captures can attribute that edit to this saver — known,
+  // tolerated: history is a record of saves, not a lock.
+  const woSnapRef = useRef<Record<string, string> | null>(null)
+  // Whether an invoice was already attached when this popup opened — drives the
+  // entry's after_invoice ⚠ (the same fact billing derives as drift).
+  const hadInvoiceRef = useRef(false)
+  const [histOpen, setHistOpen] = useState(false)
+  useEffect(() => {
+    if (wo && !woSnapRef.current) woSnapRef.current = woAuditView(wo as unknown as Record<string, unknown>)
+  }, [wo])
+
   // Map liveForm fields onto WO state — seeds WO from current booking form values on open
   function applyLiveForm(base: WO): WO {
     if (!liveForm) return base
@@ -1047,7 +1065,7 @@ export function WorkOrderPopup({
         return
       }
       try {
-        await createWorkOrderForBooking(booking)
+        await createWorkOrderForBooking(booking, { id: profile?.id ?? null, name: profile?.display_name || '' })
       } catch (e: any) {
         setWoMissing('Work order missing — could not be created.' + (e?.message ? ' (' + e.message + ')' : '') + ' Contact office.')
         setLoading(false)
@@ -1071,6 +1089,9 @@ export function WorkOrderPopup({
       woIdRef.current = existing.id
       primaryBookingIdRef.current = existing.booking_id ?? booking.id
       setResolvedWoId(existing.id)
+      // History: was an invoice already attached when we opened? (normalizeWO
+      // drops the invoice columns from `wo` state, so read the raw record.)
+      hadInvoiceRef.current = !!(existing as any).invoice_doc_path
       onStatusChange?.(existing.status ?? 'open')
       // Fix studios: if DB has empty array but booking has a studio, backfill from booking
       const rawStudios: string[] = existing.studios ?? []
@@ -1768,7 +1789,9 @@ export function WorkOrderPopup({
   async function addExpense() {
     if (!woIdRef.current) return
     const maxSort = expenses.reduce((m, e) => Math.max(m, e.sort_order), 0)
-    const today = getLocalToday()
+    // opsToday: a 1 AM food run belongs to the shift's night, which is what
+    // the paper sheet's date column always meant (2026-09-01 midnight pass).
+    const today = opsToday()
     const { data, error } = await supabase.from('wo_expenses').insert({
       work_order_id: woIdRef.current,
       // Prefill the sheet's short date (10/14) — the paper's habit.
@@ -2046,10 +2069,28 @@ export function WorkOrderPopup({
 
   async function handleToggleLock(rowId: string, currentLocked: boolean) {
     const newLocked = !currentLocked
-    await supabase.from('studio_time_rows').update({
+    const { error: lockErr } = await supabase.from('studio_time_rows').update({
       admin_checked: newLocked,
       admin_locked: newLocked,
     }).eq('id', rowId)
+    // Was a silent write (the audited defect class) — found while adding the
+    // history call below; checked now like every important write.
+    if (!dbResult('Saving day review', lockErr)) return
+    // History: the lock IS the admin review (house convention, 2026-09-01 —
+    // runner submits, admin reviews, owner approves). Unlocking is history
+    // too: a reopened day is exactly the kind of thing to see who did.
+    const lockedRow = stRows.find(r => r.id === rowId)
+    if (woIdRef.current) {
+      void logWoActivity({
+        workOrderId: woIdRef.current,
+        actorId: profile?.id ?? null,
+        actorName: profile?.display_name || '',
+        source: 'office',
+        kind: 'reviewed',
+        afterInvoice: hadInvoiceRef.current,
+        changes: [{ what: newLocked ? 'Reviewed the day' : 'Review reopened', day: lockedRow?.date || null }],
+      })
+    }
     setStRows(prev => prev.map(r => r.id === rowId
       ? { ...r, admin_checked: newLocked, admin_locked: newLocked }
       : r
@@ -2155,7 +2196,13 @@ export function WorkOrderPopup({
     setSubmittingRun(true)
     const saved = await handleClose(false)
     if (!saved) { setSubmittingRun(false); return }
-    const today = getLocalToday()
+    // opsToday, NEVER getLocalToday (Eli, 2026-09-01: "we definitely need to
+    // anticipate runners submitting after midnight. this will be 80% of
+    // sessions"). This was the Aug 28 rule's one miss in this file: keyed on
+    // the calendar day, a 1 AM submit matched no rows and silently marked
+    // nothing. The 8:50 AM boundary IS the no-midnight-logic implementation —
+    // the shift's day holds until the building turns over.
+    const today = opsToday()
     const todayIds = stRows.filter(r => r.date === today).map(r => r.id)
     if (todayIds.length > 0) {
       const { error } = await supabase.from('studio_time_rows')
@@ -2165,6 +2212,17 @@ export function WorkOrderPopup({
         todayIds.includes(r.id) && r.status !== 'approved' ? { ...r, status: 'submitted' } : r)
       setStRows(mark)
       originalStRowsRef.current = mark(originalStRowsRef.current)
+      // History: the runner's terminal act gets its own line (the save above
+      // already logged any field changes as a 'saved' entry).
+      void logWoActivity({
+        workOrderId: woIdRef.current,
+        actorId: profile?.id ?? null,
+        actorName: profile?.display_name || '',
+        source: 'runner',
+        kind: 'submitted',
+        afterInvoice: hadInvoiceRef.current,
+        changes: [{ what: 'Day submitted', day: today }],
+      })
     }
     setSubmittingRun(false)
     onClose()
@@ -2418,7 +2476,10 @@ export function WorkOrderPopup({
       if (!booking.id) { onClose(); return false }
       setSaving(true)
       try {
-        const { workOrderId } = await createWorkOrderForBooking({ ...(booking as any), status: wo.session_status } as Booking)
+        const { workOrderId } = await createWorkOrderForBooking(
+          { ...(booking as any), status: wo.session_status } as Booking,
+          { id: profile?.id ?? null, name: profile?.display_name || '' },
+        )
         woIdRef.current = workOrderId
         primaryBookingIdRef.current = booking.id
       } catch (e: any) {
@@ -2562,6 +2623,33 @@ export function WorkOrderPopup({
         .update({ status: 'booked', keep_hot_until: null })
         .eq('id', leadId)
       dbResult('Marking lead booked', leadErr)
+    }
+
+    // ── History (lib/woActivity): diff the baselines against what was just
+    // written, BEFORE they are re-baselined below. Fire-and-forget — a lost
+    // history line must never fail or delay the save it describes. An empty
+    // diff writes nothing (opening to look is not history).
+    {
+      const woAfter = woAuditView(wo as unknown as Record<string, unknown>)
+      const changes = diffWoForSave({
+        woBefore: woSnapRef.current,
+        woAfter,
+        rowsBefore: originalStRowsRef.current,
+        rowsAfter: stRows,
+        rowsDeleted: deletedRowsRef.current,
+      })
+      if (changes.length > 0) {
+        void logWoActivity({
+          workOrderId: id,
+          actorId: profile?.id ?? null,
+          actorName: profile?.display_name || (runner ? '' : 'Office'),
+          source: runner ? 'runner' : 'office',
+          kind: 'saved',
+          afterInvoice: hadInvoiceRef.current,
+          changes,
+        })
+      }
+      woSnapRef.current = woAfter
     }
 
     originalStRowsRef.current = stRows
@@ -3133,6 +3221,16 @@ export function WorkOrderPopup({
                 {(booking.client_name || wo.client || '—')} · {longDate(booking.start_date || wo.session_date || '')}
               </div>
             </div>
+            {/* WO history (Eli, 2026-09-01) — same gate as desktop. */}
+            {resolvedWoId && !runner && (
+              <button
+                type="button"
+                onClick={() => setHistOpen(true)}
+                aria-label="History"
+                title="History — every change, and the original work order"
+                style={{ marginLeft: 'auto', background: 'none', color: 'var(--c-fg-3)', fontSize: 16, cursor: 'pointer', padding: '6px 8px', flexShrink: 0 }}
+              >⟲</button>
+            )}
           </div>
         ) : wide ? null : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px 12px', position: 'sticky', top: 0, background: 'var(--c-bg)', zIndex: 10 }}>
@@ -3666,6 +3764,16 @@ export function WorkOrderPopup({
                       action bar's button, same disabled rule, so the two can
                       never disagree about what Complete means. */}
                   <div data-no-print="" style={{ marginTop: 7, display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                    {/* WO history (Eli, 2026-09-01) — the paper original, back.
+                        Gated on resolvedWoId: a WO-less block has no history. */}
+                    {resolvedWoId && !runner && (
+                      <button
+                        type="button"
+                        onClick={() => setHistOpen(true)}
+                        title="History — every change, and the original work order"
+                        style={{ background: 'none', color: 'var(--c-fg-3)', fontSize: 10, fontWeight: 800, letterSpacing: '0.05em', cursor: 'pointer', padding: '4px 6px' }}
+                      >⟲ HISTORY</button>
+                    )}
                     <StatusBadge status={wo.status} />
                     {!readOnly && (
                       <button
@@ -5531,6 +5639,18 @@ export function WorkOrderPopup({
             · Billing splits "Agreed" from "Beyond the agreement" and gives
               the staff RATE a home — office types it, runner reads it.
             Rendered OUTSIDE the scrollable body (iOS fixed-in-scroller bug). */}
+        {/* WO HISTORY (Eli, 2026-09-01 — options A + C of wo-history-options).
+            `current` is built fresh on open so the compare's "Now" side always
+            reflects unsaved edits too — you compare against what you see. */}
+        {histOpen && resolvedWoId && (
+          <WoHistoryModal
+            woId={resolvedWoId}
+            title={`${wo.wo_number || 'WO'} · ${[wo.label || wo.client, wo.artist].filter(Boolean).join(' — ')}`}
+            current={buildWoSnapshot(wo as unknown as Record<string, unknown>, stRows, booking.location)}
+            onClose={() => setHistOpen(false)}
+          />
+        )}
+
         {daySheetDate !== null && (() => {
           const allDates = Array.from(new Set(stRows.filter(r => r.date).map(r => r.date))).sort()
           const dayIdx = allDates.indexOf(daySheetDate)
@@ -6048,7 +6168,10 @@ export function WorkOrderPopup({
             learns in one sentence: you can always fix your day until the
             office approves it. */}
         {runner && !isBlock && (() => {
-          const today = getLocalToday()
+          // opsToday — the footer must agree with handleRunnerSubmit about
+          // what "today" means, or at 12:01 AM the button reads "Submit
+          // today" while the submit finds nothing to mark.
+          const today = opsToday()
           const todayRows = stRows.filter(r => r.date === today)
           const alreadySubmitted = todayRows.length > 0 && todayRows.every(r => r.status === 'submitted' || r.status === 'approved')
           return (

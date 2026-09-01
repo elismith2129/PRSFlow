@@ -37,6 +37,7 @@ import { computeWoTotals } from '@/lib/woTotals'
 import { getLocalToday } from '@/lib/time'
 import { formatCurrency } from '@/lib/format'
 import { bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
+import { logWoActivity } from '@/lib/woActivity'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -863,7 +864,7 @@ export function nextAction(row: InvoiceRow): string | null {
  * The trigger `enforce_invoice_approver` is what makes owners-only true; this
  * function just performs the write.
  */
-export async function approveInvoice(row: InvoiceRow, approverId: string | null): Promise<boolean> {
+export async function approveInvoice(row: InvoiceRow, approverId: string | null, approverName?: string): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
     .update({
@@ -885,7 +886,23 @@ export async function approveInvoice(row: InvoiceRow, approverId: string | null)
     })
     .eq('id', row.workOrderId)
 
-  return dbResult('Approving invoice', error)
+  const ok = dbResult('Approving invoice', error)
+  if (ok) {
+    // WO history (2026-09-01): the top rung of the ladder — runner submits,
+    // admin reviews, owner APPROVES. The amount recorded is the total being
+    // signed off (the re-snapshot above), so the feed shows what was approved
+    // even if the numbers move again later.
+    void logWoActivity({
+      workOrderId: row.workOrderId,
+      actorId: approverId,
+      actorName: approverName ?? '',
+      source: 'office',
+      kind: 'approved',
+      afterInvoice: true,
+      changes: [{ what: 'Invoice approved', to: formatCurrency(String(row.total)) }],
+    })
+  }
+  return ok
 }
 
 /**

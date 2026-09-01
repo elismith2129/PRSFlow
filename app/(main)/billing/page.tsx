@@ -274,7 +274,7 @@ export default function BillingPage() {
       case 'Reopen':          return run(row.workOrderId, () => reopenInvoice(row))
       case 'Mark paid':       return run(row.workOrderId, () => markPaid(row))
       case 'Attach invoice':  uploadFor.current = row; fileInput.current?.click(); return
-      case 'Approve':         return run(row.workOrderId, () => approveInvoice(row, profile?.id ?? null))
+      case 'Approve':         return run(row.workOrderId, () => approveInvoice(row, profile?.id ?? null, profile?.display_name || undefined))
       // SEND IS ONE PRESS (Eli, 2026-08-11): "you hit the send button and it
       // downloads, and now it says it's sent." No confirmation step — you have
       // already looked at the package to get here, so a dialogue asking whether
@@ -473,7 +473,7 @@ export default function BillingPage() {
               <button
                 className="c-bact"
                 disabled={busy === r.workOrderId}
-                onClick={() => run(r.workOrderId, () => approveInvoice(r, profile?.id ?? null))}
+                onClick={() => run(r.workOrderId, () => approveInvoice(r, profile?.id ?? null, profile?.display_name || undefined))}
                 onDoubleClick={e => e.stopPropagation()}
               >
                 Approve
