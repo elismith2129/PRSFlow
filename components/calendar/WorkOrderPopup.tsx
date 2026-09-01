@@ -5696,7 +5696,36 @@ export function WorkOrderPopup({
                     return (
                       <div key={r.id + '-sheet'} style={{ background: 'var(--c-wash)', borderRadius: 14, padding: '11px 12px', marginBottom: 9, pointerEvents: rowLocked ? 'none' : undefined, opacity: rowLocked ? 0.62 : 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <span className="c-arch" style={{ fontSize: 13 }}>{toStudioLetter(r.studio) ? `STUDIO ${toStudioLetter(r.studio)}` : 'STUDIO'}</span>
+                          {/* THE ROOM IS EDITABLE HERE TOO (Eli, 2026-09-01: "when
+                              we made the cards we did not include the function to
+                              change the studio within the card like you can on the
+                              line view"). Same select, same options, same write as
+                              the list view's Studio cell — venue + room pairs, with
+                              the never-a-bare-letter fallback (ruling 2026-08-13) —
+                              so the two views cannot disagree about what changing a
+                              room means. Same precedent as the ✎ date fix above:
+                              the card's editing surface is the day sheet. */}
+                          {readOnly ? (
+                            <span className="c-arch" style={{ fontSize: 13 }}>{toStudioLetter(r.studio) ? `STUDIO ${toStudioLetter(r.studio)}` : 'STUDIO'}</span>
+                          ) : (
+                            <select
+                              value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}
+                              onChange={e => {
+                                const [loc, room] = e.target.value.split('|')
+                                updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
+                              }}
+                              className="c-tin c-arch"
+                              style={{ fontSize: 13, padding: '2px 4px', width: 'auto', cursor: 'pointer' }}
+                            >
+                              {!STUDIO_LOCATIONS.some(l => l.name === (r.location || booking.location)) && (
+                                <option value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}>{roomCode(toStudioLetter(r.studio), r.location || booking.location) || toStudioLetter(r.studio) || '—'}</option>
+                              )}
+                              {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
+                                const letter = toStudioLetter(room)
+                                return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
+                              }))}
+                            </select>
+                          )}
                           <span style={hrsChip}>{rowHrs != null ? `${rowHrs}h` : '—'}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
