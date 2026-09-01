@@ -10,7 +10,7 @@ import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/cre
 import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { dateRange } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass } from '@/components/calendar/SessionCard'
+import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass, fmtCardTime } from '@/components/calendar/SessionCard'
 import { StatusDot, StatusPill } from '@/components/carved'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
@@ -72,13 +72,20 @@ const CHIP_MIN_H = 79
 // 158, so two rooms filled the screen and finding a room meant scrolling past
 // the ones above it.
 //
-// 44 is the floor, not a preference: it is the tap target (chips carry
-// minHeight 44 on mobile, and a chip taller than its slot is the overspill bug
-// from 2026-08-26 all over again), and it is what keeps the card ladder
-// useful — SessionCardBody shows times at >=36 and the COD sliver takes 14, so
-// 44 leaves exactly enough for the artist and the hours. Room, who, when.
-// Everything else is one tap away in the work order.
-const MOBILE_ROW_H = 44
+// 44 was the first pass and still showed only two or three rooms at a time.
+// OPTION A from docs/design-refs/calendar-grid-mobile-options.html (Eli picked
+// it, 2026-08-31): 26px rows so ALL ELEVEN ROOMS fit on one screen with no
+// scrolling. At 26 the card ladder drops the times, the footer and the client
+// line on its own and leaves the artist name, truncated — which is the whole
+// chip. Everything else moves to the tap: a synopsis card with an Expand
+// button into the work order (see `synopsis` below).
+//
+// This deliberately goes UNDER the 44px tap target, which is why the chip's
+// mobile minHeight had to go with it: a chip taller than its slot is the
+// overspill bug from 2026-08-26, where stacked sessions painted over each
+// other. Chips are the only thing to hit in their row, so a miss costs a
+// wrong-session synopsis, not a wrong write.
+const MOBILE_ROW_H = 26
 
 // COLUMN WIDTH — the horizontal zoom, in px per day.
 // This replaced the Week / 2 Wks / Month buttons. Those were only ever three
@@ -336,7 +343,11 @@ function BookingBlock({
       className={`c-ev c-control c-raised-chip ${sessionFillClass(booking.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
       style={{
         position: 'absolute', top: blockTop, height: blockHeight,
-        minHeight: isMobile ? 44 : undefined,
+        // No mobile minHeight (2026-08-31, option A): at MOBILE_ROW_H 26 a 44px
+        // floor would make every chip taller than its lane slot, which is the
+        // overspill bug. The chip fills its slot exactly; the tap opens the
+        // synopsis card rather than writing anything.
+        minHeight: undefined,
         left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
         boxSizing: 'border-box',
         // Padding moves to the payload: the footer band and COD strip are
@@ -883,6 +894,10 @@ function CalendarPageInner() {
   const scrollCorrectionRef = useRef<number | null>(null)
   const shiftingRef = useRef(false)
   const isMobile = useIsMobile()
+  // Mobile grid tap → synopsis card, not straight into the work order. At 26px
+  // a chip carries a name and nothing else, so the tap has to answer "which
+  // session is this?" before it can offer to open it (option A, 2026-08-31).
+  const [synopsis, setSynopsis] = useState<Booking | null>(null)
 
   // Carved ground for this route — without it the page sits on the legacy
   // background while its content is carved paper.
@@ -1714,7 +1729,7 @@ function CalendarPageInner() {
                             key={b.id} booking={b}
                             gridStart={gridRenderStart} totalDays={DAYS}
                             lane={lane} numLanes={numLanes} rowH={roomRowH}
-                            onClick={() => openEdit(b)}
+                            onClick={() => (isMobile ? setSynopsis(b) : openEdit(b))}
                             isMobile={isMobile}
                             staffByDay={staffByDay}
                             onHover={showHover}
@@ -2052,6 +2067,99 @@ function CalendarPageInner() {
               </div>
             )}
             <div className="c-hovercard-hint">Click to open WO</div>
+          </div>
+        )
+      })()}
+
+      {/* ── SYNOPSIS (mobile grid, option A — 2026-08-31) ───────────────────
+          A 26px chip carries a name and nothing else, so the tap answers
+          "which session is this?" first and offers the work order second.
+          Deliberately READ-ONLY: nothing here writes, so a mis-tap on a dense
+          grid costs a glance, not a change. Expand is the only way through to
+          the editor, and it goes through the same openEdit path as everywhere
+          else — no second route into the WO. */}
+      {synopsis && (() => {
+        const b = synopsis
+        const isBilling = b.payment_type === 'billing'
+        const hero = isBilling
+          ? (b.artist || b.label || b.client_name || 'Session')
+          : (b.client_name || b.artist || 'Session')
+        const sub = isBilling
+          ? [b.label, b.client_name].filter(Boolean).filter(x => x !== hero).join(' · ')
+          : (b.artist && b.artist !== hero ? b.artist : 'COD')
+        const when = [
+          b.start_date ? new Date(`${b.start_date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '',
+          b.from_time && b.to_time ? `${fmtCardTime(b.from_time)}–${fmtCardTime(b.to_time)}` : (b.from_time ? fmtCardTime(b.from_time) : ''),
+        ].filter(Boolean).join(' · ')
+        const staff = [
+          b.engineer_name && `1ST · ${initials(b.engineer_name)}`,
+          b.assistant_name && `2ND · ${initials(b.assistant_name)}`,
+        ].filter(Boolean).join('   ')
+        const rows: [string, string][] = [
+          ['Room', [b.location, b.studio].filter(Boolean).join(' ')],
+          ['When', when],
+          ['Staff', staff],
+          ['Invoice', b.invoice_num ? `#${b.invoice_num}` : ''],
+        ]
+        return (
+          <div
+            onClick={e => { if (e.target === e.currentTarget) setSynopsis(null) }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'flex-end',
+            }}
+          >
+            <div style={{
+              width: '100%', background: 'var(--c-srf, var(--c-bg))',
+              borderRadius: '18px 18px 0 0', padding: '14px 16px calc(16px + env(safe-area-inset-bottom))',
+              boxShadow: 'var(--c-softsh)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                {b.payment_type !== 'billing' && !['tour', 'tech', 'open_hours'].includes(b.status ?? '') && (
+                  <span style={{
+                    fontSize: 8, fontWeight: 800, letterSpacing: '0.08em', borderRadius: 99,
+                    padding: '3px 9px', background: 'var(--c-st-hot)', color: 'var(--c-hot-text)',
+                  }}>
+                    {b.cod_method ? `COD · ${b.cod_method === 'Credit Card' ? 'CARD' : b.cod_method.toUpperCase()}` : 'COD'}
+                  </span>
+                )}
+                <button
+                  onClick={() => setSynopsis(null)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.4, fontSize: 18, cursor: 'pointer' }}
+                >×</button>
+              </div>
+
+              <div className="c-arch" style={{ fontSize: 19, letterSpacing: '-0.01em', lineHeight: 1.15 }}>{hero}</div>
+              {sub && <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 10 }}>{sub}</div>}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 13 }}>
+                {rows.filter(([, v]) => v).map(([k, v]) => (
+                  <div key={k} style={{ display: 'flex', gap: 10, fontSize: 11.5 }}>
+                    <span style={{ width: 54, flexShrink: 0, opacity: 0.45 }}>{k}</span>
+                    <span style={{ fontWeight: 600 }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setSynopsis(null)}
+                  style={{
+                    flex: 1, minHeight: 42, borderRadius: 10, border: 'none', font: 'inherit',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: 'var(--c-wash2, var(--c-wash))', color: 'var(--c-fg)',
+                  }}
+                >Close</button>
+                <button
+                  onClick={() => { setSynopsis(null); openEdit(b) }}
+                  style={{
+                    flex: 1, minHeight: 42, borderRadius: 10, border: 'none', font: 'inherit',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: 'var(--c-fg)', color: 'var(--c-bg)',
+                  }}
+                >Expand ↗</button>
+              </div>
+            </div>
           </div>
         )
       })()}
