@@ -66,6 +66,19 @@ const ROW_H_CARD = 80
 type RowMode = 'card' | 'rooms'
 // Mobile row height — one full card, since mobile has no mode switch.
 const CHIP_MIN_H = 79
+// GRID VIEW ON A PHONE IS A SCAN, NOT A READ (Eli, 2026-08-31: "really large
+// and unusable on the phone... just need to be able to quickly see the rooms").
+// A full 79px card per lane meant an empty room ate 79px and a two-deep room
+// 158, so two rooms filled the screen and finding a room meant scrolling past
+// the ones above it.
+//
+// 44 is the floor, not a preference: it is the tap target (chips carry
+// minHeight 44 on mobile, and a chip taller than its slot is the overspill bug
+// from 2026-08-26 all over again), and it is what keeps the card ladder
+// useful — SessionCardBody shows times at >=36 and the COD sliver takes 14, so
+// 44 leaves exactly enough for the artist and the hours. Room, who, when.
+// Everything else is one tap away in the work order.
+const MOBILE_ROW_H = 44
 
 // COLUMN WIDTH — the horizontal zoom, in px per day.
 // This replaced the Week / 2 Wks / Month buttons. Those were only ever three
@@ -1230,7 +1243,7 @@ function CalendarPageInner() {
   ))
   // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
-  const rowH = isMobile ? CHIP_MIN_H : (rowMode === 'rooms' ? roomsRowH : ROW_H_CARD)
+  const rowH = isMobile ? MOBILE_ROW_H : (rowMode === 'rooms' ? roomsRowH : ROW_H_CARD)
 
   // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
