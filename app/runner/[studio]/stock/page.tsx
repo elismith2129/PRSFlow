@@ -30,10 +30,25 @@ type StockSection = 'stock' | 'office'
 type StockItem = {
   id?: string; item: string; qty: string; notes: string; low: boolean
   section: StockSection; target: string; sort_order: number; category: string | null
+  location: string
 }
 type CheckRow = { date: string; qty: string; low: boolean }
 
+/** "2026-08-29" → "8/29". The reference date beside a last count: short enough
+    to sit under a two-character quantity, explicit enough that a count from
+    three days ago can't pass for yesterday's. */
+function shortRefDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`)
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
 const OFFICE_KEY = '__office__'
+const UNASSIGNED_KEY = '__unassigned__'
+// Which grouping the runner last used, per device. LOCATION is the default
+// (Eli, 2026-08-31) — the toggle exists for the times you want every cleaning
+// supply in one place regardless of which closet it's in.
+const GROUP_MODE_KEY = 'prsflo-stock-group'
+type GroupMode = 'location' | 'type'
 const FLAT_KEY = '__flat__'
 
 export default function StockPage() {
@@ -53,6 +68,7 @@ export default function StockPage() {
   // lands on PRS STOCK / OFFICE buttons; tapping one opens that list. Studios
   // with no office rows skip the landing entirely.
   const [view, setView] = useState<StockSection | null>(null)
+  const [groupMode, setGroupMode] = useState<GroupMode>('location')
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const [openItems, setOpenItems] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -103,6 +119,7 @@ export default function StockPage() {
           section: (r.section === 'office' ? 'office' : 'stock') as StockSection,
           target: r.target ?? '', sort_order: r.sort_order ?? 0,
           category: r.category ?? null,
+          location: r.location ?? '',
         }
       })
     } else {
@@ -127,6 +144,19 @@ export default function StockPage() {
     setItems(next)
     setLoading(false)
   }, [studio, today])
+
+  // Remember the grouping per device. Read once on mount so the first paint
+  // isn't the wrong grouping flashing to the right one.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(GROUP_MODE_KEY)
+      if (saved === 'type' || saved === 'location') setGroupMode(saved)
+    } catch { /* private mode — the default stands */ }
+  }, [])
+  function chooseGroupMode(m: GroupMode) {
+    setGroupMode(m)
+    try { localStorage.setItem(GROUP_MODE_KEY, m) } catch { /* not worth a toast */ }
+  }
 
   // Mirror typed input to the draft as it changes; cleared on successful save.
   useEffect(() => {
@@ -154,11 +184,11 @@ export default function StockPage() {
     setItems(prev => prev.map((x, j) => j === idx ? { ...x, ...patch } : x))
   }
 
-  function addItem(section: StockSection, category: string | null) {
+  function addItem(section: StockSection, category: string | null, location = '') {
     dirtyRef.current = true
     setItems(prev => {
       const maxSort = Math.max(0, ...prev.filter(x => x.section === section).map(x => x.sort_order))
-      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category }]
+      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category, location }]
     })
   }
 
@@ -180,6 +210,7 @@ export default function StockPage() {
       const { data } = await supabase.from('stock_items').insert({
         studio, item: it.item, qty: parseInt(it.qty) || 0, notes: it.notes, low: it.low,
         section: it.section, target: it.target, sort_order: it.sort_order, category: it.category,
+        location: it.location,
       }).select().single()
       if (data) updated[i] = { ...it, id: data.id }
     }
@@ -189,6 +220,7 @@ export default function StockPage() {
     const mirror = updated.filter(it => it.id).map(it => ({
       id: it.id, studio, item: it.item, qty: parseInt(it.qty) || 0, notes: it.notes, low: it.low,
       section: it.section, target: it.target, sort_order: it.sort_order, category: it.category,
+      location: it.location,
     }))
     if (mirror.length > 0) await supabase.from('stock_items').upsert(mirror, { onConflict: 'id' })
 
@@ -232,12 +264,36 @@ export default function StockPage() {
   // into the one list.
   const activeView: StockSection | null = hasOffice ? view : 'stock'
 
-  // Groups WITHIN the active view: nightly categories in seed order. NULL
-  // category (migration not yet run / other studios) renders one flat list
-  // with no header. Office is always flat — 35 items doesn't need groups.
+  // Groups WITHIN the active view.
+  //
+  // TWO GROUPINGS, one list (Eli's runner notes, 2026-08-31). By TYPE is what
+  // a thing is — Cleaning, Food, Coffee & Tea. By LOCATION is where it lives,
+  // which is what the person counting actually walks: Lysol wipes and mop
+  // heads are both Cleaning but sit in two different closets, and the black
+  // bin holds bagels, a coffee and the condiments in one reach. Location is
+  // the default because counting is the job; type stays one tap away.
+  //
+  // Group ORDER comes from each group's lowest sort_order, so the sheet's own
+  // order still drives the walk and a location added later needs no code
+  // change. Unassigned always sinks to the bottom — an item with no location
+  // must stay visible and obviously unplaced, never quietly dropped.
   type Group = { key: string; title: string; rows: { it: StockItem; idx: number }[] }
+  const byLocation = groupMode === 'location'
+  const rowsForView = activeView === 'office' ? officeRows : stockRows
   const groups: Group[] = []
-  if (activeView === 'stock') {
+  if (byLocation) {
+    const seen = new Map<string, Group>()
+    for (const r of rowsForView) {
+      const loc = (r.it.location ?? '').trim()
+      const key = loc || UNASSIGNED_KEY
+      let g = seen.get(key)
+      if (!g) { g = { key, title: loc || 'Unassigned', rows: [] }; seen.set(key, g); groups.push(g) }
+      g.rows.push(r)
+    }
+    const low = (g: Group) => Math.min(...g.rows.map(r => r.it.sort_order ?? 0))
+    groups.sort((a, b) =>
+      (a.key === UNASSIGNED_KEY ? 1 : 0) - (b.key === UNASSIGNED_KEY ? 1 : 0) || low(a) - low(b))
+  } else if (activeView === 'stock') {
     const seen = new Map<string, Group>()
     for (const r of stockRows) {
       const key = r.it.category ?? FLAT_KEY
@@ -293,10 +349,38 @@ export default function StockPage() {
               style={{ ...input, flex: 1, fontWeight: 700, background: 'var(--c-wash2)' }}
             />
           )}
+          {/* LAST COUNT — the paper sheet's previous column, which is the thing
+              a runner actually compares against (Eli's notes, 2026-08-31).
+              It is the last count from a PRIOR DAY, never today's: stock_checks
+              holds one row per item per date, so re-counting at 9pm overwrites
+              today's cell rather than becoming the reference. The date rides
+              along because a skipped day would otherwise pass for yesterday.
+              Display only — nothing here is pre-filled, ever. */}
+          {past.length > 0 && (past[0].qty ?? '') !== '' && (
+            <span
+              title={`Last count · ${past[0].date}`}
+              style={{
+                flexShrink: 0, textAlign: 'right', lineHeight: 1.1,
+                fontFamily: "'DM Mono', ui-monospace, monospace", opacity: 0.45,
+              }}
+            >
+              <span style={{ fontSize: 11.5, display: 'block' }}>{past[0].qty}</span>
+              <span style={{ fontSize: 7.5, letterSpacing: '0.02em' }}>{shortRefDate(past[0].date)}</span>
+            </span>
+          )}
           <input
             placeholder="Qty"
             value={it.qty}
             onChange={e => edit(idx, { qty: e.target.value })}
+            // The count is a NUMBER nine times in ten, so open the number pad
+            // (Eli's notes, 2026-08-31 — the alphabetical keyboard cost a tap
+            // on every single item). `decimal` not `numeric`: qty is a TEXT
+            // column on purpose — the sheet says "0.5", "IFAK", "✓" — and the
+            // decimal pad keeps the ABC key one tap away, where a strict
+            // numeric pad would make those impossible to type.
+            inputMode="decimal"
+            autoCapitalize="off"
+            autoCorrect="off"
             style={{ ...input, width: 46, textAlign: 'center', flexShrink: 0, padding: '6px 4px' }}
           />
           <button
@@ -434,6 +518,33 @@ export default function StockPage() {
         </div>
       )}
 
+      {/* ── HOW THE LIST IS GROUPED (Eli's runner notes, 2026-08-31) ────────
+          Location is the default because counting is a walk, not a taxonomy.
+          Type is one tap away for "do we have any cleaning supplies at all".
+          The choice sticks per device. */}
+      {activeView !== null && items.length > 0 && (
+        <div style={{ padding: '2px 12px 6px', display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 9.5, opacity: 0.4, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Group by</span>
+          <div style={{ display: 'flex', gap: 3, background: 'var(--c-wash)', borderRadius: 9, padding: 3 }}>
+            {([['location', 'Location'], ['type', 'Type']] as const).map(([m, label]) => (
+              <button
+                key={m}
+                onClick={() => chooseGroupMode(m)}
+                style={{
+                  border: 'none', font: 'inherit', cursor: 'pointer', borderRadius: 7,
+                  padding: '5px 12px', fontSize: 11,
+                  fontWeight: groupMode === m ? 700 : 400,
+                  background: groupMode === m ? 'var(--c-fg)' : 'transparent',
+                  color: groupMode === m ? 'var(--c-bg)' : 'var(--c-fg)',
+                  opacity: groupMode === m ? 1 : 0.55,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* General notes for THIS list — "entered from Ezra's account, office
           run already done" had nowhere to live (ARS tester, Aug 28). */}
       {activeView !== null && items.length > 0 && (
@@ -473,7 +584,9 @@ export default function StockPage() {
                 <div style={{ padding: flatOnly ? '8px 6px' : '0 6px 8px' }}>
                   {g.rows.map(renderRow)}
                   <button
-                    onClick={() => addItem(activeView, g.key === FLAT_KEY || g.key === OFFICE_KEY ? null : g.title)}
+                    onClick={() => (byLocation
+                      ? addItem(activeView, null, g.key === UNASSIGNED_KEY ? '' : g.title)
+                      : addItem(activeView, g.key === FLAT_KEY || g.key === OFFICE_KEY ? null : g.title))}
                     style={{
                       marginTop: 6, width: '100%', minHeight: 38,
                       background: 'var(--c-wash)', border: 'none', borderRadius: 10,
