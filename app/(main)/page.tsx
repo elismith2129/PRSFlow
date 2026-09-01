@@ -15,8 +15,10 @@ import { ASSIGN_OPTIONS, resolveAssignTo, nameForId, visibleTabsForRole, idsForT
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { SignedImage } from '@/components/shared/SignedImage'
-import { fmtTimestamp } from '@/lib/format'
+import { fmtTimestamp, formatCurrency } from '@/lib/format'
 import { getLocalToday } from '@/lib/time'
+import { fetchApprovalsQueue } from '@/lib/billing'
+import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import {
   loadMyDayDashboard, fetchStaffGrid, completeDuty, uncompleteDuty, setDutyCaptured,
   backlogScopeLabel, BACKLOG_FLAG_THRESHOLD,
@@ -191,6 +193,24 @@ export default function DashboardPage() {
     setViewAs(v)
     // (Task-tab follow removed with the name tabs — the panel is personal now.)
   }
+
+  // ── INVOICES READY FOR APPROVAL (Eli, 2026-09-01) ──────────────────────────
+  // The Dropbox "need approvals" folder filling up, on the dashboard (option B
+  // of billing-approval-notify-options.html). OWNERS only — it is their queue;
+  // real identity, not viewAs, because simulating Fernando doesn't make Eli's
+  // approvals someone else's. Count + total from the same derivation as the
+  // Rail badge and the hub strip (lib/billing approvalQueue). Zero = no banner.
+  const isOwnerHere = isEli || profile?.role === 'owner'
+  const [approvalsDue, setApprovalsDue] = useState<{ count: number; total: number }>({ count: 0, total: 0 })
+  const woVersion = useWoInvoicesVersion()
+  useEffect(() => {
+    if (!isOwnerHere) { setApprovalsDue({ count: 0, total: 0 }); return }
+    let live = true
+    fetchApprovalsQueue().then(q => {
+      if (live) setApprovalsDue({ count: q.length, total: q.reduce((s, r) => s + r.total, 0) })
+    })
+    return () => { live = false }
+  }, [isOwnerHere, woVersion])
 
   // ── MY DAY (docs/MYDAY-BUILD.md) ───────────────────────────────────────────
   // Replaces the FLO_STATIC / MYDAY_STATIC / DGRID_STATIC placeholders.
@@ -993,6 +1013,39 @@ export default function DashboardPage() {
           )
         })}
       </div>
+
+      {/* INVOICES READY FOR APPROVAL — owner banner (Eli, 2026-09-01; option B
+          of billing-approval-notify-options.html). Teal, not hot: work waiting
+          on a person, nothing wrong. Click lands on Billing → In progress,
+          where the approvals strip fronts these same rows. */}
+      {isOwnerHere && approvalsDue.count > 0 && (
+        <div
+          onClick={() => router.push('/billing')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+            borderRadius: 12, background: 'var(--c-wash2)', cursor: 'pointer',
+            position: 'relative', overflow: 'hidden', marginBottom: 12,
+          }}
+        >
+          <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: 'var(--c-st-booked)' }} />
+          <span className="c-arch" style={{ fontSize: 20, lineHeight: 1, color: 'var(--c-st-booked)' }}>
+            {approvalsDue.count}
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 12.5 }}>
+              {approvalsDue.count === 1 ? 'Invoice ready for approval' : 'Invoices ready for approval'}
+            </div>
+            <div style={{ fontSize: 11, opacity: 0.55 }}>
+              {formatCurrency(String(approvalsDue.total))} waiting on your sign-off
+            </div>
+          </div>
+          <span style={{
+            marginLeft: 'auto', fontSize: 10, fontWeight: 800, letterSpacing: '.06em',
+            textTransform: 'uppercase', background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)',
+            padding: '7px 14px', borderRadius: 99, flexShrink: 0,
+          }}>Review →</span>
+        </div>
+      )}
 
       {/* BELOW: two columns — the console (Flo → My Day | My Tasks) with the
           staff grid + Flags indicator under it, and Today's Sessions right. */}

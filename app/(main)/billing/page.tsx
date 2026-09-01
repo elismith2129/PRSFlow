@@ -49,6 +49,7 @@ import { supabase, type Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
+import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
 import { Hint } from '@/components/ui/Hint'
@@ -59,7 +60,7 @@ import {
   approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
   pipelineCount,
-  downloadBlankWorkOrder, staleDownloads, pageSizeFor,
+  downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
 } from '@/lib/billing'
@@ -123,19 +124,18 @@ export default function BillingPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
-
   // Realtime — standing rule: every fetch pairs with a subscription. Payments
-  // are watched too, because a COD work order moves between Balance due and Paid
+  // are watched because a COD work order moves between Balance due and Paid
   // when one lands and nothing else would tell this page about it.
-  useEffect(() => {
-    const ch = supabase
-      .channel('billing-hub')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_rows' }, () => load())
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [load])
+  //
+  // SHARED CHANNEL (2026-09-01): the Rail's Billing badge and the dashboard's
+  // approvals banner watch the same tables now, so the page's own
+  // 'billing-hub' channel became `useWoInvoicesVersion` — one channel among
+  // the three surfaces, per the standing rule against duplicate channels on
+  // one table per page. The version effect also runs on mount, so it carries
+  // the initial load too.
+  const woVersion = useWoInvoicesVersion()
+  useEffect(() => { load() }, [load, woVersion])
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -147,6 +147,10 @@ export default function BillingPage() {
   // Packages built but never sent. The safety net that makes a two-step send
   // safe rather than merely honest.
   const stale = useMemo(() => staleDownloads(rows).length, [rows])
+  // The green-dot sweep (Eli, 2026-09-01) — the rows whose button says
+  // Approve, fronted for owners. Same derivation as the Rail badge and the
+  // dashboard banner (lib/billing approvalQueue), so the three always agree.
+  const approvals = useMemo(() => approvalQueue(rows), [rows])
 
   // UPCOMING IS GONE ENTIRELY (Eli, 2026-08-19 — it was an inline expand for
   // one day: "ditch the upcoming bin and just organize all WO into in
@@ -414,6 +418,70 @@ export default function BillingPage() {
           </div>
         ))}
       </div>
+
+      {/* THE GREEN-DOT SWEEP (Eli, 2026-09-01 — option D of
+          docs/design-refs/billing-approval-notify-options.html). Dropbox's
+          "billing invoices need approvals" folder, as a strip: owners only,
+          pinned above In progress, one Approve per row — the Finder gesture
+          without hunting the list. It FRONTS rows the list below already
+          holds, never hides them. Drift ⚠ is the one thing worth reading
+          before signing off; the PO chip is informational — since 2026-08-31
+          a missing PO blocks sending, not approval. Empty queue = no strip,
+          and billing staff never see it (they can't approve). */}
+      {isOwner && pipeline === 'billing' && tab === 'progress' && !searching && approvals.length > 0 && (
+        <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3 }}>
+            <span style={{
+              minWidth: 19, height: 17, borderRadius: 99, padding: '0 6px',
+              fontSize: 9.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)',
+            }}>{approvals.length}</span>
+            <span className="c-arch" style={{ fontSize: 12 }}>Ready for your approval</span>
+            {!isMobile && (
+              <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.45 }}>
+                double-click a row to read the package first
+              </span>
+            )}
+          </div>
+          {approvals.map(r => (
+            <div
+              key={r.workOrderId}
+              className="c-panel"
+              onDoubleClick={() => openRow(r)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', marginTop: 6, cursor: 'default' }}
+            >
+              <span style={{ fontWeight: 700, fontSize: 12.5, minWidth: isMobile ? 0 : 150, flexShrink: 1 }}>
+                {r.client}{r.artist ? ` — ${r.artist}` : ''}
+              </span>
+              {!isMobile && (
+                <span style={{ fontSize: 11, opacity: 0.55 }}>
+                  {[r.dateRange, r.rooms].filter(Boolean).join(' · ')}
+                </span>
+              )}
+              {r.awaitingPo && (
+                <span
+                  title="No PO on the work order yet — approving is fine; sending is what it blocks"
+                  style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.05em', background: 'var(--c-wash2)', padding: '3px 8px', borderRadius: 99, opacity: 0.8, flexShrink: 0 }}
+                >AWAITING PO</span>
+              )}
+              <span
+                title={r.invoiceDrift ? `The work order changed after the invoice was attached — invoiced ${formatCurrency(String(r.invoicedTotal ?? 0))}, now ${formatCurrency(String(r.total))}. Approving re-snapshots the total.` : undefined}
+                style={{ marginLeft: 'auto', fontWeight: 800, fontSize: 12.5, whiteSpace: 'nowrap', color: r.invoiceDrift ? 'var(--c-st-hot)' : undefined }}
+              >
+                {formatCurrency(String(r.total))}{r.invoiceDrift ? ' ⚠' : ''}
+              </span>
+              <button
+                className="c-bact"
+                disabled={busy === r.workOrderId}
+                onClick={() => run(r.workOrderId, () => approveInvoice(r, profile?.id ?? null))}
+                onDoubleClick={e => e.stopPropagation()}
+              >
+                Approve
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* SEARCH — above the tabs on purpose: it outranks them, and it spans
           both pipelines. You look for a client, not for a client-in-a-folder. */}

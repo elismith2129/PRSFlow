@@ -8,6 +8,8 @@ import { Wordmark } from '@/components/layout/Wordmark'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
+import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
+import { fetchApprovalsQueue } from '@/lib/billing'
 import { Sun, Moon } from 'lucide-react'
 
 /**
@@ -75,8 +77,10 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
+  const [approvalsDue, setApprovalsDue] = useState(0)
   const { profile } = useUserProfile()
   const clientsVersion = useClientsVersion()
+  const woVersion = useWoInvoicesVersion()
 
   // Same role gating as the old Nav: tech loses CRM; a runner gets no internal
   // nav at all (AuthGuard bounces them to /runner — belt and braces here).
@@ -115,6 +119,20 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     fetchCount()
   }, [clientsVersion])
 
+  // Billing badge: invoices waiting on an owner's approval — the Dropbox
+  // "need approvals" folder filling up, visible from every page (Eli,
+  // 2026-09-01; option A of billing-approval-notify-options.html). OWNERS
+  // ONLY: nobody else can approve, so for them it would be someone else's
+  // to-do. Teal, not hot — work is waiting, nothing is wrong. Same derivation
+  // as the hub's strip (lib/billing approvalQueue) so they always agree.
+  const isOwnerForBadge = profile?.role === 'owner' || profile?.email === 'eli@paramountrecording.com'
+  useEffect(() => {
+    if (!isOwnerForBadge) { setApprovalsDue(0); return }
+    let live = true
+    fetchApprovalsQueue().then(q => { if (live) setApprovalsDue(q.length) })
+    return () => { live = false }
+  }, [isOwnerForBadge, woVersion])
+
   // Apply the saved theme on mount (DEFAULT DARK). Must agree with the
   // pre-paint script in app/layout.tsx or the page flips on hydration.
   useEffect(() => {
@@ -150,6 +168,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   function renderItem(item: RailItem) {
     const active = isActive(item.href)
     const badge = item.href === '/crm' && unreviewedRegs > 0 ? unreviewedRegs : 0
+    // Teal marks the count that is YOURS to act on (approvals); the neutral
+    // grey CRM badge is informational.
+    const approvals = item.href === '/billing' && approvalsDue > 0 ? approvalsDue : 0
     return (
       <Link
         key={item.href}
@@ -161,6 +182,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
         <span className="c-rail-ic">{item.ic}</span>
         {item.label}
         {badge > 0 && <span className="c-rail-badge c-dim">{badge > 99 ? '99+' : badge}</span>}
+        {approvals > 0 && <span className="c-rail-badge c-ok" title="Invoices ready for your approval">{approvals > 99 ? '99+' : approvals}</span>}
       </Link>
     )
   }

@@ -684,6 +684,39 @@ export function staleDownloads(rows: InvoiceRow[]): InvoiceRow[] {
   return rows.filter(r => r.staleDownload)
 }
 
+/**
+ * THE DROPBOX FOLDER THAT FILLED UP (Eli, 2026-09-01). The old system's
+ * "billing invoices need approvals" folder was the owner's queue: it filled,
+ * he green-dotted, billing sent. This is its one derivation — the rows whose
+ * button already says Approve (billing pipeline, step 2, still in play) — read
+ * by the Rail badge, the owner dashboard banner, and the hub's approvals strip,
+ * so the three can never disagree about the count.
+ *
+ * Membership is `step === 2`, which deliberately INCLUDES drifted-approved
+ * work orders (deriveStep demotes them) — an invoice whose numbers changed
+ * after sign-off is back in the queue, exactly as the hub's Approve button
+ * treats it. Closed rows are out; a voided invoice is nobody's to approve.
+ *
+ * Oldest first (by the session's first day): the sweep should start with what
+ * has waited longest, the way the folder's oldest files sat at the top.
+ */
+export function approvalQueue(rows: InvoiceRow[]): InvoiceRow[] {
+  return rows
+    .filter(r => r.pipeline === 'billing' && r.step === 2 && r.bucket === 'progress')
+    .sort((a, b) => (a.sessionDate ?? '9999').localeCompare(b.sessionDate ?? '9999'))
+}
+
+/**
+ * The badge/banner fetch. Full `fetchInvoices` on purpose — a slimmer SQL
+ * count could not see drift demotion (it needs the line-item totals), and a
+ * badge that says 3 over a strip that shows 4 would be worse than no badge.
+ * Callers gate on OWNER before calling: the count is an owner's to-do, and
+ * for everyone else it would be a fetch for someone else's queue.
+ */
+export async function fetchApprovalsQueue(): Promise<InvoiceRow[]> {
+  return approvalQueue(await fetchInvoices())
+}
+
 export function paginate<T>(rows: T[], page: number, size = PAGE_SIZE): T[] {
   const start = (page - 1) * size
   return rows.slice(start, start + size)

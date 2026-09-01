@@ -966,6 +966,9 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-rail-badge.c-hot { background: var(--c-st-hot); color: var(--c-hot-text); }
 .c-rail-badge.c-warm { background: var(--c-st-warm); color: var(--c-chip-ink); }
 .c-rail-badge.c-dim { background: var(--c-wash2); }
+/* Teal = a count that is yours to act on, nothing wrong (approvals badge,
+   2026-09-01 — same reasoning as the returned-registration banner). */
+.c-rail-badge.c-ok { background: var(--c-st-booked); color: var(--c-chip-ink); }
 .c-rail-foot { margin-top: auto; padding-top: 12px; }
 
 /* Mobile: 52px top bar + the rail as a slide-in drawer over a dimmed backdrop. */
