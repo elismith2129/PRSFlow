@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — WO history: the paper original, back</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  WORK ORDER HISTORY / VERSIONS (Eli, 2026-09-01).
+
+  What the paper copy had: the original sheet stayed legible under the pen
+  marks. What we build back: every save is one entry (who · when · which
+  fields, from → to), and the CREATION SNAPSHOT is entry zero — the original
+  WO, always reachable, never reconstructed from diffs.
+
+  All options share the same data (one wo_activity row per save event,
+  computed in TS at the one save choke point). They differ only in WHERE the
+  history lives and HOW an entry reads:
+
+    A · modal feed        — a History link opens a modal; entries read as
+                            sentences; Original pinned at the bottom.
+    B · side drawer       — history slides in beside the WO so you can read
+                            changes against the live fields; entries are
+                            field-chips, denser than A's sentences.
+    C · original ⇄ now    — a compare view: the creation snapshot on the
+                            left, today on the right, changed fields tinted.
+                            The feed sits below. Closest to "lift the pen
+                            marks off the paper".
+    D · in-place markers  — no separate surface: a small dot on each day
+                            card / field group that changed since creation;
+                            tap = that day's changes only. Pairs with A or B
+                            for the full feed.
+
+  Actor chips: OFFICE = the profile name; RUNNER = the shared login (amber
+  chip, same warm the runner world already wears). Nothing here is a new
+  colour law — teal marks creation/approval, warm marks runner acts, hot is
+  reserved for the one genuinely alarming entry (a change AFTER invoicing —
+  drift — which billing already flags).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1040px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+.bar{margin-bottom:6px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.lede{font-size:12px;opacity:.65;max-width:720px;line-height:1.6;margin-bottom:24px}
+.opt{margin-bottom:38px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:700px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px;position:relative;overflow:hidden}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:680px}
+
+/* shared bits */
+.who{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 8px;border-radius:99px;background:var(--wash2)}
+.who.run{background:var(--warm);color:var(--chip-ink)}
+.who.sys{background:var(--booked);color:var(--chip-ink)}
+.ts{font-size:10px;opacity:.45}
+.delta{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.delta .from{opacity:.5;text-decoration:line-through}
+.delta .arr{opacity:.4;font-size:10px}
+.fieldk{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+
+/* A · modal feed */
+.modalA{max-width:560px;margin:0 auto;background:var(--bg);border-radius:22px;padding:16px 18px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.mAh{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.entA{background:var(--wash);border-radius:12px;padding:10px 13px;margin-bottom:7px}
+.entA .top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.entA .nm{font-weight:700;font-size:12px}
+.entA .line{font-size:12px;line-height:1.7;color:var(--fg2)}
+.entA .line b{color:var(--fg);font-weight:600}
+.orig{background:var(--wash);border-radius:12px;padding:11px 13px;border-left:3px solid var(--booked)}
+.orig .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 14px;margin-top:8px}
+.orig .v{font-size:12px;font-weight:600;margin-top:1px}
+
+/* B · drawer */
+.woSim{display:flex;gap:14px}
+.woBody{flex:1;min-width:0}
+.woRow{height:40px;border-radius:10px;background:var(--wash);margin-bottom:7px}
+.woRow.sm{height:26px;width:70%}
+.drawer{flex:0 0 270px;background:var(--wash);border-radius:14px;padding:11px 12px;max-height:330px;overflow:hidden}
+.entB{background:var(--srf);border-radius:10px;box-shadow:var(--softsh);padding:8px 10px;margin-bottom:6px}
+.entB .top{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.entB .nm{font-weight:700;font-size:11px}
+.chipsB{display:flex;flex-wrap:wrap;gap:4px}
+.chB{font-size:10px;background:var(--wash);border-radius:8px;padding:3px 7px}
+.chB .fieldk{margin-right:4px}
+
+/* C · compare */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cmpCol{background:var(--wash);border-radius:14px;padding:11px 13px}
+.cmpCol .hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.cmpRow{display:flex;justify-content:space-between;font-size:12px;padding:5px 2px;border-radius:6px}
+.cmpRow .k{opacity:.5;font-size:10.5px}
+.cmpRow.chg{background:color-mix(in srgb, var(--warm) 14%, transparent)}
+.cmpRow.chg .v{font-weight:700}
+
+/* D · markers */
+.dayCard{background:var(--wash);border-radius:14px;padding:13px 15px;margin-bottom:8px;display:flex;gap:14px;align-items:center;position:relative}
+.dayCard .st{font-family:'Archivo Black',sans-serif;font-size:15px}
+.dayCard .tm{font-family:'DM Mono',ui-monospace,monospace;font-size:14px;font-weight:600}
+.histDot{width:8px;height:8px;border-radius:99px;background:var(--warm);position:absolute;top:10px;right:12px}
+.pop{position:absolute;right:10px;top:26px;background:var(--srf);box-shadow:0 8px 26px rgba(0,0,0,.4);border-radius:12px;padding:9px 12px;width:250px;z-index:2}
+.pop .line{font-size:11px;line-height:1.7;color:var(--fg2)}
+.pop .line b{color:var(--fg);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>WO history — the paper original, back</h1></div>
+<p class="lede">Same data behind every option: one entry per save (who · when · what, from → to)
+and the creation snapshot as entry zero — the original work order, stored whole, never
+reconstructed. The options differ in where history lives and how an entry reads. Amber chip =
+the shared runner login; names = office profiles; the hot ⚠ is reserved for a change made
+<i>after the invoice was attached</i>, which billing already calls drift.</p>
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · History modal — sentences, original pinned at the bottom<span class="rec">Recommended</span></div>
+  <div class="od">A small "⟲ History" link in the WO header opens this. Entries read as sentences,
+  newest first — you scan it like a story of the booking. The creation snapshot renders as a real
+  card, teal-edged, always last: scroll to the bottom and you're holding the paper original.
+  Cheapest to read on a phone, and the WO itself stays untouched.</div>
+  <div class="page" style="background:rgba(0,0,0,.25);padding:22px">
+    <div class="modalA">
+      <div class="mAh">
+        <span class="arch" style="font-size:15px">History</span>
+        <span class="ts">WO-1042 · Interscope — SZA</span>
+        <span style="margin-left:auto;opacity:.35;font-size:14px">✕</span>
+      </div>
+      <div class="entA">
+        <div class="top"><span class="who run">Runner · ARS</span><span class="nm"></span><span class="ts">Aug 29 · 11:58 PM</span></div>
+        <div class="line">Submitted the day — <b>Fri 8/29</b>. End <span class="delta"><span class="from">2:00 AM</span><span class="arr">→</span><b>4:00 AM</b></span> · OT <span class="delta"><span class="from">0h</span><span class="arr">→</span><b>2h</b></span></div>
+      </div>
+      <div class="entA">
+        <div class="top"><span class="who">Fernando</span><span class="ts">Aug 28 · 6:14 PM</span></div>
+        <div class="line">Thu 8/28 — Studio <span class="delta"><span class="from">PRS B</span><span class="arr">→</span><b>PRS A</b></span> · Start <span class="delta"><span class="from">2:00 PM</span><span class="arr">→</span><b>4:00 PM</b></span></div>
+      </div>
+      <div class="entA">
+        <div class="top"><span class="who">Quinn</span><span class="ts">Aug 27 · 1:02 PM</span></div>
+        <div class="line">Engineer <span class="delta"><span class="from">TBD</span><span class="arr">→</span><b>Sierra</b></span> · Eng rate <span class="delta"><span class="from">—</span><span class="arr">→</span><b>$55/hr</b></span> (all days)</div>
+      </div>
+      <div class="entA" style="border-left:3px solid var(--hot)">
+        <div class="top"><span class="who">Fernando</span><span class="ts">Aug 26 · 10:40 AM</span><span style="color:var(--hot);font-size:10px;font-weight:800">⚠ after invoicing</span></div>
+        <div class="line">Room rate <span class="delta"><span class="from">$150/hr</span><span class="arr">→</span><b>$175/hr</b></span> — invoice total no longer matches (drift)</div>
+      </div>
+      <div class="orig">
+        <div class="top" style="display:flex;align-items:center;gap:8px"><span class="who sys">Original</span><span class="ts">Created Aug 22 · 9:15 AM · from lead by Quinn</span></div>
+        <div class="grid">
+          <div><div class="fieldk">Client</div><div class="v">Interscope — SZA</div></div>
+          <div><div class="fieldk">Dates</div><div class="v">Aug 27–29</div></div>
+          <div><div class="fieldk">Studio</div><div class="v">PRS B</div></div>
+          <div><div class="fieldk">Times</div><div class="v">2:00 PM – 2:00 AM</div></div>
+          <div><div class="fieldk">Rate</div><div class="v">$150/hr</div></div>
+          <div><div class="fieldk">Staff</div><div class="v">Engineer, TBD</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · Side drawer — field-chips beside the live WO</div>
+  <div class="od">History slides in next to the work order instead of covering it, so you read
+  the changes against the fields they changed. Entries are compact chips rather than sentences —
+  denser, better for a WO with a long life, but it needs the desktop's width (on a phone it
+  falls back to A's modal anyway).</div>
+  <div class="page">
+    <div class="woSim">
+      <div class="woBody">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span class="arch" style="font-size:15px">WO-1042</span><span class="ts">Interscope — SZA</span>
+          <span style="margin-left:auto;font-size:10px;font-weight:800;opacity:.55">⟲ HISTORY</span>
+        </div>
+        <div class="woRow"></div><div class="woRow"></div><div class="woRow sm"></div><div class="woRow"></div><div class="woRow sm"></div>
+      </div>
+      <div class="drawer">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px">
+          <span class="arch" style="font-size:12px">History</span><span class="ts">5 changes</span>
+        </div>
+        <div class="entB">
+          <div class="top"><span class="who run">Runner</span><span class="ts">Aug 29 · 11:58 PM</span></div>
+          <div class="chipsB">
+            <span class="chB"><span class="fieldk">End 8/29</span>2:00 AM → <b>4:00 AM</b></span>
+            <span class="chB"><span class="fieldk">OT</span>0h → <b>2h</b></span>
+          </div>
+        </div>
+        <div class="entB">
+          <div class="top"><span class="who">Fernando</span><span class="ts">Aug 28 · 6:14 PM</span></div>
+          <div class="chipsB">
+            <span class="chB"><span class="fieldk">Studio 8/28</span>B → <b>A</b></span>
+            <span class="chB"><span class="fieldk">Start</span>2 PM → <b>4 PM</b></span>
+          </div>
+        </div>
+        <div class="entB">
+          <div class="top"><span class="who">Quinn</span><span class="ts">Aug 27 · 1:02 PM</span></div>
+          <div class="chipsB">
+            <span class="chB"><span class="fieldk">Eng</span>TBD → <b>Sierra</b></span>
+          </div>
+        </div>
+        <div class="entB" style="border-left:3px solid var(--booked)">
+          <div class="top"><span class="who sys">Original</span><span class="ts">Aug 22</span></div>
+          <div class="chipsB"><span class="chB">View the WO as created →</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ C ═══════════════ -->
+<div class="opt">
+  <div class="oh">C · Original ⇄ Now — the compare view</div>
+  <div class="od">One click from the History surface (either A or B): the creation snapshot on
+  the left, the live WO on the right, changed fields tinted amber. This is the closest thing to
+  lifting the pen marks off the paper — you see the original and today side by side without
+  reading a feed. Worth having as the "Original" card's expand even if A wins; as the ONLY
+  surface it hides the who-and-when, which is half your ask.</div>
+  <div class="page">
+    <div class="cmp">
+      <div class="cmpCol">
+        <div class="hd"><span class="who sys">Original</span><span class="ts">Aug 22 · 9:15 AM</span></div>
+        <div class="cmpRow"><span class="k">CLIENT</span><span class="v">Interscope — SZA</span></div>
+        <div class="cmpRow"><span class="k">DATES</span><span class="v">Aug 27–29</span></div>
+        <div class="cmpRow chg"><span class="k">STUDIO</span><span class="v">PRS B</span></div>
+        <div class="cmpRow chg"><span class="k">START</span><span class="v">2:00 PM</span></div>
+        <div class="cmpRow chg"><span class="k">END</span><span class="v">2:00 AM</span></div>
+        <div class="cmpRow chg"><span class="k">RATE</span><span class="v">$150/hr</span></div>
+        <div class="cmpRow chg"><span class="k">ENGINEER</span><span class="v">TBD</span></div>
+      </div>
+      <div class="cmpCol">
+        <div class="hd"><span class="who">Now</span><span class="ts">Aug 30</span></div>
+        <div class="cmpRow"><span class="k">CLIENT</span><span class="v">Interscope — SZA</span></div>
+        <div class="cmpRow"><span class="k">DATES</span><span class="v">Aug 27–29</span></div>
+        <div class="cmpRow chg"><span class="k">STUDIO</span><span class="v">PRS A (8/28–29)</span></div>
+        <div class="cmpRow chg"><span class="k">START</span><span class="v">4:00 PM</span></div>
+        <div class="cmpRow chg"><span class="k">END</span><span class="v">4:00 AM</span></div>
+        <div class="cmpRow chg"><span class="k">RATE</span><span class="v">$175/hr</span></div>
+        <div class="cmpRow chg"><span class="k">ENGINEER</span><span class="v">Sierra · $55/hr</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ D ═══════════════ -->
+<div class="opt">
+  <div class="oh">D · In-place markers — the change lives on the thing that changed</div>
+  <div class="od">No separate surface: a small amber dot on any day card whose fields have moved
+  since creation; tap it and that day's changes pop over, in place. Fastest answer to "did
+  tonight change?" while standing in the building — but it can't tell the whole story (client
+  and WO-level changes have no card to sit on), so it's a companion to A or B, not a rival.</div>
+  <div class="page" style="max-width:560px">
+    <div class="dayCard">
+      <span class="st">Studio A</span><span class="ts">Thu, Aug 28</span><span class="tm">4:00 PM – 2:00 AM</span>
+      <span class="histDot"></span>
+      <div class="pop">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><span class="who">Fernando</span><span class="ts">Aug 28 · 6:14 PM</span></div>
+        <div class="line">Studio <b>B → A</b> · Start <b>2:00 PM → 4:00 PM</b></div>
+      </div>
+    </div>
+    <div class="dayCard" style="opacity:.75">
+      <span class="st">Studio A</span><span class="ts">Fri, Aug 29</span><span class="tm">4:00 PM – 4:00 AM</span>
+      <span class="histDot"></span>
+    </div>
+    <div class="dayCard" style="opacity:.75">
+      <span class="st">Studio B</span><span class="ts">Wed, Aug 27</span><span class="tm">2:00 PM – 2:00 AM</span>
+    </div>
+  </div>
+</div>
+
+<p class="note" style="max-width:780px"><b>Recommendation: A now, C as the Original card's
+expand later.</b> A is one modal, works on every device, and its bottom card IS the paper
+original. B is a desktop luxury the WO's width budget will fight; D is a nice second act once
+the data exists (the dots are free once entries are day-tagged). Whichever wins, the data
+model is identical — one append-only <span class="mono">wo_activity</span> row per save — so
+picking A today closes no doors.</p>
+
+</body>
+</html>
