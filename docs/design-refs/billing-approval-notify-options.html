@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Invoices ready for approval: where the signal lives</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  INVOICES READY FOR APPROVAL — NOTIFICATION OPTIONS (Eli, 2026-09-01).
+
+  THE DROPBOX PARALLEL, CONFIRMED FIRST. The old system's folders all exist
+  in the hub already:
+
+    "billing invoices need approvals"  = step-2 rows (Invoiced, not Approved)
+                                         in Billing → In progress
+    green dot in Finder                = the Approve button (owners-only trigger)
+    "sent and open"                    = Awaiting payment
+    "approved and waiting PO"          = approved + AWAITING PO chip
+                                         (PO blocks SENDING since Aug 31)
+    "sent and paid"                    = Paid (via Mark paid)
+
+  What Dropbox had that PRSFlo doesn't: the folder FILLED UP where Eli could
+  see it without going looking. These options are only about where that
+  fill-up signal lives. The count behind every option is the same derivation:
+  pipeline === 'billing' && step === 2. No new state, no migration.
+
+  COLOR: teal (booked/success), same reasoning as the returned-registration
+  banner — nothing is WRONG, work is waiting on a person. Amber is fenced to
+  warm/tentative (§5) and hot means urgent/broken; a queue that fills daily
+  must not cry wolf.
+
+  A and B are the fill-up signal; D is the green-dot gesture itself. They
+  combine — the recommended shape is A + D (badge says how many, the strip
+  makes the sweep one tap each). B is the louder alternative to A if the rail
+  badge is too quiet. C is shown mostly to record why it was NOT chosen.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff; --ivory:#2a2722; --ivory-ink:#f5f3ee;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320; --ivory:#d5d0c2; --ivory-ink:#1b1a17;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1000px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.bar{margin-bottom:6px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.lede{font-size:12px;opacity:.65;max-width:700px;line-height:1.6;margin-bottom:24px}
+.opt{margin-bottom:34px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:680px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+
+/* ── shared sim chrome ── */
+.rowsim{height:34px;border-radius:10px;background:var(--wash);margin-top:7px}
+.count{min-width:19px;height:17px;border-radius:99px;padding:0 6px;
+  font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+
+/* ── A · rail badge ── */
+.railsim{width:176px;padding:14px 8px 12px 10px;border-radius:0 16px 16px 0;
+  background:var(--wash);display:flex;flex-direction:column;gap:2px}
+.rl{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:11px;
+  font-size:12.5px;font-weight:600;opacity:.6}
+.rl .ic{width:16px;text-align:center;opacity:.75;font-size:13px}
+.rl.on{opacity:1;background:var(--ivory);color:var(--ivory-ink);box-shadow:2px 2px 7px rgba(0,0,0,.35)}
+.rl .count{margin-left:auto}
+.count.teal{background:var(--booked);color:var(--chip-ink)}
+.count.dim{background:var(--wash2)}
+
+/* ── B · dashboard strip ── */
+.bnr{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:12px;
+  background:var(--wash2);cursor:pointer;position:relative;overflow:hidden}
+.bnr:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--booked)}
+.bnr .big{font-family:'Archivo Black',sans-serif;font-size:20px;line-height:1;color:var(--booked)}
+.bnr .go{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:7px 14px;border-radius:99px}
+.bnr .sub{font-size:11px;opacity:.55}
+
+/* ── C · brief line ── */
+.brief{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bstat{background:var(--wash);border-radius:12px;padding:10px 12px}
+.bstat .v{font-family:'Archivo Black',sans-serif;font-size:16px}
+.bstat .l{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:2px}
+.bstat.add{outline:2px dashed var(--booked);outline-offset:-2px}
+
+/* ── D · approvals sweep strip ── */
+.sweep{border-radius:14px;background:var(--wash);padding:12px 14px}
+.sweep .sh{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.sweep .sh .t{font-family:'Archivo Black',sans-serif;font-size:12px}
+.srow{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;
+  background:var(--srf);box-shadow:var(--softsh);margin-top:6px}
+.srow .who{font-weight:700;font-size:12.5px;min-width:150px}
+.srow .meta{font-size:11px;opacity:.55}
+.srow .amt{margin-left:auto;font-weight:800;font-size:12.5px}
+.srow .ok{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:7px 14px;border-radius:99px;cursor:pointer}
+.srow .po{font-size:9px;font-weight:800;letter-spacing:.05em;background:var(--wash2);
+  padding:3px 8px;border-radius:99px;opacity:.8}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:640px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>Invoices ready for approval — where the signal lives</h1></div>
+<p class="lede">The Dropbox folder "billing invoices need approvals" filled up where you could
+see it. Every option below is that same fill-up, driven by one derived count (invoiced, not yet
+approved — the rows whose button already says Approve). Nothing new is stored. A and B are the
+signal; D is the green-dot sweep itself; they combine.</p>
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · Rail badge on Billing<span class="rec">Recommended (pair with D)</span></div>
+  <div class="od">The count rides the Billing item in the rail, visible from every page —
+  exactly how the CRM item already carries unreviewed registrations, so the pattern and the
+  realtime refresh exist. Teal, owners only (billing staff can't approve, so for them the badge
+  would be someone else's to-do). Clicking Billing lands on In progress, where the rows already
+  lead. Quietest option that still fills up in plain view.</div>
+  <div class="page" style="display:flex;gap:18px">
+    <div class="railsim">
+      <div class="rl"><span class="ic">◫</span>Dashboard</div>
+      <div class="rl"><span class="ic">◔</span>My Day</div>
+      <div class="rl"><span class="ic">☰</span>CRM<span class="count dim">2</span></div>
+      <div class="rl"><span class="ic">▦</span>Calendar</div>
+      <div class="rl on"><span class="ic">▽</span>Billing<span class="count teal">4</span></div>
+      <div class="rl"><span class="ic">◎</span>Daily Ops</div>
+    </div>
+    <div style="flex:1;padding-top:6px">
+      <div style="font-size:11px;opacity:.5;line-height:1.6">Badge = invoices at the Approve
+      step. Neutral grey badge beside it on CRM shown for contrast — teal marks the one that
+      is yours to act on.</div>
+      <div class="rowsim"></div><div class="rowsim"></div><div class="rowsim" style="width:70%"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · Dashboard banner (owner only)</div>
+  <div class="od">The louder alternative to A — same treatment family as the returned-registration
+  banner on CRM: teal edge, count, one line, click lands on Billing → In progress. Shows only when
+  the count &gt; 0 and only to owners, so the dashboard stays clean the rest of the time. Choose
+  this over A if the rail badge is too easy to skip; choosing both would say one thing twice.</div>
+  <div class="page">
+    <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:8px">Dashboard · above the room grid</div>
+    <div class="bnr">
+      <span class="big">4</span>
+      <div>
+        <div style="font-weight:700;font-size:12.5px">Invoices ready for approval</div>
+        <div class="sub">Waiting on an owner sign-off · oldest 3 days</div>
+      </div>
+      <span class="go">Review →</span>
+    </div>
+    <div class="rowsim" style="margin-top:12px"></div><div class="rowsim"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ C ═══════════════ -->
+<div class="opt">
+  <div class="oh">C · Fifth figure on the My Day billing brief</div>
+  <div class="od">Shown to record why it's the weak option. The brief was deliberately ruled
+  "four numbers, no actions" — a read-only peek so billing doesn't clutter your world. An
+  approvals count is not a peek, it's your queue; putting it here buries an act-on-it item
+  inside a glance surface, and it's invisible from every page that isn't My Day. Only worth
+  picking if you live on My Day more than the dashboard.</div>
+  <div class="page">
+    <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:8px">My Day · billing brief</div>
+    <div class="brief">
+      <div class="bstat"><div class="v">$8,450</div><div class="l">Balances</div></div>
+      <div class="bstat"><div class="v">$31,200</div><div class="l">Received · Aug</div></div>
+      <div class="bstat"><div class="v">$4,100</div><div class="l">Past due 31+</div></div>
+      <div class="bstat add"><div class="v" style="color:var(--booked)">4</div><div class="l">To approve</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ D ═══════════════ -->
+<div class="opt">
+  <div class="oh">D · The green-dot sweep — an Approvals strip in the hub<span class="rec">Recommended (pair with A)</span></div>
+  <div class="od">A and B get you TO the hub; this is the Finder gesture once you arrive. An
+  owners-only strip pinned above In progress, listing exactly the step-2 rows with Approve
+  inline — one tap per invoice, the way you dotted a folder green in one sweep. Rows show the
+  drift flag if the total changed since invoicing (the one thing worth reading before
+  approving), and the PO chip is informational only — since Aug 31 a missing PO blocks
+  sending, not your approval. Empty count = no strip; the page is unchanged for billing staff.</div>
+  <div class="page">
+    <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:8px">Billing → In progress · pinned above the list, owners only</div>
+    <div class="sweep">
+      <div class="sh"><span class="count teal">4</span><span class="t">Ready for your approval</span>
+        <span style="margin-left:auto;font-size:10px;opacity:.45">double-click a row to read the package first</span></div>
+      <div class="srow"><span class="who">Interscope — SZA</span><span class="meta">Aug 22–25 · B, A</span><span class="po">AWAITING PO</span><span class="amt">$14,300</span><span class="ok">Approve</span></div>
+      <div class="srow"><span class="who">Top Dawg — Ray Vaughn</span><span class="meta">Aug 27 · X</span><span class="amt">$2,650</span><span class="ok">Approve</span></div>
+      <div class="srow"><span class="who">Capitol — Toosii</span><span class="meta">Aug 28–29 · North</span><span class="amt" style="color:var(--hot)">$6,900 ⚠</span><span class="ok">Approve</span></div>
+      <div class="srow"><span class="who">Def Jam — Fridayy</span><span class="meta">Aug 30 · C</span><span class="amt">$4,150</span><span class="ok">Approve</span></div>
+    </div>
+    <div class="note">⚠ = the work order changed after the invoice was attached (drift) — approving
+    re-snapshots the total, same as today. The strip is the same rows the list below already
+    holds; it never hides them, it fronts them.</div>
+    <div class="rowsim" style="margin-top:12px"></div><div class="rowsim"></div><div class="rowsim" style="width:80%"></div>
+  </div>
+</div>
+
+<p class="note" style="max-width:760px">Recommendation: <b>A + D</b>. The badge is the folder
+filling up — visible from anywhere, cheap, an existing pattern. The strip is the green dot —
+the approving itself, one tap each, without hunting rows. B replaces A if you want it louder;
+C is recorded as considered-and-weak. All four read the same derived count; none add state or
+a migration.</p>
+
+</body>
+</html>
