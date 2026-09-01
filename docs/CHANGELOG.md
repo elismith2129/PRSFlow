@@ -19,6 +19,97 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.19.1 — Notes that survive, Billing Ops, the phone calendar, stock by location — Aug 31, 2026
+
+**Billing.** **The PO now blocks SENDING, not approving** — reversing the
+Aug 11 ruling. Owner approval asserts the work order is complete and the
+invoice correct; a label's PO takes weeks and shouldn't hold an internal
+sign-off. `awaitingPo` is unchanged (derived from step 2, chip still shows);
+only the hub's `blocked` moved to Download/Mark sent. Approve stays owners-only
+via the `enforce_invoice_approver` trigger.
+
+**My Day.** `myday_note_drafts` — the composer autosaves, **one row per author**
+(not per date), private to the author, `editing_post_id` persisted so a resumed
+edit updates rather than duplicating; cleared on submit. 800ms debounce plus a
+flush on unmount / `visibilitychange` / `pagehide`. `dbResult` gained
+`{ silent }`. **"Billing Ops"** replaces the person's name on the billing card
+(Aaron left; it is an unowned role until a rehire), and the **manager gets the
+card switch** on `/my-day` — Fernando · Billing Ops. Dashboard untouched.
+
+**Daily ops.** Pages forward to **Today**: unsubmitted duties read `not yet`
+(neutral) instead of `never submitted` (red), and their absence rows stay out
+of the queue while the day is still running. **Track is dormant**
+(`DORMANT_STUDIOS`) — greyed, no absence rows, all logic intact.
+
+**Runner.** Bug/idea submission card on the studio hub → `app_feedback` with
+`source='runner'` (+ `studio`, `photo_url`), read in **DEV → Runner**; the
+office board is now scoped to `source='office'`. Stock: qty opens the **decimal**
+pad, each row shows the **last prior day's count** with its date, and the list
+groups by **location** by default with a Type toggle (persisted per device).
+
+**Calendar on mobile.** Day view: teal occupied bar removed (both breakpoints),
+**pinned** month picker with dots on days that have sessions. Grid: rows 79 →
+**26px** (option A of `docs/design-refs/calendar-grid-mobile-options.html`) so
+all 11 rooms fit one screen; chips carry the artist name only; a tap opens a
+**read-only synopsis card** with Expand into the work order.
+
+**Fixes.** `marginLeft: -12` on the calendar page is now desktop-only (it was
+cancelling the left page gutter on phones — the "nothing is centred" bug).
+RichNote draws its own bullet (WebKit wasn't painting native markers in
+`contentEditable`) and the B / • buttons have a real on/off state. Dashboard
+duty rows: the backlog scope is quiet inline text, not the alarm-red
+`c-myday-due` pill that crushed the title to one word per line; the label reads
+"covering 5 days (since Thu 8/27)" instead of naming four days for a count of
+five.
+
+**Migrations (all hand-run):** `20260831120000_myday_note_drafts.sql`,
+`20260831130000_app_feedback_runner.sql`,
+`20260831140000_stock_locations.sql` (134 Paramount rows placed BY ID across
+eight locations).
+
+**WATCH-OUT #1 — never commit from the sandbox, and never against a copied
+index.** Working around the undeletable `.git/index.lock` with
+`GIT_INDEX_FILE=<copy of .git/index>` publishes that stale index as the whole
+tree: a commit about duty rows silently deleted the entire v1.19.0 docs pass and
+reached `main`. Eli's own `git add <file> && git commit` then re-reverted them,
+because commit publishes the index, not the named files. Recovery:
+`git read-tree HEAD` + `git add -A` into a FRESH temp index. See
+`docs/working-conventions.md` §1 and §3b — and note the copy of that doc in the
+chat's attached project knowledge is an OLDER FILE describing the retired
+Claude Code era; read the repo's.
+
+**WATCH-OUT #2 — a `myday_note_drafts` row is per AUTHOR, not per date.** Date
+keying would strand an unsubmitted note at midnight, which is the bug this
+table exists to prevent. On submit, **cancel the debounce before deleting the
+row** or the pending timer resurrects the posted text.
+
+**WATCH-OUT #3 — `dbResult(..., { silent: true })` suppresses the TOAST ONLY.**
+app_errors and the false return are unchanged, and the caller MUST show the
+failure in its own UI.
+
+**WATCH-OUT #4 — the runner card lives on `/runner/[studio]`, not `/runner`.**
+The picker bounces straight to the last-used studio, so the hub is the landing
+page — and it supplies the studio for free.
+
+**WATCH-OUT #5 — mobile grid chips carry NO `minHeight`.** At `MOBILE_ROW_H`
+26 a 44px floor makes every chip taller than its lane slot, which is the Aug 26
+overspill bug (stacked sessions painting over each other).
+
+**WATCH-OUT #6 — check for desktop-only offsets before chasing a phone layout.**
+Two plausible fixes (an overflow guard, removing a gutter) both missed; the
+cause was one unconditional `marginLeft: -12`.
+
+**Files:** `lib/billing.ts`, `app/(main)/billing/page.tsx`, `lib/myday.ts`,
+`lib/db.ts`, `lib/dailyOps.ts`, `app/(main)/my-day/page.tsx`,
+`app/(main)/daily-ops/page.tsx`, `app/(main)/page.tsx`,
+`app/(main)/calendar/page.tsx`, `app/(main)/feedback/page.tsx`,
+`app/runner/[studio]/page.tsx`, `app/runner/[studio]/stock/page.tsx`,
+`components/shared/RichNote.tsx`, `components/dev/RunnerSubmissionsSection.tsx`,
+`styles/globals.css`, `docs/working-conventions.md`,
+`docs/design-refs/calendar-grid-mobile-options.html`, + the three migrations.
+
+---
+
 ## v1.19.0 — The 2026 import, monthly lockouts, the 8:50 operational day, notes that survive — Aug 26–31, 2026
 
 **Six days, four unlogged sessions, written up Aug 31.** The mic Sheet from

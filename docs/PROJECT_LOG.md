@@ -4669,3 +4669,145 @@ can commit against the mounted repo but **cannot unlink `.git/index.lock` or
 files that must be `rm -f`'d from a real terminal before the next git command.
 `next build` fails the same way against the mounted `.next` (`.fuse_hidden`
 artifacts) — build from a copy outside the mount. Neither is a code problem.
+
+### Aug 31, 2026 (second sitting) — The day the docs deleted themselves; the PO stops blocking approval (v1.19.1)
+
+**Read the incident first — it cost the most.**
+
+**A sandbox commit against a COPIED index silently reverted a day of work.**
+The session began by reading `docs/working-conventions.md` **from the chat's
+attached project knowledge instead of the repo**, and that attached copy is the
+pre-July-30 version describing the retired Claude Code era. The repo's copy
+says, in bold, that Claude never runs `git add/commit/push` from the sandbox.
+Working from the stale one, the session committed from the sandbox, hit the
+undeletable `.git/index.lock` (§3 of that doc), and worked around it with
+`GIT_INDEX_FILE=/tmp/copy` — a copy of the real index. **The real index was
+itself stale**, so every commit built from a copy restored pre-session content
+for every file it did not touch. A commit about duty-row styling deleted the
+whole v1.19.0 wrap-up. It reached `main` under a push line identical to every
+other push line, and nothing in the output mentioned it. Then Eli's OWN commit,
+made from his terminal with `git add <file>`, re-reverted the same files —
+because `git commit` publishes the whole index, and the index was still stale.
+
+Fixed by rebuilding the index from `HEAD` (`git read-tree HEAD` + `git add -A`
+into a FRESH temp index) and re-committing. Written up as
+`docs/working-conventions.md` §3b, including the point that generalizes: the
+hand-off line in §1 — locks cleared, **files named**, commit and push on Eli's
+machine — is immune to this by construction, and the file list is the only view
+Eli gets of what he is about to push. **The attached-knowledge copy of that doc
+is a separate, older file and should be removed or updated; it is what sent the
+session down the wrong path.**
+
+**RULING REVERSED — the PO blocks SENDING, not approving.** The Aug 11 ruling
+put the PO gate before approval, reasoning that "a package that cannot legally
+be sent is not complete." Eli, today: *"owner approval needs to come before PO.
+POs take a while, but we can approve internally that the WO and invoice are
+correct."* True of the package, not of the approval — approval is an internal
+statement about the numbers, knowable the day the session ends, while a label's
+PO can take weeks. Holding sign-off for it meant approving from memory a month
+later. `awaitingPo` is still derived from step 2 so the chip warns an owner
+while they approve; only the hub's `blocked` moved, to everything from
+Download onward. Nothing can still leave the building without a PO.
+
+**Manager notes stop clearing** (`myday_note_drafts`, migration
+`20260831120000`). One row per AUTHOR, not per (author, date): a draft is
+unfinished writing and the date belongs to the post that Submit stamps, so
+date-keying would strand a note at midnight — the exact complaint. Private to
+the author, realtime so it follows a desk→iPad move, `editing_post_id`
+persisted so a resumed edit updates rather than duplicating. **Rejected:**
+localStorage (the runner `lib/draft.ts` pattern) — it fails the second device,
+which is the whole point for managers; and dropping Submit, because submitting
+is how a note becomes the record other people read. `dbResult` gained
+`{ silent }` for autosaves — toast suppressed, app_errors unchanged, and the
+composer states its own status instead.
+
+**"Aaron" becomes "Billing Ops."** Aaron left; the billing card is now an
+unowned ROLE that Eli and Fernando split until a rehire, which is why it is
+named for the function. Wiring it turned up a real defect: **Fernando and Aaron
+had no duty card on the dashboard at all** — `viewAs` defaulted to `'eli'` for
+every viewer and only Eli could change it, so `myDayRole` resolved to null and
+the pane never rendered. Everyone now lands on their own card. Per Eli's
+follow-up the dashboard was then restored untouched and the change kept to
+`/my-day` only: the manager gets the same switch (Fernando · Billing Ops), safe
+under HR-SPEC §5.6 since `completed_by` records who actually ticked. Aaron's
+access was closed by rotating his PIN rather than banning the account — PIN
+login signs in through that same auth user, so a ban would lock Eli out too.
+
+**Daily ops learns "today," and Track goes dormant.** The sweep pages forward
+one more day. Today is a day IN PROGRESS, not a day that failed, so unsubmitted
+duties read `not yet` in neutral and their absence rows stay OUT of the queue —
+twenty red "never submitted · find out why before the next shift" rows about a
+shift that hasn't happened would have trained everyone to ignore the queue.
+Track is on a long-term lease and unstaffed: `DORMANT_STUDIOS` greys its card
+and suppresses its absence rows, because a room nobody is rostered to cannot
+fail to do its checklist. Everything else about it still works — take it out of
+the array the day it is staffed again.
+
+**Runner submissions** ride on `app_feedback` with `source='runner'` (migration
+`20260831130000`) rather than a second table: one inbox, one resolved flag, one
+set of policies. A bug/idea card on the studio hub — **the hub, not `/runner`,
+because the picker bounces straight past to the last-used studio** — with the
+`lib/draft.ts` net so a lock screen can't eat a report, an optional photo, and
+studio + author attached automatically. The office reads them in DEV → Runner.
+The existing feedback board was scoped to `source='office'` in the same change,
+or runner posts would have appeared on the staff board the moment the migration
+ran.
+
+**Calendar, phone.** Three passes, and the last one found the real bug. The day
+view lost the 2px teal "occupied" bar (a holdover from dimmer cards — the solid
+green card beneath it already says so) and gained a **pinned** month picker with
+dots on days that carry sessions; Eli's second ruling made it pinned rather than
+a drop-down, because scanning across dates shouldn't cost an open and a close.
+The grid went 79px → 44px → **26px (option A** from
+`docs/design-refs/calendar-grid-mobile-options.html`, chosen from three
+densities): all eleven rooms on one screen, chips carrying the artist name
+alone, and a tap opening a READ-ONLY synopsis card with an Expand button —
+read-only because on a grid that dense a mis-tap should cost a glance, not a
+change. The chips' 44px mobile floor had to go with it; a chip taller than its
+slot is the Aug 26 overspill bug.
+
+**And the centring complaint that was real:** `marginLeft: -12` on the calendar
+page — a DESKTOP pull toward the nav rail — was running on mobile too, where
+there is no rail, cancelling the left page padding and leaving the right. Every
+card on the page sat against the left edge with a gap down the right. Two
+earlier guesses (an overflow guard, removing the day view's own inset) made it
+worse before the actual one-line cause turned up; the overflow guard was kept
+because it is correct on its own terms.
+
+**RichNote bullets, root-caused twice.** The list was being created correctly —
+WebKit simply was not painting the native marker inside `contentEditable` once
+the global reset zeroed list padding, so a bullet read as a mystery indent. The
+dot is now drawn with a `::before`, deterministic everywhere; ordered lists keep
+real numbers. The toolbar also gained a genuine on/off state read from
+`queryCommandState` on every caret move, because "no indication if it's on or
+off" was the other half of the complaint.
+
+**Runner stock, from the floor's own notes.** The qty field opens the DECIMAL
+pad — not `numeric`, because qty is a TEXT column on purpose ("0.5", "IFAK",
+"✓") and the decimal pad keeps ABC one tap away. Each row shows the **last
+prior day's count** with its date; `stock_checks` holds one row per item per
+date, so a re-count at 9pm overwrites today's cell rather than becoming the
+reference — which is exactly the distinction the notes asked for. And the list
+now groups by **LOCATION** by default (migration `20260831140000`), because
+counting is a walk, not a taxonomy: Lysol wipes and mop heads are both
+"Cleaning" but live in different closets, and the black bin holds bagels, a
+coffee and the condiments in one reach. A Type toggle stays one tap away and
+sticks per device.
+
+**The mapping was done against a live dump, not by name.** Eli pasted a
+`json_agg` of all 134 Paramount rows (the mic-catalog method); a throwaway
+matcher placed 97 of his entries exactly and surfaced the three real
+discrepancies for him to rule on: the Chobani creamer is ONE row (the Aug 25
+rename made his two entries the same item), the two creamer-packet boxes and
+the foil got placed by hand, and the whole Wednesday office list became one
+"Office Cabinet" group. Every row is placed; nothing sits in Unassigned today.
+Group order derives from each group's lowest `sort_order`, so a location added
+later needs no code change.
+
+**Also:** the dashboard duty rows stopped crushing their own titles — the
+backlog scope was rendered with the alarm-red `c-myday-due` class, which is
+`flex-shrink: 0`, so a 55-character pill left the title wrapping one word per
+line; it is quiet inline text now, and `backlogScopeLabel` stopped contradicting
+itself ("covering 5 days" listed four, because the count includes today and the
+list doesn't — it reads "since Thu 8/27"). A TEST RUN runner account exists for
+Eli's own phone testing; anything it submits is real data in the live tables.

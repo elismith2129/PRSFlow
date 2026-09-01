@@ -55,6 +55,116 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'aug-31-2026-second',
+    title: 'Notes that survive, Billing Ops, the phone calendar, stock by location',
+    version: 'v1.19.1',
+    date: 'Aug 31, 2026',
+    intro:
+      'One session\'s worth of fixes, most of them from things people hit in real use this week. Four areas: My Day notes, billing approval, the runner stock list, and the calendar on a phone. The runner items need a phone; the billing items need an owner login.',
+    items: [
+      {
+        id: 'v191-notes-survive', area: 'My Day notes', device: 'desktop',
+        what: 'Unsubmitted notes survive leaving the page',
+        how: 'My Day → Shift notes. Type a few lines and do NOT submit. Go to the Calendar, come back. Your text should still be there, and the line above the boxes should say "kept — safe to leave this page".',
+      },
+      {
+        id: 'v191-notes-device', area: 'My Day notes', device: 'desktop',
+        what: 'The unfinished note follows you to another device',
+        how: 'With unsubmitted text on your computer, open My Day on your phone or iPad signed in as yourself. The same unfinished text should be waiting.',
+      },
+      {
+        id: 'v191-notes-submit', area: 'My Day notes', device: 'desktop',
+        what: 'Submit clears the boxes and they STAY clear',
+        how: 'Submit your notes. The boxes empty and the post appears in the log. Now leave the page and come back — the boxes must still be empty. Text reappearing after a submit is the bug this checks for.',
+      },
+      {
+        id: 'v191-approve-no-po', area: 'Billing', device: 'desktop',
+        what: 'An invoice can be approved with no PO number',
+        how: 'Sign in as an owner. Billing → find a billing (not COD) row at the Approve step whose work order has no PO and is not marked "Not req\'d" — it should show an "Awaiting PO" chip. Press Approve. It must go through.',
+      },
+      {
+        id: 'v191-send-blocked-no-po', area: 'Billing', device: 'desktop',
+        what: 'That same invoice still cannot be SENT without a PO',
+        how: 'On the row you just approved, the button should now read Download and be greyed out, with a tooltip saying it needs a PO before it can be sent. Open the work order, type a PO number (or press Not req\'d), save, and the button should come alive.',
+      },
+      {
+        id: 'v191-billing-ops-toggle', area: 'My Day', device: 'desktop',
+        what: 'The card is called Billing Ops, and Fernando can open it',
+        how: 'On /my-day the switch top-right should read your name and "Billing Ops" — not "Aaron". Have Fernando sign in and check he sees the same switch and can open the Billing Ops card.',
+      },
+      {
+        id: 'v191-dailyops-today', area: 'Daily ops', device: 'desktop',
+        what: 'Daily Ops pages forward to Today, and today is not all red',
+        how: 'Daily Ops → press the › arrow past Yesterday. The heading should say "Today · still coming in". Duties not turned in yet should be grey dots reading "not yet", NOT red "never submitted" — and the Needs You queue should not fill with rows about tonight.',
+      },
+      {
+        id: 'v191-track-dormant', area: 'Daily ops', device: 'desktop',
+        what: 'Track is greyed out and raises no alarms',
+        how: 'On the same page, the Track card should be dimmed and say "Long-term lease · not staffed", with grey duty dots. No Track rows should appear in Needs You.',
+      },
+      {
+        id: 'v191-runner-report', area: 'Runner hub',
+        what: 'You can report a bug or an idea from the hub',
+        how: 'Runner → your studio. Near the bottom, past "App guide", tap "Report a bug or an idea". Pick Something broken or An idea, type a sentence, optionally add a photo, Submit. It should say Sent.',
+      },
+      {
+        id: 'v191-runner-report-draft', area: 'Runner hub',
+        what: 'A half-typed report is still there after you leave',
+        how: 'Start a report, type a few words, do NOT submit. Leave the page (or lock the phone), come back to the hub. The card should be open with your text still in it.',
+      },
+      {
+        id: 'v191-runner-report-office', area: 'DEV', device: 'desktop',
+        what: 'The office sees it',
+        how: 'On a computer go to DEV → Runner. The report you just sent should be listed with the studio, your name, the time, and the photo if you added one. Mark resolved and confirm it moves to the Resolved tab.',
+      },
+      {
+        id: 'v191-stock-keypad', area: 'Runner stock',
+        what: 'The number keypad opens for counts',
+        how: 'Runner → Stock → PRS Stock. Tap any Qty box. The numeric keypad should appear straight away — not the letter keyboard. Check you can still switch to ABC and type a word like OK.',
+      },
+      {
+        id: 'v191-stock-last-count', area: 'Runner stock',
+        what: 'The previous day\'s count shows next to the box',
+        how: 'On an item that was counted on an earlier day, there should be a dim number to the LEFT of the Qty box with a date under it (like 12 over 8/29). It must be a previous day, never something typed today.',
+      },
+      {
+        id: 'v191-stock-location', area: 'Runner stock',
+        what: 'The list is grouped by location, and the toggle works',
+        how: 'PRS Stock should open in groups like Kitchen Fridge, Kitchen Closet, Stock Closet, Tea & Coffee Bin, Bagel/Condiment Bin. Tap "Group by · Type" and it should switch back to Cleaning / Food / Coffee & Tea. Leave the page and return — it should remember your choice.',
+      },
+      {
+        id: 'v191-stock-office-location', area: 'Runner stock',
+        what: 'The Wednesday office list groups too',
+        how: 'Runner → Stock → Office. In Location mode everything should sit under one "Office Cabinet" group rather than a flat list.',
+      },
+      {
+        id: 'v191-grid-all-rooms', area: 'Calendar', device: 'phone',
+        what: 'The phone grid shows all eleven rooms at once',
+        how: 'On your phone open Calendar → Grid. You should see every room — PRS A through TRK South — without scrolling. Each session chip shows just the artist name.',
+      },
+      {
+        id: 'v191-grid-synopsis', area: 'Calendar', device: 'phone',
+        what: 'Tapping a chip gives a summary card with Expand',
+        how: 'Tap any session chip. A card should slide up from the bottom with the name, room, date and time, staff and invoice number. Press Expand ↗ — the work order should open. Press Close on another one and confirm nothing was changed.',
+      },
+      {
+        id: 'v191-day-picker', area: 'Calendar', device: 'phone',
+        what: 'The day view has a pinned month calendar with dots',
+        how: 'Calendar → Day on your phone. A month grid should sit above the rooms and stay there while you scroll. Days with sessions carry a small green dot. Tap a date — the rooms below should change to that day.',
+      },
+      {
+        id: 'v191-centred', area: 'Calendar', device: 'phone',
+        what: 'The page is evenly centred',
+        how: 'On the phone calendar, look at the left and right edges of the cards. The gap should be the same on both sides — this used to sit hard against the left with a gap down the right.',
+      },
+      {
+        id: 'v191-bullets', area: 'Notes', device: 'phone',
+        what: 'Bullets show a bullet, and the buttons show their state',
+        how: 'Open a shift note or My Day note. Tap the • button — you should get a visible dot, not a blank indent. The • button should fill in while the caret is inside the list, and empty when you move out of it. Same for B inside bold text.',
+      },
+    ],
+  },
+  {
     id: 'week-of-aug-26-2026',
     title: 'Notes that survive, the 8:50 night, monthly money, the 2026 import',
     version: 'v1.19.0',

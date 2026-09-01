@@ -645,6 +645,37 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.19.1', date:'Aug 31, 2026',
+    headline:'Your notes stop disappearing, approving an invoice no longer waits on a PO, and the calendar finally works on a phone.',
+    desc:'A round of fixes from real use — most of them things people told us were annoying this week.',
+    changes:[
+      'My Day notes: whatever you type is saved as you go. Leave the page, close the app, pick it up on the iPad later — it\'s still there. Submit still posts it to the log the same as before.',
+      'Billing: an invoice can be approved without a PO number. Approving means the work order and the invoice are correct, which you know the day the session ends — the PO can take weeks. The invoice just can\'t be SENT until a PO is added or the work order is marked "Not req\'d".',
+      'The billing card is now called "Billing Ops" instead of a person\'s name, and Fernando can open it from the My Day switch alongside his own.',
+      'Daily Ops: you can now page forward to Today, not just yesterday. Anything not turned in yet shows as "not yet" in grey instead of red — the day isn\'t over, so it isn\'t late.',
+      'Daily Ops: Track is greyed out while it\'s on a long-term lease. It won\'t clutter the list or show as missing its checklists.',
+      'Runner app: there\'s a "Report a bug or an idea" box on your studio\'s hub page. Type it, add a photo if it helps, hit submit — it goes straight to the office. Whatever you type is saved even if you get interrupted.',
+      'Runner stock: the number keypad opens straight away instead of the letter keyboard.',
+      'Runner stock: each item shows the previous day\'s count next to the box, with the date, so you can compare without leaving the page.',
+      'Runner stock: the list is now grouped by WHERE things are — Kitchen Fridge, Stock Closet, Bagel/Condiment Bin — instead of what they are. You walk the room once. A "Group by" switch at the top puts it back to Type if you prefer.',
+      'Calendar on a phone: the grid shows all eleven rooms at once now. Tap any session for a summary card with an Expand button if you need the full work order.',
+      'Calendar on a phone: the day view has a month calendar pinned at the top — tap a date to jump, and a green dot marks days that have sessions.',
+      'Calendar on a phone: everything is properly centred again, instead of sitting against the left edge.',
+      'Notes: the bullet button actually shows a bullet now, and the B and bullet buttons light up when they\'re on.',
+    ],
+    affects:'Managers and assistant managers: the notes change is the big one — type freely and only hit Submit when you actually want it in the log. Billing: you can approve invoices that are waiting on a PO, so nothing sits in the queue for weeks; the send button is what waits now. Runners: the stock list will look reorganised — same items, same job, grouped by where they physically live so you can count as you walk.',
+    dev:[
+      '<strong>Billing ruling REVERSED (Aug 11 → Aug 31):</strong> <code>awaitingPo</code> still derives from step 2 and still shows its chip, but only the hub\'s <code>blocked</code> moved — Download/Mark sent are gated, Approve is not. Approve stays owners-only via the <code>enforce_invoice_approver</code> trigger.',
+      '<strong><code>myday_note_drafts</code></strong> (<code>20260831120000</code>): ONE ROW PER AUTHOR, not per date — a draft is unfinished writing and the date belongs to the post Submit stamps. Private to the author, realtime so it crosses devices, <code>editing_post_id</code> persisted. <strong>Cancel the debounce before deleting the row</strong> or it resurrects the posted text. <code>dbResult</code> gained <code>{ silent }</code> — toast only; the caller must still show the failure.',
+      '<strong>Daily ops:</strong> today is a day IN PROGRESS — unsubmitted duties read <code>pending</code>, and their absence rows are kept out of the queue entirely. <code>DORMANT_STUDIOS</code> does the same for Track: a room nobody is rostered to cannot fail its checklist.',
+      '<strong>Runner submissions</strong> ride on <code>app_feedback</code> with <code>source=\'runner\'</code> (<code>20260831130000</code>) — one inbox, one resolved flag. The card lives on <code>/runner/[studio]</code>, NOT <code>/runner</code> (the picker bounces past it). The office board is now scoped to <code>source=\'office\'</code>.',
+      '<strong>Stock locations</strong> (<code>20260831140000</code>): 134 Paramount rows placed BY ID across eight locations — matched against a live dump, not by name, because the names have drifted. Group order derives from each group\'s lowest <code>sort_order</code>. Qty is <code>inputMode="decimal"</code>, not numeric — the column is TEXT on purpose.',
+      '<strong>Calendar mobile:</strong> grid rows 79 → 26px (option A, <code>docs/design-refs/calendar-grid-mobile-options.html</code>); chips carry NO minHeight at that height or they overspill their lane (the Aug 26 bug). The centring fault was <code>marginLeft: -12</code> — a desktop rail pull running unconditionally.',
+      '<strong>RichNote:</strong> the bullet is drawn with a <code>::before</code> because WebKit does not paint native list markers inside contentEditable once the global reset zeroes list padding; toolbar state reads <code>queryCommandState</code> on every caret move.',
+      '<strong>Incident:</strong> a sandbox commit built against a COPIED git index silently reverted the entire v1.19.0 docs pass and reached main — twice. See CHANGELOG v1.19.1 WATCH-OUT #1 and <code>docs/working-conventions.md</code> §3b.',
+    ],
+  },
+  {
     ver:'v1.19.0', date:'Aug 26–31, 2026',
     headline:'The 2026 calendar is in, your notes stop disappearing, and the app finally knows a night runs past midnight.',
     desc:'A big week. This year\'s bookings were imported from the old WordPress calendar, monthly lockout rooms got proper handling, card payments do their own 3% math, and anything you type into notes now survives leaving the page.',
