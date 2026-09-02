@@ -29,9 +29,16 @@ create table if not exists public.runner_note_posts (
   role         text check (role in ('opener', 'floater', 'closer')),
   source       text not null default 'runner' check (source in ('runner', 'office')),
   text         text not null,
+  -- Storage PATHS in the private checklist-photos bucket (runner-notes/
+  -- prefix), signed at read time — same pattern as every photo in the app.
+  photo_urls   text[],
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+
+-- Same-day amendment (photos on notes) — covers a table created before the
+-- column was added to the CREATE above.
+alter table public.runner_note_posts add column if not exists photo_urls text[];
 
 create index if not exists runner_note_posts_studio_at on public.runner_note_posts (studio, created_at desc);
 

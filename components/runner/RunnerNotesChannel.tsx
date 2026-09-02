@@ -30,6 +30,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { RichNoteEditor, RichNoteView, noteIsEmpty } from '@/components/shared/RichNote'
+import { SignedImage } from '@/components/shared/SignedImage'
 
 const PAGE = 60
 
@@ -48,6 +49,8 @@ type Post = {
   role: Role | null
   source: 'runner' | 'office'
   text: string
+  /** Storage PATHS in the private checklist-photos bucket — signed at read. */
+  photo_urls: string[] | null
   created_at: string
   updated_at: string
 }
@@ -90,6 +93,15 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
   const [sending, setSending] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
+  // Photos upload ON PICK (not on Send): the storage PATH goes into state and
+  // the draft immediately, so a picked photo survives navigating away exactly
+  // like typed text does. The cost is a stray uploaded file when a note is
+  // abandoned — cheap, invisible, and the draft's photos are re-offered on
+  // return rather than lost.
+  const [photos, setPhotos] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+  const photoInput = useRef<HTMLInputElement>(null)
 
   const feedRef = useRef<HTMLDivElement>(null)
   const stickBottomRef = useRef(true)
@@ -100,19 +112,55 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
   // read it; a draft that old is honestly stale. Restored before first paint
   // of the composer.
   const dKey = draftKey('runner-channel', studio, opsToday())
+  const photosRef = useRef(photos); photosRef.current = photos
   useEffect(() => {
-    const d = readDraft<{ text: string; role: Role | null }>(dKey)
-    if (d && !noteIsEmpty(d.text)) { setText(d.text); setRole(d.role ?? null) }
+    const d = readDraft<{ text: string; role: Role | null; photos?: string[] }>(dKey)
+    if (d && (!noteIsEmpty(d.text) || (d.photos?.length ?? 0) > 0)) {
+      setText(d.text); setRole(d.role ?? null); setPhotos(d.photos ?? [])
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studio])
+  const mirror = (patch: Partial<{ text: string; role: Role | null; photos: string[] }>) =>
+    writeDraft(dKey, { text: textRef.current, role: roleRef.current, photos: photosRef.current, ...patch })
   const typed = (next: string) => {
     setText(next)
-    writeDraft(dKey, { text: next, role: roleRef.current })
+    mirror({ text: next })
   }
   const pickRole = (r: Role) => {
     setRole(prev => {
       const next = prev === r ? null : r
-      writeDraft(dKey, { text: textRef.current, role: next })
+      mirror({ role: next })
+      return next
+    })
+  }
+
+  // Upload on pick — same private bucket + signed-URL pattern as every other
+  // photo in the app (lib/photos.ts): store the PATH, sign at read.
+  async function pickPhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = '' // let the same file be picked again after a failure
+    if (files.length === 0) return
+    setUploading(true)
+    const added: string[] = []
+    for (const file of files.slice(0, 4 - photos.length)) {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `runner-notes/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+      if (dbResult('Uploading photo', error)) added.push(path)
+    }
+    setUploading(false)
+    if (added.length > 0) {
+      setPhotos(prev => {
+        const next = [...prev, ...added]
+        mirror({ photos: next })
+        return next
+      })
+    }
+  }
+  const removePhoto = (p: string) => {
+    setPhotos(prev => {
+      const next = prev.filter(x => x !== p)
+      mirror({ photos: next })
       return next
     })
   }
@@ -174,7 +222,8 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
   }
 
   async function send() {
-    if (!profile || sending || noteIsEmpty(text)) return
+    // A photo alone is a valid note — "here's the broken thing" needs no prose.
+    if (!profile || sending || (noteIsEmpty(text) && photos.length === 0)) return
     setSending(true)
     const { error } = await supabase.from('runner_note_posts').insert({
       studio,
@@ -182,13 +231,15 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
       author_name: authorName,
       role: isRunner ? role : null,
       source: isRunner ? 'runner' : 'office',
-      text,
+      text: noteIsEmpty(text) ? '' : text,
+      photo_urls: photos.length > 0 ? photos : null,
     })
     setSending(false)
     if (!dbResult('Posting note', error)) return
     // Success ONLY: clear the field and its net. Role stays picked — it is
     // the shift, not the message.
     setText('')
+    setPhotos([])
     clearDraft(dKey)
     stickBottomRef.current = true
     load()
@@ -262,7 +313,16 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
                   </div>
                 ) : (
                   <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--c-fg-2)' }}>
-                    <RichNoteView html={p.text} />
+                    {p.text !== '' && <RichNoteView html={p.text} />}
+                    {(p.photo_urls ?? []).length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: p.text !== '' ? 5 : 2 }}>
+                        {(p.photo_urls ?? []).map(ph => (
+                          <span key={ph} onClick={() => setLightbox(ph)} style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                            <SignedImage path={ph} alt="Note photo" style={{ maxHeight: 110, maxWidth: 160, borderRadius: 8, display: 'block' }} />
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -287,23 +347,52 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
           </div>
         )}
         <RichNoteEditor value={text} onChange={typed} minHeight={44} placeholder="Add a note…" />
+        {photos.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+            {photos.map(ph => (
+              <span key={ph} style={{ position: 'relative', display: 'inline-flex' }}>
+                <SignedImage path={ph} alt="Attached photo" style={{ height: 58, borderRadius: 8, display: 'block' }} />
+                <button onClick={() => removePhoto(ph)} aria-label="Remove photo"
+                  style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 99, background: 'var(--c-fg)', color: 'var(--c-bg)', fontSize: 10, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 }}>
+          {/* accept + no capture attr: the sheet offers camera AND library. */}
+          <input ref={photoInput} type="file" accept="image/*" multiple onChange={pickPhotos} style={{ display: 'none' }} />
+          <button
+            onClick={() => photoInput.current?.click()}
+            disabled={uploading || photos.length >= 4}
+            aria-label="Add photo"
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', fontSize: 13, borderRadius: 99, minWidth: 32, minHeight: 32, cursor: uploading || photos.length >= 4 ? 'default' : 'pointer', opacity: photos.length >= 4 ? 0.4 : 1 }}
+          >{uploading ? '…' : '📷'}</button>
           <span style={{ fontSize: 9, color: 'var(--c-fg-3)' }}>
-            {noteIsEmpty(text) ? 'Everything you type is kept until you send' : 'Draft kept'}
+            {uploading ? 'Uploading photo…'
+              : noteIsEmpty(text) && photos.length === 0 ? 'Everything you add is kept until you send'
+              : 'Draft kept'}
           </span>
           <button
             onClick={send}
-            disabled={sending || noteIsEmpty(text)}
+            disabled={sending || uploading || (noteIsEmpty(text) && photos.length === 0)}
             style={{
               marginLeft: 'auto', background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)',
               fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
               borderRadius: 99, padding: '7px 18px', minHeight: 32,
-              cursor: sending || noteIsEmpty(text) ? 'default' : 'pointer',
-              opacity: sending || noteIsEmpty(text) ? 0.45 : 1,
+              cursor: sending || uploading || (noteIsEmpty(text) && photos.length === 0) ? 'default' : 'pointer',
+              opacity: sending || uploading || (noteIsEmpty(text) && photos.length === 0) ? 0.45 : 1,
             }}
           >{sending ? 'Sending…' : 'Send'}</button>
         </div>
       </div>
+
+      {/* Tap-to-enlarge — same z-band as the runner pages' own overlays. */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 10040, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, cursor: 'pointer' }}>
+          <SignedImage path={lightbox} alt="Note photo" style={{ maxWidth: '94vw', maxHeight: '86vh', borderRadius: 12 }} />
+        </div>
+      )}
     </div>
   )
 }
