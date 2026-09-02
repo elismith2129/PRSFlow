@@ -103,8 +103,6 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
   const [lightbox, setLightbox] = useState<string | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
 
-  const feedRef = useRef<HTMLDivElement>(null)
-  const stickBottomRef = useRef(true)
   const textRef = useRef(text); textRef.current = text
   const roleRef = useRef(role); roleRef.current = role
 
@@ -166,6 +164,10 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
   }
 
   const load = useCallback(async () => {
+    // NEWEST FIRST (Eli, 2026-09-01: "older notes are at the top. newest
+    // needs to be at the top") — the manager-log direction, not Slack's
+    // bottom anchor. The composer sits ABOVE the feed for the same reason:
+    // you write, and your note appears right under your thumbs.
     const { data, error } = await supabase
       .from('runner_note_posts')
       .select('*')
@@ -173,8 +175,7 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
       .order('created_at', { ascending: false })
       .limit(PAGE)
     if (!dbResult('Loading runner notes', error)) return
-    const page = ((data ?? []) as Post[]).reverse()
-    setPosts(page)
+    setPosts((data ?? []) as Post[])
     setHaveOlder((data ?? []).length === PAGE)
   }, [studio])
 
@@ -197,28 +198,14 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
       .from('runner_note_posts')
       .select('*')
       .eq('studio', studio)
-      .lt('created_at', posts[0].created_at)
+      .lt('created_at', posts[posts.length - 1].created_at)
       .order('created_at', { ascending: false })
       .limit(PAGE)
     setLoadingOlder(false)
     if (!dbResult('Loading older notes', error)) return
-    const older = ((data ?? []) as Post[]).reverse()
-    stickBottomRef.current = false
-    setPosts(prev => [...older, ...(prev ?? [])])
+    // Older pages APPEND — the feed reads newest → oldest top to bottom.
+    setPosts(prev => [...(prev ?? []), ...((data ?? []) as Post[])])
     setHaveOlder((data ?? []).length === PAGE)
-  }
-
-  // Slack behavior: open at the newest message; follow new arrivals only when
-  // already at the bottom (reading history must not be yanked down).
-  useEffect(() => {
-    const el = feedRef.current
-    if (!el || posts === null) return
-    if (stickBottomRef.current) el.scrollTop = el.scrollHeight
-    stickBottomRef.current = true
-  }, [posts])
-  const onScroll = () => {
-    const el = feedRef.current
-    if (el) stickBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60
   }
 
   async function send() {
@@ -241,7 +228,6 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
     setText('')
     setPhotos([])
     clearDraft(dKey)
-    stickBottomRef.current = true
     load()
   }
 
@@ -263,17 +249,67 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
 
   return (
     <div style={{ background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 16, overflow: 'hidden' }}>
-      {/* ── Feed ── */}
-      <div ref={feedRef} onScroll={onScroll} style={{ maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: '10px 13px 6px' }}>
+      {/* ── Composer — ABOVE the feed (Eli, 2026-09-01: newest at the top),
+          so a sent note appears directly under where it was written. */}
+      <div style={{ borderBottom: '1px solid var(--c-wash2)', padding: '9px 12px 11px' }}>
+        {isRunner && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 7 }}>
+            {ROLES.map(r => (
+              <button key={r.key} onClick={() => pickRole(r.key)}
+                style={{
+                  fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase',
+                  borderRadius: 99, padding: '5px 12px', cursor: 'pointer',
+                  background: role === r.key ? 'var(--c-ivory)' : 'var(--c-wash)',
+                  color: role === r.key ? '#1b1a17' : 'var(--c-fg-2)',
+                }}>{r.label}</button>
+            ))}
+          </div>
+        )}
+        <RichNoteEditor value={text} onChange={typed} minHeight={44} placeholder="Add a note…" />
+        {photos.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+            {photos.map(ph => (
+              <span key={ph} style={{ position: 'relative', display: 'inline-flex' }}>
+                <SignedImage path={ph} alt="Attached photo" style={{ height: 58, borderRadius: 8, display: 'block' }} />
+                <button onClick={() => removePhoto(ph)} aria-label="Remove photo"
+                  style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 99, background: 'var(--c-fg)', color: 'var(--c-bg)', fontSize: 10, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 }}>
+          {/* accept + no capture attr: the sheet offers camera AND library. */}
+          <input ref={photoInput} type="file" accept="image/*" multiple onChange={pickPhotos} style={{ display: 'none' }} />
+          <button
+            onClick={() => photoInput.current?.click()}
+            disabled={uploading || photos.length >= 4}
+            aria-label="Add photo"
+            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', fontSize: 13, borderRadius: 99, minWidth: 32, minHeight: 32, cursor: uploading || photos.length >= 4 ? 'default' : 'pointer', opacity: photos.length >= 4 ? 0.4 : 1 }}
+          >{uploading ? '…' : '📷'}</button>
+          <span style={{ fontSize: 9, color: 'var(--c-fg-3)' }}>
+            {uploading ? 'Uploading photo…'
+              : noteIsEmpty(text) && photos.length === 0 ? 'Everything you add is kept until you send'
+              : 'Draft kept'}
+          </span>
+          <button
+            onClick={send}
+            disabled={sending || uploading || (noteIsEmpty(text) && photos.length === 0)}
+            style={{
+              marginLeft: 'auto', background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)',
+              fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+              borderRadius: 99, padding: '7px 18px', minHeight: 32,
+              cursor: sending || uploading || (noteIsEmpty(text) && photos.length === 0) ? 'default' : 'pointer',
+              opacity: sending || uploading || (noteIsEmpty(text) && photos.length === 0) ? 0.45 : 1,
+            }}
+          >{sending ? 'Sending…' : 'Send'}</button>
+        </div>
+      </div>
+
+      {/* ── Feed — newest first, older pages append at the bottom ── */}
+      <div style={{ maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: '10px 13px 6px' }}>
         {posts === null && <div style={{ fontSize: 12, opacity: 0.5, padding: '6px 0' }}>Loading…</div>}
         {posts !== null && posts.length === 0 && (
-          <div style={{ fontSize: 12, opacity: 0.5, padding: '6px 0' }}>No notes yet — start the channel below.</div>
-        )}
-        {haveOlder && (
-          <button onClick={loadOlder} disabled={loadingOlder}
-            style={{ display: 'block', margin: '0 auto 8px', background: 'var(--c-wash)', color: 'var(--c-fg-2)', fontSize: 10, fontWeight: 800, borderRadius: 99, padding: '5px 14px', cursor: 'pointer' }}>
-            {loadingOlder ? 'Loading…' : 'Load older notes'}
-          </button>
+          <div style={{ fontSize: 12, opacity: 0.5, padding: '6px 0' }}>No notes yet — start the channel above.</div>
         )}
         {(posts ?? []).map((p, i) => {
           const prev = (posts ?? [])[i - 1]
@@ -329,61 +365,12 @@ export function RunnerNotesChannel({ studio, maxHeight = 320, subscribe = true, 
             </div>
           )
         })}
-      </div>
-
-      {/* ── Composer ── */}
-      <div style={{ borderTop: '1px solid var(--c-wash2)', padding: '9px 12px 11px' }}>
-        {isRunner && (
-          <div style={{ display: 'flex', gap: 6, marginBottom: 7 }}>
-            {ROLES.map(r => (
-              <button key={r.key} onClick={() => pickRole(r.key)}
-                style={{
-                  fontSize: 9.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase',
-                  borderRadius: 99, padding: '5px 12px', cursor: 'pointer',
-                  background: role === r.key ? 'var(--c-ivory)' : 'var(--c-wash)',
-                  color: role === r.key ? '#1b1a17' : 'var(--c-fg-2)',
-                }}>{r.label}</button>
-            ))}
-          </div>
+        {haveOlder && (
+          <button onClick={loadOlder} disabled={loadingOlder}
+            style={{ display: 'block', margin: '2px auto 8px', background: 'var(--c-wash)', color: 'var(--c-fg-2)', fontSize: 10, fontWeight: 800, borderRadius: 99, padding: '5px 14px', cursor: 'pointer' }}>
+            {loadingOlder ? 'Loading…' : 'Load older notes'}
+          </button>
         )}
-        <RichNoteEditor value={text} onChange={typed} minHeight={44} placeholder="Add a note…" />
-        {photos.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
-            {photos.map(ph => (
-              <span key={ph} style={{ position: 'relative', display: 'inline-flex' }}>
-                <SignedImage path={ph} alt="Attached photo" style={{ height: 58, borderRadius: 8, display: 'block' }} />
-                <button onClick={() => removePhoto(ph)} aria-label="Remove photo"
-                  style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, borderRadius: 99, background: 'var(--c-fg)', color: 'var(--c-bg)', fontSize: 10, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>✕</button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 }}>
-          {/* accept + no capture attr: the sheet offers camera AND library. */}
-          <input ref={photoInput} type="file" accept="image/*" multiple onChange={pickPhotos} style={{ display: 'none' }} />
-          <button
-            onClick={() => photoInput.current?.click()}
-            disabled={uploading || photos.length >= 4}
-            aria-label="Add photo"
-            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', fontSize: 13, borderRadius: 99, minWidth: 32, minHeight: 32, cursor: uploading || photos.length >= 4 ? 'default' : 'pointer', opacity: photos.length >= 4 ? 0.4 : 1 }}
-          >{uploading ? '…' : '📷'}</button>
-          <span style={{ fontSize: 9, color: 'var(--c-fg-3)' }}>
-            {uploading ? 'Uploading photo…'
-              : noteIsEmpty(text) && photos.length === 0 ? 'Everything you add is kept until you send'
-              : 'Draft kept'}
-          </span>
-          <button
-            onClick={send}
-            disabled={sending || uploading || (noteIsEmpty(text) && photos.length === 0)}
-            style={{
-              marginLeft: 'auto', background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)',
-              fontSize: 10.5, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
-              borderRadius: 99, padding: '7px 18px', minHeight: 32,
-              cursor: sending || uploading || (noteIsEmpty(text) && photos.length === 0) ? 'default' : 'pointer',
-              opacity: sending || uploading || (noteIsEmpty(text) && photos.length === 0) ? 0.45 : 1,
-            }}
-          >{sending ? 'Sending…' : 'Send'}</button>
-        </div>
       </div>
 
       {/* Tap-to-enlarge — same z-band as the runner pages' own overlays. */}

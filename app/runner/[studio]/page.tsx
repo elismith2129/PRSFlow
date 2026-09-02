@@ -613,7 +613,7 @@ export default function StudioDailyOpsPage() {
         <div>
           <div className="c-label" style={{ marginBottom: 9 }}>
             Runner notes
-            <Hint tip="One running channel for this studio — like the old Slack. Every note ever posted lives here, newest at the bottom. Type, pick your shift, Send. Your typing is kept even if the app closes before you send." />
+            <Hint tip="One running channel for this studio — like the old Slack. Every note ever posted lives here, newest first. Type, pick your shift, add a photo if it helps, Send. Your typing and photos are kept even if the app closes before you send." />
           </div>
           <RunnerNotesChannel studio={studio} />
         </div>

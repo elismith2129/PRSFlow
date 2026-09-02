@@ -386,7 +386,7 @@ export default function DailyOpsPage() {
       <div style={{ marginTop: 18, maxWidth: 640 }}>
         <div className="c-label" style={{ marginBottom: 3 }}>
           Runner notes · the channel
-          <Hint tip="The full running notes channel for each studio — everything runners have ever posted, newest at the bottom. You can post too; your note shows an Office chip. The sweep cards above still show just the night's notes." />
+          <Hint tip="The full running notes channel for each studio — everything runners have ever posted, newest first. You can post too; your note shows an Office chip. The sweep cards above still show just the night's notes." />
         </div>
         <div style={{ display: 'flex', gap: 6, margin: '7px 0 10px' }}>
           {OPS_STUDIOS.map(s => (
