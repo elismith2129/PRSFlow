@@ -428,7 +428,10 @@ export default function BillingPage() {
           before signing off; the PO chip is informational — since 2026-08-31
           a missing PO blocks sending, not approval. Empty queue = no strip,
           and billing staff never see it (they can't approve). */}
-      {isOwner && pipeline === 'billing' && tab === 'progress' && !searching && approvals.length > 0 && (
+      {/* Shown on BOTH pipelines since 2026-09-01 (COD sessions need the
+          owner's sign-off too — the queue mixes both, chip marks COD). On the
+          billing side it stays pinned to In progress, where its rows live. */}
+      {isOwner && !searching && approvals.length > 0 && (pipeline === 'cod' || tab === 'progress') && (
         <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3 }}>
             <span style={{
@@ -453,6 +456,9 @@ export default function BillingPage() {
               <span style={{ fontWeight: 700, fontSize: 12.5, minWidth: isMobile ? 0 : 150, flexShrink: 1 }}>
                 {r.client}{r.artist ? ` — ${r.artist}` : ''}
               </span>
+              {r.isCod && (
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.05em', background: 'var(--c-wash2)', padding: '3px 8px', borderRadius: 99, opacity: 0.8, flexShrink: 0 }}>COD</span>
+              )}
               {!isMobile && (
                 <span style={{ fontSize: 11, opacity: 0.55 }}>
                   {[r.dateRange, r.rooms].filter(Boolean).join(' · ')}

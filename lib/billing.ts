@@ -41,7 +41,13 @@ import { logWoActivity } from '@/lib/woActivity'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-/** Stored states. COD work orders carry NULL — their bucket is computed. */
+/**
+ * Stored states. COD work orders carry NULL — their bucket is computed —
+ * with ONE exception (2026-09-01): the owner's approval writes 'approved' on
+ * COD too, because an approval is a human act and human acts are stored
+ * (the STORED vs DERIVED doctrine above). COD buckets still never read it;
+ * only the step ladder does.
+ */
 export type InvoiceState =
   | 'needs_invoice' | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'paid' | 'closed'
 
@@ -146,9 +152,14 @@ export type Step = 0 | 1 | 2 | 3 | 4 | 5
 export const BILLING_LIGHTS: Array<{ label: string; at: Step }> = [
   { label: 'Reviewed', at: 1 }, { label: 'Invoiced', at: 2 }, { label: 'Approved', at: 3 },
 ]
-/** COD has no approval and nothing to send, so it shows two. */
+/**
+ * COD shows three too (Eli, 2026-09-01: "owner still has to approve paid and
+ * reviewed COD sessions"). This restores his own Aug 11 words — COD is
+ * "checked for accuracy, APPROVED, and then they are done" — which v1 had
+ * collapsed into billing's review. Nothing to send, so the ladder ends here.
+ */
 export const COD_LIGHTS: Array<{ label: string; at: Step }> = [
-  { label: 'Reviewed', at: 1 }, { label: 'Invoiced', at: 2 },
+  { label: 'Reviewed', at: 1 }, { label: 'Invoiced', at: 2 }, { label: 'Approved', at: 3 },
 ]
 
 export type InvoiceRow = {
@@ -291,8 +302,12 @@ export function deriveStep(
   woStatus: string,
 ): Step {
   if (isCod) {
-    // COD has two rungs and no approval: reviewed, then invoiced. Whether the
-    // money arrived is answered by the payments, never by a stamp.
+    // COD's ladder: reviewed → invoiced → APPROVED (the owner's sign-off,
+    // 2026-09-01 — a stored human act, like every approval; the trigger
+    // enforces owners-only here too). Whether the money arrived is still
+    // answered by the payments, never by a stamp — approval asserts the
+    // numbers are right, not that cash was collected.
+    if (state === 'approved' && hasDoc) return 3
     if (hasDoc) return 2
     return woStatus === 'completed' || state !== null ? 1 : 0
   }
@@ -702,8 +717,12 @@ export function staleDownloads(rows: InvoiceRow[]): InvoiceRow[] {
  * has waited longest, the way the folder's oldest files sat at the top.
  */
 export function approvalQueue(rows: InvoiceRow[]): InvoiceRow[] {
+  // Membership IS "the row's button says Approve" — derived through the same
+  // nextAction the list renders, so the badge, the banner, the strip and the
+  // row can never disagree. Covers billing (step 2, In progress) AND, since
+  // 2026-09-01, paid+reviewed COD sessions awaiting the owner's sign-off.
   return rows
-    .filter(r => r.pipeline === 'billing' && r.step === 2 && r.bucket === 'progress')
+    .filter(r => nextAction(r) === 'Approve')
     .sort((a, b) => (a.sessionDate ?? '9999').localeCompare(b.sessionDate ?? '9999'))
 }
 
@@ -826,10 +845,13 @@ export function isPastDue(row: InvoiceRow): boolean {
  */
 export function nextAction(row: InvoiceRow): string | null {
   if (row.bucket === 'closed') return 'Reopen'
-  if (row.bucket === 'paid') return null
+  // A PAID COD session that is reviewed + invoiced still owes the owner's
+  // sign-off (Eli, 2026-09-01) — Paid is where the money is settled, not
+  // where the checking ends. Step 3 (approved) is the true end of COD's line.
+  if (row.bucket === 'paid') return row.isCod && row.step === 2 ? 'Approve' : null
   if (row.bucket === 'awaiting') return 'Mark paid'
   // A COD balance is collected and recorded ON the work order, so the row's job
-  // is to surface it — double-click does the rest.
+  // is to surface it — double-click does the rest. Approval waits for Paid.
   if (row.bucket === 'balance') return null
   if (row.step === 0) return null
   if (row.step === 1) return 'Attach invoice'
