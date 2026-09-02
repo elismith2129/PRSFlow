@@ -442,7 +442,7 @@ export default function BillingPage() {
             <span className="c-arch" style={{ fontSize: 12 }}>Ready for your approval</span>
             {!isMobile && (
               <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.45 }}>
-                double-click a row to read the package first
+                click a row to read the package first
               </span>
             )}
           </div>
@@ -450,8 +450,8 @@ export default function BillingPage() {
             <div
               key={r.workOrderId}
               className="c-panel"
-              onDoubleClick={() => openRow(r)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', marginTop: 6, cursor: 'default' }}
+              onClick={() => openRow(r)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', marginTop: 6, cursor: 'pointer' }}
             >
               <span style={{ fontWeight: 700, fontSize: 12.5, minWidth: isMobile ? 0 : 150, flexShrink: 1 }}>
                 {r.client}{r.artist ? ` — ${r.artist}` : ''}
@@ -479,7 +479,7 @@ export default function BillingPage() {
               <button
                 className="c-bact"
                 disabled={busy === r.workOrderId}
-                onClick={() => run(r.workOrderId, () => approveInvoice(r, profile?.id ?? null, profile?.display_name || undefined))}
+                onClick={e => { e.stopPropagation(); run(r.workOrderId, () => approveInvoice(r, profile?.id ?? null, profile?.display_name || undefined)) }}
                 onDoubleClick={e => e.stopPropagation()}
               >
                 Approve
@@ -499,7 +499,7 @@ export default function BillingPage() {
           placeholder="Search everything — client, artist, invoice #, WO #, PO…"
         />
         {searching && <span className="c-bclr" onClick={() => setQuery('')}>clear ✕</span>}
-        <Hint tip="Every row shows at most one button — always the next action. Double-click a row to open the work order (or the combined package once an invoice is attached). Drag a QuickBooks PDF straight onto a row to attach it." />
+        <Hint tip="Every row shows at most one button — always the next action. Click a row to open the work order (or the combined package once an invoice is attached). Drag a QuickBooks PDF straight onto a row to attach it." />
       </div>
 
       <div className={`c-btabs${searching ? ' c-dim' : ''}`}>
@@ -776,10 +776,13 @@ function Row({
     <div
       className={`c-brow${overdue ? ' c-od' : ''}${dragOver ? ' c-drop' : ''}`}
       style={{ opacity: busy ? 0.5 : 1, cursor: row.bookingId ? 'pointer' : 'default' }}
-      // Double-click, not single: a single click would fire every time someone
-      // reached for the button at the end of the row.
-      onDoubleClick={onOpen}
-      title={row.hasInvoiceDoc ? 'Double-click to see the package' : 'Double-click to open the work order'}
+      // SINGLE click opens (Eli, 2026-09-01: "1 click from 2 clicks. driving me
+      // nuts") — reversing the Aug 11 double-click ruling. The original fear
+      // was a click aimed at the row's button opening the WO behind it; the
+      // action and ⋯ cells stop click propagation now, so the button path and
+      // the open path can't collide.
+      onClick={onOpen}
+      title={row.hasInvoiceDoc ? 'Click to see the package' : 'Click to open the work order'}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -868,7 +871,7 @@ function Row({
           on double-click, and these controls sit inside it — so double-clicking
           Approve fired the button AND opened the work order behind it. Buttons
           swallow the double-click; only the row itself opens. */}
-      <span className="c-bactcell" onDoubleClick={e => e.stopPropagation()}>
+      <span className="c-bactcell" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
         {label && canAct && (
           <button
             className={`c-bact${blocked ? ' c-bmuted' : ''}`}
@@ -890,7 +893,7 @@ function Row({
           </button>
         )}
       </span>
-      <span className="c-bmorecell" onDoubleClick={e => e.stopPropagation()}>
+      <span className="c-bmorecell" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
         {hasMore && (
           <button className="c-bmore" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
         )}
