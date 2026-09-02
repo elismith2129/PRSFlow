@@ -98,6 +98,8 @@ export type WoAuditRow = {
   eng_rate?: string | null
   eng_from_time?: string | null
   eng_to_time?: string | null
+  actual_from_time?: string | null
+  actual_to_time?: string | null
   session_info?: string | null
 }
 
@@ -215,6 +217,10 @@ function diffRowPair(a: WoAuditRow, b: WoAuditRow): WoChange[] {
   push(`${roleB} rate`, money(a.eng_rate), money(b.eng_rate))
   push('Staff start', norm(a.eng_from_time), norm(b.eng_from_time))
   push('Staff end', norm(a.eng_to_time), norm(b.eng_to_time))
+  // Actual vs billed (2026-09-01): the internal arrival record is history-
+  // worthy too — who recorded it and whether it was later changed.
+  push('Arrived (actual)', norm(a.actual_from_time), norm(b.actual_from_time))
+  push('Left (actual)', norm(a.actual_to_time), norm(b.actual_to_time))
   push('Session info', norm(a.session_info), norm(b.session_info))
   return out
 }

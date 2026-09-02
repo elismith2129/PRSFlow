@@ -160,6 +160,13 @@ type StRow = {
   eng_charge: number | null
   eng_from_time: string
   eng_to_time: string
+  /**
+   * ACTUAL vs BILLED (Eli, 2026-09-01): when the client really arrived/left.
+   * Read by NOTHING that computes money — billed is always the booked times,
+   * so these cannot move an invoice. Stored for utilization reporting.
+   */
+  actual_from_time: string
+  actual_to_time: string
   admin_checked: boolean
   admin_locked: boolean
   eng_visible: boolean
@@ -407,6 +414,8 @@ function normalizeStRow(d: any): StRow {
     eng_charge: engCharge,
     eng_from_time: engFromTime,
     eng_to_time: engToTime,
+    actual_from_time: d.actual_from_time ?? '',
+    actual_to_time: d.actual_to_time ?? '',
     admin_checked: d.admin_checked ?? false,
     admin_locked: d.admin_locked ?? false,
     eng_visible: d.eng_visible ?? true,
@@ -621,6 +630,7 @@ export function WorkOrderPopup({
         sort_order: maxOrder, day_count: null,
         eng_hours: null, eng_rate: '', eng_charge: null,
         eng_from_time: from, eng_to_time: to,
+        actual_from_time: '', actual_to_time: '',
         admin_checked: false, admin_locked: false,
         // A 24hr rent-only lockout has no staff — don't render staff slots on
         // rows the modal itself created. Staffed monthlies keep the slot.
@@ -1906,6 +1916,8 @@ export function WorkOrderPopup({
       // added by hand after WO creation had the gap.
       eng_from_time: fromTime,
       eng_to_time: toTime,
+      actual_from_time: '',
+      actual_to_time: '',
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
@@ -1964,6 +1976,7 @@ export function WorkOrderPopup({
       eng_to_time: dayStudio?.to_time || '',
       eng_rate: lastEng?.eng_rate || '',
       eng_hours: null, eng_charge: null,
+      actual_from_time: '', actual_to_time: '',
       admin_checked: false, admin_locked: false, eng_visible: true,
       eng_role: role, status: 'in_progress',
     }
@@ -1997,6 +2010,8 @@ export function WorkOrderPopup({
       eng_rate: lastEng?.eng_rate || '',
       eng_hours: null,
       eng_charge: null,
+      actual_from_time: '',
+      actual_to_time: '',
       admin_checked: false,
       admin_locked: false,
       eng_visible: true,
@@ -2576,6 +2591,8 @@ export function WorkOrderPopup({
       eng_charge: r.eng_charge ?? null,
       eng_from_time: r.eng_from_time || null,
       eng_to_time: r.eng_to_time || null,
+      actual_from_time: r.actual_from_time || null,
+      actual_to_time: r.actual_to_time || null,
       admin_checked: r.admin_checked,
       admin_locked: r.admin_locked,
       eng_visible: r.eng_visible,
@@ -5177,6 +5194,16 @@ export function WorkOrderPopup({
                                 )
                               })()}
                             </div>
+                            {/* Actual arrival/departure (2026-09-01) — quiet,
+                                times only (no percentage — Eli), internal only. */}
+                            {(first?.actual_from_time || first?.actual_to_time) && (
+                              <div style={{ marginTop: 3, fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', whiteSpace: 'nowrap' }}>
+                                Actually here{' '}
+                                <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", color: 'var(--c-fg-2)' }}>
+                                  {first.actual_from_time || '—'} – {first.actual_to_time || '—'}
+                                </span>
+                              </div>
+                            )}
                             {/* THE STAFF SLOT IS ALWAYS VISIBLE (2026-08-20).
                                 Every session has someone on it, so a day with
                                 nobody assigned yet shows the empty slot rather
@@ -5689,11 +5716,14 @@ export function WorkOrderPopup({
           const closeSheet = () => { setDaySheetDate(null); setOpenNoteKey(null); setTimeDDKey(null) }
           // One big time well: type into it (TimeInput smart-parse) or open the
           // half-hour preset list with the ▾.
-          const timeWell = (r: StRow, field: 'from_time' | 'to_time' | 'eng_from_time' | 'eng_to_time', label: string, value: string) => {
+          const timeWell = (r: StRow, field: 'from_time' | 'to_time' | 'eng_from_time' | 'eng_to_time' | 'actual_from_time' | 'actual_to_time', label: string, value: string, dashed = false) => {
             const key = `${r.id}|${field}`
             return (
               <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 8px 7px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                {/* Dashed = the ACTUAL times (internal record, never money,
+                    never on the client PDF) — a different skin so they can
+                    never be mistaken for the billed pair above them. */}
+                <div style={{ ...(dashed ? { background: 'transparent', border: '1.5px dashed var(--c-wash2)' } : { background: 'var(--c-wash2)' }), borderRadius: 12, padding: '7px 8px 7px 14px', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>{label}</div>
                     <TimeInput value={value} onChange={v => updateStRow(r.id, { [field]: v } as Partial<StRow>)} className="c-tin c-tin-mono" style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30 }} />
@@ -5855,6 +5885,21 @@ export function WorkOrderPopup({
                         <div style={{ display: 'flex', gap: 8 }}>
                           {timeWell(r, 'from_time', 'Start', r.from_time)}
                           {timeWell(r, 'to_time', 'End', r.to_time)}
+                        </div>
+                        {/* ACTUAL vs BILLED (Eli, 2026-09-01): when the client
+                            really arrived and left. Typed, same smart-parse +
+                            preset wells as everything else, DASHED so they can
+                            never read as the billed pair. INTERNAL ONLY — no
+                            money math reads these, they never print on the
+                            client work order, and the line below restates the
+                            law where the runner is standing. */}
+                        <div className="c-label" style={{ margin: '9px 0 5px', fontSize: 8, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                          Client actually here
+                          <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 400, opacity: 0.7 }}>· billed stays as booked</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          {timeWell(r, 'actual_from_time', 'Arrived', r.actual_from_time, true)}
+                          {timeWell(r, 'actual_to_time', 'Left', r.actual_to_time, true)}
                         </div>
                         {/* THE ROOM'S RATE, BESIDE THE ROOM'S TIMES (Eli,
                             2026-08-20: "still not a good place for the rate to

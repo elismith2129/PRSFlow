@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Actual vs billed session times</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ACTUAL vs BILLED TIMES (Eli, 2026-09-01). "For 100% of sessions they are
+  billed for the full amount booked, but often show up late or leave early…
+  a very easy unfuckupable way for runners to note both times."
+
+  THE DATA LAW every option shares: actual_from_time / actual_to_time are two
+  NEW columns on studio_time_rows that NO money math ever reads — not
+  computeWoTotals, not calcCharge, not the projection, not the PDF total.
+  Billed = booked, always. A runner cannot touch an invoice from here no
+  matter what they enter. Changes are WO-history-logged (who stamped, when)
+  for free, and utilization (% of booked hours used) is one query later.
+
+  The fork: A is the punch clock (press it when it happens — nothing to type,
+  nothing to get wrong; needs an edit path for after-the-fact). B is typed
+  wells (works from memory, but typing times is where AM/PM mistakes live).
+  C is both: stamp now OR tap the stamp to correct/type later. The admin
+  strip at the bottom shows how the office reads it either way.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1080px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+.bar{margin-bottom:6px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.lede{font-size:12px;opacity:.65;max-width:740px;line-height:1.6;margin-bottom:24px}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.opt{margin-bottom:16px;max-width:320px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11px;opacity:.6;margin-bottom:11px;line-height:1.6}
+.note{font-size:10.5px;opacity:.5;margin-top:16px;line-height:1.6;max-width:780px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:6px;vertical-align:2px}
+
+.ph{width:300px;background:var(--bg);border:1px solid var(--wash2);border-radius:26px;padding:12px 11px;box-shadow:var(--softsh)}
+.sheet{background:var(--wash);border-radius:14px;padding:11px 12px}
+.shh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.shh .st{font-family:'Archivo Black',sans-serif;font-size:13px}
+.hrs{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;font-weight:700;color:var(--fg2);background:var(--wash2);border-radius:99px;padding:3px 10px}
+.wells{display:flex;gap:8px}
+.well{flex:1;background:var(--wash2);border-radius:12px;padding:7px 8px 7px 12px}
+.well .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.well .v{font-family:'DM Mono',ui-monospace,monospace;font-size:16px;font-weight:600;margin-top:1px}
+.billedline{font-size:9.5px;color:var(--fg3);margin-top:6px}
+.billedline b{color:var(--fg2);font-weight:700}
+.alab{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);margin:10px 0 5px;display:flex;gap:6px;align-items:center}
+
+/* A punch buttons */
+.punch{flex:1;border-radius:12px;padding:11px 8px;text-align:center;cursor:pointer}
+.punch .big{font-size:12px;font-weight:800}
+.punch .sub{font-size:9px;opacity:.6;margin-top:1px}
+.punch.arm{background:var(--booked);color:var(--chip-ink)}
+.punch.dim{background:var(--wash2);color:var(--fg3)}
+.stamped{flex:1;background:transparent;border:1.5px dashed var(--wash2);border-radius:12px;padding:7px 8px 7px 12px}
+.stamped .v{font-family:'DM Mono',ui-monospace,monospace;font-size:16px;font-weight:600;margin-top:1px}
+.stamped .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.stamped .ed{float:right;font-size:9px;opacity:.5}
+
+/* admin strip */
+.adm{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:11px 14px;max-width:560px}
+.admrow{display:flex;align-items:baseline;gap:10px;padding:5px 0;font-size:12px}
+.pct{font-family:'DM Mono',ui-monospace,monospace;font-weight:700;font-size:11px;border-radius:99px;padding:2px 9px}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>Actual vs billed — the session punch clock</h1></div>
+<p class="lede">Two new fields per studio day: when the client actually arrived and actually
+left. <b>No money math ever reads them</b> — billed stays booked, always, so nothing a runner
+does here can move an invoice. Every entry is WO-history-logged, and "% of booked time used"
+becomes a one-query report later. The options differ only in how a runner gets the time in.
+All of them live in the runner day sheet (and the same fields appear, editable, on the admin
+side).</p>
+
+<div class="row">
+
+<!-- ═══════ A ═══════ -->
+<div class="opt">
+  <div class="oh">A · Pure punch clock</div>
+  <div class="od">Two buttons in the day sheet: <b>Client arrived</b> stamps the current time
+  the moment it's tapped; it then arms <b>Client left</b>. Nothing to type, nothing to format
+  — the most unfuckupable input there is. The weakness: a runner who forgets in the moment has
+  no way to enter 12:00 PM at 3 PM, so forgetting = no data.</div>
+  <div class="ph">
+    <div class="sheet">
+      <div class="shh"><span class="st">STUDIO C</span><span class="hrs">12h</span></div>
+      <div class="wells">
+        <div class="well"><div class="k">Start</div><div class="v">10:00 AM</div></div>
+        <div class="well"><div class="k">End</div><div class="v">10:00 PM</div></div>
+      </div>
+      <div class="billedline">Billed as booked: <b>10:00 AM – 10:00 PM · 12h · $1,950</b> — punches never change this</div>
+      <div class="alab">Client actually here</div>
+      <div class="wells">
+        <div class="punch arm"><div class="big">Client arrived</div><div class="sub">tap when they walk in</div></div>
+        <div class="punch dim"><div class="big">Client left</div><div class="sub">after arrival</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ B ═══════ -->
+<div class="opt">
+  <div class="oh">B · Typed wells</div>
+  <div class="od">A second pair of Start/End wells labeled ARRIVED / LEFT, dashed so they can
+  never be mistaken for the billed pair. Same smart-parse time input as everything else
+  (<span class="mono">12p → 12:00 PM</span>). Works fine from memory at 2 AM — but typing is
+  where AM/PM mistakes live, and an empty well gives the runner nothing to do at the moment
+  the client actually walks in.</div>
+  <div class="ph">
+    <div class="sheet">
+      <div class="shh"><span class="st">STUDIO C</span><span class="hrs">12h</span></div>
+      <div class="wells">
+        <div class="well"><div class="k">Start</div><div class="v">10:00 AM</div></div>
+        <div class="well"><div class="k">End</div><div class="v">10:00 PM</div></div>
+      </div>
+      <div class="billedline">Billed as booked: <b>12h · $1,950</b></div>
+      <div class="alab">Actual times</div>
+      <div class="wells">
+        <div class="stamped"><div class="k">Arrived</div><div class="v">12:00 PM</div></div>
+        <div class="stamped"><div class="k">Left</div><div class="v" style="opacity:.35">type…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ C ═══════ -->
+<div class="opt">
+  <div class="oh">C · Punch first, correct anytime<span class="rec">Recommended</span></div>
+  <div class="od">A's buttons and B's wells are the same control in two states. Empty = the
+  big tap-to-stamp button (the in-the-moment path). Stamped = the dashed well showing the
+  time with a tiny ✎ — tap to correct or to enter from memory (same smart-parse + preset
+  list as every time field). Late entry works, in-the-moment works, and the dashed skin +
+  the locked "billed as booked" line underneath make the two kinds of time impossible to
+  confuse.</div>
+  <div class="ph">
+    <div class="sheet">
+      <div class="shh"><span class="st">STUDIO C</span><span class="hrs">12h</span></div>
+      <div class="wells">
+        <div class="well"><div class="k">Start</div><div class="v">10:00 AM</div></div>
+        <div class="well"><div class="k">End</div><div class="v">10:00 PM</div></div>
+      </div>
+      <div class="billedline">Billed as booked: <b>10:00 AM – 10:00 PM · 12h · $1,950</b> — arrival times never change this</div>
+      <div class="alab">Client actually here</div>
+      <div class="wells">
+        <div class="stamped"><div class="k">Arrived <span class="ed">✎ correct</span></div><div class="v">12:00 PM</div></div>
+        <div class="punch arm"><div class="big">Client left</div><div class="sub">tap now · or ✎ type it</div></div>
+      </div>
+      <div class="billedline" style="margin-top:7px">Here 12:00 PM – … · <b>so far 8h of 12h booked</b></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ═══════ admin readback ═══════ -->
+<div class="opt" style="max-width:600px">
+  <div class="oh">How the office reads it (all options)</div>
+  <div class="od">On the admin WO, each day block grows one quiet line — actual times + hours
+  used vs booked — and the same dashed wells are editable there (office can correct a
+  runner's entry; WO history logs who). Never on the client PDF. Later, this is the
+  utilization report: % of booked time used by client / room / month.</div>
+  <div class="adm">
+    <div class="admrow"><span class="arch" style="font-size:13px">Thu 8/28 · Studio C</span>
+      <span class="mono" style="font-size:12px">10:00 AM – 10:00 PM</span>
+      <span style="font-size:10px;opacity:.5">12h · $1,950</span></div>
+    <div class="admrow" style="padding-left:14px">
+      <span style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)">Actually here</span>
+      <span class="mono" style="font-size:11.5px;color:var(--fg2)">12:00 PM – 8:00 PM</span>
+      <span class="pct" style="background:color-mix(in srgb, var(--warm) 18%, transparent);color:var(--fg)">8h of 12h · 67%</span>
+    </div>
+    <div class="admrow" style="padding-left:14px;opacity:.55">
+      <span style="font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)">Actually here</span>
+      <span style="font-size:11px;font-style:italic">not recorded — runner never stamped</span>
+    </div>
+  </div>
+</div>
+
+<p class="note"><b>Recommendation: C.</b> The punch is the habit you want to train (tap when
+they walk in — zero thought), and the ✎ correction is the honest fallback the 2 AM
+from-memory reality requires. Guard rails in every option: separate columns no money math can
+see, dashed visual skin so actual never reads as billed, the "billed as booked" line restating
+the law right where the runner is standing, and warn-never-block (an arrival before booked
+start or after booked end is allowed — it just shows). Stamp times round to 5 minutes so the
+data reads clean.</p>
+
+</body>
+</html>
