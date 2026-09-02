@@ -28,7 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency } from '@/lib/format'
 import { fmtTaskTime } from '@/lib/tasks'
 import { RichNoteEditor, RichNoteView, noteIsEmpty } from '@/components/shared/RichNote'
@@ -55,6 +55,16 @@ export default function MyDayPage() {
   const { profile, loading: profileLoading } = useUserProfile()
   const isMobile = useIsMobile()
   const today = getLocalToday()
+  // NOTES ARE STAMPED WITH THE OPERATIONAL DAY, not the calendar day (Eli,
+  // 2026-09-01: "isaac leaves 1a from the day before, posts notes… but isaac's
+  // will show at the top. notes need to be chronological regardless of time of
+  // day"). A closer's 1 AM post is ABOUT the shift that just ended; stamped
+  // with getLocalToday it filed under the NEW day and — with within-day
+  // submit-order — sat above notes for a shift that hadn't happened yet. The
+  // 8:50 boundary files it under the night it describes; within a day posts
+  // stay in submit order, so the log reads chronologically. `today` (calendar)
+  // still drives duties/briefing/queues — their documented Aug 28 semantics.
+  const noteDay = opsToday()
 
   const isEli = profile?.email === 'eli@paramountrecording.com'
   const isOwner = isEli || profile?.role === 'owner'
@@ -131,7 +141,7 @@ export default function MyDayPage() {
   const load = useCallback(async () => {
     // Notes first — they're the whole page for an asst manager. One fetch:
     // the log INCLUDES today, and today's posts render only there.
-    setNoteLog(await fetchNoteLog(today))
+    setNoteLog(await fetchNoteLog(noteDay))
     if (notesOnly) { setLoading(false); return }
 
     const roleDuties = await fetchDuties(role)
@@ -167,7 +177,7 @@ export default function MyDayPage() {
     }
 
     setLoading(false)
-  }, [role, today, notesOnly])
+  }, [role, today, noteDay, notesOnly])
 
   useEffect(() => { load() }, [load])
 
@@ -340,7 +350,7 @@ export default function MyDayPage() {
     setPosting(true)
     const ok = editingPost
       ? await updateNotePost({ id: editingPost.id, sessionNotes: drafts.session, studioNotes: drafts.studio })
-      : await addNotePost({ role, date: today, sessionNotes: drafts.session, studioNotes: drafts.studio, createdBy: profile.id })
+      : await addNotePost({ role, date: noteDay, sessionNotes: drafts.session, studioNotes: drafts.studio, createdBy: profile.id })
     if (ok) {
       // The draft has become a post — the paper goes blank, on every device.
       // Order matters: cancel the pending autosave first, or its debounce
@@ -423,7 +433,7 @@ export default function MyDayPage() {
   const logPanel = (
     <NotesLogPanel
       log={noteLog}
-      today={today}
+      today={noteDay}
       canEdit={canEditPost}
       onEdit={startEditPost}
       canDelete={canDeletePost}
