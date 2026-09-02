@@ -57,7 +57,8 @@ import { FinancialsView } from '@/components/billing/FinancialsView'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
-  approveInvoice, markSent, markPaid, closeInvoice, reopenInvoice,
+  approveInvoice, rejectInvoice, resubmitForApproval, previewPackageUrl,
+  markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
   pipelineCount,
   downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
@@ -275,6 +276,8 @@ export default function BillingPage() {
       case 'Mark paid':       return run(row.workOrderId, () => markPaid(row))
       case 'Attach invoice':  uploadFor.current = row; fileInput.current?.click(); return
       case 'Approve':         return run(row.workOrderId, () => approveInvoice(row, profile?.id ?? null, profile?.display_name || undefined))
+      // Billing's half of the rejection loop — fixed, back to the owner.
+      case 'Send for approval': return run(row.workOrderId, () => resubmitForApproval(row, profile?.id ?? null, profile?.display_name || ''))
       // SEND IS ONE PRESS (Eli, 2026-08-11): "you hit the send button and it
       // downloads, and now it says it's sent." No confirmation step — you have
       // already looked at the package to get here, so a dialogue asking whether
@@ -621,6 +624,9 @@ export default function BillingPage() {
           row={pkg.row}
           booking={pkg.booking}
           onClose={() => { setPkg(null); load() }}
+          isOwner={isOwner}
+          approverId={profile?.id ?? null}
+          approverName={profile?.display_name || ''}
         />
       )}
 
@@ -811,7 +817,13 @@ function Row({
       {/* FLAG COLUMN — locked, so a row without a flag leaves the space empty
           rather than sliding everything else left. */}
       <span className="c-bflagcell">
-        {row.invoiceDrift ? (
+        {row.rejectedAt ? (
+          // RETURNED: the owner looked and did not approve. Hot — this is the
+          // admin's flag for another review, and the note is the assignment.
+          <span className="c-bdrift" title={row.rejectNote ? `Owner: “${row.rejectNote}”` : 'The owner did not approve this package'}>
+            Returned — see note
+          </span>
+        ) : row.invoiceDrift ? (
           // DRIFT: edited after the invoice went out. Hot, because the
           // alternative to seeing it here is hearing it from the client.
           <span
@@ -969,11 +981,26 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
  * rendered inline, so it is fully editable and prints from its own button; the
  * invoice pane is the stored PDF.
  */
-function PackageModal({ row, booking, onClose }: {
+function PackageModal({ row, booking, onClose, isOwner, approverId, approverName }: {
   row: InvoiceRow
   booking: Booking
   onClose: () => void
+  isOwner: boolean
+  approverId: string | null
+  approverName: string
 }) {
+  // ── THE APPROVAL SURFACE (Eli, 2026-09-01): "the approval needs to be the
+  // package, black and white — the owner needs to approve what is actually
+  // going out." Owners with an approval pending land on the PACKAGE view (the
+  // live B&W render from the same generator that builds the client PDF), with
+  // Approve / Don't approve in the footer. The loop is entirely in-window:
+  // review the B&W → Don't approve + note → billing fixes on the Work order
+  // tab (the live editor) → Send for approval → review the fresh B&W → Approve.
+  const approvalPending = isOwner && row.step === 2
+    && (nextAction(row) === 'Approve' || row.rejectedAt !== null)
+  const [busy, setBusy] = useState(false)
+  const [rejecting, setRejecting] = useState(false)
+  const [rejectNote, setRejectNote] = useState('')
   // WHAT ACTUALLY WENT OUT WINS (ruling 2026-08-11). Once a package has been
   // built, the default view is the STORED FILE — page for page, as the client
   // received it. Eli: "we need to see what's actually going out — see a bug we
@@ -984,13 +1011,19 @@ function PackageModal({ row, booking, onClose }: {
   // worst possible time to be handed a reconstruction. The work order pane is
   // still there, and still editable — it is just no longer what "the package"
   // means once one exists.
-  type View = 'sent' | 'wo' | 'inv'
-  const [view, setView] = useState<View>(row.hasPackage ? 'sent' : 'wo')
-  const [urls, setUrls] = useState<{ sent?: string | null; inv?: string | null }>({})
+  type View = 'pkg' | 'sent' | 'wo' | 'inv'
+  const [view, setView] = useState<View>(approvalPending ? 'pkg' : row.hasPackage ? 'sent' : 'wo')
+  const [urls, setUrls] = useState<{ pkg?: string | null; sent?: string | null; inv?: string | null }>({})
 
   // Signed on demand — the URLs are short-lived, and most visits open one pane.
+  // 'pkg' is different: a LIVE B&W build fetched to a blob (previewPackageUrl),
+  // revoked on unmount. Rebuilt fresh every time the modal opens, which is the
+  // point — after a fix, reopening shows the corrected artifact.
   useEffect(() => {
     let alive = true
+    if (view === 'pkg' && urls.pkg === undefined) {
+      previewPackageUrl(row.workOrderId).then(u => { if (alive) setUrls(p => ({ ...p, pkg: u })) })
+    }
     if (view === 'sent' && urls.sent === undefined) {
       signedPackageUrl(row.workOrderId).then(u => { if (alive) setUrls(p => ({ ...p, sent: u })) })
     }
@@ -998,9 +1031,25 @@ function PackageModal({ row, booking, onClose }: {
       signedInvoiceUrl(row.workOrderId).then(u => { if (alive) setUrls(p => ({ ...p, inv: u })) })
     }
     return () => { alive = false }
-  }, [view, urls.sent, urls.inv, row.workOrderId])
+  }, [view, urls.pkg, urls.sent, urls.inv, row.workOrderId])
+  useEffect(() => () => { if (urls.pkg) URL.revokeObjectURL(urls.pkg) }, [urls.pkg])
 
-  const doc = view === 'sent' ? urls.sent : urls.inv
+  const doc = view === 'pkg' ? urls.pkg : view === 'sent' ? urls.sent : urls.inv
+
+  async function doApprove() {
+    if (busy) return
+    setBusy(true)
+    const ok = await approveInvoice(row, approverId, approverName || undefined)
+    setBusy(false)
+    if (ok) { toast(`Approved — ${formatCurrency(String(row.total))}`, 'success'); onClose() }
+  }
+  async function doReject() {
+    if (busy) return
+    setBusy(true)
+    const ok = await rejectInvoice(row, approverId, approverName, rejectNote)
+    setBusy(false)
+    if (ok) { toast('Returned to billing with your note', 'success'); onClose() }
+  }
 
   return (
     <div className="c-bmodal-wrap" onClick={onClose}>
@@ -1021,6 +1070,12 @@ function PackageModal({ row, booking, onClose }: {
               the client's name happens to be. */}
           <div style={{ flex: 1 }} />
           <div className="c-seg">
+            {/* The PACKAGE — the live B&W build, what the client would receive
+                today. First when an approval is pending: it is the thing being
+                signed. ('As sent' remains the frozen artifact for sent ones.) */}
+            {approvalPending && (
+              <button className={view === 'pkg' ? 'c-on' : ''} onClick={() => setView('pkg')}>Package</button>
+            )}
             {row.hasPackage && (
               <button className={view === 'sent' ? 'c-on' : ''} onClick={() => setView('sent')}>
                 {row.sentAt ? 'As sent' : 'As built'}
@@ -1042,15 +1097,71 @@ function PackageModal({ row, booking, onClose }: {
           </div>
         )}
 
+        {/* A standing rejection travels with the record — the note is the
+            assignment, visible to whoever opens the window next. */}
+        {row.rejectedAt && (
+          <div className="c-bnote" style={{ padding: '0 14px 6px', color: 'var(--c-st-hot)' }}>
+            Returned by the owner{row.rejectNote ? <> — “{row.rejectNote}”</> : ''}. Fix the work order, then press Send for approval on the row.
+          </div>
+        )}
+
         <div className="c-bpkgbody">
           {view === 'wo'
             ? <WorkOrderPopup booking={booking} inline onClose={onClose} />
             : doc
-              ? <iframe src={doc} title={view === 'sent' ? 'Package' : 'Invoice'} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} />
+              ? <iframe src={doc} title={view === 'pkg' ? 'Package preview' : view === 'sent' ? 'Package' : 'Invoice'} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} />
               : doc === null
-                ? <div className="c-bempty">That file isn&apos;t there any more.</div>
-                : <div className="c-bempty">Loading…</div>}
+                ? <div className="c-bempty">{view === 'pkg' ? 'The package could not be built.' : 'That file isn’t there any more.'}</div>
+                : <div className="c-bempty">{view === 'pkg' ? 'Building the package…' : 'Loading…'}</div>}
         </div>
+
+        {/* ── THE OWNER'S CALL (owners only, while an approval is pending).
+            Approve signs off the numbers as they stand; Don't approve REQUIRES
+            a note and returns the row to billing with a hot RETURNED chip. */}
+        {approvalPending && !rejecting && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--c-wash2)' }}>
+            <span style={{ fontSize: 10.5, opacity: 0.55 }}>
+              {row.rejectedAt ? 'You returned this — approving accepts the fix.' : 'This is what the client receives.'}
+            </span>
+            <button
+              className="c-bact"
+              style={{ marginLeft: 'auto', opacity: busy ? 0.5 : 1 }}
+              disabled={busy}
+              onClick={() => setRejecting(true)}
+            >Don&apos;t approve…</button>
+            <button
+              className="c-bact"
+              style={{ background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', opacity: busy ? 0.5 : 1 }}
+              disabled={busy}
+              onClick={doApprove}
+            >{busy ? 'Working…' : `Approve ${formatCurrency(String(row.total))}`}</button>
+          </div>
+        )}
+        {approvalPending && rejecting && (
+          <div style={{ padding: '10px 14px', borderTop: '1px solid var(--c-wash2)' }}>
+            <div style={{ fontSize: 10.5, opacity: 0.55, marginBottom: 6 }}>
+              What needs fixing? Billing sees this note on the row.
+            </div>
+            <textarea
+              className="c-input"
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              autoFocus
+              rows={2}
+              placeholder="e.g. Aug 28 OT is missing — should be 2h at $195"
+              style={{ width: '100%', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 7, justifyContent: 'flex-end' }}>
+              <button className="c-bact c-bmuted" disabled={busy} onClick={() => setRejecting(false)}>Back</button>
+              <button
+                className="c-bact"
+                disabled={busy || !rejectNote.trim()}
+                style={{ opacity: busy || !rejectNote.trim() ? 0.5 : 1 }}
+                onClick={doReject}
+              >{busy ? 'Working…' : 'Return to billing'}</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

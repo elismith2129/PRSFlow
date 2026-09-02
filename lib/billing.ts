@@ -224,6 +224,14 @@ export type InvoiceRow = {
   awaitingPo: boolean
   hasInvoiceDoc: boolean
   approvedAt: string | null
+  /**
+   * The owner looked at the package and DID NOT approve (2026-09-01). Stamped
+   * with a required note; cleared by "Send for approval" after the fix, or by
+   * approving. While set, the row leaves the owner's queue and wears the hot
+   * RETURNED chip — the admin's flag for another review.
+   */
+  rejectedAt: string | null
+  rejectNote: string | null
   /** The total at the moment the invoice was attached. Null = never invoiced. */
   invoicedTotal: number | null
   /**
@@ -381,7 +389,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path')
+    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note')
     .order('session_date', { ascending: false })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
@@ -573,6 +581,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
       hasInvoiceDoc: hasDoc,
       approvedAt: w.invoice_approved_at ?? null,
+      rejectedAt: (w as any).invoice_rejected_at ?? null,
+      rejectNote: (w as any).invoice_reject_note ?? null,
       invoicedTotal,
       invoiceDrift,
       dateRange,
@@ -845,6 +855,13 @@ export function isPastDue(row: InvoiceRow): boolean {
  */
 export function nextAction(row: InvoiceRow): string | null {
   if (row.bucket === 'closed') return 'Reopen'
+  // A REJECTED package's next act belongs to billing, not the owner: fix the
+  // work order, then send it back (2026-09-01). Clearing the rejection is an
+  // explicit press — an edit alone must not silently re-queue something the
+  // owner bounced.
+  if (row.rejectedAt && row.step === 2 && (row.bucket === 'progress' || (row.isCod && row.bucket === 'paid'))) {
+    return 'Send for approval'
+  }
   // A PAID COD session that is reviewed + invoiced still owes the owner's
   // sign-off (Eli, 2026-09-01) — Paid is where the money is settled, not
   // where the checking ends. Step 3 (approved) is the true end of COD's line.
@@ -905,6 +922,10 @@ export async function approveInvoice(row: InvoiceRow, approverId: string | null,
       // invoice was first attached. The drift flag exists to make them look
       // before they sign, and it has done its job by the time they press this.
       invoice_total: row.total,
+      // Approving IS accepting the fix — a standing rejection clears.
+      invoice_rejected_at: null,
+      invoice_rejected_by: null,
+      invoice_reject_note: null,
     })
     .eq('id', row.workOrderId)
 
@@ -925,6 +946,88 @@ export async function approveInvoice(row: InvoiceRow, approverId: string | null,
     })
   }
   return ok
+}
+
+/**
+ * DON'T APPROVE (Eli, 2026-09-01) — the owner looked at the package and it is
+ * not right. The note is REQUIRED: a bounce with no reason is a mystery the
+ * admin has to chase. Stamps the rejection; the row leaves the owner's queue,
+ * wears the RETURNED chip with the note, and its button becomes billing's
+ * "Send for approval" once fixed. Logged to WO history.
+ */
+export async function rejectInvoice(
+  row: InvoiceRow, byId: string | null, byName: string, note: string,
+): Promise<boolean> {
+  const trimmed = note.trim()
+  if (!trimmed) return dbResult('Declining approval', { message: 'A note is required — say what needs fixing.' })
+  const { error } = await supabase
+    .from('work_orders')
+    .update({
+      invoice_rejected_at: new Date().toISOString(),
+      invoice_rejected_by: byId,
+      invoice_reject_note: trimmed,
+    })
+    .eq('id', row.workOrderId)
+  const ok = dbResult('Declining approval', error)
+  if (ok) {
+    void logWoActivity({
+      workOrderId: row.workOrderId,
+      actorId: byId,
+      actorName: byName,
+      source: 'office',
+      kind: 'rejected',
+      afterInvoice: true,
+      changes: [{ what: 'Approval declined', to: trimmed }],
+    })
+  }
+  return ok
+}
+
+/**
+ * SEND FOR APPROVAL — billing's half of the loop: the work order is fixed,
+ * clear the rejection and put it back in the owner's queue. An explicit press,
+ * never a side effect of saving.
+ */
+export async function resubmitForApproval(row: InvoiceRow, byId: string | null, byName: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_orders')
+    .update({ invoice_rejected_at: null, invoice_rejected_by: null, invoice_reject_note: null })
+    .eq('id', row.workOrderId)
+  const ok = dbResult('Sending for approval', error)
+  if (ok) {
+    void logWoActivity({
+      workOrderId: row.workOrderId,
+      actorId: byId,
+      actorName: byName,
+      source: 'office',
+      kind: 'resubmitted',
+      afterInvoice: true,
+      changes: null,
+    })
+  }
+  return ok
+}
+
+/**
+ * The live B&W package for REVIEW (2026-09-01) — same generator, same route,
+ * fetched to a blob URL for an iframe instead of a download, so the owner
+ * approves exactly what would go out. Caller must revoke the URL when done.
+ * Note the route stores the bytes it serves (the package snapshot) — for an
+ * unsent WO that is fine and honest: the artifact reviewed IS the artifact.
+ */
+export async function previewPackageUrl(workOrderId: string): Promise<string | null> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess?.session?.access_token
+  if (!token) { dbResult('Building the package preview', { message: 'Your session expired — sign in again.' }); return null }
+  const res = await fetch(`/api/wo-package?id=${encodeURIComponent(workOrderId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    dbResult('Building the package preview', { message: body?.error || `Could not build the PDF (${res.status}).` })
+    return null
+  }
+  return URL.createObjectURL(await res.blob())
 }
 
 /**

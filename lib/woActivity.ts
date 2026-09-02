@@ -38,9 +38,10 @@ export type WoChange = { what: string; day?: string | null; from?: string; to?: 
 
 /**
  * The ladder, in house convention (Eli, 2026-09-01): runner SUBMITS the day,
- * admin REVIEWS it (the per-row lock), owner APPROVES the invoice.
+ * admin REVIEWS it (the per-row lock), owner APPROVES the invoice — or
+ * REJECTS it with a note, and billing RESUBMITS once fixed.
  */
-export type WoActivityKind = 'created' | 'saved' | 'submitted' | 'reviewed' | 'approved'
+export type WoActivityKind = 'created' | 'saved' | 'submitted' | 'reviewed' | 'approved' | 'rejected' | 'resubmitted'
 export type WoActivitySource = 'office' | 'runner' | 'system'
 
 /** The Original card / compare view reads this — key fields only, stored whole. */

@@ -179,6 +179,14 @@ export function WoHistoryModal({ woId, title, current, onClose }: {
                     Approved the invoice{e.changes?.[0]?.to ? <> — <b style={{ fontWeight: 600, color: 'var(--c-fg)' }}>{e.changes[0].to}</b></> : ''}
                   </span>
                 )}
+                {e.kind === 'rejected' && (
+                  <span style={{ color: 'var(--c-fg-2)' }}>
+                    Did not approve{e.changes?.[0]?.to ? <> — “<b style={{ fontWeight: 600, color: 'var(--c-fg)' }}>{e.changes[0].to}</b>”</> : ''}
+                  </span>
+                )}
+                {e.kind === 'resubmitted' && (
+                  <span style={{ color: 'var(--c-fg-2)' }}>Sent back for approval</span>
+                )}
                 {e.kind === 'saved' && (e.changes ?? []).map((c, i) => <ChangeLine key={i} c={c} />)}
               </div>
             </div>
