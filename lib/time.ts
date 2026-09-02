@@ -116,6 +116,19 @@ export function opsToday(): string {
   return shiftLogDate()
 }
 
+/**
+ * Which operational day a TIMESTAMP belongs to — shiftLogDate for a moment
+ * that isn't now. Used to file day-less records (the runner notes channel,
+ * 2026-09-01) under a night at READ time: storage stays pure submit order,
+ * only the display groups. Same 8:50 boundary; if it moves, move it here,
+ * in shiftLogDate, and in the shift_note_docs / shift_log_entries policies.
+ */
+export function opsDayOf(iso: string): string {
+  const d = new Date(iso)
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset() - (8 * 60 + 50))
+  return d.toISOString().slice(0, 10)
+}
+
 // ─── Time-of-day copy (Eli, 2026-08-15) ──────────────────────────────────────
 // The studios run 24/7 — a runner clocking in at 7am was being greeted with
 // "Where are you tonight?". Any runner-facing copy that names the shift uses

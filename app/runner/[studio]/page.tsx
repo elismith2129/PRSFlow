@@ -3,7 +3,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
-import { opsToday, shiftLogDate, dayPartLabel } from '@/lib/time'
+import { opsToday, dayPartLabel } from '@/lib/time'
+import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
@@ -48,7 +49,6 @@ export default function StudioDailyOpsPage() {
   const [loading, setLoading] = useState(true)
   const [submittedCategories, setSubmittedCategories] = useState<Set<string>>(new Set())
   const [tasks, setTasks] = useState<StudioTask[]>([])
-  const [shiftEntryCount, setShiftEntryCount] = useState(0)
 
   // THE OPERATIONAL DAY, not the calendar's (2026-08-28): rolls at 8:50 AM,
   // so after midnight the night's sessions/WOs stay on the hub for money
@@ -257,17 +257,8 @@ export default function StudioDailyOpsPage() {
     visibleTasks.sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at))
     setTasks(visibleTasks)
 
-    // Shift-note count for tonight (one doc per runner since 2026-08-26) —
-    // the shift-notes tile's status line. shiftLogDate, not today: the
-    // night's day rolls at 8:50 AM, so an after-midnight count still belongs
-    // to the night in progress.
-    const { count } = await supabase
-      .from('shift_note_docs')
-      .select('id', { count: 'exact', head: true })
-      .eq('studio', studio)
-      .eq('date', shiftLogDate())
-      .neq('text', '')
-    setShiftEntryCount(count ?? 0)
+    // (The shift-note count fetch left with its tile, 2026-09-01 — the runner
+    // notes channel at the bottom of the page owns its own data now.)
   }, [studio, today, meta.abbr]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
@@ -299,13 +290,13 @@ export default function StudioDailyOpsPage() {
     if (!dbResult('Saving task', error)) load()
   }
 
-  // Real-time: re-run load on any booking change; shift_note_docs keeps the
-  // shift-notes tile's count live (its fetch's required realtime pair).
+  // Real-time: re-run load on any booking change. (shift_note_docs left this
+  // channel with its tile, 2026-09-01 — RunnerNotesChannel subscribes to the
+  // posts table itself.)
   useEffect(() => {
     const channel = supabase
       .channel(`runner-bookings-${studio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { load() })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_note_docs' }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [studio, load])
@@ -379,9 +370,10 @@ export default function StudioDailyOpsPage() {
     { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
     { label: 'Petty cash', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
     { label: 'Stock list', route: `/runner/${studio}/stock`, category: 'stock' },
-    // Shift notes (spec §19) — the Slack post's replacement. No submitted
-    // state: a log is never "done", so its tile shows the entry count instead.
-    { label: 'Shift notes', route: `/runner/${studio}/shift-notes`, category: 'shift_notes' },
+    // Shift notes left the tiles 2026-09-01 — the runner notes CHANNEL lives
+    // inline at the bottom of this page now (view + write in one place,
+    // RunnerNotesChannel), so a tile to a second surface would be the exact
+    // two-buttons problem Eli asked to remove.
   ]
 
   return (
@@ -583,13 +575,8 @@ export default function StudioDailyOpsPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {TILES.map(t => {
-              const isLog = t.category === 'shift_notes'
-              const done = isLog ? shiftEntryCount > 0 : submittedCategories.has(t.category)
-              const statusText = isLog
-                ? (shiftEntryCount > 0
-                    ? `${shiftEntryCount} ${shiftEntryCount === 1 ? 'note' : 'notes'} tonight`
-                    : 'Nothing yet')
-                : (done ? 'Submitted' : 'Not started')
+              const done = submittedCategories.has(t.category)
+              const statusText = done ? 'Submitted' : 'Not started'
               return (
                 <button
                   key={t.route}
@@ -617,6 +604,18 @@ export default function StudioDailyOpsPage() {
               )
             })}
           </div>
+        </div>
+
+        {/* ── Runner notes — the channel (Eli, 2026-09-01, option A of
+            runner-notes-options.html). View + write in ONE place: every note
+            ever, pure submit order, composer underneath. Replaced the Shift
+            notes tile + page. */}
+        <div>
+          <div className="c-label" style={{ marginBottom: 9 }}>
+            Runner notes
+            <Hint tip="One running channel for this studio — like the old Slack. Every note ever posted lives here, newest at the bottom. Type, pick your shift, Send. Your typing is kept even if the app closes before you send." />
+          </div>
+          <RunnerNotesChannel studio={studio} />
         </div>
 
         {/* ── Quiet register (§15b) — always here, never shouting ─────────── */}

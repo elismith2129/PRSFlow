@@ -5,6 +5,7 @@
 // everything): work orders → Billing's review bucket; punches → HR; tonight's
 // live status → the dashboard.
 import { supabase } from '@/lib/supabase'
+import { opsDayOf } from '@/lib/time'
 
 export const OPS_STUDIOS = [
   { key: 'paramount', label: 'Paramount', abbr: 'PRS' },
@@ -113,6 +114,14 @@ export function opsDate(offsetDays = 1): string {
   return d.toISOString().slice(0, 10)
 }
 
+/** date + n days, as YYYY-MM-DD (query-bound helper for the notes superset). */
+function shiftDateStr(date: string, n: number): string {
+  const d = new Date(`${date}T12:00:00`)
+  d.setDate(d.getDate() + n)
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 10)
+}
+
 export function prettyDate(date: string): string {
   return new Date(`${date}T12:00:00`).toLocaleDateString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
@@ -157,7 +166,15 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     supabase.from('mics').select('id, name').eq('is_active', true),
     supabase.from('mic_inventory_submissions').select('studio, submitted_by, submitted_at').eq('date', date),
     supabase.from('flags').select('*').eq('status', 'pending').is('deleted_at', null),
-    supabase.from('shift_note_docs').select('*').eq('date', date).neq('text', '').order('created_at'),
+    // Runner notes come from the CHANNEL now (runner_note_posts, 2026-09-01 —
+    // replaced shift_note_docs as the write surface). The channel is day-less
+    // by design (pure submit order), so this page files each post under its
+    // operational day at READ time via opsDayOf. The range is a generous
+    // superset (the day ± a calendar day, any timezone) trimmed exactly below.
+    supabase.from('runner_note_posts').select('*')
+      .gte('created_at', `${date}T00:00:00-12:00`)
+      .lt('created_at', `${shiftDateStr(date, 2)}T00:00:00-12:00`)
+      .neq('text', '').order('created_at'),
     supabase.from('runner_section_notes').select('*').eq('date', date).neq('text', '').order('created_at'),
     supabase.from('daily_ops_reviews').select('item_key').eq('date', date),
   ])
@@ -195,8 +212,11 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     const sChecklists = (checklists ?? []).filter((r: any) => r.studio === s.key)
     const sMicSub = (micSubs ?? []).find((r: any) => r.studio === s.key)
     const sEntries = ((logs ?? []) as any[])
-      .filter(r => r.studio === s.key && (r.text ?? '').trim() !== '')
-      .map(r => ({ id: r.id, author_name: r.author_name, role: r.role ?? null, text: r.text, created_at: r.updated_at ?? r.created_at }))
+      // The exact trim: only posts whose OPERATIONAL day is this night
+      // (opsDayOf — the 8:50 boundary, applied at read time; the channel
+      // itself stays pure submit order).
+      .filter(r => r.studio === s.key && (r.text ?? '').trim() !== '' && opsDayOf(r.created_at) === date)
+      .map(r => ({ id: r.id, author_name: r.author_name, role: r.role ?? null, text: r.text, created_at: r.created_at }))
     // The stock/office/mics general-notes boxes ride along as pseudo-entries
     // so the office reads them in the same notes popup (2026-08-28).
     const SEC_LABEL: Record<string, string> = { stock: 'Stock list', office: 'Office list', mics: 'Mic inventory' }

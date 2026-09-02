@@ -22,6 +22,7 @@ import { dbResult } from '@/lib/db'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Hint } from '@/components/ui/Hint'
 import { RichNoteView, noteText } from '@/components/shared/RichNote'
+import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
 import {
   OPS_STUDIOS, isDormantStudio, QueueItem, StudioNight, loadNight, markReviewed,
   opsDate, prettyDate, unmarkReviewed,
@@ -66,6 +67,9 @@ export default function DailyOpsPage() {
   const [qPage, setQPage] = useState(0)
   // Swipe start point for the sweep's day paging (touch only; buttons on desktop).
   const [touchX, setTouchX] = useState<number | null>(null)
+  // The admin view of the runner notes channel (Eli, 2026-09-01).
+  const [notesStudio, setNotesStudio] = useState<string>('paramount')
+  const [notesV, setNotesV] = useState(0)
 
   // A new night starts back at the queue's first page.
   useEffect(() => { setQPage(0) }, [date])
@@ -92,7 +96,10 @@ export default function DailyOpsPage() {
       .channel('daily-ops-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_reviews' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_note_docs' }, () => load())
+      // The channel replaced shift_note_docs as the notes source (2026-09-01).
+      // ONE subscription for the whole page — the embedded RunnerNotesChannel
+      // below mounts with subscribe={false} and refreshes via notesV.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_note_posts' }, () => { setNotesV(v => v + 1); load() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_section_notes' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, () => load())
@@ -369,6 +376,29 @@ export default function DailyOpsPage() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* ── Runner notes — the ADMIN VIEW of the channel (Eli, 2026-09-01).
+          Same component the studio hub mounts, so the office reads exactly
+          what runners read — and can post into it (an office post wears an
+          Office chip). The sweep card's per-night notes popup stays; this is
+          the whole channel, day-less, one studio at a time. */}
+      <div style={{ marginTop: 18, maxWidth: 640 }}>
+        <div className="c-label" style={{ marginBottom: 3 }}>
+          Runner notes · the channel
+          <Hint tip="The full running notes channel for each studio — everything runners have ever posted, newest at the bottom. You can post too; your note shows an Office chip. The sweep cards above still show just the night's notes." />
+        </div>
+        <div style={{ display: 'flex', gap: 6, margin: '7px 0 10px' }}>
+          {OPS_STUDIOS.map(s => (
+            <button
+              key={s.key}
+              onClick={() => setNotesStudio(s.key)}
+              className={`c-soft${notesStudio === s.key ? ' c-on' : ''}`}
+              style={{ cursor: 'pointer' }}
+            >{s.abbr}</button>
+          ))}
+        </div>
+        <RunnerNotesChannel studio={notesStudio} maxHeight={380} subscribe={false} reloadKey={notesV} />
       </div>
 
       {/* Shift-log popup — the full night */}
