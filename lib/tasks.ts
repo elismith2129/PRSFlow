@@ -9,13 +9,15 @@ export const TAB_DEFS: TabDef[] = [
   { key: 'adam_mike', label: 'Adam-Mike', names: ['Adam-Mike'] },
   { key: 'fernando',  label: 'Fernando',  names: ['Fernando'] },
   { key: 'aaron',     label: 'Aaron',     names: ['Aaron'] },
-  { key: 'asst',      label: 'Asst Mgr',  names: ['Quinn', 'Isaac'] },
+  // Sam replaced Quinn 2026-09-01 (display_name must be exactly 'Sam' in
+  // user_profiles — these tabs match on it).
+  { key: 'asst',      label: 'Asst Mgr',  names: ['Sam', 'Isaac'] },
   { key: 'tech',      label: 'Tech',      names: ['Sierra', 'Tom'] },
 ]
 
 // Flat "Assign to" dropdown options, in exact display order. Individual people
 // (Adam-Mike / Eli / Fernando / Aaron) map to their own profile; the Asst Mgr and
-// Tech options represent a PAIR and assign to the primary member's id (Quinn /
+// Tech options represent a PAIR and assign to the primary member's id (Sam /
 // Sierra), which lands the task in the corresponding member-based tab. The option
 // keys intentionally match the TAB_DEFS keys so the dropdown can default to the
 // active tab. `primaryName` is resolved to an id at save time via resolveAssignTo.
@@ -23,7 +25,9 @@ export const TAB_DEFS: TabDef[] = [
 // The pair genuinely SHARES the task: as of migration 20260728200000 the
 // dashboard_tasks RLS policy grants each member of a paired role read + update on
 // any non-private task assigned to a peer holding the same role. So assigning to
-// "Asst Mgr" reaches Quinn AND Isaac even though the row stores Quinn's id.
+// "Asst Mgr" reaches Sam AND Isaac even though the row stores Sam's id.
+// (Sam replaced Quinn as the primary 2026-09-01; Quinn's open tasks were
+// reassigned to Sam's id in the same SQL pass so none left the tab.)
 // (Storing one id keeps assigned_to a plain FK — don't "fix" this by fanning the
 // task out into duplicate rows per member.)
 export const ASSIGN_OPTIONS: { key: string; label: string; primaryName: string }[] = [
@@ -31,7 +35,7 @@ export const ASSIGN_OPTIONS: { key: string; label: string; primaryName: string }
   { key: 'eli',       label: 'Eli',       primaryName: 'Eli' },
   { key: 'fernando',  label: 'Fernando',  primaryName: 'Fernando' },
   { key: 'aaron',     label: 'Aaron',     primaryName: 'Aaron' },
-  { key: 'asst',      label: 'Asst Mgr',  primaryName: 'Quinn' },
+  { key: 'asst',      label: 'Asst Mgr',  primaryName: 'Sam' },
   { key: 'tech',      label: 'Tech',      primaryName: 'Sierra' },
 ]
 

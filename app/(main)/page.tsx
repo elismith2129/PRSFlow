@@ -662,7 +662,7 @@ export default function DashboardPage() {
     setTaskSubmitting(true)
     const photo_url = newTaskPhoto ? await uploadPhoto(newTaskPhoto) : null
     // Everyone assigns via the dropdown now. A selected option resolves to a
-    // member id (Asst Mgr → Quinn, Tech → Sierra); own-only tiers default to
+    // member id (Asst Mgr → Sam, Tech → Sierra); own-only tiers default to
     // "Me" ("" → resolves to null → falls back to the creator's own id below).
     // assigned_by is always the creating user. assigned_role stays a vestigial
     // NOT NULL column — visibility is driven by assigned_to / assigned_by.
