@@ -1107,7 +1107,21 @@ function PackageModal({ row, booking, onClose, isOwner, approverId, approverName
 
         <div className="c-bpkgbody">
           {view === 'wo'
-            ? <WorkOrderPopup booking={booking} inline onClose={onClose} />
+            ? <WorkOrderPopup
+                booking={booking}
+                inline
+                onClose={onClose}
+                // FIX → TOGGLE BACK → FRESH BUILD (Eli, 2026-09-01: "if you
+                // change the digital version the bw version builds again").
+                // A save drops the cached Package/As-built URLs, so returning
+                // to the Package tab re-fetches a build that includes the fix.
+                // (Sent packages are untouchable here — the Package tab only
+                // exists pre-send.)
+                onSaved={() => setUrls(p => {
+                  if (p.pkg) URL.revokeObjectURL(p.pkg)
+                  return { inv: p.inv }
+                })}
+              />
             : doc
               ? <iframe src={doc} title={view === 'pkg' ? 'Package preview' : view === 'sent' ? 'Package' : 'Invoice'} style={{ width: '100%', height: '100%', border: 'none', borderRadius: 12, background: '#fff' }} />
               : doc === null
