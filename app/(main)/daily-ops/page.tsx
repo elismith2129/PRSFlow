@@ -323,11 +323,24 @@ export default function DailyOpsPage() {
                     {dormant ? 'Long-term lease · not staffed' : s.who}
                   </span>
                 </div>
-                {s.duties.map(d => (
-                  <div key={d.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: DUTY_COLOR[d.state] ?? 'var(--c-wash2)' }} />
-                    {d.label}
-                    <span style={{ marginLeft: 'auto', fontSize: 10.5, opacity: 0.5, flexShrink: 0 }}>{d.detail}</span>
+                {/* OPENER / CLOSER split (Eli, 2026-09-01: "breaking it up
+                    allows us to distinguish who did it"). Same five duties,
+                    dealt to the shift that owes them — petty cash under both,
+                    since both shifts touch the box — with the shift's person
+                    on its header line, from that shift's own submissions. */}
+                {s.shifts.map(sh => (
+                  <div key={sh.key} style={{ marginTop: sh.key === 'closer' ? 7 : 0 }}>
+                    <div className="c-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 1, fontSize: 9 }}>
+                      <span>{sh.label}</span>
+                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700, opacity: sh.who === '—' ? 0.45 : 0.85 }}>{sh.who}</span>
+                    </div>
+                    {sh.duties.map(d => (
+                      <div key={`${sh.key}:${d.key}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: DUTY_COLOR[d.state] ?? 'var(--c-wash2)' }} />
+                        {d.label}
+                        <span style={{ marginLeft: 'auto', fontSize: 10.5, opacity: 0.5, flexShrink: 0 }}>{d.detail}</span>
+                      </div>
+                    ))}
                   </div>
                 ))}
                 {s.entries.length > 0 ? (

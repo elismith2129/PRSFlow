@@ -882,6 +882,8 @@ export default function DashboardPage() {
       category: newFlagCategory,
       status: 'pending',
       photo_url,
+      // Flag names (2026-09-01) — office flags carry the author's profile name.
+      created_by_name: profile?.display_name || null,
     })
     const { data } = await supabase
       .from('flags')

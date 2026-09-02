@@ -244,6 +244,9 @@ export default function ChecklistPage() {
           runner_note: notes.trim() || null,
           photo_url: photos.length > 0 ? photos[0] : null,
           status: 'pending',
+          // Re-stamp on resubmit — the initials on the flag should be whoever
+          // last stood behind it (2026-09-01, flag names).
+          created_by_name: staffName.trim() || null,
         }).eq('id', existingFlag.id)
       } else {
         await supabase.from('flags').insert({
@@ -254,6 +257,9 @@ export default function ChecklistPage() {
           runner_note: notes.trim() || null,
           photo_url: photos.length > 0 ? photos[0] : null,
           status: 'pending',
+          // The checklist's typed initials — the shared runner login means the
+          // profile isn't the person; the initials are (2026-09-01).
+          created_by_name: staffName.trim() || null,
         })
       }
     }

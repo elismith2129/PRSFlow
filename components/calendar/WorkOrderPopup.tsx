@@ -2161,12 +2161,16 @@ export function WorkOrderPopup({
         .from('flags').select('id').eq('source_id', woId).eq('source', 'wo_flag').maybeSingle()
       if (existingFlag) {
         const { error } = await supabase.from('flags')
-          .update({ runner_note: notes, status: 'pending' }).eq('id', existingFlag.id)
+          .update({ runner_note: notes, status: 'pending', created_by_name: profile?.display_name || null }).eq('id', existingFlag.id)
         dbResult('Updating flag', error)
       } else {
         const { error } = await supabase.from('flags').insert({
           studio: runnerStudio, source: 'wo_flag', source_id: woId,
           source_label: sourceLabel, runner_note: notes, status: 'pending',
+          // Flag names (2026-09-01). The WO has no typed-initials field, so the
+          // profile name is the best we have — the shared runner login reads as
+          // its display name until per-person runner logins exist.
+          created_by_name: profile?.display_name || null,
         })
         dbResult('Raising flag', error)
       }

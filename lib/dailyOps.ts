@@ -28,7 +28,16 @@ export const DORMANT_STUDIOS: string[] = ['track']
 
 export const isDormantStudio = (key: string) => DORMANT_STUDIOS.includes(key)
 
-/** The five things a studio owes every night, in the order the sweep shows them. */
+/**
+ * The five things a studio owes every day, SPLIT BY SHIFT (Eli, 2026-09-01:
+ * "breaking it up allows us to distinguish who did it"). The opener owes the
+ * opening checklist, petty cash and stock; the closer owes the closing
+ * checklist, petty cash and mic inventory. Petty cash appears in BOTH — both
+ * shifts touch the box — and it is ONE duty computed once, shown twice.
+ * Each shift's header carries its person: the opener from the opening
+ * checklist's initials, the closer from the closing checklist's + the mic
+ * submission's.
+ */
 export const DUTIES = [
   { key: 'opening_checklist', label: 'Opening' },
   { key: 'closing_checklist', label: 'Closing' },
@@ -36,6 +45,19 @@ export const DUTIES = [
   { key: 'petty_cash',        label: 'Petty cash' },
   { key: 'stock',             label: 'Stock' },
 ] as const
+
+export const SHIFT_DUTIES: Array<{ key: 'opener' | 'closer'; label: string; duties: string[] }> = [
+  { key: 'opener', label: 'Opener', duties: ['opening_checklist', 'petty_cash', 'stock'] },
+  { key: 'closer', label: 'Closer', duties: ['closing_checklist', 'petty_cash', 'mic_inventory'] },
+]
+
+export type ShiftGroup = {
+  key: 'opener' | 'closer'
+  label: string
+  /** Who worked the shift — from that shift's own submissions. '—' when unknown. */
+  who: string
+  duties: DutyState[]
+}
 
 export type DutyState = {
   key: string
@@ -66,6 +88,8 @@ export type StudioNight = {
   abbr: string
   who: string
   duties: DutyState[]
+  /** The same duties, grouped Opener / Closer with each shift's person. */
+  shifts: ShiftGroup[]
   entries: ShiftEntry[]
 }
 
@@ -150,7 +174,11 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       key: `flag:${f.id}`,
       severity: 'hot',
       title: f.runner_note ? `Flag — ${f.runner_note}` : 'Flag raised',
-      sub: f.source_label ?? 'Runner flag',
+      // WHO raised it rides the sub-line (Eli, 2026-09-01: "we need the runner
+      // names so we know who is submitting them"). `created_by_name` is
+      // stamped at every flag insert site (migration 20260901130000); older
+      // flags without one render the label alone.
+      sub: [f.source_label ?? 'Runner flag', f.created_by_name].filter(Boolean).join(' · '),
       abbr,
       flagId: f.id,
       reviewed: false,
@@ -253,6 +281,25 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       })
     }
 
+    // ── Opener / Closer split (Eli, 2026-09-01). Each duty is computed ONCE
+    // above; the groups just deal them out — petty cash lands in both, because
+    // both shifts touch the box. The shift's person comes from that shift's own
+    // submissions: opener = the opening checklist's initials; closer = the
+    // closing checklist's + the mic submission's.
+    const dutyBy = (key: string) => duties.find(x => x.key === key)!
+    const shiftWho = (names: Array<string | null | undefined>) =>
+      Array.from(new Set(names.map(n => (n ?? '').trim()).filter(Boolean))).join(', ') || '—'
+    const openCl = sChecklists.find((r: any) => r.type === 'opening')
+    const closeCl = sChecklists.find((r: any) => r.type === 'closing')
+    const shifts: ShiftGroup[] = SHIFT_DUTIES.map(sh => ({
+      key: sh.key,
+      label: sh.label,
+      who: sh.key === 'opener'
+        ? shiftWho([openCl?.staff_name, (subs ?? []).find((r: any) => r.studio === s.key && (r.category === 'opening_checklist' || r.category === 'opening'))?.staff_name])
+        : shiftWho([closeCl?.staff_name, (subs ?? []).find((r: any) => r.studio === s.key && (r.category === 'closing_checklist' || r.category === 'closing'))?.staff_name, sMicSub?.submitted_by]),
+      duties: sh.duties.map(dutyBy),
+    }))
+
     studios.push({
       studio: s.key,
       label: s.label,
@@ -263,6 +310,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
         sMicSub?.submitted_by,
       ].filter(Boolean))).join(', ') || '—',
       duties,
+      shifts,
       entries: sEntries,
     })
   }
