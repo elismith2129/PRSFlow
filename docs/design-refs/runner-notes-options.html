@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Runner notes on the studio hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  RUNNER NOTES ON THE STUDIO HUB (Eli, 2026-09-01).
+
+  The ask: one place on /runner/[studio] where runners ALWAYS see all notes —
+  view and write combined, ONE chronological feed in submit order, no midnight
+  or day logic. Reference: Slack (which these notes replaced in the first
+  place — closing the loop).
+
+  All options show the BOTTOM of the studio hub (below "From the office" and
+  Today's sessions). The Shift notes TILE goes away in every option — the
+  surface replaces it, so there is one thing, not a tile plus a page.
+
+  THE FORK THE PICK SETTLES: today's model is one AUTOSAVING DOC per runner
+  per shift (no submit). A submit-order feed wants discrete MESSAGES with a
+  Send. A = messages (Slack-shaped; the draft net keeps the never-lose-typing
+  guarantee). B = keeps the living docs and feeds them. C = A's model with a
+  collapsed preview if the inline feed makes the page too long.
+
+  Date dividers in A/C are DISPLAY ONLY, like Slack's — the feed is one list
+  in pure submit order; the divider is just a ruler the eye uses. No grouping,
+  no day keys, nothing rolls over at midnight or 8:50.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1080px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.bar{margin-bottom:6px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.lede{font-size:12px;opacity:.65;max-width:720px;line-height:1.6;margin-bottom:24px}
+.row{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+.opt{margin-bottom:14px;max-width:320px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11px;opacity:.6;margin-bottom:11px;line-height:1.6}
+.note{font-size:10.5px;opacity:.5;margin-top:16px;line-height:1.6;max-width:760px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:6px;vertical-align:2px}
+
+/* phone frame */
+.ph{width:300px;background:var(--bg);border:1px solid var(--wash2);border-radius:26px;padding:12px 10px 10px;box-shadow:var(--softsh)}
+.hubdim{opacity:.35;font-size:10px;margin-bottom:8px}
+.hubdim .bk{height:30px;border-radius:10px;background:var(--wash2);margin-top:5px}
+.lab{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.cnt{min-width:17px;height:15px;border-radius:99px;padding:0 5px;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--wash2)}
+
+/* the notes surface */
+.panel{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;overflow:hidden}
+.feed{padding:10px 12px;max-height:290px;overflow:hidden;position:relative}
+.fadeTop{position:absolute;top:0;left:0;right:0;height:26px;background:linear-gradient(var(--srf),transparent);z-index:1}
+.divider{display:flex;align-items:center;gap:8px;margin:9px 0 7px;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--fg3)}
+.divider:before,.divider:after{content:'';flex:1;height:1px;background:var(--wash2)}
+.msg{margin-bottom:9px}
+.msg .hd{display:flex;align-items:baseline;gap:7px;margin-bottom:1px}
+.msg .nm{font-weight:800;font-size:12px}
+.msg .role{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--wash2);border-radius:99px;padding:1px 6px;color:var(--fg2)}
+.msg .ts{font-size:9.5px;color:var(--fg3)}
+.msg .bd{font-size:12px;line-height:1.55;color:var(--fg2)}
+.msg .bd b{color:var(--fg)}
+.msg .bd ul{margin:2px 0 0 16px}
+.compose{border-top:1px solid var(--wash2);padding:9px 12px 10px;background:var(--srf)}
+.cbox{background:var(--wash);border-radius:12px;padding:8px 11px;font-size:12px;color:var(--fg3);min-height:38px}
+.crow{display:flex;align-items:center;gap:8px;margin-top:7px}
+.fmt{font-size:11px;font-weight:800;color:var(--fg3);letter-spacing:2px}
+.saved{font-size:9px;color:var(--fg3);margin-left:auto}
+.send{background:var(--booked);color:var(--chip-ink);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:6px 15px}
+
+/* B doc cards */
+.doc{background:var(--wash);border-radius:12px;padding:9px 11px;margin-bottom:8px}
+.live{width:6px;height:6px;border-radius:99px;background:var(--booked);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* C preview card */
+.prev{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:11px 13px}
+.prev .go{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--fg2)}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>Runner notes — on the studio hub, Slack-shaped</h1></div>
+<p class="lede">One surface at the bottom of each studio page: every note ever, one list, pure
+submit order — no midnight, no 8:50, no day keys. The Shift notes tile goes away in every
+option (one thing, not a tile plus a page). The pick settles the model: A/C are discrete
+messages with a Send (Slack, which these notes replaced); B keeps today's living
+autosave-docs. Date rules in A/C are display-only, like Slack's — never grouping.</p>
+
+<div class="row">
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · The channel — inline feed + composer<span class="rec">Recommended</span></div>
+  <div class="od">Bottom of the hub. The feed scrolls inside its own window (page stays a fixed
+  length), opens at the newest message like Slack. Every message: name, shift chip if they set
+  one, time. Composer pinned under it — bullets and bold from RichNote, autosaved as a draft
+  (lib/draft — typing survives anything), <b>Send</b> posts it. Your own message stays editable,
+  like the manager log.</div>
+  <div class="ph">
+    <div class="hubdim">Today · 2 sessions<div class="bk"></div><div class="bk" style="width:80%"></div></div>
+    <div class="lab">Runner notes <span class="cnt">47</span><span style="margin-left:auto;font-weight:700;text-transform:none;letter-spacing:0">scroll ↑ for older</span></div>
+    <div class="panel">
+      <div class="feed">
+        <div class="fadeTop"></div>
+        <div class="divider">Sun · Aug 30</div>
+        <div class="msg">
+          <div class="hd"><span class="nm">Ezra</span><span class="role">Closer</span><span class="ts">11:48 PM</span></div>
+          <div class="bd"><ul><li>B session ran long, left at 2, locked up</li><li>fridge in A lounge making noise again</li></ul></div>
+        </div>
+        <div class="msg">
+          <div class="hd"><span class="nm">Marco</span><span class="role">Opener</span><span class="ts">Mon · 2:15 AM</span></div>
+          <div class="bd">ice machine guy came, fixed. receipt in the drawer</div>
+        </div>
+        <div class="divider">Today</div>
+        <div class="msg">
+          <div class="hd"><span class="nm">Dre</span><span class="role">Opener</span><span class="ts">10:05 AM</span></div>
+          <div class="bd"><ul><li>opened A + B, coffee run done</li><li><b>X lounge TV remote is missing</b></li></ul></div>
+        </div>
+      </div>
+      <div class="compose">
+        <div class="cbox">Add a note…</div>
+        <div class="crow"><span class="fmt">B •</span><span class="saved">draft kept</span><span class="send">Send</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · Keep the living docs, feed them</div>
+  <div class="od">Keeps today's model exactly (one autosaving doc per runner per shift, no Send
+  — it saves as you type). The hub shows every doc as one card in the order they were started,
+  yours first and editable in place, others read-only and updating live. Least change — but
+  "submit order" gets fuzzy, because a doc has no submit moment and keeps changing after the
+  next one starts. Shown mostly so the trade is visible.</div>
+  <div class="ph">
+    <div class="hubdim">Today · 2 sessions<div class="bk"></div><div class="bk" style="width:80%"></div></div>
+    <div class="lab">Runner notes</div>
+    <div class="panel" style="padding:10px 12px">
+      <div class="doc">
+        <div class="hd" style="display:flex;gap:7px;align-items:baseline;margin-bottom:2px"><span class="nm" style="font-weight:800;font-size:12px">Ezra</span><span class="role">Closer</span><span class="ts" style="font-size:9.5px;color:var(--fg3)">Sun · last edit 11:48 PM</span></div>
+        <div class="bd" style="font-size:12px;color:var(--fg2)">• B ran long, locked up at 2<br>• fridge in A lounge making noise</div>
+      </div>
+      <div class="doc" style="outline:1.5px solid var(--booked);outline-offset:-1.5px">
+        <div class="hd" style="display:flex;gap:7px;align-items:baseline;margin-bottom:2px"><span class="nm" style="font-weight:800;font-size:12px">Dre (you)</span><span class="role">Opener</span><span class="live"></span><span class="ts" style="font-size:9.5px;color:var(--fg3);margin-left:auto">saving…</span></div>
+        <div class="bd" style="font-size:12px">• opened A + B, coffee run done<br>• X lounge TV remote is missing▌</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ C ═══════════════ -->
+<div class="opt">
+  <div class="oh">C · A, behind a preview card</div>
+  <div class="od">Same model and screen as A, but the hub shows only a two-line preview of the
+  latest note + count; tapping opens the channel full-screen (composer at the bottom,
+  keyboard-friendly). Pick this over A if the hub already feels long on a phone — the trade is
+  one extra tap every time.</div>
+  <div class="ph">
+    <div class="hubdim">Today · 2 sessions<div class="bk"></div><div class="bk" style="width:80%"></div></div>
+    <div class="lab">Runner notes</div>
+    <div class="prev">
+      <div style="display:flex;align-items:baseline;gap:7px;margin-bottom:2px">
+        <span style="font-weight:800;font-size:12px">Dre</span><span class="ts" style="font-size:9.5px;color:var(--fg3)">10:05 AM</span>
+        <span class="go" style="margin-left:auto">Open →</span>
+      </div>
+      <div style="font-size:12px;color:var(--fg2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
+        opened A + B, coffee run done. X lounge TV remote is missing…
+      </div>
+      <div style="font-size:9.5px;color:var(--fg3);margin-top:5px">47 notes · all studios’ history stays here</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<p class="note"><b>Recommendation: A.</b> It is the Slack these notes replaced, put back — one
+channel per studio, write where you read, nothing ever out of reach. The never-lose-typing
+guarantee survives as the composer's draft net (same lib/draft pattern as stock and petty
+cash), and Send gives the feed the honest timestamps "submit order" needs. Existing
+shift-note docs can be poured in as historical messages (one message per doc, stamped with
+the doc's last edit) so day one isn't an empty channel — Daily Ops keeps reading the same
+data either way. B is the no-migration path but can't honestly promise submit order; C is A
+with one more tap, worth it only if the hub gets too tall.</p>
+
+</body>
+</html>
