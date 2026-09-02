@@ -645,6 +645,37 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.20.0', date:'Sep 1, 2026',
+    headline:'Work orders remember every change, runner notes become one running channel, and invoices line up for approval on their own.',
+    desc:'Three things the old paper-and-Dropbox days did well are back, app-shaped: the folder of invoices waiting for a green light, the original work order you could always read under the pen marks, and the Slack channel where runners just talked.',
+    changes:[
+      'Work orders have a History button (the ⟲ at the top). It shows every change ever made — who changed it, when, and what it was before. Scroll to the bottom and you\'ll find the ORIGINAL work order exactly as it was created, with a "Compare to now" view that highlights what\'s different.',
+      'Invoices that are ready for an owner\'s approval now announce themselves: a green count on Billing in the side menu, a banner on the dashboard, and a list at the top of the Billing page where each one can be approved with one tap.',
+      'COD sessions need an owner\'s approval too now — a paid, reviewed COD session shows an Approve button until an owner signs it off. Three lights on every row: Reviewed, Invoiced, Approved.',
+      'Runners: your shift notes are now one running conversation per studio, right on your studio\'s home page — like the old Slack. Everything anyone has ever posted is there, newest at the top. Type your note, pick your shift (opener / floater / closer), hit Send. You can add photos too.',
+      'Whatever you type in the notes is kept even if you close the app or walk away mid-sentence — it\'s waiting when you come back. Photos you\'ve attached are kept the same way.',
+      'The office can read and post in every studio\'s notes channel from Daily Ops — office posts show an "Office" badge.',
+      'Runners: submitting your day after midnight works properly now. The app knows a night runs past 12 — your "Submit today" button means the night you\'re working, not the calendar date.',
+      'Manager notes now file under the night they\'re about — a note posted at 1 AM after closing shows with that night\'s notes, not at the top of the next day.',
+      'Work orders can record when the client ACTUALLY arrived and left — two dashed boxes under each day\'s times in the day sheet. This never changes what\'s billed (billed is always what was booked) and never appears on the client\'s paperwork. It\'s our internal record.',
+      'Daily Ops: flags now show WHO raised them, and each studio\'s nightly card is split into Opener and Closer so you can see who did what at a glance.',
+      'You can now change the studio on a day directly from the card view\'s day sheet — same dropdown as the list view.',
+      'Assistant managers can now attach and view invoices in Billing.',
+      'Welcome Sam Jurequi, joining as assistant manager. Quinn\'s open tasks have moved to Sam.',
+    ],
+    affects:'Owners: watch for the green count on Billing — that\'s your approval queue, including COD now. Runners: your notes moved onto your studio\'s home page as one channel — no more separate notes screen, and after-midnight submits just work. Everyone on work orders: check History before asking "who changed this" — the answer is in the ⟲.',
+    dev:[
+      '<strong>The approvals queue</strong>: <code>approvalQueue()</code> in lib/billing — membership IS <code>nextAction(r) === \'Approve\'</code>, so the Rail badge, dashboard banner, sweep strip and the row itself read one predicate and can never disagree. Realtime consolidated into <code>hooks/useWoInvoicesVersion.ts</code>; the billing page\'s own channel retired onto it.',
+      '<strong>COD approval</strong>: third light; <code>invoice_state=\'approved\'</code> is the ONE stored state a COD WO carries — buckets stay computed from payments. Approve offered on paid+reviewed rows; the owners-only trigger enforces it on COD automatically.',
+      '<strong>WO history</strong>: append-only <code>wo_activity</code> (no UPDATE/DELETE policies), TS diffs at the save choke points, creation snapshot stored whole as entry zero. The ladder: runner SUBMITS, admin REVIEWS (the per-row lock — its write was silent and is now dbResult-checked), owner APPROVES. <code>after_invoice</code> flags post-invoice edits (billing\'s drift, in the feed).',
+      '<strong>The midnight pass</strong>: <code>handleRunnerSubmit</code>, the Submit footer and the expense-date prefill moved to <code>opsToday()</code> — at 12:01 AM the submit used to match no rows and silently mark nothing. Manager note posts stamp the operational day; <code>opsDayOf(iso)</code> files day-less records under nights at read time. Punches stay calendar-day, deliberately.',
+      '<strong>Runner notes channel</strong>: <code>runner_note_posts</code> — day-less, pure submit order. Replaces the v4 autosaving doc as the WRITE surface (<code>/runner/[studio]/shift-notes</code> is a redirect stub); old docs backfilled in as history. Draft net is synchronous localStorage per keystroke; photos upload on pick so their paths ride the draft. One channel per page: Daily Ops passes <code>subscribe={false}</code> + <code>reloadKey</code>.',
+      '<strong>Actual vs billed</strong>: <code>studio_time_rows.actual_from_time/actual_to_time</code> — read by NO money math, never drawn on the client PDF (woPdf draws only named fields). Dashed wells in the day sheet; times-only line on the card (no percentage, per Eli); history-logged as "Arrived (actual)" / "Left (actual)".',
+      '<strong>Daily Ops</strong>: <code>flags.created_by_name</code> stamped at all three flag sources (checklist NA = the TYPED initials, re-stamped on resubmit); the sweep\'s Opener/Closer split shows each shift\'s person from its own submissions — petty cash is one duty rendered under both.',
+      '<strong>Access</strong>: the <code>invoices</code> bucket policies widened to include asst_manager (read/insert/update; DELETE stays owner-only). <strong>Roster</strong>: Sam replaced Quinn as the Asst Mgr pair primary — display_name must be exactly <code>Sam</code> (lib/tasks matches on it); Quinn\'s open tasks reassigned, PIN deleted, login unlinked.',
+    ],
+  },
+  {
     ver:'v1.19.1', date:'Aug 31, 2026',
     headline:'Your notes stop disappearing, approving an invoice no longer waits on a PO, and the calendar finally works on a phone.',
     desc:'A round of fixes from real use — most of them things people told us were annoying this week.',

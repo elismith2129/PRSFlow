@@ -55,6 +55,111 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-1-2026',
+    title: 'WO history, the approvals queue, the runner notes channel, actual vs billed',
+    version: 'v1.20.0',
+    date: 'Sep 1, 2026',
+    intro:
+      'One big session: work-order history, the owner approvals queue (billing AND COD), the runner notes channel on the studio hub, actual-vs-billed times, and the Daily Ops Opener/Closer split. Owner items need an owner login; runner items need the phone. Several checks are about what must NOT change — read those twice.',
+    items: [
+      {
+        id: 'v120-appr-badge', area: 'Billing approvals', device: 'desktop',
+        what: 'Owners see a green count on Billing in the side menu',
+        how: 'Sign in as an owner with at least one invoice attached but not yet approved. The Billing item in the left menu shows a small green number. Sign in as Fernando or an assistant manager — no green number for them.',
+      },
+      {
+        id: 'v120-appr-banner', area: 'Billing approvals', device: 'desktop',
+        what: 'The dashboard banner counts the same invoices and opens Billing',
+        how: 'As an owner, open the dashboard. A banner reads "Invoices ready for approval" with the same count as the menu badge and a dollar total. Click it — you land on Billing.',
+      },
+      {
+        id: 'v120-appr-strip', area: 'Billing approvals', device: 'desktop',
+        what: 'The approval strip approves in one tap and everything counts down together',
+        how: 'On Billing, the "Ready for your approval" list sits above the rows. Press Approve on one. It leaves the strip, the menu badge and dashboard banner both drop by one, and the row\'s third light turns on.',
+      },
+      {
+        id: 'v120-cod-approve', area: 'Billing approvals', device: 'desktop',
+        what: 'A paid, reviewed COD session still asks for owner approval',
+        how: 'Switch to COD. A session that is paid with an invoice attached shows three lights (Approved unlit) and an Approve button in the Paid bin. Approve it — the button disappears and the third light turns on.',
+      },
+      {
+        id: 'v120-hist-entry', area: 'WO history', device: 'desktop',
+        what: 'A saved change appears in History with your name and both values',
+        how: 'Open any work order, change a rate or a time, Save. Press the ⟲ HISTORY button top-right. The newest entry shows your name, the time, and the change as "old → new".',
+      },
+      {
+        id: 'v120-hist-original', area: 'WO history', device: 'desktop',
+        what: 'A new session\'s History holds the Original card and the compare view',
+        how: 'Create a fresh booking, open its WO, then ⟲ History. The bottom card reads "Original" with the created details. Change a time, save, reopen History, press "Compare to now" — the changed line is tinted on both sides.',
+      },
+      {
+        id: 'v120-hist-runner', area: 'WO history', device: 'desktop',
+        what: 'Runner submits and admin reviews show up as their own entries',
+        how: 'After a runner submits a day (or you toggle a day\'s review lock as admin), open that WO\'s History. You should see "Submitted the day" with an amber Runner chip, and "Reviewed the day" with the admin\'s name.',
+      },
+      {
+        id: 'v120-midnight-submit', area: 'Runner WO', device: 'phone',
+        what: 'Submitting after midnight still finds tonight\'s session',
+        how: 'After midnight (before 8:50 AM), open tonight\'s work order on the runner phone. The button must read "Submit today" / "Update submission" and pressing it must mark tonight\'s rows — the footer must NOT say "No rows dated today".',
+      },
+      {
+        id: 'v120-notes-channel', area: 'Runner notes', device: 'phone',
+        what: 'The channel lives on the studio hub with all history, newest first',
+        how: 'Open your studio\'s hub page and scroll down to Runner notes. Old shift notes appear as messages with names and times, newest at the top. There is no separate Shift notes tile anymore.',
+      },
+      {
+        id: 'v120-notes-draft', area: 'Runner notes', device: 'phone',
+        what: 'Typed text AND an attached photo survive leaving the app before Send',
+        how: 'Type a few words, attach a photo with the 📷 button, wait for the thumbnail. Switch to another app, then come back. Words, photo and your shift chip are all still in the composer. Send — the note posts with the photo.',
+      },
+      {
+        id: 'v120-notes-admin', area: 'Daily Ops', device: 'desktop',
+        what: 'The office reads and posts into the channel from Daily Ops',
+        how: 'Daily Ops → Runner notes at the bottom. Pick a studio tab — same messages as the phone. Post one; it appears with an "Office" badge, and shows up on the runner phone without a refresh.',
+      },
+      {
+        id: 'v120-notes-night', area: 'Daily Ops', device: 'desktop',
+        what: 'A post-midnight note files under the night it belongs to',
+        how: 'In the sweep, open a studio\'s shift-notes popup for a given night. A note posted at 1–2 AM after that night\'s session should appear with THAT night, not the next day.',
+      },
+      {
+        id: 'v120-actual-wells', area: 'Work order', device: 'desktop',
+        what: 'Arrived/Left record without touching the money',
+        how: 'Open a WO day sheet. Under the room\'s times, dashed "Client actually here" boxes. Type 12p and 8p, Save. The booked times, hours and charge must not change AT ALL. The day card now shows a quiet "Actually here 12:00 PM – 8:00 PM" line.',
+      },
+      {
+        id: 'v120-actual-pdf', area: 'Work order', device: 'desktop',
+        what: 'Actual times never appear on the client PDF',
+        how: 'On that same WO press Save & download. Open the PDF: the times shown are the BOOKED times only — no arrived/left anywhere on the document.',
+      },
+      {
+        id: 'v120-flags-name', area: 'Daily Ops', device: 'desktop',
+        what: 'A new flag shows who raised it',
+        how: 'Have a runner submit a checklist with Needs Attention (initials filled in). On Daily Ops, the flag\'s sub-line ends with those initials. Flags from before today show no name — that\'s expected.',
+      },
+      {
+        id: 'v120-sweep-split', area: 'Daily Ops', device: 'desktop',
+        what: 'Each studio card splits Opener / Closer with the right person on each',
+        how: 'In the sweep, each card shows OPENER (Opening · Petty cash · Stock) then CLOSER (Closing · Petty cash · Mic inventory), with initials on each header from that shift\'s own submissions. Petty cash appears under both — one duty, both shifts touch the box.',
+      },
+      {
+        id: 'v120-sheet-studio', area: 'Work order', device: 'desktop',
+        what: 'The day sheet can change the room',
+        how: 'Open a WO in card view, tap a day. The STUDIO heading is a dropdown — change PRS B to PRS A and Save. List view shows the same room, and History logs "Studio: PRS B → PRS A".',
+      },
+      {
+        id: 'v120-asst-invoice', area: 'Billing approvals', device: 'desktop',
+        what: 'An assistant manager can attach an invoice',
+        how: 'Signed in as Sam or Isaac, drop a PDF onto a Needs-review COD row (or use Attach invoice). It attaches with no red "row-level security" error, and the row advances.',
+      },
+      {
+        id: 'v120-sam-tasks', area: 'Tasks', device: 'desktop',
+        what: 'The Asst Mgr tab belongs to Sam now and nothing vanished',
+        how: 'Dashboard → Tasks → Asst Mgr tab. Tasks that were assigned to Quinn are still listed (now on Sam). Assign a new task to "Asst Mgr" — both Sam and Isaac can see it when signed in.',
+      },
+    ],
+  },
+  {
     id: 'aug-31-2026-second',
     title: 'Notes that survive, Billing Ops, the phone calendar, stock by location',
     version: 'v1.19.1',

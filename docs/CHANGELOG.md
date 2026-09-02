@@ -19,6 +19,153 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.20.0 — WO history, the approvals queue, the runner notes channel, actual vs billed — Sep 1, 2026
+
+**One long session, six features, five migrations.** All hand-run and verified
+in production the same day.
+
+**Billing — the approvals queue (mock `billing-approval-notify-options.html`,
+options A+B+D).** One derivation — `approvalQueue()` in `lib/billing.ts` —
+feeds three surfaces: a teal count badge on the Rail's Billing item (owners
+only, `c-rail-badge.c-ok`), an owner banner on the dashboard (count + summed
+total, hidden at zero, real identity not viewAs), and an owners-only sweep
+strip pinned above the hub's lists with inline Approve per row (drift ⚠ with
+invoiced-vs-now in the tooltip; PO chip informational — it blocks sending, not
+approval). Realtime consolidated into `hooks/useWoInvoicesVersion.ts` (the
+`useClientsVersion` pattern, on `work_orders` + `payment_rows`); the billing
+page's own `billing-hub` channel was retired onto it.
+
+**Billing — COD gains the owner's approval** (restores the Aug 11 words: COD is
+"checked for accuracy, APPROVED, done"). Third light; `deriveStep` COD branch
+returns 3 on `state='approved'` + doc; `nextAction` offers Approve on
+paid+reviewed COD rows (Paid bucket, step 2); the approval stamp is the ONE
+stored state a COD work order carries — buckets stay computed. `approvalQueue`
+now derives membership from `nextAction(r) === 'Approve'`, so badge/banner/
+strip/row can never disagree, and the strip shows on both pipelines (COD chip).
+
+**WO history (mock `wo-history-options.html`, options A+C).** Append-only
+`wo_activity`: one entry per save (who · when · what, from → to) computed by TS
+diffs at the save choke points (`lib/woActivity.ts` — the popup already held
+row baselines for Cancel-revert; `woSnapRef` added the WO-fields twin), plus
+the CREATION SNAPSHOT as entry zero via `createWorkOrderForBooking` (fresh
+creates only — the RPC's `created` flag gates it). The ladder in house
+convention: runner SUBMITS the day, admin REVIEWS it (the per-row lock —
+`handleToggleLock`, whose write was silent and is now dbResult-checked), owner
+APPROVES the invoice (`approveInvoice` logs with the amount signed off).
+Viewer: `WoHistoryModal` — ⟲ History in the WO letterhead, sentence feed,
+Original card pinned last, "Compare to now" flips it into Original ⇄ Now with
+changed lines tinted. `after_invoice` marks changes made after the invoice was
+attached (billing's drift, surfaced in the feed).
+
+**The midnight pass** (Eli: "there should be no constraints or logic based on
+12a — that does not apply to our 24/7 business"). `handleRunnerSubmit`, the
+Submit-today footer and the WO expense-date prefill moved `getLocalToday()` →
+`opsToday()` — the submit was the Aug 28 rule's one miss in the popup: at 12:01
+AM it matched no rows and silently marked nothing. Manager note posts
+(`myday_note_posts`) now stamp the OPERATIONAL day, so a closer's 1 AM post
+files under the night it describes instead of jumping to the top of the new
+day (backfill SQL re-filed old posts; that table's `date` is a real `date`
+column, not text). `opsDayOf(iso)` added to `lib/time.ts` — shiftLogDate for a
+moment that isn't now, used to file day-less records at READ time.
+
+**Daily Ops attribution.** `flags.created_by_name` stamped at all three flag
+sources (checklist NA = the typed initials, re-stamped on resubmit; WO flag +
+manual flag = profile name) and shown in the queue sub-line. The sweep card
+split **Opener / Closer** (opener: opening checklist · petty cash · stock;
+closer: closing checklist · petty cash · mic inventory — petty cash is ONE
+duty shown under both), each shift's header carrying its person from that
+shift's own submissions.
+
+**Runner notes channel (mock `runner-notes-options.html`, option A).**
+`runner_note_posts` — day-less by design, pure submit order, newest first —
+replaces the v4 autosaving shift doc as the WRITE surface. Inline on the studio
+hub (`components/runner/RunnerNotesChannel.tsx`): composer above the feed
+(RichNote, role chips that persist between sends, every keystroke mirrored
+synchronously to `lib/draft`, cleared only on confirmed Send), photos
+upload-on-pick into `checklist-photos/runner-notes/` (paths drafted, so photos
+survive navigation; thumbnails + lightbox; photo-only posts allowed), own
+posts editable, display-only date dividers. The Shift notes tile + page are
+GONE (`/runner/[studio]/shift-notes` is a redirect stub — two write surfaces
+would diverge); non-empty shift docs were poured in as history by the
+migration's one-time backfill. Admin view: the same component on Daily Ops
+with studio tabs (office posts wear an Office chip), `subscribe={false}` +
+`reloadKey` riding the page's own channel per the duplicate-channels rule. The
+sweep files posts under nights via `opsDayOf` at read time.
+
+**WO actual vs billed times (mock `wo-actual-times-options.html`, option B —
+typed, no punch buttons).** `studio_time_rows.actual_from_time/actual_to_time`:
+dashed Arrived/Left wells in the day sheet under each room's times ("Client
+actually here · billed stays as booked"), a quiet times-only line on the day
+card (no percentage — Eli), history-logged as "Arrived (actual)"/"Left
+(actual)". Read by NO money math and never drawn on the client PDF (`woPdf`
+draws only named fields — verified zero references). Utilization is a later
+one-query report.
+
+**Access + roster.** The `invoices` bucket policies widened to include
+`asst_manager` (read/insert/update; DELETE stays owner-only, approval stays
+owners-only via the trigger) — fixes "new row violates row-level security" on
+invoice attach for assistant managers. **Sam Jurequi replaced Quinn** as Asst
+Mgr pair primary (`lib/tasks.ts` names/primaryName → 'Sam'; display_name must
+be exactly `Sam`); Quinn's open tasks reassigned to Sam's id, her PIN deleted,
+login unlinked, profile soft-deleted.
+
+**Also:** the day sheet's STUDIO header is the same venue+room select the list
+view has (card-view parity — the Aug 20 ✎-date precedent).
+
+**Migrations (all hand-run, all verified):** `20260901120000_wo_activity.sql`,
+`20260901130000_flags_created_by_name.sql`,
+`20260901140000_runner_note_posts.sql` (incl. `photo_urls` + the shift-docs
+backfill), `20260901150000_st_actual_times.sql`,
+`20260901160000_invoices_asst_manager.sql` — plus two hand-run data ops (the
+notes ops-day backfill; the Sam/Quinn swap).
+
+**WATCH-OUT #1 — `approvalQueue` membership IS `nextAction(r) === 'Approve'`.**
+Never re-implement the predicate; a badge that says 3 over a strip that shows 4
+is worse than no badge. COD approval writes `invoice_state='approved'` — the
+one stored state on COD; its buckets still never read state.
+
+**WATCH-OUT #2 — `wo_activity` is append-only BY POLICY ABSENCE** (no
+UPDATE/DELETE policies). TS diffs at the save choke points are the logging
+mechanism — a new write path that bypasses the popup/create/submit/lock/approve
+sites writes no history; add the `logWoActivity` call where the write lives,
+never a second diff engine, never a DB trigger.
+
+**WATCH-OUT #3 — `opsDayOf` shares the 8:50 boundary.** If it ever moves:
+`shiftLogDate`, `opsDayOf`, and the `shift_note_docs` / `shift_log_entries`
+RLS policies move together.
+
+**WATCH-OUT #4 — the channel is the ONLY runner-notes write surface.**
+`/runner/[studio]/shift-notes` must stay a redirect — reviving the old editor
+writes into `shift_note_docs`, which nothing reads anymore. The backfill runs
+once, into an empty table only.
+
+**WATCH-OUT #5 — actual times must stay out of money and off the PDF.** They
+are internal-only by ruling; `woPdf` can't leak them because it draws only
+named fields — which also means any future "print actuals for staff" feature is
+a deliberate add, not a default.
+
+**WATCH-OUT #6 — `lib/tasks.ts` matches display_name EXACTLY** (case-
+insensitive). Sam's row must read `Sam`, not `Sam Jurequi`, or the Asst Mgr
+tab and assign option silently resolve to nothing.
+
+**WATCH-OUT #7 — one `runner_note_posts` channel per page.** The hub lets
+`RunnerNotesChannel` subscribe itself; Daily Ops passes `subscribe={false}` and
+bumps `reloadKey` from its own page channel. Mounting the component elsewhere
+means choosing one of those two modes.
+
+**Files:** `lib/billing.ts`, `lib/woActivity.ts` (new), `lib/createWorkOrder.ts`,
+`lib/dailyOps.ts`, `lib/tasks.ts`, `lib/time.ts`,
+`hooks/useWoInvoicesVersion.ts` (new), `components/runner/RunnerNotesChannel.tsx`
+(new), `components/calendar/WoHistoryModal.tsx` (new),
+`components/calendar/WorkOrderPopup.tsx`, `components/layout/Rail.tsx`,
+`app/(main)/billing/page.tsx`, `app/(main)/page.tsx`, `app/(main)/my-day/page.tsx`,
+`app/(main)/daily-ops/page.tsx`, `app/runner/[studio]/page.tsx`,
+`app/runner/[studio]/shift-notes/page.tsx` (now a redirect stub),
+`app/runner/[studio]/checklist/[type]/page.tsx`, `styles/globals.css`,
+`CLAUDE.md`, four mocks in `docs/design-refs/`, + the five migrations.
+
+---
+
 ## v1.19.1 — Notes that survive, Billing Ops, the phone calendar, stock by location — Aug 31, 2026
 
 **Billing.** **The PO now blocks SENDING, not approving** — reversing the

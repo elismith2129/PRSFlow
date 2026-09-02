@@ -4811,3 +4811,97 @@ line; it is quiet inline text now, and `backlogScopeLabel` stopped contradicting
 itself ("covering 5 days" listed four, because the count includes today and the
 list doesn't — it reads "since Thu 8/27"). A TEST RUN runner account exists for
 Eli's own phone testing; anything it submits is real data in the live tables.
+
+### Sep 1, 2026 — The paper comes back: the approvals folder, the WO's pen marks, the runners' Slack (v1.20.0)
+
+**One long session, and the through-line only showed at the end: three things
+the paper-and-Dropbox era did well that the app had quietly dropped.** The
+Dropbox folder that filled up with invoices needing Eli's green dot. The paper
+WO whose original stayed legible under the pen marks. The Slack channel where
+runners just talked. All three came back today, app-shaped.
+
+**The approvals queue (A+B+D of the mock, all three — Eli: "I like A B and
+D").** The insight from his description of the old workflow: every Dropbox
+folder already existed as a hub bucket; the one thing missing was the folder
+*visibly filling up*. So the count went everywhere the eye already goes — rail
+badge, dashboard banner, and a sweep strip that makes approving one tap per
+row. **Later the same day COD joined the queue** ("owner still has to approve
+paid and reviewed COD sessions") — which un-collapsed his own Aug 11 sentence
+("checked for accuracy, APPROVED, done") that v1's design had folded into
+billing review. The refactor that mattered: `approvalQueue` membership became
+literally `nextAction(r) === 'Approve'`, so the badge and the row read one
+predicate. **Rejected: a slim SQL count for the badge** — it couldn't see
+drift demotion (needs line-item totals), and a badge disagreeing with the
+strip is worse than none.
+
+**WO history (A+C).** Eli's ask was "version"; the architecture said "diff at
+the choke point": one editor, one atomic save path, and baselines already held
+for Cancel-revert — so the whole feature is TS diffs plus an append-only table,
+with the creation snapshot stored WHOLE as entry zero (never reconstructed
+from diffs). **Rejected: DB audit triggers** — they'd catch hypothetical
+bypass paths, but put diff logic in SQL against the house law, log raw column
+churn that still needs translating, and their one advantage is mostly void
+when every write already funnels through `save_work_order_atomic`. The
+convention got named properly mid-build (Eli: "just to get our convention
+correct"): runner SUBMITS, admin REVIEWS (the per-row lock — which turned out
+to be the only live writer; the old `status='approved'` flip has no writer
+left), owner APPROVES (the invoice). Found and fixed along the way: the lock
+write was silent (the audited defect class), and — the big one —
+**`handleRunnerSubmit` keyed "today" on `getLocalToday()`**, so a 1 AM submit
+matched no rows. Eli's ruling escalated it from bug to law: "there should be
+no constraints or logic based on 12a. that does not apply to our 24/7
+business." The same law then caught the manager notes (Isaac's 1 AM post
+outranking Fernando's evening post) — fixed by stamping posts with the ops
+day, the day-boundary applied at WRITE for posts and at READ for the new
+day-less channel (`opsDayOf`). **Punches stay calendar-day**, still deliberate.
+
+**The runner notes channel (option A; Eli: "we use slack so you can ref
+that").** The v4 autosaving shift doc was six days old and already replaced —
+worth recording WHY without embarrassment: v4 solved "typing must never be
+lost" and Eli's new ask was "always view ALL notes, one chronological list,
+view and submit in one thing." Those pull opposite ways (a doc has no submit
+moment), so the model flipped to discrete posts with the draft net carrying
+the never-lose guarantee — every keystroke synchronously to localStorage,
+cleared only on confirmed Send. **Rejected: keeping the docs and feeding them
+(option B)** — no honest submit order. **Reversed mid-build:** the mock's
+Slack bottom-anchor; Eli wanted newest at the top, so the composer moved above
+the feed (the manager-log direction). Photos followed ("add pictures… verify
+it stores properly"): upload-on-pick so the PATH enters the draft and a picked
+photo survives navigation like text does. Live verification of storage from
+the sandbox failed honestly — the egress proxy 403s CONNECTs to Supabase — so
+the pipeline was verified by pattern-identity (same bucket, same signing, same
+renderer as every photo in the app) and Eli proved it end-to-end on his phone.
+
+**Actual vs billed (option B — Eli: "don't need punches, just the typed").**
+The design's whole job is making it structurally impossible for the second
+fact to touch the first: separate columns no money math reads, dashed skin,
+the law restated inline ("billed stays as booked"), nothing on the client PDF
+(verified: `woPdf` draws only named fields — zero references). Two amendments
+arrived mid-build and are rulings: **no percentage shown on the admin side**,
+and internal-only, period. Utilization stays a stored-now/report-later
+promise.
+
+**Daily Ops attribution.** Flags carry `created_by_name` — the checklist flag
+takes the TYPED initials, not the profile (the shared runner login means the
+profile isn't the person; same reasoning as `checklists.staff_name`), and
+resubmit re-stamps to whoever last stood behind it. The sweep split
+Opener/Closer per Eli's exact assignment, petty cash deliberately under BOTH
+(one duty, shown twice — both shifts touch the box), each shift's person from
+its own submissions. No new columns for the sweep: the split itself is the
+attribution.
+
+**The RLS 403 that closed the day.** An assistant manager attaching a COD
+invoice hit the `invoices` bucket's Aug 11 tier (owner/manager/billing) —
+written before Billing Ops became an unowned role and asst managers picked up
+the work. Widened read/insert/update; DELETE stays owner-only, approval stays
+trigger-enforced. And the roster: **Sam Jurequi replaced Quinn** — role flip,
+display_name pinned to exactly `Sam` (lib/tasks matches on it), open tasks
+reassigned to Sam's id so nothing left the Asst Mgr tab, Quinn's PIN deleted
+and login unlinked (a soft-deleted profile alone would NOT have cut access:
+`get_my_role()` doesn't read `deleted_at`).
+
+**Worth remembering about the sandbox:** the egress proxy blocks Supabase
+(CONNECT 403), so live-DB verification scripts don't run from here — hand Eli
+the SQL instead. And `myday_note_posts.date` is a real `date` column, nearly
+alone in an app of text dates — the first backfill draft failed on `date =
+text`.
