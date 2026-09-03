@@ -32,10 +32,19 @@ create table if not exists public.tenant_rent_months (
   sent_by     uuid references public.user_profiles(id),
   paid_at     timestamptz,
   paid_by     uuid references public.user_profiles(id),
+  -- The third act (Eli, 2026-09-02): the payment was entered in QuickBooks.
+  -- Manual for now; the QBO integration (docs/AR-SCOPING.md) would stamp it.
+  qb_at       timestamptz,
+  qb_by       uuid references public.user_profiles(id),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   unique (room_id, month, kind)
 );
+
+-- Same-day amendment — covers a table created before the columns were added
+-- to the CREATE above.
+alter table public.tenant_rent_months add column if not exists qb_at timestamptz;
+alter table public.tenant_rent_months add column if not exists qb_by uuid references public.user_profiles(id);
 
 create index if not exists tenant_rent_months_month on public.tenant_rent_months (month);
 

@@ -30,7 +30,8 @@ import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
 import {
   TENANT_ROOMS, SHARED_RUNNER,
-  fetchRentStamps, stampKey, markRentSent, markRentPaid, undoRentSent, undoRentPaid,
+  fetchRentStamps, stampKey, markRentSent, markRentPaid, markRentQb,
+  undoRentSent, undoRentPaid, undoRentQb,
   isRentLate, currentMonth, shiftMonth, monthLabel, fetchSharedRunnerMonth,
   type RentStamp, type RentKind, type SharedRunnerMonth, type SharedRunnerDay,
 } from '@/lib/tenants'
@@ -125,29 +126,41 @@ export function TenantsView() {
     const st = stamps.get(stampKey(roomId, month, kind))
     const key = stampKey(roomId, month, kind)
     const late = isRentLate(st, month)
-    const chip = st?.paidAt
-      ? <span style={chipStyle('paid')}>Paid · {fmtStampDay(st.paidAt)}</span>
-      : late
-        ? <span style={chipStyle('late')} title="Unpaid past the 5th">Open · late</span>
-        : st?.sentAt
-          ? <span style={chipStyle('open')}>Open</span>
-          : <span style={chipStyle('none')}>Not sent</span>
-    const action = st?.paidAt ? null : !st?.sentAt
+    // The ladder: Not sent → Open (sent) → Paid → In QB (done). One chip
+    // names the state, one button offers the next act, ↩ unwinds the last.
+    const chip = st?.qbAt
+      ? <span style={chipStyle('paid')} title={`Paid ${st.paidAt ? fmtStampDay(st.paidAt) : ''} · entered in QuickBooks`}>In QB · {fmtStampDay(st.qbAt)}</span>
+      : st?.paidAt
+        ? <span style={chipStyle('paid')}>Paid · {fmtStampDay(st.paidAt)}</span>
+        : late
+          ? <span style={chipStyle('late')} title="Unpaid past the 5th">Open · late</span>
+          : st?.sentAt
+            ? <span style={chipStyle('open')}>Open</span>
+            : <span style={chipStyle('none')}>Not sent</span>
+    const action = st?.qbAt ? null : st?.paidAt
       ? <button className="c-bact" disabled={busy === key}
-          onClick={() => run(key, () => markRentSent(roomId, month, kind, profile?.id ?? null))}>
-          Mark sent
+          title="The payment has been entered in QuickBooks (manual for now)"
+          onClick={() => run(key, () => markRentQb(roomId, month, kind, profile?.id ?? null))}>
+          In QB
         </button>
-      : <button className="c-bact" disabled={busy === key}
-          onClick={() => run(key, () => markRentPaid(roomId, month, kind, profile?.id ?? null))}>
-          Mark paid
-        </button>
-    const undo = (st?.paidAt || st?.sentAt) && (
+      : !st?.sentAt
+        ? <button className="c-bact" disabled={busy === key}
+            onClick={() => run(key, () => markRentSent(roomId, month, kind, profile?.id ?? null))}>
+            Mark sent
+          </button>
+        : <button className="c-bact" disabled={busy === key}
+            onClick={() => run(key, () => markRentPaid(roomId, month, kind, profile?.id ?? null))}>
+            Mark paid
+          </button>
+    const undo = (st?.qbAt || st?.paidAt || st?.sentAt) && (
       <button
-        title={st?.paidAt ? 'Undo — not actually paid' : 'Undo — the email didn’t go out'}
+        title={st?.qbAt ? 'Undo — not actually in QuickBooks' : st?.paidAt ? 'Undo — not actually paid' : 'Undo — the email didn’t go out'}
         disabled={busy === key}
-        onClick={() => run(key, () => st?.paidAt
-          ? undoRentPaid(roomId, month, kind)
-          : undoRentSent(roomId, month, kind))}
+        onClick={() => run(key, () => st?.qbAt
+          ? undoRentQb(roomId, month, kind)
+          : st?.paidAt
+            ? undoRentPaid(roomId, month, kind)
+            : undoRentSent(roomId, month, kind))}
         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-fg)', opacity: 0.35, fontSize: 12, padding: '2px 4px' }}
       >↩</button>
     )
@@ -312,9 +325,10 @@ export function TenantsView() {
 
       <div className="c-bnote" style={{ marginTop: 14 }}>
         One button per row, always the next act: Mark sent (the 25th rent email went out) → Mark
-        paid (stamps the date). ↩ undoes a misclick. Open past the 5th goes hot. The roster and
-        rents are deal terms — they change in code, not on this screen. Mustard's incidentals
-        hours come from the month sheet; billing prices them in QuickBooks.
+        paid (stamps the date) → In QB (the payment is entered in QuickBooks — manual for now).
+        ↩ undoes a misclick. Open past the 5th goes hot. The roster and rents are deal terms —
+        they change in code, not on this screen. Mustard's incidentals hours come from the month
+        sheet; billing prices them in QuickBooks.
       </div>
     </div>
   )

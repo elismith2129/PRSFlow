@@ -10,9 +10,11 @@
 // STUDIO_LOCATIONS), so nothing here touches bookings for the roster.
 //
 // STORED vs DERIVED (the billing doctrine, lib/billing.ts header):
-//   · STORED — the two human acts per tenant per month: the rent email went
-//     out (sent_at, the 25th send) and the money arrived (paid_at). They live
-//     in tenant_rent_months (migration 20260902120000).
+//   · STORED — the three human acts per tenant per month: the rent email went
+//     out (sent_at, the 25th send), the money arrived (paid_at), and the
+//     payment was entered in QuickBooks (qb_at — manual until the QBO
+//     integration, docs/AR-SCOPING.md). They live in tenant_rent_months
+//     (migration 20260902120000).
 //   · DERIVED — everything else: open, overdue (unpaid past the 5th),
 //     collected, occupancy, and the whole shared-runner sheet. Computed on
 //     every read; nothing to sync, nothing to drift.
@@ -118,6 +120,8 @@ export type RentStamp = {
   kind: RentKind
   sentAt: string | null
   paidAt: string | null
+  /** Payment entered in QuickBooks — the ladder's last rung, manual for now. */
+  qbAt: string | null
 }
 
 export function stampKey(roomId: string, month: string, kind: RentKind): string {
@@ -130,13 +134,13 @@ export async function fetchRentStamps(months: string[]): Promise<Map<string, Ren
   if (months.length === 0) return out
   const { data, error } = await supabase
     .from('tenant_rent_months')
-    .select('room_id, month, kind, sent_at, paid_at')
+    .select('room_id, month, kind, sent_at, paid_at, qb_at')
     .in('month', months)
   if (!dbResult('Loading rent months', error)) return out
   for (const r of data ?? []) {
     out.set(stampKey(r.room_id, r.month, r.kind as RentKind), {
       roomId: r.room_id, month: r.month, kind: r.kind as RentKind,
-      sentAt: r.sent_at ?? null, paidAt: r.paid_at ?? null,
+      sentAt: r.sent_at ?? null, paidAt: r.paid_at ?? null, qbAt: r.qb_at ?? null,
     })
   }
   return out
@@ -165,6 +169,13 @@ export function markRentPaid(roomId: string, month: string, kind: RentKind, byId
     { paid_at: new Date().toISOString(), paid_by: byId }, 'Marking rent paid')
 }
 
+/** The payment was entered in QuickBooks — the last rung. Manual for now;
+ *  the QBO integration (docs/AR-SCOPING.md) would stamp this itself. */
+export function markRentQb(roomId: string, month: string, kind: RentKind, byId: string | null): Promise<boolean> {
+  return writeStamp(roomId, month, kind,
+    { qb_at: new Date().toISOString(), qb_by: byId }, 'Marking payment in QuickBooks')
+}
+
 /** Undo a misclick. Clears the stamp — the row itself stays (it's a record). */
 export function undoRentSent(roomId: string, month: string, kind: RentKind): Promise<boolean> {
   return writeStamp(roomId, month, kind, { sent_at: null, sent_by: null }, 'Undoing rent sent')
@@ -172,6 +183,10 @@ export function undoRentSent(roomId: string, month: string, kind: RentKind): Pro
 
 export function undoRentPaid(roomId: string, month: string, kind: RentKind): Promise<boolean> {
   return writeStamp(roomId, month, kind, { paid_at: null, paid_by: null }, 'Undoing rent paid')
+}
+
+export function undoRentQb(roomId: string, month: string, kind: RentKind): Promise<boolean> {
+  return writeStamp(roomId, month, kind, { qb_at: null, qb_by: null }, 'Undoing QuickBooks mark')
 }
 
 /** Unpaid past the 5th of its month. String compare works on ISO dates. */

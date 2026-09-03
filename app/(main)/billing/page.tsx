@@ -314,7 +314,7 @@ export default function BillingPage() {
           {view === 'financials'
             ? 'Revenue'
             : view === 'tenants'
-              ? <>Rent<Hint tip="One row per tenant room per month: Mark sent (the 25th rent email) → Mark paid. Mustard's incidentals line carries the shared-runner hours — solo hours bill full, hours shared with a billed ERS·A session bill half." /></>
+              ? <>Rent<Hint tip="One row per tenant room per month: Mark sent (the 25th rent email) → Mark paid → In QB (entered in QuickBooks). Mustard's incidentals line carries the shared-runner hours — solo hours bill full, hours shared with a billed ERS·A session bill half." /></>
               : <>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></>}
         </span>
         <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
