@@ -525,6 +525,10 @@ export function WorkOrderPopup({
   const [showExpenses, setShowExpenses] = useState(false)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [rcptUploading, setRcptUploading] = useState<string | null>(null)
+  // The Rcpt button IS the thumbnail once a photo exists (Eli, 2026-09-02):
+  // signed URLs per attached receipt, resolved only while the panel is open.
+  // Keyed by expense id; a re-upload re-signs because the path changes.
+  const [rcptThumbs, setRcptThumbs] = useState<Record<string, string>>({})
   const expenseFileRef = useRef<HTMLInputElement | null>(null)
   const pendingExpenseId = useRef<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1855,6 +1859,25 @@ export function WorkOrderPopup({
     const url = await signedPhotoUrl(path)
     if (url) setReceiptPreview(url)
   }
+
+  // Sign a thumbnail URL for every attached receipt while the panel is open.
+  // Keyed by PATH, so a replaced receipt (new path) signs fresh and nothing
+  // ever shows a stale photo. Signed URLs outlive any realistic panel session.
+  useEffect(() => {
+    if (!showExpenses) return
+    let alive = true
+    const missing = expenses.filter(e => e.receipt_path && !rcptThumbs[e.receipt_path])
+    if (missing.length === 0) return
+    ;(async () => {
+      for (const e of missing) {
+        const url = await signedPhotoUrl(e.receipt_path!)
+        if (!alive) return
+        if (url) setRcptThumbs(prev => ({ ...prev, [e.receipt_path!]: url }))
+      }
+    })()
+    return () => { alive = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showExpenses, expenses])
 
   // ── Add studio time row ────────────────────────────────────────────────────
 
@@ -3600,11 +3623,24 @@ export function WorkOrderPopup({
                         title={e.receipt_path ? 'View receipt' : 'Attach receipt photo'}
                         style={{
                           width: 34, height: 28, border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+                          padding: 0, overflow: 'hidden',
                           background: e.receipt_path ? 'color-mix(in srgb, var(--c-st-booked) 22%, transparent)' : 'var(--c-wash2)',
                           opacity: rcptUploading === e.id ? 0.4 : e.receipt_path ? 1 : 0.6,
+                          // The attached state wears a teal ring so a thumbnail
+                          // that happens to be dark still reads as "photo here".
+                          boxShadow: e.receipt_path ? 'inset 0 0 0 1.5px var(--c-st-booked)' : undefined,
                         }}
                       >
-                        {rcptUploading === e.id ? '…' : e.receipt_path ? '🧾' : '📷'}
+                        {/* The button IS the thumbnail once a photo exists —
+                            the icon only while uploading / signing / empty. */}
+                        {rcptUploading === e.id
+                          ? '…'
+                          : e.receipt_path
+                            ? (rcptThumbs[e.receipt_path]
+                              // eslint-disable-next-line @next/next/no-img-element
+                              ? <img src={rcptThumbs[e.receipt_path]} alt="Receipt" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                              : '🧾')
+                            : '📷'}
                       </button>
                       {!readOnly ? (
                         <button type="button" className="c-x" onClick={() => deleteExpense(e.id)} title="Delete expense" style={{ fontSize: 13 }}>×</button>
