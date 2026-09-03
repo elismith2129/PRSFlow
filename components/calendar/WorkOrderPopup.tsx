@@ -16,7 +16,7 @@ import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter
 import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
 import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO } from '@/lib/woTotals'
 import {
-  findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail,
+  findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail, confirmStartProblem,
   findMissingEngRates, missingEngRatesMessage,
   findDuplicateStaffLines, duplicateStaffMessage,
 } from '@/lib/woValidation'
@@ -2553,8 +2553,25 @@ export function WorkOrderPopup({
         setTimeErrorMsg('Pick a venue for each studio day (the studio dropdown — e.g. "Paramount · A"). Without a venue the session never appears on the calendar.')
         return false
       }
+
       setTimeErrorRows(new Set())
       setTimeErrorMsg(null)
+
+      // ── CONFIRMING NEEDS START AND END TIMES ON EVERY DAY (Eli, 2026-09-03)
+      // The failure this exists to stop: a session confirmed with blank times
+      // that lands on the runner to guess. Every dated studio day needs both
+      // From and To. Tentative saves freely (deals close before times settle);
+      // lockouts are exempt entirely (woNeedsTimes — Mustard's times are
+      // runner-entered live). Office-only: runners cannot set the status.
+      if (woNeedsTimes(wo.session_status)) {
+        const startProblem = confirmStartProblem(wo.session_status, stRows)
+        if (startProblem) {
+          setSaving(false)
+          setTimeErrorRows(new Set(startProblem.rowIds))
+          setTimeErrorMsg(startProblem.message)
+          return false
+        }
+      }
     }
 
     setSaving(true)
@@ -3358,7 +3375,10 @@ export function WorkOrderPopup({
             sides can't disagree about what "done" means). Recomputed live, so
             it clears itself as rows fill in. */}
         {runner && !timeErrorMsg && woNeedsTimes(booking.status) && (() => {
-          const problems = findMissingTimes(stRows)
+          // Only days that have HAPPENED (2026-09-03). On a three-week
+          // session the later mornings are set day by day, so tomorrow's
+          // blank row is not a missing time — it is a time nobody knows yet.
+          const problems = findMissingTimes(stRows, opsToday())
           if (problems.length === 0) return null
           return (
             <div role="alert" style={{ flexShrink: 0, background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, padding: '10px 16px' }}>

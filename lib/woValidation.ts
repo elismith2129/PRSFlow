@@ -104,16 +104,24 @@ function staffLineActive(r: ValidatableStudioRow): boolean {
  * Every row missing a required time. Empty array means the WO can be completed.
  *
  * Rules:
- *   • A studio row needs its own From and To.
+ *   • A studio row needs its own From and To (the Aug 10 ruling, unchanged).
  *   • Any active staff line needs From and To (they mirror the session times on
  *     creation, so a blank here means something was actively cleared).
  *   • A standalone staff row has no session times of its own — only staff times
  *     are required.
+ *   • `asOf` (2026-09-03, Eli — the three-week-session ruling): rows dated
+ *     AFTER `asOf` are skipped. A long session's start time "may adjust each
+ *     morning — we update the start times with the runners that morning", so a
+ *     future day's blank times are not missing, they are simply not known yet.
+ *     The runner banner passes the operational day; Complete WO passes nothing
+ *     and checks every row, because by completion every day has happened and
+ *     the Aug 10 rule applies in full.
  */
-export function findMissingTimes(rows: ValidatableStudioRow[]): RowTimeProblem[] {
+export function findMissingTimes(rows: ValidatableStudioRow[], asOf?: string): RowTimeProblem[] {
   const out: RowTimeProblem[] = []
 
   for (const r of rows) {
+    if (asOf && r.date && r.date > asOf) continue
     const standalone = !r.studio || r.studio.trim() === ''
     const fields: string[] = []
 
@@ -251,6 +259,54 @@ export function duplicateStaffMessage(problems: RowTimeProblem[]): string | null
   return problems.length === 1
     ? `${detail} is on two lines for that day, so they will be charged twice. Delete one unless they really worked two calls.`
     : `${problems.length} staff lines are duplicates and will be charged twice: ${detail}. Delete the extras unless they really worked two calls.`
+}
+
+/**
+ * EVERY DAY OF A CONFIRMED SESSION NEEDS START AND END TIMES (Eli's ruling,
+ * 2026-09-03: "it needs to apply to every session on the table, not just day
+ * one… start and end times required").
+ *
+ * The failure this exists to stop: a work order confirmed with blank times
+ * reaches the runner, who then has to invent them. The gate sits where the
+ * commitment is made — admin cannot SAVE a Confirmed work order while any
+ * dated studio day is missing From or To.
+ *
+ * A long session is not an exception: seeding copies the booked times onto
+ * every day, so a three-week WO passes as booked, and the mornings that shift
+ * are EDITS to a real time rather than blanks nobody noticed.
+ *
+ * Tentative saves freely — deals close before times settle. Lockouts are
+ * exempt entirely via woNeedsTimes: nobody knows their times in advance and
+ * the runner enters them live.
+ *
+ * Returns the blocking message plus the rows to highlight, or null to proceed.
+ */
+export function confirmStartProblem(
+  sessionStatus: string | null | undefined,
+  rows: ValidatableStudioRow[],
+): { message: string; rowIds: string[] } | null {
+  if (sessionStatus !== 'confirmed') return null
+  const missing = rows
+    .filter(r => r.studio && r.studio.trim() !== '' && (r.date ?? '').trim() !== '')
+    .filter(r => badTime(r.from_time) || badTime(r.to_time))
+    .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
+  if (missing.length === 0) return null
+
+  const label = (r: ValidatableStudioRow) => {
+    const f: string[] = []
+    if (badTime(r.from_time)) f.push('From')
+    if (badTime(r.to_time)) f.push('To')
+    return `${whereDate(r.date)} (${f.join(', ')})`
+  }
+  const days = missing.slice(0, DETAIL_CAP).map(label).join(' · ')
+  const extra = missing.length - DETAIL_CAP
+  const detail = extra > 0 ? `${days} · + ${extra} more` : days
+  return {
+    message: missing.length === 1
+      ? `A confirmed session needs start and end times on every day — ${detail} is missing them. (Keep it Tentative until the times are set.)`
+      : `A confirmed session needs start and end times on every day — ${missing.length} days are missing them: ${detail}. (Keep it Tentative until the times are set.)`,
+    rowIds: missing.map(r => r.id),
+  }
 }
 
 /** One sentence for the banner. Null when there is nothing wrong. */

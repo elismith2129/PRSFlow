@@ -64,12 +64,19 @@ export default function StudioDailyOpsPage() {
 
   const load = useCallback(async () => {
     // ── Today ──────────────────────────────────────────────────────────────
+    // LOCKOUTS JOIN THE RUNNER HUB (Eli, 2026-09-03 — the Mustard deal).
+    // The standing rule says nothing daily happens in a lockout, so every
+    // operational surface selects 'confirmed' and lockouts vanish. Mustard is
+    // the exception that amends it: his runner hours are billed incidentals,
+    // typed LIVE on his lockout WO by the runner each day — so the runner
+    // needs the card on the hub. Only HERE: daily-ops sweeps, checklists and
+    // admin queues still exclude lockouts by status, unchanged.
     const { data: bData } = await supabase
       .from('bookings')
       .select('*')
       .lte('start_date', today)
       .gte('end_date', today)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'lockout'])
       .order('from_time', { ascending: true })
 
     const filtered = (bData ?? []).filter((b: Booking) => {
