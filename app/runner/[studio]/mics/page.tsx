@@ -166,11 +166,18 @@ export default function MicsPage() {
     // realtime doesn't clobber them. Cleared on successful save/submit.
     const draft = readDraft<{ checkins: Record<string, CheckinState>; quantities: Record<string, number>; initials: string }>(
       draftKey('mics', studio, today))
-    if (draft && (Object.keys(draft.checkins).length > 0 || Object.keys(draft.quantities).length > 0 || draft.initials)) {
-      Object.assign(restoredCheckins, draft.checkins)
-      Object.assign(restoredQtys, draft.quantities)
+    if (draft) {
+      Object.assign(restoredCheckins, draft.checkins ?? {})
+      Object.assign(restoredQtys, draft.quantities ?? {})
       if (draft.initials) setInitials(draft.initials)
-      dirtyRef.current = true
+      // Dirty ONLY when the draft holds actual taps (Lori Beth's bug,
+      // 2026-09-02): a draft carrying nothing but typed initials used to pin
+      // the page dirty, which silenced the realtime channel and the
+      // reload-on-return — so another runner's submission never appeared
+      // until a full force-close remounted the page. Initials aren't per-mic
+      // data and load() never touches them, so they can't be clobbered.
+      dirtyRef.current =
+        Object.keys(draft.checkins ?? {}).length > 0 || Object.keys(draft.quantities ?? {}).length > 0
     }
 
     setCheckins(restoredCheckins)
@@ -185,8 +192,14 @@ export default function MicsPage() {
   }, [checkins, quantities, initials, loading, studio, today])
 
   useEffect(() => { load() }, [load])
-  // Same dirty-guard as the realtime channel: never clobber an in-progress check-in.
-  useReloadOnReturn(useCallback(() => { if (!dirtyRef.current) load() }, [load]))
+  // ALWAYS reload on return — no dirty guard here (Lori Beth's bug,
+  // 2026-09-02). On an installed PWA, "closing the app" usually only suspends
+  // the page, so returning is the moment another device's submission should
+  // appear. Reloading can't clobber in-progress taps because load() itself
+  // overlays the draft (mirrored on every tap) on top of the server rows —
+  // the merge is the protection, not the skip. The realtime channel below
+  // keeps its guard: it fires mid-tap, where the draft-mirror race is real.
+  useReloadOnReturn(load)
 
   // Real-time: another device's mic check-ins/quantities refetch live when clean;
   // skipped while this runner is mid-edit so their local entries are never clobbered.
