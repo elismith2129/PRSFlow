@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Mustard shared runner hours: the spreadsheet, replaced</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  MUSTARD — SHARED RUNNER HOURS (Eli, 2026-09-02).
+
+  THE DEAL: Mustard rents ERS·B (lockout). One runner covers the whole
+  building. Runner hours land on Mustard's monthly incidentals — but any hour
+  where a BILLED ERSA session was also running is shared, so Mustard pays ½.
+
+  THE MODEL — nothing stored, nothing configured, no WO screen changes:
+    · Mustard's runner hours  = studio_time_rows on his lockout WO (typed
+      daily, existing screen doing what it already does)
+    · ERSA occupied           = studio_time_rows on billed ERS·A work orders
+      (same bookingShouldHaveWorkOrder gate the hub already uses — Tech/
+      Tour/Open-Hours never count because they're never billed)
+    · shared = the overlap, solo = the rest. Computed on every read, like
+      COD buckets. Deal terms (client, room, ½ split) are a code constant —
+      the nadines precedent: a change to the deal is a commit.
+
+  Assumptions per Eli: hours are entered correctly; ERSA sessions never
+  overlap each other; always one runner for the building.
+
+  LIVES IN THE BILLING HUB ONLY — a month-end view beside Financials.
+  The total is what billing types into the QuickBooks invoice; QuickBooks
+  keeps owning the money. NOT on the WO PDF (parity rule — deliberate add
+  later if Mustard ever wants the breakdown).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff; --ivory:#2a2722; --ivory-ink:#f5f3ee;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320; --ivory:#d5d0c2; --ivory-ink:#1b1a17;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1000px;margin:0 auto}
+.bar{margin-bottom:6px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.lede{font-size:12px;opacity:.65;max-width:720px;line-height:1.6;margin-bottom:24px}
+.opt{margin-bottom:34px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:680px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:660px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+
+/* ── hub chrome sim ── */
+.crumb{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:10px}
+.hubhead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.hubhead .t{font-family:'Archivo Black',sans-serif;font-size:15px}
+.mon{display:flex;align-items:center;gap:8px;margin-left:auto;font-weight:700;font-size:12px}
+.mon .a{width:24px;height:24px;border-radius:8px;background:var(--wash2);display:inline-flex;
+  align-items:center;justify-content:center;cursor:pointer;font-size:12px}
+.chip{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--wash2);padding:3px 8px;border-radius:99px}
+
+/* ── figures ── */
+.figs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.fig{background:var(--wash);border-radius:12px;padding:10px 12px}
+.fig .v{font-family:'Archivo Black',sans-serif;font-size:17px}
+.fig .l{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:2px}
+.fig.money{outline:2px solid var(--booked);outline-offset:-2px}
+.fig.money .v{color:var(--booked)}
+
+/* ── day table ── */
+.tbl{border-radius:12px;overflow:hidden}
+.trh,.tr{display:grid;grid-template-columns:78px 1fr 1fr 74px 74px;gap:10px;
+  align-items:center;padding:8px 12px;font-size:12px}
+.trh{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45;padding-bottom:5px}
+.tr{background:var(--srf);box-shadow:var(--softsh);border-radius:10px;margin-top:5px}
+.tr .d{font-weight:800;font-size:11.5px}
+.tr .w{opacity:.8}
+.tr .w small{display:block;font-size:10px;opacity:.55}
+.tr .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.tr .n.half{color:var(--warm)}
+.tr.gap{background:transparent;box-shadow:none;outline:1.5px dashed var(--fg3);outline-offset:-1.5px}
+.tr.gap .w{opacity:.5;font-style:italic}
+.tfoot{display:grid;grid-template-columns:78px 1fr 1fr 74px 74px;gap:10px;padding:10px 12px;
+  font-weight:800;font-size:12px;border-top:1.5px solid var(--wash2);margin-top:8px}
+.tfoot .n{text-align:right;font-variant-numeric:tabular-nums}
+.tfoot .n.half{color:var(--warm)}
+.bill{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 16px;border-radius:12px;
+  background:var(--wash2);position:relative;overflow:hidden}
+.bill:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--booked)}
+.bill .big{font-family:'Archivo Black',sans-serif;font-size:20px;color:var(--booked)}
+.bill .sub{font-size:11px;opacity:.6}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>Mustard — shared runner hours, month end</h1></div>
+<p class="lede">The day-by-day spreadsheet, replaced. Runner hours come off Mustard's lockout WO;
+ERSA windows come off billed ERS·A work orders; the app intersects them. Solo hours bill full,
+shared hours bill half. Nothing stored, nothing new to maintain — edit a session time and the
+month is simply correct. Lives in the Billing hub only; the WO screen is untouched.</p>
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · The month sheet — figures up top, every day underneath<span class="rec">Recommended</span></div>
+  <div class="od">Reads exactly like the spreadsheet you keep today, so month one is verifiable
+  against it side by side. Four figures (the ones you act on), then one row per day. A dashed row
+  = ERSA billed but no runner hours typed on Mustard's WO — visible as a gap, never a silent zero.
+  The teal line at the bottom is the number that goes into the QuickBooks invoice.</div>
+  <div class="page">
+    <div class="crumb">Billing → Mustard · shared runner (beside Financials, owners + billing)</div>
+    <div class="hubhead">
+      <span class="t">Mustard — ERS·B runner hours</span>
+      <span class="chip">½ share vs ERS·A</span>
+      <div class="mon"><span class="a">‹</span>August 2026<span class="a">›</span></div>
+    </div>
+
+    <div class="figs">
+      <div class="fig"><div class="v">38.0</div><div class="l">Runner hrs</div></div>
+      <div class="fig"><div class="v">15.0</div><div class="l">Solo · full rate</div></div>
+      <div class="fig"><div class="v" style="color:var(--warm)">23.0</div><div class="l">Shared · ½ rate</div></div>
+      <div class="fig money"><div class="v">26.5</div><div class="l">Billable hrs</div></div>
+    </div>
+
+    <div class="tbl">
+      <div class="trh"><span>Day</span><span>Mustard runner</span><span>ERS·A billed</span>
+        <span style="text-align:right">Solo</span><span style="text-align:right">Shared</span></div>
+      <div class="tr"><span class="d">Sun 3</span>
+        <span class="w">10:00 AM – 8:00 PM <small>10.0 hrs</small></span>
+        <span class="w">2:00 PM – 8:00 PM <small>Interscope — SZA</small></span>
+        <span class="n">4.0</span><span class="n half">6.0</span></div>
+      <div class="tr"><span class="d">Mon 4</span>
+        <span class="w">12:00 PM – 10:00 PM <small>10.0 hrs</small></span>
+        <span class="w" style="opacity:.4">—</span>
+        <span class="n">10.0</span><span class="n half">0</span></div>
+      <div class="tr"><span class="d">Tue 5</span>
+        <span class="w">10:00 AM – 6:00 PM <small>8.0 hrs</small></span>
+        <span class="w">11:00 AM – 9:00 PM <small>Top Dawg — Ray Vaughn</small></span>
+        <span class="n">1.0</span><span class="n half">7.0</span></div>
+      <div class="tr gap"><span class="d">Wed 6</span>
+        <span class="w">no hours on Mustard's WO</span>
+        <span class="w">1:00 PM – 11:00 PM <small>Capitol — Toosii</small></span>
+        <span class="n" style="opacity:.35">—</span><span class="n" style="opacity:.35">—</span></div>
+      <div class="tr"><span class="d">Thu 7</span>
+        <span class="w">2:00 PM – 12:00 AM <small>10.0 hrs</small></span>
+        <span class="w">4:00 PM – 2:00 AM <small>Def Jam — Fridayy</small></span>
+        <span class="n">2.0</span><span class="n half">8.0</span></div>
+      <div class="tr"><span class="d">Fri 8</span>
+        <span class="w">12:00 PM – 2:00 PM <small>2.0 hrs</small></span>
+        <span class="w">4:00 PM – 10:00 PM <small>10K — 41</small></span>
+        <span class="n">2.0</span><span class="n half">0</span></div>
+      <div class="tfoot"><span>Totals</span><span style="opacity:.5">40.0 hrs typed</span><span></span>
+        <span class="n">15.0</span><span class="n half">23.0</span></div>
+    </div>
+
+    <div class="bill">
+      <span class="big">$927.50</span>
+      <div>
+        <div style="font-weight:700;font-size:12.5px">26.5 billable hrs · $35/hr</div>
+        <div class="sub">15.0 solo + 23.0 shared ÷ 2 — this is the line for the QuickBooks invoice</div>
+      </div>
+    </div>
+
+    <div class="note">Thu 7 shows the overnight case: both windows cross midnight and the overlap
+    (4 PM–12 AM) still resolves — the shared time-math handles next-day times. Fri 8 shows
+    no-overlap-same-day: ERSA ran, but not while the runner was on Mustard, so nothing halves.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · Statement only — the invoice line, days on demand</div>
+  <div class="od">Leads with the one figure and hides the day table behind a "show the month"
+  disclosure. Cleaner on the eye, but this report exists to be CHECKED — the day rows are how you
+  trust the number, and the gap-day warning deserves to be seen without opening anything. Shown
+  to record why A wins.</div>
+  <div class="page">
+    <div class="crumb">Billing → Mustard · shared runner</div>
+    <div class="hubhead"><span class="t">Mustard — August 2026</span>
+      <div class="mon"><span class="a">‹</span><span class="a">›</span></div></div>
+    <div class="bill" style="margin-top:0">
+      <span class="big">$927.50</span>
+      <div>
+        <div style="font-weight:700;font-size:12.5px">26.5 billable hrs — 15.0 full + 23.0 at ½</div>
+        <div class="sub">1 day has ERSA sessions but no runner hours typed ⚠</div>
+      </div>
+      <span style="margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+        background:var(--wash2);padding:7px 14px;border-radius:99px">Show the month ▾</span>
+    </div>
+  </div>
+</div>
+
+<p class="note" style="max-width:760px">Recommendation: <b>A</b>. It is the spreadsheet with the
+math done for you — same rows, same day-by-day verifiability, zero data entry beyond the runner
+hours already going onto Mustard's WO. The $35/hr and the ½ split live with the deal terms as a
+code constant (a change to the deal is a commit). No migration, no new tables, no WO-screen or
+PDF changes.</p>
+
+</body>
+</html>

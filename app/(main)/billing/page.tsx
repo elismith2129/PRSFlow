@@ -54,6 +54,7 @@ import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
 import { Hint } from '@/components/ui/Hint'
 import { FinancialsView } from '@/components/billing/FinancialsView'
+import { TenantsView } from '@/components/billing/TenantsView'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
@@ -84,7 +85,10 @@ export default function BillingPage() {
   // history has no bucket, no row and no next action. Widening that union to
   // carry a view mode would put a non-pipeline through every function in
   // lib/billing that switches on it.
-  const [view, setView] = useState<'invoices' | 'financials'>('invoices')
+  // TENANTS joined the heading 2026-09-02 (rent board + the Mustard shared-
+  // runner sheet) — same shape as Financials: a view, deliberately NOT a
+  // `Pipeline` value, rendered as its own branch.
+  const [view, setView] = useState<'invoices' | 'financials' | 'tenants'>('invoices')
   const [tab, setTab] = useState<BucketKey>('progress')
   // COD TABS ARE LATCHES (Eli, 2026-08-19: "make the latching buttons only on
   // COD… say COD in progress and balance due. that way we dont miss
@@ -309,7 +313,9 @@ export default function BillingPage() {
         <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
           {view === 'financials'
             ? 'Revenue'
-            : <>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></>}
+            : view === 'tenants'
+              ? <>Rent<Hint tip="One row per tenant room per month: Mark sent (the 25th rent email) → Mark paid. Mustard's incidentals line carries the shared-runner hours — solo hours bill full, hours shared with a billed ERS·A session bill half." /></>
+              : <>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></>}
         </span>
         <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
           {(['billing', 'cod'] as Pipeline[]).map(p => (
@@ -327,6 +333,14 @@ export default function BillingPage() {
               </span>
             </button>
           ))}
+          <button
+            className={`c-arch${view === 'tenants' ? ' c-on' : ''}`}
+            onClick={() => setView('tenants')}
+            aria-current={view === 'tenants' ? 'page' : undefined}
+            title="Tenant rent board — what's open, what's paid and when"
+          >
+            Tenants
+          </button>
           {isOwner && (
             <button
               className={`c-arch${view === 'financials' ? ' c-on' : ''}`}
@@ -368,6 +382,19 @@ export default function BillingPage() {
       <div className="c-root">
         {header}
         <FinancialsView />
+      </div>
+    )
+  }
+
+  // Tenants renders as its own branch for the same reason Financials does —
+  // and the early return matters doubly here: it unmounts WorkOrderPopup,
+  // which is what makes TenantsView's studio_time_rows channel safe under
+  // the one-channel-per-table-per-page rule (see TenantsView header).
+  if (view === 'tenants') {
+    return (
+      <div className="c-root">
+        {header}
+        <TenantsView />
       </div>
     )
   }
