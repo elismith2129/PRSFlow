@@ -4840,7 +4840,11 @@ export function WorkOrderPopup({
                         {siPopoverRowId === r.id && siPopoverPos && (
                           <>
                             <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setSiPopoverRowId(null)} />
-                            <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: 'var(--c-wash)', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
+                            {/* OPAQUE (2026-09-03). --c-wash is a translucent
+                                tint meant to sit ON a surface; as a floating
+                                panel's own background it let the table read
+                                straight through the notes. Surface + shadow. */}
+                            <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
                               <textarea
                                 value={siPopoverText}
                                 onChange={e => setSiPopoverText(e.target.value)}
@@ -5836,6 +5840,11 @@ export function WorkOrderPopup({
               onClick={closeSheet}
               style={{
                 position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.45)',
+                // 100dvh on phones (2026-09-03): `inset: 0` measures the LARGE
+                // viewport on iOS, so a bottom-anchored sheet inside it ends
+                // under the home indicator and its footer reads as cut off.
+                // dvh is the viewport as it is right now.
+                ...(isMobile ? { height: '100dvh' } : {}),
                 // DESKTOP: the sheet is a CENTERED CARD, not a bottom sheet
                 // (Eli, 2026-08-17 — the phone sheet rendered full-bleed under
                 // the rail on admin desktop and looked broken).
@@ -5853,7 +5862,7 @@ export function WorkOrderPopup({
                   if (Math.abs(dx) > 64) goDay(dx < 0 ? 1 : -1)
                 }}
                 style={isMobile
-                  ? { position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(14px + env(safe-area-inset-bottom))', maxHeight: '86%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }
+                  ? { position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--c-bg)', borderRadius: '22px 22px 0 0', padding: '12px 16px calc(22px + env(safe-area-inset-bottom))', maxHeight: '86dvh', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }
                   : { width: 'min(620px, 94vw)', maxHeight: '82vh', background: 'var(--c-bg)', borderRadius: 22, padding: '14px 18px 16px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: 'var(--c-softsh)' }}
               >
                 {isMobile && <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 10px', flexShrink: 0 }} />}
