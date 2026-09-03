@@ -304,10 +304,19 @@ export default function StudioDailyOpsPage() {
     padding: '13px 14px',
   }
 
+  // TEMPORARY — MIC INVENTORY HELD BACK ONE WEEK (Eli, 2026-09-03).
+  // Rollout is paused, so the tile greys out and says Coming soon instead of
+  // being removed: a missing tile reads as a bug and gets reported, a greyed
+  // one explains itself. THE PAGE ITSELF IS UNTOUCHED — /runner/[studio]/mics
+  // still works for anyone who has the link (the office's Daily Ops view reads
+  // the same data), this only closes the runner's door to it.
+  // TO SHIP: delete this constant and the `soon` flag on the tile below.
+  const MICS_COMING_SOON = true
+
   const TILES = [
     { label: 'Opening checklist', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
     { label: 'Closing checklist', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
-    { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory' },
+    { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory', soon: MICS_COMING_SOON },
     { label: 'Petty cash', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
     { label: 'Stock list', route: `/runner/${studio}/stock`, category: 'stock' },
     // Shift notes left the tiles 2026-09-01 — the runner notes CHANNEL lives
@@ -515,18 +524,23 @@ export default function StudioDailyOpsPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {TILES.map(t => {
-              const done = submittedCategories.has(t.category)
-              const statusText = done ? 'Submitted' : 'Not started'
+              const soon = 'soon' in t && t.soon
+              const done = !soon && submittedCategories.has(t.category)
+              const statusText = soon ? 'Coming soon' : done ? 'Submitted' : 'Not started'
               return (
                 <button
                   key={t.route}
-                  onClick={() => router.push(t.route)}
+                  onClick={() => { if (!soon) router.push(t.route) }}
+                  disabled={!!soon}
+                  aria-disabled={!!soon}
                   style={{
                     ...surface,
                     minHeight: 72,
                     display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                    textAlign: 'left', cursor: 'pointer', color: 'var(--c-fg)',
+                    textAlign: 'left', cursor: soon ? 'default' : 'pointer', color: 'var(--c-fg)',
                     border: 'none', font: 'inherit',
+                    // Greyed, not hidden — see MICS_COMING_SOON above.
+                    ...(soon ? { opacity: 0.45, boxShadow: 'none', background: 'var(--c-wash)' } : {}),
                   }}
                 >
                   <span style={{ fontSize: 12.5, fontWeight: 700 }}>{t.label}</span>

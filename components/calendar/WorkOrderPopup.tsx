@@ -581,6 +581,19 @@ export function WorkOrderPopup({
   const [monthlyFrom, setMonthlyFrom] = useState('')
   const [monthlyTo, setMonthlyTo] = useState('')
   const [monthlyNA, setMonthlyNA] = useState(false)
+  /**
+   * STAFF IS ITS OWN QUESTION (Eli, 2026-09-03). It used to be welded to the
+   * N/A times toggle — `eng_visible: !monthlyNA` — which made two unrelated
+   * facts one switch. A monthly lockout normally has NO staff (Camper: 24/7,
+   * rent only), so that is the default; Mustard is the exception that proves
+   * the split, because he has real daily times AND an assistant. Without the
+   * separation his thirty rows each carried an empty staff line nobody wanted,
+   * and a no-times lockout could never have staff at all.
+   * Per-day exceptions already have a home: the day card's × clears a staff
+   * line and + Add Engineer / + Add Assistant puts one back. So this is one
+   * control in one modal rather than a new button on every work order.
+   */
+  const [monthlyStaff, setMonthlyStaff] = useState(false)
   // The month's date range. A lockout booked from one calendar click has ONE
   // day row — the modal takes start/end dates and CREATES the missing day rows
   // for the whole range before splitting, so "monthly" never silently means
@@ -599,7 +612,7 @@ export function WorkOrderPopup({
   function closeMonthly() {
     setMonthlyOpen(false)
     setMonthlyAmt(''); setMonthlyOt(''); setMonthlyFrom(''); setMonthlyTo(''); setMonthlyNA(false)
-    setMonthlyStart(''); setMonthlyEnd('')
+    setMonthlyStart(''); setMonthlyEnd(''); setMonthlyStaff(false)
   }
 
   function applyMonthlySplit() {
@@ -636,9 +649,9 @@ export function WorkOrderPopup({
         eng_from_time: from, eng_to_time: to,
         actual_from_time: '', actual_to_time: '',
         admin_checked: false, admin_locked: false,
-        // A 24hr rent-only lockout has no staff — don't render staff slots on
-        // rows the modal itself created. Staffed monthlies keep the slot.
-        eng_visible: !monthlyNA,
+        // Staff is the modal's own answer now (monthlyStaff), not a side
+        // effect of the times toggle — see the state declaration.
+        eng_visible: monthlyStaff,
         eng_role: 'assistant' as const,
         status: 'in_progress' as const,
       }
@@ -4480,6 +4493,31 @@ export function WorkOrderPopup({
                             <TimeInput value={monthlyTo} onChange={setMonthlyTo} placeholder="to" className="c-input c-inset2" style={{ width: '100%', boxSizing: 'border-box' }} />
                           </div>
                         )}
+                      </div>
+                      {/* STAFF — the monthly's own question (2026-09-03). A
+                          lockout is rent, and rent normally has nobody on it,
+                          so No staff leads and the created days carry no empty
+                          staff lines. Mustard is the exception: Assistant here
+                          gives every day its 2ND slot for the runner to fill.
+                          Per-day changes stay on the day card (× / + Add). */}
+                      <div>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>Staff</div>
+                        <div className="c-seg c-seg-tiny" style={{ alignSelf: 'flex-start' }}>
+                          {([[false, 'No staff'], [true, 'Assistant']] as const).map(([val, lbl]) => (
+                            <button
+                              key={lbl}
+                              type="button"
+                              onClick={() => setMonthlyStaff(val)}
+                              className={monthlyStaff === val ? 'c-on' : ''}
+                              style={{ cursor: 'pointer' }}
+                            >{lbl}</button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 5 }}>
+                          {monthlyStaff
+                            ? 'Every day gets a 2ND line for the runner to fill in.'
+                            : 'No staff lines on these days. Add one on a day card if a day needs it.'}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 14, alignItems: 'center', marginTop: 2 }}>
                         <button type="button" onClick={closeMonthly} style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
