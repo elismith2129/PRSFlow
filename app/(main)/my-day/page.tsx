@@ -62,9 +62,19 @@ export default function MyDayPage() {
   // with getLocalToday it filed under the NEW day and — with within-day
   // submit-order — sat above notes for a shift that hadn't happened yet. The
   // 8:50 boundary files it under the night it describes; within a day posts
-  // stay in submit order, so the log reads chronologically. `today` (calendar)
-  // still drives duties/briefing/queues — their documented Aug 28 semantics.
+  // stay in submit order, so the log reads chronologically.
   const noteDay = opsToday()
+  // DUTY TICKS KEY ON THE OPERATIONAL DAY TOO (2026-09-02 — office bug:
+  // "navigating away cleared all their checkboxes, not the notes"). The Sep 1
+  // comment here deliberately kept duties on the calendar day; that carve-out
+  // is superseded by the same session's law ("no constraints or logic based
+  // on 12a"): `today` re-derives on every render, so a manager working past
+  // midnight — or returning to the tab after it — watched every duty tick
+  // silently re-key to the new date and read as cleared. Now the duty day
+  // rolls at 8:50 AM like everything operational. `today` (calendar) still
+  // drives the billing brief and the booking-date queues — those really are
+  // calendar semantics.
+  const dutyDay = opsToday()
 
   const isEli = profile?.email === 'eli@paramountrecording.com'
   const isOwner = isEli || profile?.role === 'owner'
@@ -146,7 +156,7 @@ export default function MyDayPage() {
 
     const roleDuties = await fetchDuties(role)
     const [ent, grid] = await Promise.all([
-      fetchEntries(roleDuties.map(d => d.id), '2000-01-01' < today ? shift(today, -400) : today, today),
+      fetchEntries(roleDuties.map(d => d.id), '2000-01-01' < dutyDay ? shift(dutyDay, -400) : dutyDay, dutyDay),
       fetchStaffGrid(1),
     ])
     setDuties(roleDuties)
@@ -177,7 +187,7 @@ export default function MyDayPage() {
     }
 
     setLoading(false)
-  }, [role, today, noteDay, notesOnly])
+  }, [role, today, dutyDay, noteDay, notesOnly])
 
   useEffect(() => { load() }, [load])
 
@@ -313,9 +323,9 @@ export default function MyDayPage() {
   async function toggleDuty(v: DutyView) {
     if (busy) return
     setBusy(v.duty.id)
-    if (v.done) await uncompleteDuty(v.duty.id, today)
+    if (v.done) await uncompleteDuty(v.duty.id, dutyDay)
     else await completeDuty({
-      duty: v.duty, date: today, completedBy: profile?.id ?? null,
+      duty: v.duty, date: dutyDay, completedBy: profile?.id ?? null,
       captured: v.entry?.captured, subState: v.entry?.sub_state, entries,
     })
     await load()
@@ -326,7 +336,7 @@ export default function MyDayPage() {
     const next = { ...(v.entry?.captured ?? {}) }
     if (raw.trim() === '') delete next[key]
     else next[key] = Number(raw)
-    await setDutyCaptured(v.duty.id, today, next)
+    await setDutyCaptured(v.duty.id, dutyDay, next)
     await load()
   }
 
@@ -393,7 +403,7 @@ export default function MyDayPage() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const views = buildDutyViews(duties, entries, today).filter(v => v.isShown)
+  const views = buildDutyViews(duties, entries, dutyDay).filter(v => v.isShown)
   const byCadence = (c: MyDayDuty['cadence']) => views.filter(v => v.duty.cadence === c)
 
   if (profileLoading) return null
@@ -501,7 +511,7 @@ export default function MyDayPage() {
         <div className="c-panel">
           <div className="c-lozenge">
             <b>Duties</b>
-            <span className="c-ct">{progressLabel(buildDutyViews(duties, entries, today))}</span>
+            <span className="c-ct">{progressLabel(buildDutyViews(duties, entries, dutyDay))}</span>
           </div>
 
           {loading && <div className="c-myday-item"><span className="c-myday-tx" style={{ opacity: 0.5 }}>Loading…</span></div>}
@@ -521,7 +531,7 @@ export default function MyDayPage() {
                     key={v.duty.id}
                     v={v}
                     entries={entries}
-                    today={today}
+                    today={dutyDay}
                     busy={busy === v.duty.id}
                     onToggle={() => toggleDuty(v)}
                     onCapture={(k, raw) => saveCapture(v, k, raw)}
