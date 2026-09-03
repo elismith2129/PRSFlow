@@ -1686,9 +1686,18 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    If an EIGHTH status is ever added, this is the thing that breaks — shorten
    labels (OPEN HRS is already the short form of Open Hours), don't re-add
    overflow. Same :not() chain as the base rule — see the specificity note. */
-.c-seg-status { padding: 3px; gap: 1px; max-width: 100%; }
+.c-seg-status {
+  /* FULL-WIDTH HOUSING, PILLS DIVIDE IT. Sizing the housing to its content is
+     what let the seventh pill spill past the rounded edge once the horizontal
+     scroll was removed: the content was simply wider than the column. Here the
+     housing takes the column's width and every pill gets an equal share of it
+     (flex-basis 0), so the row fits BY CONSTRUCTION at any width instead of by
+     a padding measurement that a longer label could invalidate. */
+  display: flex; width: 100%; padding: 3px; gap: 1px;
+}
 .c-seg-status > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
-  padding: 5px 9px; font-size: 9px; letter-spacing: .035em;
+  flex: 1 1 0; min-width: 0; padding: 5px 4px; text-align: center;
+  font-size: 9px; letter-spacing: .02em;
 }
 
 /* MINI — small raised control for in-well adornments (Call / Text / ✉). */

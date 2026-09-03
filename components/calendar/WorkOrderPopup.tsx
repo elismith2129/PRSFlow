@@ -3911,7 +3911,7 @@ export function WorkOrderPopup({
                 status you cannot see is the status nobody sets. `c-seg-status`
                 (globals.css) fits them at every width by tightening padding and
                 tracking; the horizontal scroll is deliberately gone. */}
-            <div className={`c-seg c-seg-status${wide ? ' c-seg-tiny' : ''}`} style={{ order: wide ? 1 : undefined, alignSelf: 'flex-start', maxWidth: '100%', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+            <div className={`c-seg c-seg-status${wide ? ' c-seg-tiny' : ''}`} style={{ order: wide ? 1 : undefined, alignSelf: 'stretch', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
                 return (
