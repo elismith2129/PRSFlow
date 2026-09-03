@@ -10,7 +10,6 @@ import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
 import { Hint, useHints, setHintsEnabled } from '@/components/ui/Hint'
-import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 
 
 
@@ -56,78 +55,12 @@ export default function StudioDailyOpsPage() {
   const today = opsToday()
   const { profile: hubProfile } = useUserProfile()
 
-  // ── Report something (Eli, 2026-08-31) ────────────────────────────────────
-  // Bugs and suggestions from the people actually using the app, submitted from
-  // the screen they land on. Writes to app_feedback with source='runner'; the
-  // office reads them in the Runner tab on /feedback.
-  //
-  // Draft-netted like every other runner input (lib/draft.ts): what they type is
-  // mirrored to localStorage on every keystroke and restored on return, because
-  // a phone call, a lock screen or a mis-tap mid-sentence must not eat it. The
-  // draft is cleared ONLY after the insert succeeds.
-  const fbKey = draftKey('feedback', studio, today)
-  const [fbOpen, setFbOpen] = useState(false)
-  const [fbType, setFbType] = useState<'bug' | 'suggestion'>('bug')
-  const [fbText, setFbText] = useState('')
-  const [fbPhoto, setFbPhoto] = useState<string | null>(null)
-  const [fbBusy, setFbBusy] = useState(false)
-  const [fbSent, setFbSent] = useState(false)
-
-  // Restore an unfinished report. An existing draft opens the card on its own —
-  // otherwise the one place it lives is behind a tap nobody remembers making.
-  useEffect(() => {
-    const d = readDraft<{ type: 'bug' | 'suggestion'; text: string; photo: string | null }>(fbKey)
-    if (!d) return
-    setFbType(d.type ?? 'bug')
-    setFbText(d.text ?? '')
-    setFbPhoto(d.photo ?? null)
-    if ((d.text ?? '').trim()) setFbOpen(true)
-  }, [fbKey])
-
-  const saveFbDraft = useCallback((next: Partial<{ type: 'bug' | 'suggestion'; text: string; photo: string | null }>) => {
-    const merged = { type: fbType, text: fbText, photo: fbPhoto, ...next }
-    writeDraft(fbKey, merged)
-  }, [fbKey, fbType, fbText, fbPhoto])
-
-  async function pickFbPhoto(file: File | undefined) {
-    if (!file) return
-    setFbBusy(true)
-    const path = `runner-feedback/${studio}/${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`
-    const { data, error } = await supabase.storage
-      .from('checklist-photos').upload(path, file, { upsert: true })
-    setFbBusy(false)
-    if (error || !data) { dbResult('Uploading photo', error as any); return }
-    // Store the PATH — the bucket is private and reads sign on demand.
-    setFbPhoto(data.path)
-    saveFbDraft({ photo: data.path })
-  }
-
-  async function submitFeedback() {
-    if (!fbText.trim() || fbBusy) return
-    setFbBusy(true)
-    const { error } = await supabase.from('app_feedback').insert({
-      source: 'runner',
-      studio,
-      type: fbType,
-      note: fbText.trim(),
-      photo_url: fbPhoto,
-      author_name: hubProfile?.display_name || hubProfile?.initials || 'Runner',
-    })
-    setFbBusy(false)
-    if (!dbResult('Sending your report', error)) return
-    clearDraft(fbKey)
-    setFbText(''); setFbPhoto(null); setFbType('bug'); setFbOpen(false)
-    setFbSent(true)
-    setTimeout(() => setFbSent(false), 6000)
-  }
-
-  // One-landing merge (2026-08-14): remember this studio so the next launch of
-  // /runner comes straight here, skipping the picker. Same key the picker uses.
-  useEffect(() => {
-    if (STUDIO_META[studio]) {
-      try { localStorage.setItem('prsflo-runner-studio', studio) } catch {}
-    }
-  }, [studio])
+  // The quiet register (punch / guide / manual / report-a-bug) MOVED to the
+  // /runner landing (Eli, 2026-09-02): those things are studio-agnostic, and
+  // runners float — the studio hub keeps only what belongs to THIS studio.
+  // The one-landing remembered-studio bounce died in the same ruling (see
+  // app/runner/page.tsx), so this page no longer writes
+  // 'prsflo-runner-studio'.
 
   const load = useCallback(async () => {
     // ── Today ──────────────────────────────────────────────────────────────
@@ -394,7 +327,7 @@ export default function StudioDailyOpsPage() {
         background: 'var(--c-bg)',
       }}>
         <button
-          onClick={() => router.push('/runner?choose=1')}
+          onClick={() => router.push('/runner')}
           aria-label="Back to studio list"
           className="c-control c-raised"
           style={{
@@ -618,149 +551,9 @@ export default function StudioDailyOpsPage() {
           <RunnerNotesChannel studio={studio} />
         </div>
 
-        {/* ── Quiet register (§15b) — always here, never shouting ─────────── */}
-        {/* Manual is the future slot the AI surface later joins. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          <button
-            onClick={() => router.push('/runner/punch')}
-            style={{
-              ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52,
-              border: 'none', font: 'inherit', color: 'var(--c-fg)', textAlign: 'left',
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Missed a punch?</div>
-              <div style={{ fontSize: 10.5, opacity: 0.6 }}>Report it — takes 30 seconds</div>
-            </div>
-            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
-          </button>
-          {/* App guide = how to use THIS APP (public/runner-sop.html). The
-              runners MANUAL below stays its own slot — that's the JOB (Eli's
-              existing paper doc; digital version is a later project). */}
-          <button
-            onClick={() => router.push('/runner/sop')}
-            style={{
-              ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52,
-              border: 'none', font: 'inherit', color: 'var(--c-fg)', textAlign: 'left',
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700 }}>App guide</div>
-              <div style={{ fontSize: 10.5, opacity: 0.6 }}>How to use PRSFlo — two minutes</div>
-            </div>
-            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
-          </button>
-          <div style={{ ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52, opacity: 0.55 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700 }}>Runners manual</div>
-              <div style={{ fontSize: 10.5, opacity: 0.6 }}>Coming soon</div>
-            </div>
-            <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
-          </div>
-
-          {/* ── Report something (2026-08-31) — bugs and ideas from the people
-              using the app, on the screen they land on. Collapsed by default so
-              the register stays quiet; an unfinished draft opens it by itself. */}
-          {!fbOpen ? (
-            <button
-              onClick={() => setFbOpen(true)}
-              style={{
-                ...surface, display: 'flex', alignItems: 'center', gap: 11, minHeight: 52,
-                border: 'none', font: 'inherit', color: 'var(--c-fg)', textAlign: 'left',
-                cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 700 }}>Report a bug or an idea</div>
-                <div style={{ fontSize: 10.5, opacity: 0.6 }}>
-                  {fbSent ? 'Sent — thank you' : 'Goes straight to the office'}
-                </div>
-              </div>
-              <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
-            </button>
-          ) : (
-            <div style={{ ...surface, display: 'flex', flexDirection: 'column', gap: 9 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ flex: 1, fontSize: 12.5, fontWeight: 700 }}>Report a bug or an idea</div>
-                <button
-                  onClick={() => setFbOpen(false)}
-                  style={{ background: 'none', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.4, fontSize: 15, cursor: 'pointer' }}
-                >×</button>
-              </div>
-
-              {/* Two types only. A runner reporting a broken thing shouldn't have
-                  to categorise it three ways on a phone. */}
-              <div style={{ display: 'flex', gap: 7 }}>
-                {(['bug', 'suggestion'] as const).map(t => (
-                  <button
-                    key={t}
-                    onClick={() => { setFbType(t); saveFbDraft({ type: t }) }}
-                    style={{
-                      flex: 1, minHeight: 38, borderRadius: 10, border: 'none', font: 'inherit',
-                      fontSize: 12, fontWeight: fbType === t ? 700 : 400, cursor: 'pointer',
-                      background: fbType === t ? 'var(--c-fg)' : 'var(--c-wash)',
-                      color: fbType === t ? 'var(--c-bg)' : 'var(--c-fg)',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}
-                  >{t === 'bug' ? 'Something broken' : 'An idea'}</button>
-                ))}
-              </div>
-
-              <textarea
-                value={fbText}
-                onChange={e => { setFbText(e.target.value); saveFbDraft({ text: e.target.value }) }}
-                placeholder={fbType === 'bug'
-                  ? 'What happened, and what were you doing when it happened?'
-                  : 'What would make the app easier tonight?'}
-                style={{
-                  width: '100%', boxSizing: 'border-box', minHeight: 96, resize: 'vertical',
-                  background: 'var(--c-wash)', border: 'none', borderRadius: 12,
-                  padding: '11px 12px', color: 'var(--c-fg)', font: 'inherit',
-                  fontSize: 13.5, lineHeight: 1.6, outline: 'none',
-                }}
-              />
-
-              {fbPhoto && (
-                <div style={{ fontSize: 10.5, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ flex: 1 }}>Photo attached</span>
-                  <button
-                    onClick={() => { setFbPhoto(null); saveFbDraft({ photo: null }) }}
-                    style={{ background: 'none', border: 'none', font: 'inherit', color: 'var(--c-fg)', opacity: 0.5, cursor: 'pointer' }}
-                  >remove</button>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label
-                  style={{
-                    minHeight: 38, display: 'flex', alignItems: 'center', padding: '0 13px',
-                    background: 'var(--c-wash)', borderRadius: 10, fontSize: 12, cursor: 'pointer',
-                  }}
-                >
-                  {fbPhoto ? 'Replace photo' : 'Add photo'}
-                  <input
-                    type="file" accept="image/*" capture="environment" hidden
-                    onChange={e => pickFbPhoto(e.target.files?.[0])}
-                  />
-                </label>
-                <span style={{ flex: 1, fontSize: 10, opacity: 0.4 }}>Saved as you type</span>
-                <button
-                  onClick={submitFeedback}
-                  disabled={fbBusy || !fbText.trim()}
-                  style={{
-                    minHeight: 38, padding: '0 16px', borderRadius: 10, border: 'none', font: 'inherit',
-                    fontSize: 12, fontWeight: 700, cursor: fbText.trim() ? 'pointer' : 'default',
-                    background: 'var(--c-fg)', color: 'var(--c-bg)',
-                    opacity: fbBusy || !fbText.trim() ? 0.4 : 1,
-                    WebkitTapHighlightColor: 'transparent',
-                  }}
-                >{fbBusy ? 'Sending…' : 'Submit'}</button>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* The quiet register (punch / guide / manual / report-a-bug) lives on
+            the /runner landing now (2026-09-02) — studio-agnostic things left
+            this studio's page. */}
 
       </div>
     </div>
