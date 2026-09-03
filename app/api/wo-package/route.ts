@@ -123,6 +123,12 @@ export async function GET(req: NextRequest) {
   const totals = computeWoTotals({ studioRows, rentalRows, paymentRows })
 
   // ── Build ─────────────────────────────────────────────────────────────────
+  // NAMED FAILURES (2026-09-03 — the "Could not build the PDF (500)" error).
+  // Nothing caught a renderer throw, so any build problem reached the client
+  // as an anonymous 500 nobody could act on. The client already displays
+  // `body.error`; from here on it says WHAT failed (same law as the login
+  // screen: a message may only claim what it knows).
+  try {
   const woPdf = await renderWorkOrderPdf({
     wo: { ...wo, location: venue },
     studioRows, rentalRows, paymentRows, totals,
@@ -211,4 +217,9 @@ export async function GET(req: NextRequest) {
       'Cache-Control': 'no-store',
     },
   })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[wo-package] build failed:', msg)
+    return NextResponse.json({ error: `PDF build failed: ${msg}` }, { status: 500 })
+  }
 }

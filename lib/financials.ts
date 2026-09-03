@@ -363,9 +363,14 @@ export function priorBucket(iso: string, grain: Grain): string {
     d.setUTCDate(d.getUTCDate() - 364)
     return d.toISOString().slice(0, 10)
   }
-  // Day and month both map cleanly onto the same date a year back. Noon UTC
-  // keeps the shift away from any midnight boundary.
-  return String(Number(iso.slice(0, 4)) - 1) + iso.slice(4)
+  // Day and month map onto the same date a year back — with the day CLAMPED
+  // to the target month's length (fix, 2026-09-03: a leap-day window edge
+  // year-swapped '2024-02-29' into '2023-02-29', which Postgres rejected —
+  // the Aug 21/22 "date/time field value out of range" app_errors). String
+  // year surgery alone cannot know February shrank.
+  const y = Number(iso.slice(0, 4)) - 1
+  const day = Math.min(Number(iso.slice(8, 10)), daysInMonth(`${y}-${iso.slice(5, 7)}`))
+  return `${y}-${iso.slice(5, 7)}-${String(day).padStart(2, '0')}`
 }
 
 /** Human label for a bucket at a given grain. */

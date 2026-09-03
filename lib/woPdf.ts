@@ -42,6 +42,18 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
+
+/**
+ * Strip anything the standard Helvetica fonts cannot encode (2026-09-03 —
+ * the package-preview 500). pdf-lib's standard fonts are WinAnsi-only: one
+ * emoji or non-Latin character in an artist name, a session note or a
+ * receipt caption THROWS inside drawText and the whole package 500s. Keep
+ * Latin-1 plus the common typographic extras WinAnsi actually has; drop the
+ * rest — a stripped emoji on a black-and-white invoice loses nothing.
+ */
+function winAnsiSafe(s: string): string {
+  return s.replace(/[^\x00-\xFFŒœŠšŸŽžƒˆ˜–—‘’‚“”„†‡•…‰‹›€™]/g, '')
+}
 import { calcHours } from '@/lib/time'
 import { engChargeForRow } from '@/lib/woTotals'
 import { roomCode } from '@/lib/studios'
@@ -144,7 +156,7 @@ class Sheet {
   ) {
     const size = opts.size ?? 9
     const font = opts.bold ? this.bold : this.font
-    let str = s ?? ''
+    let str = winAnsiSafe(s ?? '')
     // Hard-truncate rather than wrap: every column here is a label or a figure,
     // and a wrapped cell would break the row grid the reader is scanning down.
     if (opts.width) {
@@ -908,7 +920,7 @@ export async function renderExpenseReportPdf(input: {
       const type = (r.contentType || '').toLowerCase()
       const img = type.includes('png') ? await doc.embedPng(r.bytes) : await doc.embedJpg(r.bytes)
       const page = doc.addPage(PAGE)
-      page.drawText(`Receipt — ${r.caption}`.slice(0, 90), { x: M, y: PAGE[1] - M, size: 9, font: bold, color: BLACK })
+      page.drawText(winAnsiSafe(`Receipt — ${r.caption}`).slice(0, 90), { x: M, y: PAGE[1] - M, size: 9, font: bold, color: BLACK })
       const availH = PAGE[1] - M * 2 - 24
       const scale = Math.min(W / img.width, availH / img.height, 1)
       const w = img.width * scale
@@ -935,24 +947,34 @@ export async function mergePackage(
   const out = await PDFDocument.create()
 
   if (attachment) {
-    const type = (attachment.contentType || '').toLowerCase()
-    if (type.includes('pdf')) {
-      const src = await PDFDocument.load(attachment.bytes, { ignoreEncryption: true })
-      const copied = await out.copyPages(src, src.getPageIndices())
-      copied.forEach(p => out.addPage(p))
-    } else if (type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
-      const img = type.includes('png')
-        ? await out.embedPng(attachment.bytes)
-        : await out.embedJpg(attachment.bytes)
-      const page = out.addPage(PAGE)
-      // Fit inside the margins without distorting it.
-      const scale = Math.min((PAGE[0] - M * 2) / img.width, (PAGE[1] - M * 2) / img.height, 1)
-      const w = img.width * scale
-      const h = img.height * scale
-      page.drawImage(img, { x: (PAGE[0] - w) / 2, y: (PAGE[1] - h) / 2, width: w, height: h })
+    // A BROKEN INVOICE FILE FAILS LOUDLY AND NAMED (2026-09-03). Skipping it
+    // silently would build a package MISSING ITS BILL — which could then be
+    // approved and sent. The named error tells billing exactly what to do:
+    // re-attach the invoice in a format that embeds.
+    try {
+      const type = (attachment.contentType || '').toLowerCase()
+      if (type.includes('pdf')) {
+        const src = await PDFDocument.load(attachment.bytes, { ignoreEncryption: true })
+        const copied = await out.copyPages(src, src.getPageIndices())
+        copied.forEach(p => out.addPage(p))
+      } else if (type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
+        const img = type.includes('png')
+          ? await out.embedPng(attachment.bytes)
+          : await out.embedJpg(attachment.bytes)
+        const page = out.addPage(PAGE)
+        // Fit inside the margins without distorting it.
+        const scale = Math.min((PAGE[0] - M * 2) / img.width, (PAGE[1] - M * 2) / img.height, 1)
+        const w = img.width * scale
+        const h = img.height * scale
+        page.drawImage(img, { x: (PAGE[0] - w) / 2, y: (PAGE[1] - h) / 2, width: w, height: h })
+      }
+      // Anything else (a .docx someone dragged in) is skipped rather than fatal:
+      // a work order with no invoice attached still beats no file at all.
+    } catch {
+      throw new Error(
+        'The attached invoice file could not be read (it may be a HEIC photo or a corrupt file) — re-attach it as a PDF or JPG/PNG.',
+      )
     }
-    // Anything else (a .docx someone dragged in) is skipped rather than fatal:
-    // a work order with no invoice attached still beats no file at all.
   }
 
   const wo = await PDFDocument.load(workOrderPdf)
