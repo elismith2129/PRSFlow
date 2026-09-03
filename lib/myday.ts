@@ -282,8 +282,16 @@ function toEntry(r: any): MyDayEntry {
   }
 }
 
-/** Active duty template for a role (or every role when `role` is omitted). */
-export async function fetchDuties(role?: MyDayRole): Promise<MyDayDuty[]> {
+/**
+ * Active duty template for a role (or every role when `role` is omitted).
+ *
+ * NULL ON FAILURE, NOT [] (2026-09-02 — the "my checkboxes cleared" report).
+ * An empty array is a real answer ("no duties"); a failed fetch is not, and
+ * returning [] for both let one flaky request — an expired token after a
+ * laptop nap, a network blip — replace a page full of ticked duties with a
+ * page of unticked ones. Callers keep their previous state on null.
+ */
+export async function fetchDuties(role?: MyDayRole): Promise<MyDayDuty[] | null> {
   let q = supabase
     .from('myday_duties')
     .select('*')
@@ -293,16 +301,17 @@ export async function fetchDuties(role?: MyDayRole): Promise<MyDayDuty[]> {
   if (role) q = q.eq('role', role)
 
   const { data, error } = await q
-  if (!dbResult('Loading My Day duties', error)) return []
+  if (!dbResult('Loading My Day duties', error)) return null
   return (data ?? []).map(toDuty)
 }
 
-/** Entries for the given duties over an inclusive ISO date window. */
+/** Entries for the given duties over an inclusive ISO date window.
+ *  Null on failure — never an empty array pretending to be one (see above). */
 export async function fetchEntries(
   dutyIds: string[],
   fromDate: string,
   toDate: string,
-): Promise<MyDayEntry[]> {
+): Promise<MyDayEntry[] | null> {
   if (dutyIds.length === 0) return []
   const { data, error } = await supabase
     .from('myday_entries')
@@ -311,7 +320,7 @@ export async function fetchEntries(
     .gte('date', fromDate)
     .lte('date', toDate)
     .order('date', { ascending: false })
-  if (!dbResult('Loading My Day entries', error)) return []
+  if (!dbResult('Loading My Day entries', error)) return null
   return (data ?? []).map(toEntry)
 }
 
@@ -677,12 +686,13 @@ export async function fetchBillingBrief(today = getLocalToday()): Promise<Billin
   }, 0)
 
   // COD figures are typed by billing on their card until QBO can compute them.
-  const duties = await fetchDuties('billing')
-  const entries = await fetchEntries(
+  // (?? [] — a failed fetch just blanks these read-only figures for one load.)
+  const duties = (await fetchDuties('billing')) ?? []
+  const entries = (await fetchEntries(
     duties.map(d => d.id),
     shiftDate(today, -BACKLOG_LOOKBACK_DAYS),
     today,
-  )
+  )) ?? []
 
   const d = new Date(today + 'T12:00:00')
   return {
@@ -1130,9 +1140,9 @@ export async function fetchStaffGrid(days = 14): Promise<GridRow[]> {
   const window = recentDates(today, days)
   const from = window[0]
 
-  const duties = await fetchDuties()
+  const duties = (await fetchDuties()) ?? []
   if (duties.length === 0) return []
-  const entries = await fetchEntries(duties.map(d => d.id), from, today)
+  const entries = (await fetchEntries(duties.map(d => d.id), from, today)) ?? []
 
   // Display names for the two role cards. Falls back to the role label when a
   // seat is vacant — billing is a ROLE (Aaron is leaving; the card outlives him).
@@ -1423,12 +1433,12 @@ export async function loadMyDayDashboard(opts: {
   const date = opts.date ?? getLocalToday()
 
   // All duties, not just this role's — the owner's briefing spans both cards.
-  const duties = await fetchDuties()
-  const entries = await fetchEntries(
+  const duties = (await fetchDuties()) ?? []
+  const entries = (await fetchEntries(
     duties.map(d => d.id),
     shiftDate(date, -BACKLOG_LOOKBACK_DAYS),
     date,
-  )
+  )) ?? []
   const [needsWo, balances] = await Promise.all([
     fetchNeedsWoQueue(),
     fetchBalancesQueue(),

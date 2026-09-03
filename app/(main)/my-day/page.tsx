@@ -154,13 +154,22 @@ export default function MyDayPage() {
     setNoteLog(await fetchNoteLog(noteDay))
     if (notesOnly) { setLoading(false); return }
 
+    // A FAILED FETCH KEEPS THE SCREEN (2026-09-02 — "navigating away cleared
+    // all their checkboxes"). fetchDuties/fetchEntries return null on error
+    // now: one flaky request on return to the page (expired token after a
+    // laptop nap, a network blip) used to come back as [] and repaint every
+    // ticked duty unchecked — the DB was fine, the render lied. On null we
+    // simply keep what's already rendered; dbResult has toasted the failure
+    // and the next successful load (realtime or return) trues everything up.
     const roleDuties = await fetchDuties(role)
     const [ent, grid] = await Promise.all([
-      fetchEntries(roleDuties.map(d => d.id), '2000-01-01' < dutyDay ? shift(dutyDay, -400) : dutyDay, dutyDay),
+      roleDuties
+        ? fetchEntries(roleDuties.map(d => d.id), '2000-01-01' < dutyDay ? shift(dutyDay, -400) : dutyDay, dutyDay)
+        : Promise.resolve(null),
       fetchStaffGrid(1),
     ])
-    setDuties(roleDuties)
-    setEntries(ent)
+    if (roleDuties) setDuties(roleDuties)
+    if (ent) setEntries(ent)
     setNames({
       manager: grid.find(g => g.role === 'manager')?.who,
       billing: grid.find(g => g.role === 'billing')?.who,
