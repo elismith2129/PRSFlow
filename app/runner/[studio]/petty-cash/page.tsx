@@ -141,6 +141,16 @@ export default function PettyCashPage() {
     router.push(`/runner/${studio}`)
   }
 
+  // "Counted — no change" (ERS runner feedback, 2026-09-02): a night where the
+  // box matched needed the same record as a night with transactions, but the
+  // only button said "Save", which reads as "save my edits" — so runners with
+  // nothing to type just left, and the sweep showed petty cash "not done".
+  // The button runs the SAME save(): it re-stamps today's balance row and the
+  // petty_cash submission, which is exactly what "I counted it and it's the
+  // same" means. Shown only when there's nothing new typed — once they add an
+  // entry, Save is the act.
+  const hasNewEntries = entries.some(e => !e.id && (e.description || e.amount))
+
   const totalIn = entries.filter(e => e.type === 'in').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const totalOut = entries.filter(e => e.type === 'out').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const closing = (parseFloat(openingBalance) || 0) + totalIn - totalOut
@@ -287,6 +297,25 @@ export default function PettyCashPage() {
           }}>
             {saveError}
           </div>
+        )}
+        {!hasNewEntries && (
+          <button
+            onClick={save}
+            disabled={saving}
+            className="c-control"
+            style={{
+              width: '100%', minHeight: 46, borderRadius: 14, marginBottom: 8,
+              background: 'var(--c-srf, var(--c-bg))', color: 'var(--c-fg)',
+              border: 'none', font: 'inherit', fontSize: 13, fontWeight: 700,
+              cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1,
+              boxShadow: 'var(--c-softsh)',
+            }}
+          >
+            {saving ? 'Recording…' : 'Counted — no change'}
+            <span style={{ display: 'block', fontSize: 10, fontWeight: 400, opacity: 0.55, marginTop: 1 }}>
+              records tonight&rsquo;s count with the balance as it stands
+            </span>
+          </button>
         )}
         <button
           onClick={save}
