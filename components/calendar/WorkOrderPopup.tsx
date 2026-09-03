@@ -3905,10 +3905,13 @@ export function WorkOrderPopup({
             {/* c-seg-tiny on wide (Eli, 2026-08-18: "sesstoin status is two
                 rows") — six pills at the tiny size fit the words column on one
                 line. Non-wide keeps the full-size seg. */}
-            {/* nowrap + overflowX (2026-08-26): Lockout made it seven pills and
-                the wrap put one alone on a second row, skewing the column.
-                One line always; it scrolls sideways in the worst case. */}
-            <div className={wide ? 'c-seg c-seg-tiny' : 'c-seg'} style={{ order: wide ? 1 : undefined, alignSelf: 'flex-start', maxWidth: '100%', flexWrap: 'nowrap', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+            {/* ALL SEVEN VISIBLE, ONE LINE, NO SCROLL (Eli, 2026-09-03).
+                The 2026-08-26 version scrolled sideways when Lockout made it
+                seven, which hid Lockout itself at the non-wide width — the
+                status you cannot see is the status nobody sets. `c-seg-status`
+                (globals.css) fits them at every width by tightening padding and
+                tracking; the horizontal scroll is deliberately gone. */}
+            <div className={`c-seg c-seg-status${wide ? ' c-seg-tiny' : ''}`} style={{ order: wide ? 1 : undefined, alignSelf: 'flex-start', maxWidth: '100%', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
               {SESSION_STATUSES.map(([val, lbl]) => {
                 const on = wo.session_status === val
                 return (

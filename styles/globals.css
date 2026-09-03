@@ -1674,6 +1674,23 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 [data-theme="light"] .c-seg-tiny { box-shadow: none; }
 .c-seg-tiny > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { padding: 4px 10px; font-size: 9px; }
 
+/* STATUS BAR — SEVEN PILLS, ONE LINE, NO SCROLL (Eli, 2026-09-03).
+   The WO's session-status housing is the one segment that must show every
+   option at once: a hidden status is a status nobody sets, and a sideways
+   scrollbar inside a rounded housing reads as a rendering fault. Lockout made
+   it seven, and at the full .c-seg size (10px / 6px 14px) that overflowed the
+   non-wide column — the tiny variant only applied on wide.
+   So this variant is applied at EVERY width, and buys its room from padding,
+   tracking and font-size rather than from wrapping or scrolling. Measured:
+   ~470px of content, against a column that is never narrower than ~540.
+   If an EIGHTH status is ever added, this is the thing that breaks — shorten
+   labels (OPEN HRS is already the short form of Open Hours), don't re-add
+   overflow. Same :not() chain as the base rule — see the specificity note. */
+.c-seg-status { padding: 3px; gap: 1px; max-width: 100%; }
+.c-seg-status > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
+  padding: 5px 9px; font-size: 9px; letter-spacing: .035em;
+}
+
 /* MINI — small raised control for in-well adornments (Call / Text / ✉). */
 .c-mini {
   background: var(--c-bg); border-radius: 99px; padding: 4px 10px;
