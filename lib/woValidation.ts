@@ -22,6 +22,33 @@
 
 import { timeToMins } from '@/lib/time'
 
+/**
+ * LOCKOUTS ARE EXEMPT FROM THE TIMES RULE (Eli, 2026-09-03 — Mustard's
+ * monthly WO opened on a wall of thirty red rows). A lockout's day rows carry
+ * the monthly rent split, not sessions: most days legitimately have no times,
+ * ever — the only timed rows are the days a runner actually covered the
+ * tenant (the shared-runner sheet reads those). Warning about the rest is
+ * noise, and BLOCKING Complete on them would make the rent un-invoiceable at
+ * month end. Lives here, not in the popup, so the admin gate and the runner
+ * banner can never disagree about the exemption.
+ */
+export function woNeedsTimes(bookingStatus: string | null | undefined): boolean {
+  return bookingStatus !== 'lockout'
+}
+
+/** How many problem rows a banner spells out before folding to "+ N more". */
+const DETAIL_CAP = 4
+
+/** "Sep 1 · Studio B (From, To) · … + 26 more" — capped so a big WO's banner
+ *  stays a banner instead of becoming the page (the WO-1083 screenshot). */
+export function problemsDetail(problems: RowTimeProblem[]): string {
+  const shown = problems.slice(0, DETAIL_CAP)
+    .map(p => `${p.where} (${p.fields.join(', ')})`)
+    .join(' · ')
+  const extra = problems.length - DETAIL_CAP
+  return extra > 0 ? `${shown} · + ${extra} more` : shown
+}
+
 /** Only the fields the check looks at, so both the popup's form rows and raw DB rows fit. */
 export type ValidatableStudioRow = {
   id: string
@@ -229,9 +256,7 @@ export function duplicateStaffMessage(problems: RowTimeProblem[]): string | null
 /** One sentence for the banner. Null when there is nothing wrong. */
 export function missingTimesMessage(problems: RowTimeProblem[]): string | null {
   if (problems.length === 0) return null
-  const detail = problems
-    .map(p => `${p.where} (${p.fields.join(', ')})`)
-    .join(' · ')
+  const detail = problemsDetail(problems)
   return problems.length === 1
     ? `This work order can't be completed — one row is missing times: ${detail}`
     : `This work order can't be completed — ${problems.length} rows are missing times: ${detail}`

@@ -16,7 +16,7 @@ import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter
 import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
 import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO } from '@/lib/woTotals'
 import {
-  findMissingTimes, missingTimesMessage,
+  findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail,
   findMissingEngRates, missingEngRatesMessage,
   findDuplicateStaffLines, duplicateStaffMessage,
 } from '@/lib/woValidation'
@@ -2389,7 +2389,9 @@ export function WorkOrderPopup({
 
     // Gate COMPLETING only. Re-opening a WO must never be blocked — that would
     // strand a bad WO in the completed state with no way back to fix it.
-    if (!reopening) {
+    // Lockouts skip the times rule entirely (lib/woValidation.woNeedsTimes) —
+    // rent rows have no times, and rent must still be invoiceable.
+    if (!reopening && woNeedsTimes(booking.status)) {
       const problems = findMissingTimes(stRows)
       if (problems.length > 0) {
         setTimeErrorRows(new Set(problems.map(p => p.rowId)))
@@ -3355,13 +3357,14 @@ export function WorkOrderPopup({
             side (Complete WO refuses, same lib/woValidation rule, so the two
             sides can't disagree about what "done" means). Recomputed live, so
             it clears itself as rows fill in. */}
-        {runner && !timeErrorMsg && (() => {
+        {runner && !timeErrorMsg && woNeedsTimes(booking.status) && (() => {
           const problems = findMissingTimes(stRows)
           if (problems.length === 0) return null
           return (
             <div role="alert" style={{ flexShrink: 0, background: 'color-mix(in srgb, var(--c-st-hot) 12%, transparent)', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, padding: '10px 16px' }}>
               {problems.length === 1 ? 'One row is missing times:' : `${problems.length} rows are missing times:`}{' '}
-              <span style={{ opacity: 0.8 }}>{problems.map(p => `${p.where} (${p.fields.join(', ')})`).join(' · ')}</span>
+              {/* Capped (problemsDetail) — a 30-day WO's banner was the page. */}
+              <span style={{ opacity: 0.8 }}>{problemsDetail(problems)}</span>
             </div>
           )
         })()}
