@@ -61,6 +61,16 @@
      "We'll come back to that, nothing for now, just remind me. There might be
      a cool way to do something there." NOT dropped, NOT decided. See §6.
 
+  9. ★ OPTION B IS RULED (Eli, 2026-09-03): "i pick B." THE DAY HEADER OWNS THE
+     PRICE. The blanket rate lives on the Studio Time day group header, not in
+     a strip above the table and not on the rows. A and C are dead — kept in
+     this file as the record of what was considered, NOT as live alternatives.
+     Consequence to hold onto: because the DAY owns the price, bundle
+     membership is that day's rooms by construction, which is precisely what
+     makes C's silent-overcharge failure (§2) unreachable. If a future session
+     is tempted to "simplify" by moving the control onto the rows, that is C,
+     and C was rejected for a reason drawn in this file.
+
   ── THE DATA LAW every option shares ────────────────────────────────────────
 
   A bundle is a property of a SET OF ROWS, never of one row:
@@ -295,7 +305,7 @@ number and how visible it stays afterwards.</p>
 
 <!-- ─────────── B ─────────── -->
 <div style="margin-bottom:30px">
-  <div class="oh">B · The day header owns the price<span class="rec">Recommended</span></div>
+  <div class="oh">B · The day header owns the price<span class="rec">★ Ruled — Eli, 2026-09-03</span></div>
   <div class="od">The Studio Time table is already grouped by day, and <b>a day is exactly the
   object that owns "all rooms today"</b> — so the blanket rate belongs on the day header, not
   floating above the table. Toggle the day to <b>WHOLE BUILDING</b>, type $6,670, and the rooms
@@ -480,8 +490,8 @@ deliberately held open with a reminder owed.</p>
 <div class="wo" style="max-width:790px">
   <table class="st">
     <tbody>
-      <tr><td style="width:38%"><b>Decided</b></td><td class="dim">One WO not five · pro-rata by room rate · one invoice line with rooms unpriced · OT off rack · bundles may span venues · rate card becomes a table · Option <b>B</b> (day header owns the price) is the recommendation, <b>not yet ruled on</b>.</td></tr>
-      <tr><td><b>Next decision</b></td><td class="dim">Eli picks A / B / C from §2. Everything downstream waits on that one word.</td></tr>
+      <tr><td style="width:38%"><b>Decided</b></td><td class="dim">One WO not five · pro-rata by room rate · one invoice line with rooms unpriced · OT off rack · bundles may span venues · rate card becomes a table · <b style="color:var(--booked)">Option B ruled</b> — the day header owns the price. A and C are dead; they stay in §2 as the record of what was considered.</td></tr>
+      <tr><td><b>Next decision</b></td><td class="dim"><b>None outstanding.</b> The design is settled end to end. Next action is the first migration, not another question.</td></tr>
       <tr><td><b>Then, in order</b></td><td class="dim">1 · <span class="mono">room_rates</span> table + migration. 2 · <span class="mono">wo_rate_bundles</span> + <span class="mono">studio_time_rows.bundle_id</span> migration. 3 · the recompute guard (the landmine). 4 · WO UI. 5 · <span class="mono">lib/woPdf.ts</span> single line. 6 · rebuild the live two-day booking as one WO.</td></tr>
       <tr><td><b>Owed elsewhere</b></td><td class="dim">The <span class="mono">prs-rate-sheet</span> skill still quotes Studio A at $1,650 — offered, not yet fixed. Nothing here has shipped, so no CHANGELOG / SOP VERSIONS / test-batch entry is due yet.</td></tr>
     </tbody>
