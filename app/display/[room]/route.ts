@@ -230,14 +230,15 @@ function spanBar(b: B, day: string): string {
  *
  *  The meta refresh stays as a backstop at 15 minutes. If the script ever dies
  *  the wall still heals itself; it just does so slowly. */
-// 5000 → 30000 (Eli, 2026-09-03). Every poll now routes through the WordPress
-// host (the plugin proxy — see docs/TV-DISPLAY-BRIEF.md), and its Varnish
-// layer rate-limits by IP: multiple panels at 5s from one building tripped
+// 5000 → 30000 → 60000 (Eli, 2026-09-03). Every poll routes through the
+// WordPress host (the plugin proxy — see docs/TV-DISPLAY-BRIEF.md), and its
+// Varnish layer rate-limits by IP: panels at 5s from one building tripped
 // "429 Too Many Requests", which Varnish serves BEFORE the plugin runs — so
-// the self-healing Reconnecting page never got a chance and panels sat on the
-// error. 30s per panel stays far under the limit; a booking change reaches
-// the wall within half a minute, which is fine for a wall.
-const POLL_MS = 30000
+// the self-healing Reconnecting page never got a chance. 30s still 429'd
+// (panels running the old 5s bundle kept the throttle hot), so one minute it
+// is. A booking change reaches the wall within a minute — fine for a wall.
+// The durable fix is Pixelgate whitelisting the studio IPs.
+const POLL_MS = 60000
 
 function poller(hash: string, _probeUrl: string): string {
   // The probe URL is built from location at runtime, not baked in, so the page
@@ -259,7 +260,12 @@ function poller(hash: string, _probeUrl: string): string {
 
 function page(title: string, body: string, tail = ''): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8">`
-    + `<meta http-equiv="refresh" content="900">`
+    // 900 → 3600 (2026-09-03). This watchdog reload is a FULL page load through
+    // the WordPress host, and it's the death path: probes that hit Varnish's
+    // 429 are ignored harmlessly (the poller requires status 200), but if THIS
+    // reload lands on a throttled moment the panel is left on Varnish's error
+    // page, which has no self-recovery. One risky load per hour, not four.
+    + `<meta http-equiv="refresh" content="3600">`
     + `<title>${esc(title)}</title>`
     + `<style>`
     + `html,body{margin:0;padding:0;background:${BG};color:${FG};`
