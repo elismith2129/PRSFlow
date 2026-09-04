@@ -25,6 +25,19 @@
        and more modals and more processes." — the PO flow is an INLINE strip
        under the row, not a modal.
 
+    4. THE BUTTON COLUMN STOPS NARRATING (Eli, same session, refined twice).
+       The badge names the state; the button is only ever a real act:
+       Add PO → Download → Mark sent (starts aging) → Mark paid.
+       Gone from the column:
+         · Approve — lives in the approval strip above the list (built Sep 1).
+         · Attach invoice — the drop-on-the-row gesture (or click the hint).
+         · Send for approval — PENDING ELI'S CONFIRMATION: a Returned row
+           re-queues when the corrected invoice PDF is dropped on it. A real
+           fix always ends in a corrected invoice, so the drop is the
+           deliberate act — same doctrine as the normal attach. This softens
+           the Sep 1 "explicit press, never a side effect" ruling: a drop is
+           not a save side-effect, it is aimed at the invoice.
+
   THE PO SCENARIOS, as he stated them:
     · Error after approval → back through the loop (review, invoice, approve).
       Already automatic via drift demotion. Untouched.
@@ -177,9 +190,9 @@ no modal, no re-approval, no trip to the work order.</p>
       <span class="bin b-inv">Needs invoice</span>
       <span class="wo">WO-1090</span>
       <span class="who">Columbia<small>Polo G · Sep 3 · B</small></span>
-      <span class="flag dim">Drop invoice here</span>
+      <span class="flag dim">Drop invoice here · or click to attach</span>
       <span class="num">—</span><span class="age">—</span>
-      <span class="act">Attach invoice</span><span class="more">⋯</span>
+      <span class="act none">—</span><span class="more">⋯</span>
     </div>
     <div class="row">
       <span class="bin b-app">Needs approval</span>
@@ -187,15 +200,15 @@ no modal, no re-approval, no trip to the work order.</p>
       <span class="who">10K Projects<small>PayGotti · Sep 3 · X</small></span>
       <span class="flag dim"></span>
       <span class="num">$1,560.00</span><span class="age">—</span>
-      <span class="act go">Approve</span><span class="more">⋯</span>
+      <span class="act none">—</span><span class="more">⋯</span>
     </div>
     <div class="row">
       <span class="bin b-ret">Returned</span>
       <span class="wo">WO-1080</span>
       <span class="who">GR Business MGMT<small>Nine Vicious · Sep 3 · North</small></span>
-      <span class="flag hot">See note</span>
+      <span class="flag hot">See note · drop the corrected invoice to re-queue</span>
       <span class="num">$2,200.00</span><span class="age">—</span>
-      <span class="act">Send for approval</span><span class="more">⋯</span>
+      <span class="act none">—</span><span class="more">⋯</span>
     </div>
 
     <div class="day"><b>Tue, Sep 2</b><i></i><u>2 sessions</u></div>
@@ -233,7 +246,13 @@ no modal, no re-approval, no trip to the work order.</p>
     Closed wear theirs, so search results — which span every bucket — need no extra chip. The
     COD side is untouched: its bins stay exactly as they are. Headers sort on click (arrow marks
     the column, click again to reverse); day dividers show only while sorted by date — sorted by
-    Balance a date heading would lie about what follows it.</div>
+    Balance a date heading would lie about what follows it.
+    <br><br><b>The whole life of a row, in buttons:</b> nothing (review + approve happen
+    elsewhere — the WO and the approval strip) → <b>Add PO</b> if one is needed →
+    <b>Download</b> → <b>Mark sent</b>, which starts the aging clock and moves it to Awaiting
+    payment → <b>Mark paid</b> there when the money lands. Four words, in order, never more
+    than one at a time. A Returned row re-queues itself the moment the corrected invoice is
+    dropped on it — no button.</div>
   </div>
 </div>
 
