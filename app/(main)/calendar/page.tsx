@@ -1253,9 +1253,21 @@ function CalendarPageInner() {
   // looked different from the fixed step — it refused to go below one card's
   // height, so it never fit anything that didn't already fit. Squeezing is the
   // entire point of this mode; the card handles being short.
-  const roomsRowH = Math.max(24, Math.floor(
+  const roomsRowHRaw = Math.max(24, Math.floor(
     (gridH - DAY_HDR_H - filteredLocations.length * LOC_HDR_H - indivCollapsedCount * COLLAPSED_ROOM_H) / Math.max(1, expandedRoomCount)
   ))
+  // …but SNAP to the full-card tier when fit lands within a whisker of it
+  // (Eli, 2026-09-03: "cal no longer shows 2nd and 1st engineer initials").
+  // At his window size fit produced ~71px rows — 3px short of CARD_FULL_H+3,
+  // so every chip silently shed its footer (invoice + 1ST/2ND) to save three
+  // pixels a row. Within SNAP_PX below the tier, the rows take the tier: the
+  // grid scrolls a few px instead of hiding the staff line. A genuinely tight
+  // fit (many lanes, small window) still squeezes exactly as before.
+  const FULL_CARD_ROW = CARD_FULL_H + 3 // blockHeight = rowH − 3 must reach CARD_FULL_H
+  const SNAP_PX = 12
+  const roomsRowH = (roomsRowHRaw < FULL_CARD_ROW && roomsRowHRaw >= FULL_CARD_ROW - SNAP_PX)
+    ? FULL_CARD_ROW
+    : roomsRowHRaw
   // Mobile uses a fixed comfortable row height (zoom is hidden) so single-lane
   // booking chips clear the 44px tap target; the grid scrolls vertically instead.
   const rowH = isMobile ? MOBILE_ROW_H : (rowMode === 'rooms' ? roomsRowH : ROW_H_CARD)
