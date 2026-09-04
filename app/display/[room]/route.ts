@@ -45,11 +45,15 @@ const COLS =
   'id,location,studio,start_date,end_date,from_time,to_time,status,session_type,' +
   'payment_type,cod_method,artist,label,client_name,engineer_name,assistant_name,invoice_num'
 
-// carved tokens, dark register (styles/globals.css §3)
-const BG = '#1b1a17'          // --c-bg
-const FG = '#d9d6cd'          // --c-fg, warm ivory — NOT white
-const WASH = 'rgba(217,214,205,.07)'   // --c-wash
-const WASH2 = 'rgba(217,214,205,.13)'  // --c-wash2
+// TV CONTRAST OVERRIDE (Eli, 2026-09-03): the carved dark register
+// (#1b1a17 ground, warm-ivory ink) reads muddy from across a live room, so
+// THIS SURFACE ONLY runs true black + white — ground, grid lines and dates.
+// The status cards keep their carved alpha fills untouched (FILL/INK below).
+// The app itself stays on carved; do not copy these values anywhere else.
+const BG = '#000000'
+const FG = '#ffffff'
+const WASH = 'rgba(255,255,255,.16)'   // grid lines / rails — brighter than app
+const WASH2 = 'rgba(255,255,255,.30)'  // heavy ticks / week boundaries
 const INK = '#1c2626'         // --c-chip-ink, text ON status fills
 const HOT = '#ff5a4d'         // --c-st-hot
 const HOT_TEXT = '#fff4f2'    // --c-hot-text
