@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
@@ -548,11 +548,45 @@ export function WorkOrderPopup({
   // Engineers roster for per-row engineer datalist (reference data; fetched once
   // per modal open — modal lifetime is minutes, realtime not needed here).
   const [engRoster, setEngRoster] = useState<string[]>([])
-  const [seed, setSeed] = useState({
-    studio: '', start: '', end: '', from: '', to: '',
-    rateType: 'day' as 'day' | 'hour', rate: '',
-    engOn: false, engName: '', engRate: '', engRole: 'assistant' as 'engineer' | 'assistant',
-  })
+  /**
+   * SEED IS A LIST OF GROUPS (Eli, 2026-09-04). One seed used to describe one
+   * shape, so a WO needing "Studio B Sep 10–23 day rate" AND "Studio A Sep
+   * 12–14 hourly" meant seeding, waiting, re-opening and seeding again. Each
+   * group is an independent set of rows; Add rows applies them in order.
+   *
+   * The studio PREFILLS from the room this work order is for — the seed panel
+   * is opened from a WO that already knows its room, so asking again was a
+   * blank field with exactly one right answer.
+   */
+  type SeedGroup = {
+    id: string
+    studio: string; start: string; end: string; from: string; to: string
+    rateType: 'day' | 'hour'; rate: string
+    engOn: boolean; engName: string; engRate: string; engRole: 'engineer' | 'assistant'
+  }
+  const newSeedGroup = useCallback((from?: SeedGroup): SeedGroup => ({
+    id: crypto.randomUUID(),
+    // A second group usually varies ONE thing (the room, or the dates), so it
+    // inherits the previous group rather than starting blank.
+    studio: from?.studio ?? (booking.studio ? toStudioLetter(booking.studio) : ''),
+    start: '', end: '',
+    from: from?.from ?? '', to: from?.to ?? '',
+    rateType: from?.rateType ?? 'day', rate: from?.rate ?? '',
+    engOn: from?.engOn ?? false, engName: from?.engName ?? '',
+    engRate: from?.engRate ?? '', engRole: from?.engRole ?? 'assistant',
+  }), [booking.studio])
+  const [seedGroups, setSeedGroups] = useState<SeedGroup[]>(() => [{
+    id: crypto.randomUUID(),
+    studio: booking.studio ? toStudioLetter(booking.studio) : '',
+    start: '', end: '', from: '', to: '',
+    rateType: 'day', rate: '',
+    engOn: false, engName: '', engRate: '', engRole: 'assistant',
+  }])
+  const patchSeed = useCallback((id: string, patch: Partial<SeedGroup>) => {
+    setSeedGroups(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g))
+  }, [])
+  /** What the last Add rows actually did — a skipped date must not be silent. */
+  const [seedMsg, setSeedMsg] = useState<string | null>(null)
   // ── Batch edit (admin only) ──────────────────────────────────────────────
   // Replaced per-cell fill-down arrows. Bulk changes are a deliberate act on a
   // deliberate surface: pick a scope, tick the fields you mean, apply once.
@@ -3040,35 +3074,53 @@ export function WorkOrderPopup({
 
   // ── Seed panel: bulk-append studio_time_rows for a date range ────────────────
   async function handleSeed() {
-    if (!woIdRef.current || !seed.start) return
+    const ready = seedGroups.filter(g => g.start)
+    if (!woIdRef.current || ready.length === 0) return
     setSeedBusy(true)
+    setSeedMsg(null)
     try {
-      const dates = dateRange(seed.start, seed.end || seed.start)
-      await seedStudioTimeRows({
-        workOrderId: woIdRef.current,
-        studio: seed.studio ? toStudioLetter(seed.studio) : '',
-        dates,
-        fromTime: seed.from,
-        toTime: seed.to,
-        rateType: seed.rateType,
-        rate: seed.rateType === 'hour' ? seed.rate : '',
-        rateDaily: seed.rateType === 'day' ? seed.rate : '',
-        engRate: seed.engOn && seed.engRate ? seed.engRate : undefined,
-        engName: seed.engOn && seed.engName.trim() ? seed.engName.trim() : undefined,
-        engRole: seed.engOn ? seed.engRole : undefined,
-      })
-      // A named 1ST engineer also becomes the WO-level fallback (legacy field,
-      // used as the placeholder + card fallback). Assistants stay row-only.
-      if (seed.engOn && seed.engName.trim() && seed.engRole === 'engineer') {
-        setDirtyFields(prev => new Set(prev).add('engineer'))
-        setWo(w => w ? { ...w, engineer: seed.engName.trim() } : w)
+      let added = 0
+      let skipped = 0
+      // Sequential, not Promise.all: each group's insert reads the rows already
+      // present to skip dates it would duplicate, so they must not race.
+      for (const g of ready) {
+        const dates = dateRange(g.start, g.end || g.start)
+        const res = await seedStudioTimeRows({
+          workOrderId: woIdRef.current,
+          studio: g.studio ? toStudioLetter(g.studio) : '',
+          dates,
+          fromTime: g.from,
+          toTime: g.to,
+          rateType: g.rateType,
+          rate: g.rateType === 'hour' ? g.rate : '',
+          rateDaily: g.rateType === 'day' ? g.rate : '',
+          engRate: g.engOn && g.engRate ? g.engRate : undefined,
+          engName: g.engOn && g.engName.trim() ? g.engName.trim() : undefined,
+          engRole: g.engOn ? g.engRole : undefined,
+        })
+        added += res.inserted
+        skipped += dates.length - res.inserted
+        // A named 1ST engineer also becomes the WO-level fallback (legacy field,
+        // used as the placeholder + card fallback). Assistants stay row-only.
+        if (g.engOn && g.engName.trim() && g.engRole === 'engineer') {
+          setDirtyFields(prev => new Set(prev).add('engineer'))
+          setWo(w => w ? { ...w, engineer: g.engName.trim() } : w)
+        }
       }
       const { data: reloaded } = await supabase.from('studio_time_rows')
         .select('*').eq('work_order_id', woIdRef.current).order('date')
       setStRows((reloaded ?? []).map(normalizeStRow))
       originalStRowsRef.current = (reloaded ?? []).map(normalizeStRow)
-      setSeed(s => ({ ...s, start: '', end: '' }))
-      setSeedOpen(false)
+      setSeedGroups([newSeedGroup()])
+      // SAY WHAT HAPPENED. Dates already in the table are skipped, and a group
+      // that added nothing (its dates were all covered) used to close the panel
+      // looking like it had worked.
+      if (added === 0) {
+        setSeedMsg(`Nothing added — ${skipped === 1 ? 'that date is' : 'those dates are'} already in the table.`)
+      } else {
+        setSeedMsg(null)
+        setSeedOpen(false)
+      }
     } finally {
       setSeedBusy(false)
     }
@@ -4333,79 +4385,124 @@ export function WorkOrderPopup({
               </button>
               {seedOpen && (
                 <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {/* Note: plain <div> wrappers, NOT <label> — a <label> forwards
-                      clicks to its first control, which broke the Day/Hr toggle. */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>Studio</span>
-                      <input value={seed.studio} onChange={e => setSeed(s => ({ ...s, studio: e.target.value }))} className="c-input c-inset2" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>Start date</span>
-                      <input type="date" value={seed.start} onChange={e => setSeed(s => ({ ...s, start: e.target.value }))} className="c-input c-inset2" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>End date</span>
-                      <input type="date" value={seed.end} onChange={e => setSeed(s => ({ ...s, end: e.target.value }))} className="c-input c-inset2" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>From</span>
-                      <TimeInput value={seed.from} onChange={v => setSeed(s => ({ ...s, from: v }))} className="c-input c-inset2" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>To</span>
-                      <TimeInput value={seed.to} onChange={v => setSeed(s => ({ ...s, to: v }))} className="c-input c-inset2" />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>Rate</span>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden' }}>
-                          {(['day', 'hour'] as const).map(rt => (
-                            <button key={rt} type="button" onClick={() => setSeed(s => ({ ...s, rateType: rt }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.rateType === rt ? 'var(--c-fg)' : 'transparent', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
-                          ))}
+                  {seedGroups.map((seed, gi) => (
+                    <div
+                      key={seed.id}
+                      style={{
+                        display: 'flex', flexDirection: 'column', gap: 12,
+                        // Groups after the first are visually separated so the
+                        // panel reads as a list of shapes, not one long form.
+                        ...(gi > 0 ? { borderTop: '1px solid var(--c-wash2)', paddingTop: 12 } : {}),
+                      }}
+                    >
+                      {seedGroups.length > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ ...metaLabel, marginBottom: 0 }}>Group {gi + 1}</span>
+                          <div style={{ flex: 1 }} />
+                          <button
+                            type="button"
+                            onClick={() => setSeedGroups(prev => prev.filter(g => g.id !== seed.id))}
+                            title="Remove this group"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-fg)', opacity: 0.4, fontSize: 14, padding: '0 2px' }}
+                          >×</button>
                         </div>
-                        <input value={seed.rate} onChange={e => setSeed(s => ({ ...s, rate: e.target.value }))} className="c-input c-inset2" style={{ width: 64 }} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Staff — off by default; toggle on to add an engineer (1ST) or assistant (2ND) + rate */}
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <span style={metaLabel}>Eng / Asst</span>
-                      <button type="button" onClick={() => setSeed(s => ({ ...s, engOn: !s.engOn }))} style={{ padding: '4px 18px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.engOn ? 'var(--c-wash2)' : 'transparent', color: seed.engOn ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
-                        {seed.engOn ? 'Yes' : 'No'}
-                      </button>
-                    </div>
-                    {seed.engOn && (
-                      <>
+                      )}
+                      {/* Note: plain <div> wrappers, NOT <label> — a <label> forwards
+                          clicks to its first control, which broke the Day/Hr toggle. */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(126px, 1fr))', gap: 10 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <span style={metaLabel}>Role</span>
-                          <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden' }}>
-                            {(['engineer', 'assistant'] as const).map(role => (
-                              <button key={role} type="button" onClick={() => setSeed(s => ({ ...s, engRole: role }))} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.engRole === role ? 'var(--c-fg)' : 'transparent', color: seed.engRole === role ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>
-                                {role === 'engineer' ? '1ST' : '2ND'}
-                              </button>
-                            ))}
+                          <span style={metaLabel}>Studio</span>
+                          <input value={seed.studio} onChange={e => patchSeed(seed.id, { studio: e.target.value })} className="c-input c-inset2" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={metaLabel}>Start date</span>
+                          <input type="date" value={seed.start} onChange={e => patchSeed(seed.id, { start: e.target.value })} className="c-input c-inset2" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={metaLabel}>End date</span>
+                          <input type="date" value={seed.end} onChange={e => patchSeed(seed.id, { end: e.target.value })} className="c-input c-inset2" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={metaLabel}>From</span>
+                          <TimeInput value={seed.from} onChange={v => patchSeed(seed.id, { from: v })} className="c-input c-inset2" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={metaLabel}>To</span>
+                          <TimeInput value={seed.to} onChange={v => patchSeed(seed.id, { to: v })} className="c-input c-inset2" />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                          <span style={metaLabel}>Rate</span>
+                          {/* flexShrink:0 on the toggle — the Hr button used to be
+                              squeezed to nothing by the rate input in a narrow cell,
+                              so the control looked like a static "Day" label. */}
+                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
+                            <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
+                              {(['day', 'hour'] as const).map(rt => (
+                                <button key={rt} type="button" onClick={() => patchSeed(seed.id, { rateType: rt })} style={{ padding: '4px 9px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', background: seed.rateType === rt ? 'var(--c-fg)' : 'var(--c-wash2)', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
+                              ))}
+                            </div>
+                            <input value={seed.rate} onChange={e => patchSeed(seed.id, { rate: e.target.value })} className="c-input c-inset2" style={{ flex: 1, minWidth: 0 }} />
                           </div>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '0 1 220px' }}>
-                          <span style={metaLabel}>{seed.engRole === 'assistant' ? 'Assistant name' : 'Engineer name'}</span>
-                          <input list="wo-eng-roster" value={seed.engName} onChange={e => setSeed(s => ({ ...s, engName: e.target.value }))} className="c-input c-inset2" />
+                      </div>
+
+                      {/* Staff — off by default; toggle on to add an engineer (1ST) or assistant (2ND) + rate */}
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <span style={metaLabel}>Eng / Asst</span>
+                          <button type="button" onClick={() => patchSeed(seed.id, { engOn: !seed.engOn })} style={{ padding: '4px 18px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.engOn ? 'var(--c-wash2)' : 'transparent', color: seed.engOn ? 'var(--c-fg)' : 'var(--c-fg-2)' }}>
+                            {seed.engOn ? 'Yes' : 'No'}
+                          </button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 80 }}>
-                          <span style={metaLabel}>Rate</span>
-                          <input value={seed.engRate} onChange={e => setSeed(s => ({ ...s, engRate: e.target.value }))} className="c-input c-inset2" />
-                        </div>
-                      </>
-                    )}
+                        {seed.engOn && (
+                          <>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={metaLabel}>Role</span>
+                              <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden' }}>
+                                {(['engineer', 'assistant'] as const).map(role => (
+                                  <button key={role} type="button" onClick={() => patchSeed(seed.id, { engRole: role })} style={{ padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: seed.engRole === role ? 'var(--c-fg)' : 'var(--c-wash2)', color: seed.engRole === role ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>
+                                    {role === 'engineer' ? '1ST' : '2ND'}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: '0 1 220px' }}>
+                              <span style={metaLabel}>{seed.engRole === 'assistant' ? 'Assistant name' : 'Engineer name'}</span>
+                              <input list="wo-eng-roster" value={seed.engName} onChange={e => patchSeed(seed.id, { engName: e.target.value })} className="c-input c-inset2" />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, width: 80 }}>
+                              <span style={metaLabel}>Rate</span>
+                              <input value={seed.engRate} onChange={e => patchSeed(seed.id, { engRate: e.target.value })} className="c-input c-inset2" />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setSeedGroups(prev => [...prev, newSeedGroup(prev[prev.length - 1])])}
+                      style={{ padding: '6px 14px', borderRadius: 6, fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: 'var(--c-wash2)', color: 'var(--c-fg)' }}
+                    >+ Add another group</button>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {seedMsg && (
+                    <div role="alert" style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-st-hot)' }}>{seedMsg}</div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
-                    <button type="button" disabled={seedBusy || !seed.start} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, cursor: seedBusy || !seed.start ? 'default' : 'pointer', background: seed.start ? 'var(--c-fg)' : 'var(--c-wash)', color: seed.start ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>
-                      {seedBusy ? 'Adding…' : 'Add rows'}
-                    </button>
+                    {(() => {
+                      const ready = seedGroups.filter(g => g.start).length
+                      const can = ready > 0 && !seedBusy
+                      return (
+                        <button type="button" disabled={!can} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, whiteSpace: 'nowrap', cursor: can ? 'pointer' : 'default', background: ready > 0 ? 'var(--c-fg)' : 'var(--c-wash)', color: ready > 0 ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>
+                          {seedBusy ? 'Adding…' : ready > 1 ? `Add rows · ${ready} groups` : 'Add rows'}
+                        </button>
+                      )
+                    })()}
                   </div>
                 </div>
               )}
