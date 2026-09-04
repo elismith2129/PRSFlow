@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — The whole-building blanket rate</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  THE WHOLE-BUILDING BLANKET RATE (Eli, 2026-09-03, spoken).
+
+  "A blanket rate for the whole building for all the rooms. Sometimes somebody
+  will book our whole building and I'll have a custom rate per day that includes
+  all the rooms. So it makes it tricky where it's easy on the invoice, but we
+  have five different rooms at Paramount that we have to break it up on. I would
+  want to have real money on these work orders in a way so that it goes into our
+  daily numbers and overall actually becomes financially meaningful on the app."
+
+  THE LIVE CASE: two days, all five Paramount rooms, $6,670/day = $13,340.
+  It was booked as FIVE separate work orders. It should be ONE.
+
+  ── THE FOUR RULINGS THIS PAGE IS BUILT ON ──────────────────────────────────
+
+  1. ONE WORK ORDER, NOT FIVE. WO-SPEC §4 already projects one WO into many
+     calendar cards, one per room-segment. Five rooms = five cards, one WO, one
+     invoice number, one row in the billing ladder, one approval, one PO chase.
+     Five WOs also means nothing owns the $6,670 — five independent numbers
+     with nothing to catch the drift. Eli: rebuild this booking as one WO.
+
+  2. ALLOCATION IS PRO-RATA BY ROOM RATE. Not an even split. The even split
+     would make Studio X look exactly as valuable as Studio C forever, in every
+     per-room report. Pro-rata keeps room-level history honest AND — proven
+     below — recovers the pricing logic Eli actually used.
+
+  3. THE INVOICE SHOWS ONE LINE, ROOMS NAMED UNPRICED. The client sees
+     "Paramount — whole building (Studios A, B, C, E, X) · 2 days @ $6,670/day".
+     Never the internal allocation.
+
+  4. "IM JUST A GOOD SALESMAN." The 8% is deliberate, not an anomaly.
+
+  ── THE DATA LAW every option shares ────────────────────────────────────────
+
+  A bundle is a property of a SET OF ROWS, never of one row:
+     wo_rate_bundles (work_order_id, date, amount, allocation_method, label)
+     studio_time_rows.bundle_id  — nullable FK
+
+  Each row's `charge` becomes its ALLOCATED SHARE of the bundle. That is the
+  whole trick: computeWoTotals already sums charge + ot_charge, and the daily
+  numbers, the Financials chart, the SRS 10%, the balance queue and the billing
+  ladder ALL read from there. Allocate into `charge` and every one of them
+  becomes correct with zero downstream changes. The bundle is an input concept;
+  nothing else has to learn about it.
+
+  INVARIANT: Σ(shares) === bundle.amount, to the penny, enforced on save. The
+  rounding remainder lands on the largest room.
+
+  ⚠ THE LANDMINE. Normally `charge` derives from rate × hours. For a bundled row
+  it does NOT — it is the allocated number. Every path that recomputes a charge
+  must skip bundled rows or it silently wipes the allocation and the WO quietly
+  re-totals to $7,250. Same defect class as the v1.22.0 invoice re-baselining
+  bug: a derived value stomped by a recompute nobody remembered.
+
+  ⚠ NOT REJECTED, JUST NAMED: putting all $6,670 on Studio C and zeroing the
+  other four. It invoices correctly and destroys the data — one monster room,
+  four occupied-and-free rooms. If anyone has been doing this by hand, that is
+  what this feature replaces.
+
+  ── WHAT THE FORK ACTUALLY IS ───────────────────────────────────────────────
+
+  Where does the blanket price LIVE in the Studio Time table? A puts it in a
+  strip above (creation-shaped, one action). B puts it on the day group header
+  (editing-shaped, always visible — the day IS the object that owns "all rooms
+  today"). C extends the per-row Day/Hr toggle with a third type (most
+  consistent with existing mechanics, but the price has no natural home on a
+  row, so it needs a footer anyway).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1120px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.65;max-width:800px;line-height:1.65;margin-bottom:10px}
+.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:38px 0 4px;letter-spacing:-.01em}
+h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.6;max-width:800px;line-height:1.6;margin-bottom:16px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11px;opacity:.62;margin-bottom:12px;line-height:1.62;max-width:560px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.warnpill{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:color-mix(in srgb,var(--warm) 22%,transparent);color:var(--fg);padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.note{font-size:10.5px;opacity:.52;margin-top:14px;line-height:1.65;max-width:820px}
+
+/* ── the WO panel shell ── */
+.wo{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 15px;max-width:820px}
+.wolab{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:9px}
+
+/* ── studio time table ── */
+.st{width:100%;border-collapse:collapse;font-size:12px}
+.st th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);
+  text-align:left;padding:0 8px 6px 0;white-space:nowrap}
+.st td{padding:7px 8px 7px 0;border-top:1px solid var(--wash);vertical-align:middle}
+.st td.num,.st th.num{text-align:right;font-family:'DM Mono',ui-monospace,monospace}
+.rm{font-family:'Archivo Black',sans-serif;font-size:11.5px;white-space:nowrap}
+.dim{color:var(--fg3)}
+.strike{text-decoration:line-through;opacity:.4}
+.share{font-family:'DM Mono',ui-monospace,monospace;font-weight:600}
+.lockcell{font-size:9px;color:var(--fg3);font-style:italic}
+.bmark{display:inline-block;width:3px;height:3px;border-radius:99px;background:var(--uncon);vertical-align:2px;margin-right:5px}
+
+/* ── the bundle strip (A) ── */
+.strip{background:var(--wash);border-radius:12px;padding:11px 12px;margin-bottom:12px}
+.striphead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.striptitle{font-family:'Archivo Black',sans-serif;font-size:11.5px}
+.fields{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end}
+.f{display:flex;flex-direction:column;gap:3px}
+.f .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3)}
+.f .inp{background:var(--srf);border:1px solid var(--wash2);border-radius:9px;padding:6px 9px;
+  font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;min-width:96px}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{font-size:10px;font-weight:700;border-radius:99px;padding:4px 10px;background:var(--wash2);color:var(--fg2);cursor:pointer}
+.chip.on{background:var(--booked);color:var(--chip-ink)}
+.btn{border-radius:99px;padding:7px 15px;font-size:11px;font-weight:700;background:var(--wash2);color:var(--fg);cursor:pointer;border:none;white-space:nowrap}
+.btn.pri{background:var(--fg);color:var(--bg)}
+
+/* ── the readout every option shares ── */
+.readout{display:flex;gap:0;align-items:stretch;background:var(--wash);border-radius:11px;overflow:hidden;margin-top:10px;flex-wrap:wrap}
+.ro{padding:8px 14px;flex:1;min-width:118px}
+.ro + .ro{border-left:1px solid var(--wash2)}
+.ro .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:2px}
+.ro .v{font-family:'DM Mono',ui-monospace,monospace;font-size:14px;font-weight:600}
+.ro.good .v{color:var(--booked)}
+.ro.bad .v{color:var(--hot)}
+
+/* ── day group header (B) ── */
+.dayhead{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--wash);border-radius:10px;margin:12px 0 0;flex-wrap:wrap}
+.dayhead .d{font-family:'Archivo Black',sans-serif;font-size:12.5px;white-space:nowrap}
+.tog{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:4px 10px;cursor:pointer}
+.tog.on{background:var(--uncon);color:var(--chip-ink)}
+.tog.off{background:var(--wash2);color:var(--fg3)}
+.amt{margin-left:auto;display:flex;align-items:baseline;gap:7px}
+.amt .lab{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3)}
+.amt .val{font-family:'DM Mono',ui-monospace,monospace;font-size:16px;font-weight:600;
+  background:var(--srf);border:1px solid var(--wash2);border-radius:9px;padding:3px 11px}
+.offrack{font-size:9.5px;font-weight:700;color:var(--fg2);background:var(--wash2);border-radius:99px;padding:3px 9px;white-space:nowrap}
+
+/* ── invoice card ── */
+.inv{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:15px 17px;max-width:520px}
+.invline{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:7px 0}
+.invline + .invline{border-top:1px solid var(--wash)}
+.invdesc{font-size:12px}
+.invdesc .rooms{font-size:10.5px;color:var(--fg3);margin-top:2px}
+.invamt{font-family:'DM Mono',ui-monospace,monospace;font-weight:600;font-size:13px;white-space:nowrap}
+.invtot{display:flex;justify-content:space-between;padding-top:9px;margin-top:4px;border-top:1.5px solid var(--wash2);
+  font-family:'Archivo Black',sans-serif;font-size:13px}
+
+.cols{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>The whole-building blanket rate</h1></div>
+<p class="lede">Sometimes a client takes the entire building at one custom price per day. It's one
+line on the invoice and five rooms in the app. This is how that price becomes <b>real money on
+the work order</b> — money that reaches the daily numbers, the Financials chart, the SRS fee and
+the billing ladder without any of them being taught a new concept.</p>
+<p class="lede"><b>The live case:</b> two days, all five Paramount rooms, <b>$6,670/day = $13,340</b>.
+Currently sitting as five separate work orders. It should be one.</p>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2><span class="n">1</span>The allocation, on the real numbers</h2>
+<p class="sub">Pro-rata: sum the rack rates, divide the blanket by that sum, apply the factor to
+every room. Then the proof that this is the right basis — the factor comes out at <b>exactly
+0.92</b>, and every share lands on a whole dollar with <b>zero remainder</b>. $6,670 was never an
+arbitrary number; it is rack minus 8%. Pro-rata doesn't approximate the deal, it reproduces it.</p>
+
+<div class="wo">
+  <div class="wolab">Wed Sep 3 · Paramount · whole building</div>
+  <table class="st">
+    <thead><tr>
+      <th>Room</th><th class="num">Rack / day</th><th></th><th class="num">Allocated</th>
+      <th class="num">× 2 days</th><th>Rate cell reads</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="rm"><span class="bmark"></span>STUDIO C</td><td class="num dim">$1,950</td><td class="dim">→</td><td class="num share">$1,794.00</td><td class="num dim">$3,588</td><td class="lockcell">share of building rate</td></tr>
+      <tr><td class="rm"><span class="bmark"></span>STUDIO A</td><td class="num dim">$1,750</td><td class="dim">→</td><td class="num share">$1,610.00</td><td class="num dim">$3,220</td><td class="lockcell">share of building rate</td></tr>
+      <tr><td class="rm"><span class="bmark"></span>STUDIO B</td><td class="num dim">$1,550</td><td class="dim">→</td><td class="num share">$1,426.00</td><td class="num dim">$2,852</td><td class="lockcell">share of building rate</td></tr>
+      <tr><td class="rm"><span class="bmark"></span>STUDIO X</td><td class="num dim">$1,250</td><td class="dim">→</td><td class="num share">$1,150.00</td><td class="num dim">$2,300</td><td class="lockcell">share of building rate</td></tr>
+      <tr><td class="rm"><span class="bmark"></span>STUDIO E</td><td class="num dim">$750</td><td class="dim">→</td><td class="num share">$690.00</td><td class="num dim">$1,380</td><td class="lockcell">share of building rate</td></tr>
+    </tbody>
+  </table>
+  <div class="readout">
+    <div class="ro"><div class="k">Rack / day</div><div class="v">$7,250</div></div>
+    <div class="ro"><div class="k">Blanket / day</div><div class="v">$6,670</div></div>
+    <div class="ro"><div class="k">Off rack</div><div class="v">8.00%</div></div>
+    <div class="ro good"><div class="k">Shares sum to</div><div class="v">$6,670.00 ✓</div></div>
+    <div class="ro"><div class="k">2-day total</div><div class="v">$13,340</div></div>
+  </div>
+</div>
+
+<p class="note"><b>Why the invariant is not paranoia.</b> Run the same allocation against the
+<i>stale</i> rate sheet (Studio A at $1,650, rack $7,150) and the rounded shares sum to
+<b>$6,669.99</b> — a real penny short, on the first try, on live numbers. The remainder rule
+(largest room absorbs it) is what makes the sum exact every time instead of most of the time.</p>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2><span class="n">2</span>Where the blanket price lives — the fork</h2>
+<p class="sub">All three options produce identical data. They differ only in where you set the
+number and how visible it stays afterwards.</p>
+
+<!-- ─────────── A ─────────── -->
+<div style="margin-bottom:30px">
+  <div class="oh">A · Bundle strip above the table</div>
+  <div class="od">A collapsible strip in the same position as the Seed panel, and shaped like it:
+  pick rooms, pick a date range, type the blanket rate, press once. It <b>seeds the ten rows and
+  prices them in one action</b> — which for a five-room two-day booking is the difference between
+  ten hand-built rows and one press. The weakness: once collapsed the $6,670 is out of sight, and
+  the rows below just look like oddly-priced rooms.</div>
+  <div class="wo">
+    <div class="strip">
+      <div class="striphead">
+        <span class="striptitle">WHOLE-BUILDING RATE</span>
+        <span class="offrack">8.00% off rack</span>
+      </div>
+      <div class="fields">
+        <div class="f"><span class="k">Rooms</span>
+          <div class="chips">
+            <span class="chip on">A</span><span class="chip on">B</span><span class="chip on">C</span>
+            <span class="chip on">E</span><span class="chip on">X</span>
+          </div>
+        </div>
+        <div class="f"><span class="k">From</span><div class="inp">Sep 3</div></div>
+        <div class="f"><span class="k">To</span><div class="inp">Sep 4</div></div>
+        <div class="f"><span class="k">Rate / day</span><div class="inp">$6,670</div></div>
+        <button class="btn pri">Apply · 2 days · 10 rows</button>
+      </div>
+      <div class="readout">
+        <div class="ro"><div class="k">Rack / day</div><div class="v">$7,250</div></div>
+        <div class="ro"><div class="k">You're giving</div><div class="v">$580/day</div></div>
+        <div class="ro good"><div class="k">Allocates to</div><div class="v">$6,670.00 ✓</div></div>
+        <div class="ro"><div class="k">Booking total</div><div class="v">$13,340</div></div>
+      </div>
+    </div>
+    <table class="st">
+      <thead><tr><th>Date</th><th>Room</th><th>From</th><th>To</th><th class="num">Hrs</th><th>Rate</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        <tr><td class="mono dim">9/3</td><td class="rm"><span class="bmark"></span>STUDIO C</td><td class="mono dim">10:00 AM</td><td class="mono dim">10:00 PM</td><td class="num dim">12</td><td class="lockcell">building rate</td><td class="num share">$1,794.00</td></tr>
+        <tr><td class="mono dim">9/3</td><td class="rm"><span class="bmark"></span>STUDIO A</td><td class="mono dim">10:00 AM</td><td class="mono dim">10:00 PM</td><td class="num dim">12</td><td class="lockcell">building rate</td><td class="num share">$1,610.00</td></tr>
+        <tr><td class="mono dim">9/3</td><td class="rm dim">…3 more rooms</td><td colspan="4"></td><td class="num dim">$3,266.00</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─────────── B ─────────── -->
+<div style="margin-bottom:30px">
+  <div class="oh">B · The day header owns the price<span class="rec">Recommended</span></div>
+  <div class="od">The Studio Time table is already grouped by day, and <b>a day is exactly the
+  object that owns "all rooms today"</b> — so the blanket rate belongs on the day header, not
+  floating above the table. Toggle the day to <b>WHOLE BUILDING</b>, type $6,670, and the rooms
+  underneath switch their rate cell to a locked share. The number stays on screen next to the
+  rooms it governs, editing it re-allocates live, and a second day can carry a different rate
+  without any of this becoming modal. Pair it with A's strip as the <i>creation</i> path and this
+  is the whole feature.</div>
+  <div class="wo">
+    <div class="wolab">Studio time</div>
+
+    <div class="dayhead">
+      <span class="d">WED SEP 3</span>
+      <span class="tog on">Whole building</span>
+      <span class="offrack">5 rooms · 8.00% off rack</span>
+      <span class="amt"><span class="lab">Rate / day</span><span class="val">$6,670</span></span>
+    </div>
+    <table class="st">
+      <thead><tr><th>Room</th><th>From</th><th>To</th><th class="num">Hrs</th><th>Rate</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        <tr><td class="rm">STUDIO C</td><td class="mono dim">10:00 AM</td><td class="mono dim">10:00 PM</td><td class="num dim">12</td><td class="lockcell">$1,950 <span class="dim">→</span> share</td><td class="num share">$1,794.00</td></tr>
+        <tr><td class="rm">STUDIO A</td><td class="mono dim">10:00 AM</td><td class="mono dim">10:00 PM</td><td class="num dim">12</td><td class="lockcell">$1,750 <span class="dim">→</span> share</td><td class="num share">$1,610.00</td></tr>
+        <tr><td class="rm">STUDIO B</td><td class="mono dim">10:00 AM</td><td class="mono dim">12:00 AM</td><td class="num dim">12</td><td class="lockcell">$1,550 <span class="dim">→</span> share</td><td class="num share">$1,426.00</td></tr>
+        <tr><td class="rm">STUDIO X</td><td class="mono dim">10:00 AM</td><td class="mono dim">10:00 PM</td><td class="num dim">12</td><td class="lockcell">$1,250 <span class="dim">→</span> share</td><td class="num share">$1,150.00</td></tr>
+        <tr><td class="rm">STUDIO E</td><td class="mono dim">10:00 AM</td><td class="mono dim">10:00 PM</td><td class="num dim">12</td><td class="lockcell">$750 <span class="dim">→</span> share</td><td class="num share">$690.00</td></tr>
+      </tbody>
+    </table>
+
+    <div class="dayhead" style="margin-top:16px">
+      <span class="d">THU SEP 4</span>
+      <span class="tog on">Whole building</span>
+      <span class="offrack">5 rooms · 8.00% off rack</span>
+      <span class="amt"><span class="lab">Rate / day</span><span class="val">$6,670</span></span>
+    </div>
+    <table class="st">
+      <tbody>
+        <tr><td class="rm dim" style="padding-top:7px">5 rooms · same allocation</td><td class="num share" style="text-align:right">$6,670.00</td></tr>
+      </tbody>
+    </table>
+
+    <div class="readout">
+      <div class="ro"><div class="k">Studio time</div><div class="v">$13,340.00</div></div>
+      <div class="ro"><div class="k">Overtime</div><div class="v">$310.00</div></div>
+      <div class="ro"><div class="k">Engineers</div><div class="v">separate</div></div>
+      <div class="ro good"><div class="k">Bundles balance</div><div class="v">✓ exact</div></div>
+    </div>
+  </div>
+  <p class="note">A day that is <i>not</i> a whole-building day shows the toggle in its off state and
+  behaves exactly as it does today — nothing about normal sessions changes.</p>
+</div>
+
+<!-- ─────────── C ─────────── -->
+<div style="margin-bottom:14px">
+  <div class="oh">C · A third rate type on the row<span class="warnpill">weakest</span></div>
+  <div class="od">Extend the per-row <b>Day / Hr</b> toggle to <b>Day / Hr / Bundle</b>. Rows flipped
+  to Bundle join the day's pool and show their share. Most consistent with mechanics that already
+  exist — but a bundle price is not a row-level fact, so it has nowhere to live except a footer
+  strip, which means the control is split across two places and you can flip four rows to Bundle
+  and leave the fifth on Day without the UI making that obviously wrong. Shown so the option is on
+  the record, not because it should win.</div>
+  <div class="wo">
+    <div class="wolab">Studio E was never flipped to Bundle</div>
+    <table class="st">
+      <thead><tr><th>Room</th><th class="num">Hrs</th><th>Type</th><th class="num">Rack</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        <tr><td class="rm">STUDIO C</td><td class="num dim">12</td><td><span class="tog on" style="font-size:8.5px">Bundle</span></td><td class="num dim">$1,950</td><td class="num share" style="color:var(--hot)">$2,001.00</td></tr>
+        <tr><td class="rm">STUDIO A</td><td class="num dim">12</td><td><span class="tog on" style="font-size:8.5px">Bundle</span></td><td class="num dim">$1,750</td><td class="num share" style="color:var(--hot)">$1,795.77</td></tr>
+        <tr><td class="rm">STUDIO B</td><td class="num dim">12</td><td><span class="tog on" style="font-size:8.5px">Bundle</span></td><td class="num dim">$1,550</td><td class="num share" style="color:var(--hot)">$1,590.54</td></tr>
+        <tr><td class="rm">STUDIO X</td><td class="num dim">12</td><td><span class="tog on" style="font-size:8.5px">Bundle</span></td><td class="num dim">$1,250</td><td class="num share" style="color:var(--hot)">$1,282.69</td></tr>
+        <tr><td class="rm">STUDIO E</td><td class="num dim">12</td><td><span class="tog off" style="font-size:8.5px">Day</span></td><td class="num dim">$750</td><td class="num share">$750.00</td></tr>
+      </tbody>
+    </table>
+    <div class="readout">
+      <div class="ro good"><div class="k">Bundle sums to</div><div class="v">$6,670.00 ✓</div></div>
+      <div class="ro"><div class="k">+ Studio E</div><div class="v">$750.00</div></div>
+      <div class="ro bad"><div class="k">Day totals</div><div class="v">$7,420.00</div></div>
+      <div class="ro bad"><div class="k">Client overcharged</div><div class="v">$750.00 ✗</div></div>
+    </div>
+    <p class="note" style="margin-top:9px"><b>The failure mode, drawn.</b> Four rooms flipped to Bundle,
+    the fifth forgotten. The four absorb the entire $6,670 between them — every one of them now bills
+    <i>above</i> its own rack rate — and Studio E charges $750 on top. The bundle still balances, the
+    invariant still passes, and the day silently totals <b>$7,420</b> against a $6,670 deal. Option B
+    cannot produce this state: the day owns the price, so membership is the whole day's rooms by
+    construction rather than five independent choices.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2><span class="n">3</span>What stays outside the bundle</h2>
+<p class="sub">The blanket covers <b>room time only</b>. Everything else bills normally, per room,
+on top — otherwise a late night in Studio B gets swallowed by the blanket and the studio eats it.</p>
+
+<div class="cols">
+  <div class="wo" style="max-width:400px">
+    <div class="wolab">Sep 3 · Studio B runs two hours over</div>
+    <table class="st">
+      <tbody>
+        <tr><td>Room share (bundled)</td><td class="num share">$1,426.00</td></tr>
+        <tr><td>OT · 2 hrs @ $155<span class="dim"> (rack ÷ 10)</span></td><td class="num share">$310.00</td></tr>
+        <tr><td class="arch">Studio B, that day</td><td class="num share">$1,736.00</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:8px">OT rate stays off <b>rack</b>, not off the discounted share
+    — the deal was on booked time, not on overruns. <span class="dim">Flag: confirm.</span></p>
+  </div>
+  <div class="wo" style="max-width:340px">
+    <div class="wolab">Untouched by bundling</div>
+    <table class="st">
+      <tbody>
+        <tr><td>Engineers &amp; assistants</td><td class="num dim">per row, as today</td></tr>
+        <tr><td>Rentals</td><td class="num dim">as today</td></tr>
+        <tr><td>Food budget</td><td class="num dim">as today</td></tr>
+        <tr><td>Card surcharge (COD)</td><td class="num dim">as today</td></tr>
+        <tr><td>SRS 10%</td><td class="num dim">reads the same charges</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2><span class="n">4</span>What the client sees</h2>
+<p class="sub">Ruling 3: one line, rooms named, no per-room money. The allocation is internal and
+never prints.</p>
+
+<div class="inv">
+  <div class="wolab">Invoice · lib/woPdf.ts</div>
+  <div class="invline">
+    <div class="invdesc">Paramount — whole building · 2 days @ $6,670/day
+      <div class="rooms">Studios A, B, C, E and X · Sep 3–4</div></div>
+    <div class="invamt">$13,340.00</div>
+  </div>
+  <div class="invline">
+    <div class="invdesc">Overtime — Studio B · 2 hrs<div class="rooms">Sep 3</div></div>
+    <div class="invamt">$310.00</div>
+  </div>
+  <div class="invtot"><span>Total</span><span>$13,650.00</span></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2><span class="n">5</span>Partial building</h2>
+<p class="sub">Bundle membership is a <b>chosen set of rows</b>, never "all rooms at this location"
+— so four-of-five works with no special case. Four rooms at 8% off their own rack:</p>
+
+<div class="wo" style="max-width:560px">
+  <table class="st">
+    <thead><tr><th>Room</th><th class="num">Rack</th><th class="num">Allocated</th></tr></thead>
+    <tbody>
+      <tr><td class="rm">STUDIO C</td><td class="num dim">$1,950</td><td class="num share">$1,794.00</td></tr>
+      <tr><td class="rm">STUDIO A</td><td class="num dim">$1,750</td><td class="num share">$1,610.00</td></tr>
+      <tr><td class="rm">STUDIO B</td><td class="num dim">$1,550</td><td class="num share">$1,426.00</td></tr>
+      <tr><td class="rm">STUDIO X</td><td class="num dim">$1,250</td><td class="num share">$1,150.00</td></tr>
+      <tr><td class="rm strike">STUDIO E</td><td class="num dim strike">$750</td><td class="num dim">not in bundle</td></tr>
+    </tbody>
+  </table>
+  <div class="readout">
+    <div class="ro"><div class="k">Rack (4 rooms)</div><div class="v">$6,500</div></div>
+    <div class="ro"><div class="k">Blanket</div><div class="v">$5,980</div></div>
+    <div class="ro"><div class="k">Off rack</div><div class="v">8.00%</div></div>
+    <div class="ro good"><div class="k">Sums to</div><div class="v">$5,980.00 ✓</div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<h2><span class="n">6</span>Still open</h2>
+<p class="sub">Four questions this mock deliberately does not answer.</p>
+<div class="wo" style="max-width:760px">
+  <table class="st">
+    <tbody>
+      <tr><td><b>Is OT priced off rack or off the discounted share?</b></td><td class="dim" style="width:44%">Drawn as rack. A discounted OT rate would mean the blanket deal follows the client past the booked hours, which is probably not the intent — but it is Eli's call.</td></tr>
+      <tr><td><b>Can a bundle span two venues?</b></td><td class="dim">Paramount + Encore on one blanket rate. The model allows it (membership is a set of rows). Nothing in the UI drawn here does.</td></tr>
+      <tr><td><b>Does the rate card become a table?</b></td><td class="dim">Pro-rata works today off the rate typed on each row. A real <span class="mono">room_rates</span> table would auto-fill them and stop the rate sheet drifting — worth doing, not a blocker.</td></tr>
+      <tr><td><b>Does a bundled day show anything on the calendar card?</b></td><td class="dim">Five cards each show a share, not the blanket. A card might want to say "whole building" instead of a number.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p class="note" style="margin-top:26px"><b>Rate sheet correction found while building this:</b> the
+<span class="mono">prs-rate-sheet</span> skill has Paramount Studio A at $1,650/day ($165/hr). Eli
+(2026-09-03): it is <b>$1,750/day / $175/hr</b>. Track South at $1,450 already matches. Client-facing
+rate sheets have been quoting the old A rate — fix the skill.</p>
+
+</body>
+</html>
