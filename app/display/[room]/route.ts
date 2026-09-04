@@ -230,7 +230,14 @@ function spanBar(b: B, day: string): string {
  *
  *  The meta refresh stays as a backstop at 15 minutes. If the script ever dies
  *  the wall still heals itself; it just does so slowly. */
-const POLL_MS = 5000
+// 5000 → 30000 (Eli, 2026-09-03). Every poll now routes through the WordPress
+// host (the plugin proxy — see docs/TV-DISPLAY-BRIEF.md), and its Varnish
+// layer rate-limits by IP: multiple panels at 5s from one building tripped
+// "429 Too Many Requests", which Varnish serves BEFORE the plugin runs — so
+// the self-healing Reconnecting page never got a chance and panels sat on the
+// error. 30s per panel stays far under the limit; a booking change reaches
+// the wall within half a minute, which is fine for a wall.
+const POLL_MS = 30000
 
 function poller(hash: string, _probeUrl: string): string {
   // The probe URL is built from location at runtime, not baked in, so the page
