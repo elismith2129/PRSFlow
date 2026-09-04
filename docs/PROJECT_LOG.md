@@ -4905,3 +4905,170 @@ and login unlinked (a soft-deleted profile alone would NOT have cut access:
 the SQL instead. And `myday_note_posts.date` is a real `date` column, nearly
 alone in an app of text dates — the first backfill draft failed on `date =
 text`.
+
+---
+
+### Sep 2–3, 2026 — The tenants, the exception that ate an afternoon, and two bugs that were the same bug (v1.21.0)
+
+**The session's shape:** a new billing section built in an hour, then five
+hours on ONE tenant — because Mustard is the exception to nearly every rule
+the app has, and finding out which rule he breaks took longer than any of the
+fixes.
+
+#### Tenants: the rent board, and the spreadsheet that was already in the database
+
+Eli runs eight tenant rooms; one of them (Mustard, ERS·B) is billed runner
+hours as monthly incidentals, at HALF rate for any hour the runner was also
+covering a billed ERS·A session. That reconciliation was a hand-built
+spreadsheet, day by day, every month.
+
+**The insight that made it small: both sides of the comparison were already
+studio-time rows.** Mustard's runner hours get typed on his lockout WO; ERS·A's
+sessions are ordinary work orders. So the month sheet is an interval
+intersection over data the app already holds — no new entry surface, no stored
+result. `lib/tenants.ts` computes it on every read, exactly as COD buckets do,
+and "anything that's billed" resolves through the SAME
+`bookingShouldHaveWorkOrder` gate the pipeline uses, so it cannot drift into a
+second status list.
+
+**The roster is CODE** (the `lib/nadines.ts` precedent): rooms, tenants and
+rents are the terms of real deals, so a change is a commit. **Rejected: a
+tenants/leases table** — one tenant is the exception, the other seven are
+"name, room, rent" that changes maybe twice a year; a table would have bought
+a settings screen nobody asked for and a second place for the deal to be wrong.
+
+**Stored: only the human acts** (`tenant_rent_months`, migration
+`20260902120000`) — the 25th rent email went out, the money arrived, and (added
+mid-session) the payment was entered in QuickBooks. Three stamps, one row per
+room per month per kind. Everything else on the board derives.
+
+**Money left the Mustard sheet on Eli's ruling** ("we don't need money just the
+hours"). The output is solo hrs + shared hrs → billable hrs; billing prices it
+in QuickBooks. That is the house law working: PRSFlo owns the workflow, QBO
+owns the money.
+
+**The gap-day treatment matters more than it looks.** A day where ERS·A ran but
+no runner hours were typed renders dashed and empty rather than as a zero — a
+missing day must LOOK missing, because the failure mode of this report is
+silent under-billing.
+
+#### Mustard, and the cost of an exception discovered one rule at a time
+
+Five separate rules turned out to assume "a session," and Mustard is not one:
+
+1. **The missing-times banner.** His 30-day WO opened to a wall of thirty red
+   rows. Exempted lockouts (`woNeedsTimes`), and capped every banner's detail
+   at four rows + "+ N more" — a 30-row banner IS the page.
+2. **The exemption didn't fire**, because his booking was still `confirmed`.
+   It had to be: the runner hub selects `status='confirmed'`, so a real lockout
+   would never have reached the runner's phone. **So the hub now shows lockout
+   cards too** — the narrowest possible amendment to the Aug 26 rule, and only
+   there; daily ops, checklists and admin queues still exclude lockouts by
+   status.
+3. **Then the times rule itself.** A first pass (option B) loosened the rule
+   for all flat unstaffed day-rate rows — Eli killed it correctly: *"I don't
+   want to build something that affects all of our work orders for one unique
+   situation."* **Reverted.** The replacement is his own design and better: the
+   failure worth stopping is a session CONFIRMED with blank times that lands on
+   a runner to guess, so **admin cannot save a Confirmed work order while any
+   dated studio day is missing From or To.** Tentative saves freely; lockouts
+   are exempt. The gate sits where the commitment is made rather than where the
+   damage shows.
+4. **Staff.** `eng_visible` was welded to the monthly modal's N/A times toggle
+   (`eng_visible: !monthlyNA`), which made two unrelated facts one switch — so
+   Mustard (times YES, staff YES) could not be given staff without also being
+   given times he doesn't have. Split into its own control, No staff leading
+   because rent normally has nobody on it. Per-day exceptions already had a
+   home (the day card's × and + Add), which is why this is one control in one
+   modal rather than a new button on every WO.
+5. **The status bar.** Seven pills at the non-wide width overflowed and the
+   Aug 26 fix scrolled them sideways — which hid Lockout itself. **A status you
+   cannot see is a status nobody sets.** The housing is now full-width with the
+   pills dividing it, so it fits by construction rather than by a padding
+   measurement a longer label can invalidate.
+
+**The generalizable lesson:** each of those was a rule written for the 95%
+case, and every one of them was *correct* — the cost was that finding which
+five applied took an afternoon of round trips through Eli's phone. Mustard is
+now the app's designated exception, and the exemptions all key on ONE fact
+(`status='lockout'`) rather than on five separate flags.
+
+#### Two "cleared my work" reports that were the same disease
+
+**My Day, 2 PM.** The office reported checkboxes clearing on navigation;
+unreproducible. First diagnosis (midnight re-keying) was WRONG and Eli's "it
+happened around 2p" killed it. The real cause: `fetchEntries` returned `[]`
+both for "no ticks" and "the request failed", and `load()` wrote that straight
+into state — so one flaky read (an expired token after a laptop nap) repainted
+every ticked duty unchecked while the database was fine. **An empty array is an
+answer; a failed fetch is not.** Both now return null and the page keeps what
+it has. *The midnight bug was real too and shipped anyway* — duty ticks moved
+to `opsToday()`, closing the Sep 1 carve-out that had kept them on the calendar
+day against the same session's own no-12a law.
+
+**Runner mics, same shape.** Lori Beth: another runner's submission never
+appeared until repeated force-quits. Two causes, both about staleness: a draft
+holding nothing but typed INITIALS pinned the page `dirty`, which silenced both
+the realtime channel and the reload-on-return; and reload-on-return was
+dirty-gated at all, so returning to a suspended PWA — the exact moment another
+device's work should appear — was the moment it refused to look. It now always
+reloads: `load()` overlays the draft on the server rows, so **the merge is the
+protection, not the skip.**
+
+#### Also, briefly
+
+- **`opsToday()` on petty cash** and a **"Counted — no change"** button: a
+  counted-but-unchanged box needed the same record as a busy night, but the
+  only button said "Save", which reads as "save my edits" — so runners with
+  nothing to type just left, and the sweep showed the duty undone.
+- **Runner home rebuilt** on Eli's ruling that the app must never assume which
+  studio you're in ("runners move a bunch and I don't want them making
+  assumptions about which WO or checklist they are on"). The remembered-studio
+  bounce is dead and the stale key is actively removed; punch / guide / manual /
+  report-a-bug moved to the landing because none of them belong to a studio;
+  notes there sit behind explicit studio tabs with NO default tab.
+- **The error sweep** (20 rows out of Admin → Errors): `/api/wo-package` had no
+  try/catch, so any renderer throw was an anonymous 500 — now named, plus
+  WinAnsi-safe text (one emoji in an artist name could kill a package) and a
+  loud named failure for an unreadable invoice attachment, which must never be
+  silently skipped: that would build a package MISSING ITS BILL. Financials'
+  year-over-year compare did string year-surgery and produced `2023-02-29`;
+  clamped to the target month's length.
+- **Receipt thumbnails**: the per-expense camera button becomes the photo.
+- **TV displays**: Eli added `wordpress/prsflow-display-proxy.php` and the
+  shipped-architecture box on `docs/TV-DISPLAY-BRIEF.md` mid-session, after I
+  confidently handed him eleven Vercel URLs that 403 by design. **The repo said
+  the `/display/*` routes were the live path; reality is a WordPress proxy,
+  because the Sharp panels cannot load a Let's Encrypt certificate.** A cold
+  session reads docs, so an undocumented decision becomes a wrong answer with
+  full confidence — that is the whole argument for the wrap-up ritual.
+
+#### Rejected / deferred
+
+- **Option B for the times rule** (see above) — loosened everything for one
+  case.
+- **A `no_staff` flag per work order** — the monthly modal's own answer plus
+  the existing per-day controls cover it without a column.
+- **Opening WO-1054** (imported history, locked read-only). Two paths offered:
+  clear `imported_at` (fast, erases provenance — advised against) or an
+  owner-only Unlock that keeps the stamp and logs to WO history. Eli did not
+  pick; nothing built.
+- **The billing list changes** (status pills, sortable headers, day dividers)
+  and the **post-approval PO flow** — both mocked
+  (`billing-row-options.html`, `billing-po-flow-options.html`) and NOT built;
+  Eli is taking them to another session via
+  `docs/design-refs/PROMPT-billing-po-and-list.md`.
+
+#### Two holes found in billing while scoping the PO work — NOT yet fixed
+
+Recorded here because they are live defects, not design questions:
+
+1. **`uploadInvoiceDoc` re-snapshots `invoice_total` on every attach**, so
+   dropping a replacement PDF after a money edit silently re-baselines the
+   approved figure and drift disappears — an approved total changes with no
+   owner. Fix: don't re-snapshot on a replacement (the row is past
+   `needs_invoice`).
+2. **Re-downloading a SENT package overwrites the as-sent artifact** —
+   `/api/wo-package` stores its bytes on every call, so pulling the file again
+   later rebuilds from today's WO and replaces the record of what the client
+   received. Fix: once `invoice_sent_at` is set, serve the stored bytes.

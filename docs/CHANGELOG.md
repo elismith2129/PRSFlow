@@ -19,6 +19,125 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.21.0 — Tenants, the Mustard exception, and two stale-page bugs — Sep 2–3, 2026
+
+**One migration, hand-run.** A new billing section, a designated exception
+tenant, and a sweep of Admin → Errors.
+
+**Billing — the Tenants section** (mocks `tenants-tab-options.html` option A,
+`mustard-shared-runner-options.html` option A). Third word in the hub's
+heading beside Billing and COD, its own branch like Financials. A rent board:
+month picker, four figures, one row per tenant room grouped by venue with
+empty rooms dashed. Per row the ladder is **Mark sent → Mark paid → In QB**,
+each a stored stamp with its date and a ↩ that clears the last one; unpaid
+past the 5th goes hot. **The roster and rents live in `lib/tenants.ts`**, not a
+table (the `lib/nadines.ts` precedent — deal terms change by commit).
+
+**Billing — the Mustard shared-runner sheet.** Mustard (ERS·B lockout) is
+billed runner hours as incidentals, at HALF for any hour a billed ERS·A
+session was also running. Fully derived: his runner hours are studio-time rows
+on his lockout WO, ERS·A's are rows on billed work orders (filtered through
+the same `bookingShouldHaveWorkOrder` gate the pipeline uses), and
+`fetchSharedRunnerMonth` intersects them per day — merged intervals, so a
+double-booked day can't double-halve an hour. Output is **hours only** (Eli):
+solo + shared → billable (solo + shared ÷ 2). Days where ERS·A ran with no
+runner hours typed render dashed, never as zero.
+
+**Work orders — lockouts are the designated exception.** `woNeedsTimes()`
+exempts `status='lockout'` from the missing-times rule entirely (the runner
+types Mustard's times live; admin creates and reviews only). The runner hub
+now selects `['confirmed','lockout']` so a lockout card reaches the phone at
+all — **only there**; daily ops, checklists and admin queues still exclude
+lockouts by status. The monthly modal's **Staff** choice (No staff / Assistant)
+is now its own control instead of `eng_visible: !monthlyNA`.
+
+**Work orders — confirming requires times.** Admin cannot save a work order
+whose session status is Confirmed while any dated studio day is missing From
+or To (`confirmStartProblem`); the offending days are named and their rows
+highlighted. Tentative saves freely; lockouts exempt. The runner's warning
+banner now only flags days that have HAPPENED (`findMissingTimes(rows, asOf)`),
+and every banner caps its detail at four rows + "+ N more".
+
+**My Day — the "it cleared my checkboxes" fix.** `fetchDuties`/`fetchEntries`
+return **null** on failure instead of `[]`, and the page keeps its current
+state on null: one flaky read used to repaint every ticked duty unchecked while
+the database was fine. Separately, duty ticks moved to `opsToday()` — the Sep 1
+calendar-day carve-out is superseded per the no-12a law.
+
+**Runner — mics stale-page fix.** A draft holding only typed initials no longer
+pins the page `dirty` (which silenced both the realtime channel and the
+reload-on-return), and reload-on-return is no longer dirty-gated: `load()`
+overlays the draft on the server rows, so the merge protects in-progress taps.
+
+**Runner — home rebuilt.** No remembered studio (the key is actively removed);
+the app always lands on the picker. Punch / App guide / Runners manual / Report
+a bug moved from the studio hub to the landing (none belong to a studio), and
+notes there sit behind explicit studio tabs with no default. Petty cash gained
+**"Counted — no change"** (same save path) and `opsToday()`. The **mic
+inventory tile is greyed with "Coming soon"** for a one-week hold —
+`MICS_COMING_SOON` in `app/runner/[studio]/page.tsx`, delete it to ship.
+
+**Error sweep** (from Admin → Errors). `/api/wo-package` wraps the build and
+returns NAMED failures instead of an anonymous 500; `woPdf` strips characters
+the standard fonts can't encode (one emoji killed a whole package) and throws a
+named error for an unreadable invoice attachment rather than silently building
+a package missing its bill. `lib/financials.priorBucket` clamps the day when
+shifting a year back — a leap-day window edge produced `2023-02-29`.
+
+**Also:** per-expense receipt buttons become the receipt thumbnail; the WO
+session-notes popover is opaque (it was using a translucent tint as its own
+background); the runner day sheet is sized in `dvh` so its footer clears the
+home indicator; the WO status bar fits all seven pills on one line via a
+full-width `c-seg-status` housing.
+
+**Migration (hand-run, verified):** `20260902120000_tenant_rent_months.sql` —
+plus one hand-run data op (Sam Jurequi `runner` → `asst_manager`, so his login
+lands on the dashboard).
+
+**WATCH-OUT #1 — the tenant roster is CODE.** `TENANT_ROOMS` and
+`SHARED_RUNNER` in `lib/tenants.ts`. A rent change or a new tenant is a commit,
+not a form. `room_id` values are the `tenant_rent_months` key — **never rename
+one** once stamps exist or that room's history is orphaned.
+
+**WATCH-OUT #2 — `TenantsView` opens a `studio_time_rows` channel.** That is
+only safe because the tenants branch returns early and unmounts
+`WorkOrderPopup` (which opens its own filtered one). Mounting `TenantsView`
+anywhere it can share a page with the popup breaks the one-channel-per-table
+rule — one of the two has to go.
+
+**WATCH-OUT #3 — lockout exemptions all key on ONE fact.** `status ===
+'lockout'`, via `woNeedsTimes`. Don't add a second flag for "no times needed";
+extend that predicate. And the runner hub's `['confirmed','lockout']` select is
+deliberately the ONLY operational surface that admits lockouts.
+
+**WATCH-OUT #4 — an empty array is an answer, a failed fetch is not.** The My
+Day loaders return null on error and callers keep their state. Any new loader
+whose result replaces rendered state should do the same; returning `[]` for a
+failure is how a screen silently claims work was lost.
+
+**WATCH-OUT #5 — the WO status bar fits SEVEN pills.** An eighth status breaks
+it. The fix then is a shorter label (OPEN HRS is already the short form), never
+re-adding horizontal scroll — the Aug 26 scroll is what hid Lockout.
+
+**KNOWN, NOT YET FIXED (found while scoping the PO work):**
+`uploadInvoiceDoc` re-snapshots `invoice_total` on every attach, so a
+replacement PDF after a money edit silently re-baselines an approved figure;
+and re-downloading a SENT package overwrites the as-sent artifact because
+`/api/wo-package` stores its bytes on every call. Both are scoped in
+`docs/design-refs/PROMPT-billing-po-and-list.md`.
+
+**Files:** `lib/tenants.ts` (new), `components/billing/TenantsView.tsx` (new),
+`lib/woValidation.ts`, `lib/myday.ts`, `lib/financials.ts`, `lib/woPdf.ts`,
+`app/api/wo-package/route.ts`, `app/(main)/billing/page.tsx`,
+`app/(main)/my-day/page.tsx`, `components/calendar/WorkOrderPopup.tsx`,
+`app/runner/page.tsx`, `app/runner/[studio]/page.tsx`,
+`app/runner/[studio]/mics/page.tsx`,
+`app/runner/[studio]/petty-cash/page.tsx`, `styles/globals.css`,
+`docs/TV-DISPLAY-BRIEF.md`, `wordpress/prsflow-display-proxy.php` (new),
+four mocks + one prompt in `docs/design-refs/`, + the migration.
+
+---
+
 ## v1.20.0 — WO history, the approvals queue, the runner notes channel, actual vs billed — Sep 1, 2026
 
 **One long session, six features, five migrations.** All hand-run and verified

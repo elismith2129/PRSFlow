@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Adding a PO after approval</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  ADDING A PO AFTER APPROVAL (Eli, 2026-09-03).
+
+  THE TWO SCENARIOS, stated as law:
+
+    1. SOMETHING WAS WRONG. Any correction to the work order goes back through
+       the whole loop: review → new invoice → OWNER RE-APPROVES. No exceptions.
+       (Already built: a money change makes `invoiceDrift` true and deriveStep
+       demotes 3 → 2, so the row re-enters the owner's queue by itself.)
+
+    2. NOTHING WAS WRONG — THE PO JUST ARRIVED LATE. No re-approval, ever.
+       But the PO is not one field: the label issues it, the invoice must be
+       re-cut carrying it (often with a new invoice date), the new PDF gets
+       attached, and the package goes out. Four acts, one intention.
+
+  TODAY those four acts are four places: open the WO → type the PO → save →
+  back to the hub → drop the PDF → Download → Mark sent. Nothing is broken,
+  but the path is long enough that "the PO came in" becomes a chore somebody
+  defers, which is exactly how a finished package sits unsent.
+
+  THE RULING THIS REVERSES: 2026-08-11, "adding a PO is done on the WO. One
+  place, easily understood." That was right when a PO was just a number on the
+  paperwork. It is no longer just a number — post-approval it carries a new
+  PDF and a send, which are billing-hub acts. Keeping the field on the WO now
+  means the OTHER THREE STEPS happen somewhere else, which is the two-doors
+  problem the ruling was written to prevent, pointing the other way. The WO's
+  PO field stays for the normal case (PO known at booking).
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1040px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.65;max-width:750px;line-height:1.6;margin-bottom:20px}
+.law{background:var(--wash);border-radius:14px;padding:13px 16px;margin-bottom:26px;font-size:12px;line-height:1.65;max-width:820px}
+.law b{font-family:'Archivo Black',sans-serif;font-weight:400}
+.law .one{color:var(--hot)} .law .two{color:var(--booked)}
+.opt{margin-bottom:34px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:720px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:700px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.crumb{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:10px}
+
+.row{display:grid;grid-template-columns:78px 1fr 116px 92px 118px 26px;gap:10px;align-items:center;
+  background:var(--srf);box-shadow:var(--softsh);border-radius:10px;padding:9px 12px;margin-top:5px;font-size:12px}
+.wo{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.55}
+.who{font-weight:700;font-size:12.5px}
+.who small{display:block;font-size:10px;font-weight:400;opacity:.5}
+.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.act{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--wash2);padding:7px 10px;border-radius:99px;text-align:center}
+.act.go{background:var(--booked);color:var(--chip-ink)}
+.act.dim{opacity:.35}
+.more{opacity:.35;text-align:center}
+.chip{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:4px 9px;border-radius:99px;white-space:nowrap;justify-self:start}
+.c-po{background:var(--warm);color:var(--chip-ink)}
+.c-ok{background:var(--booked);color:var(--chip-ink)}
+
+/* modal sim */
+.modal{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:16px 18px;max-width:520px;margin-top:12px}
+.mh{font-family:'Archivo Black',sans-serif;font-size:14px;margin-bottom:2px}
+.msub{font-size:11px;opacity:.55;margin-bottom:14px}
+.step{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--wash2)}
+.step:first-of-type{border-top:none}
+.n{width:19px;height:19px;border-radius:99px;background:var(--wash2);font-size:9.5px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.n.done{background:var(--booked);color:var(--chip-ink)}
+.sl{flex:1;min-width:0}
+.st{font-size:12px;font-weight:700}
+.sd{font-size:10.5px;opacity:.55;margin-top:1px;line-height:1.5}
+.field{background:var(--wash);border-radius:10px;padding:9px 11px;font-size:12px;margin-top:7px;opacity:.75}
+.drop{border:1.5px dashed var(--wash2);border-radius:10px;padding:14px;text-align:center;font-size:11px;opacity:.6;margin-top:7px}
+.mfoot{display:flex;gap:9px;margin-top:14px}
+.btn{flex:1;text-align:center;padding:11px 0;border-radius:12px;font-size:12px;font-weight:800;background:var(--wash2)}
+.btn.go{background:var(--booked);color:var(--chip-ink);flex:2}
+.tabs{display:flex;gap:16px;font-size:11.5px;font-weight:700;margin-bottom:10px}
+.tabs .on{border-bottom:2px solid var(--fg);padding-bottom:3px}
+.tabs span{opacity:.5}
+.tabs .on{opacity:1}
+.tabs em{font-style:normal;background:var(--warm);color:var(--chip-ink);border-radius:99px;padding:1px 7px;font-size:9.5px;margin-left:4px}
+</style>
+</head>
+<body>
+
+<h1>Adding a PO after approval</h1>
+<p class="lede">Everything up to “sent” is built and staying. This is only about what happens
+after an owner has approved — and the answer splits cleanly in two.</p>
+
+<div class="law">
+  <b class="one">1 · Something was wrong.</b> Any correction to the work order goes back through
+  the whole loop — review, new invoice, <b>owner re-approves</b>. No exceptions, no shortcut.
+  That already happens by itself: change the money and the row drops out of Approved and back
+  into the owner’s queue.<br><br>
+  <b class="two">2 · Nothing was wrong, the PO just came late.</b> Never goes back to the owner.
+  But it is not one field — the label issues the PO, the invoice is re-cut carrying it (often a
+  new invoice date), the new PDF is attached, and the package goes out. <b>Four acts, one
+  intention</b>, and today they are four different screens.
+</div>
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · The row’s next action becomes “Add PO”, and it opens the whole flow<span class="rec">Recommended</span></div>
+  <div class="od">An approved package that can’t go out because it has no PO currently shows a
+  greyed Download and a chip explaining why. Instead the button becomes the thing you actually
+  came to do. One panel: type the PO, drop the re-issued invoice, send — the package rebuilds
+  itself in between. No owner, no re-approval, no trip to the work order.</div>
+  <div class="page">
+    <div class="crumb">Billing → In progress · an approved row waiting on its PO</div>
+    <div class="row">
+      <span class="wo">WO-1063</span>
+      <span class="who">Interscope — SZA<small>Aug 22–25 · B, A</small></span>
+      <span class="chip c-po">Awaiting PO</span>
+      <span class="num">$14,300</span>
+      <span class="act go">Add PO</span><span class="more">⋯</span>
+    </div>
+
+    <div class="modal">
+      <div class="mh">PO for WO-1063</div>
+      <div class="msub">Interscope — SZA · $14,300 · approved Aug 26 by Eli</div>
+
+      <div class="step">
+        <span class="n">1</span>
+        <span class="sl">
+          <span class="st">PO number</span>
+          <span class="sd">Written to the work order — the same field, filled from here.</span>
+          <div class="field">4500912877</div>
+        </span>
+      </div>
+
+      <div class="step">
+        <span class="n">2</span>
+        <span class="sl">
+          <span class="st">The re-issued invoice</span>
+          <span class="sd">A PO means a new PDF out of QuickBooks — usually a new invoice date
+          too. Drop it here and it replaces the attached one. The date lives in the PDF, so
+          nothing else needs typing.</span>
+          <div class="drop">Drop the new invoice PDF · or choose a file</div>
+        </span>
+      </div>
+
+      <div class="step">
+        <span class="n">3</span>
+        <span class="sl">
+          <span class="st">The package rebuilds itself</span>
+          <span class="sd">Work order + the new invoice, one file, carrying the PO. Nothing to
+          press — it is built when you download.</span>
+        </span>
+      </div>
+
+      <div class="mfoot">
+        <span class="btn">Cancel</span>
+        <span class="btn go">Save &amp; download</span>
+      </div>
+      <div class="note" style="margin-top:9px">Then the row’s button is <b>Mark sent</b>, exactly
+      as it would have been if the PO had been there all along. The approval is untouched
+      throughout — the money never moved, and the money is the only thing an owner signed.</div>
+    </div>
+
+    <div class="note"><b>If it was already sent</b> and the PO turns up afterwards (a no-PO-needed
+    job that later needed one), the same panel opens from ⋯ → <b>Add PO &amp; re-send</b>: same
+    three steps, and it re-stamps the sent date because a second document really did go out. The
+    aging clock keeps its ORIGINAL date — the client has owed this since the first send.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · A · plus “Awaiting PO” as its own tab</div>
+  <div class="od">Everything in A, and the waiting rows get a home. A PO can take weeks, so those
+  rows sit in In progress looking like unfinished work — and the pile is invisible unless you
+  scroll. A tab makes “what are we waiting on labels for?” one click, and its count is the
+  number to chase. Same argument as Balance due leading the COD side.</div>
+  <div class="page">
+    <div class="crumb">Billing · tabs</div>
+    <div class="tabs">
+      <span class="on">In progress <em style="background:var(--wash2);color:var(--fg)">12</em></span>
+      <span>Awaiting PO <em>4</em></span>
+      <span>Awaiting payment</span>
+      <span>Paid</span>
+      <span>Closed</span>
+    </div>
+    <div class="row">
+      <span class="wo">WO-1063</span>
+      <span class="who">Interscope — SZA<small>Aug 22–25 · B, A</small></span>
+      <span class="chip c-po">28 days</span>
+      <span class="num">$14,300</span>
+      <span class="act go">Add PO</span><span class="more">⋯</span>
+    </div>
+    <div class="row">
+      <span class="wo">WO-1058</span>
+      <span class="who">Capitol — Toosii<small>Aug 19 · North</small></span>
+      <span class="chip c-po">31 days</span>
+      <span class="num">$6,900</span>
+      <span class="act go">Add PO</span><span class="more">⋯</span>
+    </div>
+    <div class="note">The chip counts days since approval, so a label that has gone quiet is
+    visible without opening anything. Costs one more tab across the top — the thing the nine-tab
+    lesson says to be careful about, which is why it is a separate option rather than assumed.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ C ═══════════════ -->
+<div class="opt">
+  <div class="oh">C · Inline on the row (recorded as the weak option)</div>
+  <div class="od">Type the PO straight into a cell, drop the PDF on the row, button flips to
+  Download. Fewest clicks in the best case — but it hides that a PO means a NEW INVOICE, so the
+  likely outcome is a PO typed with the old PDF still attached and a package that goes out
+  contradicting itself. The flow in A exists precisely to make the second step unmissable.</div>
+  <div class="page">
+    <div class="row">
+      <span class="wo">WO-1063</span>
+      <span class="who">Interscope — SZA<small>Aug 22–25 · B, A</small></span>
+      <span class="field" style="margin:0;padding:6px 9px;font-size:11px">PO number…</span>
+      <span class="num">$14,300</span>
+      <span class="act dim">Download</span><span class="more">⋯</span>
+    </div>
+  </div>
+</div>
+
+<p class="note" style="max-width:800px">Recommendation: <b>A</b>, and <b>B</b> if you want the
+waiting-on-labels pile visible (I think you do — it is the one part of the pipeline where the
+delay is someone else’s and can run for weeks). Both keep scenario 1 exactly as it is: touch the
+money, and the row goes back to the owner on its own.</p>
+
+</body>
+</html>

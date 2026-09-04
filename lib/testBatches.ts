@@ -55,6 +55,121 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-3-2026',
+    title: 'Tenants, the Mustard exception, and the stale-page fixes',
+    version: 'v1.21.0',
+    date: 'Sep 3, 2026',
+    intro:
+      'A new Tenants section in Billing, lockouts as the designated exception on work orders, a save gate on confirming, and fixes for two bugs where the screen appeared to lose work. Billing items need an owner or billing login; runner items need the phone. The Mustard month sheet only shows numbers once his runner hours are typed on his lockout WO — check the empty state honestly if they are not in yet.',
+    items: [
+      {
+        id: 'v121-ten-tab', area: 'Tenants', device: 'desktop',
+        what: 'Tenants is the third word in the Billing heading and lists every monthly room',
+        how: 'Open Billing. Beside "Billing" and "COD" there is "Tenants" — click it. You should see a month at the top and every tenant room grouped by venue: Paramount (Studio D empty, Studio F, Treehouse), Ameraycan (Studio C), Track (PR1 empty, PR2, PR3, North), Encore (Studio B). Empty rooms show a dashed outline and the word "empty".',
+      },
+      {
+        id: 'v121-ten-ladder', area: 'Tenants', device: 'desktop',
+        what: 'A row moves Mark sent → Mark paid → In QB, one button at a time',
+        how: 'On any tenant row press "Mark sent". The chip becomes "Open" and the button becomes "Mark paid". Press that — the chip becomes "Paid" with today\'s date and the button becomes "In QB". Press that — the chip reads "In QB" with the date and there is no button left.',
+      },
+      {
+        id: 'v121-ten-undo', area: 'Tenants', device: 'desktop',
+        what: 'The ↩ arrow undoes the last stamp only',
+        how: 'On a row you just marked "In QB", press the small ↩ next to the chip. It should drop back to "Paid" (not all the way to Not sent). Press ↩ again — back to "Open". Refresh the page and the state you left it in is still there.',
+      },
+      {
+        id: 'v121-ten-figures', area: 'Tenants', device: 'desktop',
+        what: 'The four figures at the top agree with the rows underneath',
+        how: 'Note "Collected" before marking a row paid, then mark one paid. Collected should increase by exactly that room\'s rent and "Still open" should drop by the same amount. "Rooms occupied" should read 7 / 9.',
+      },
+      {
+        id: 'v121-mus-sheet', area: 'Tenants', device: 'desktop',
+        what: 'The Mustard month sheet opens and shows the day-by-day split',
+        how: 'On the Encore Studio B row, the incidentals sub-line says "Month sheet →". Click it. You get four figures (Runner hrs, Solo, Shared, Billable) and one row per day showing his runner times, the ERS·A session times, and the solo/shared hours for that day. Billable should equal solo + half of shared.',
+      },
+      {
+        id: 'v121-mus-gap', area: 'Tenants', device: 'desktop',
+        what: 'A day with ERS·A sessions but no runner hours shows as a dashed empty row',
+        how: 'In the month sheet, look for any day where Encore A ran but nothing was typed on Mustard\'s work order. It must render with a dashed outline and the words "no hours on Mustard\'s WO" — never as a 0. If every day has hours, skip this item.',
+      },
+      {
+        id: 'v121-lock-banner', area: 'Work orders', device: 'phone',
+        what: 'A lockout work order shows NO missing-times banner',
+        how: 'On the phone, open Mustard\'s work order (WO-1083) from the Encore runner hub. There must be no red "rows are missing times" bar at the top, even though most days have no times yet.',
+      },
+      {
+        id: 'v121-lock-hub', area: 'Runner hub', device: 'phone',
+        what: 'A lockout session appears on the runner hub',
+        how: 'On the phone, open the Encore studio hub on a day Mustard\'s lockout covers. His session card should be listed with the other sessions so the runner can open the WO and type the day\'s hours.',
+      },
+      {
+        id: 'v121-confirm-gate', area: 'Work orders', device: 'desktop',
+        what: 'A Confirmed work order will not save while a day is missing times',
+        how: 'Open any normal (non-lockout) work order, clear the From time on one dated studio day, make sure the status is CONFIRMED, and press Save. It must refuse, name the day, and highlight that row. Now switch the status to TENTATIVE and press Save — it saves.',
+      },
+      {
+        id: 'v121-banner-cap', area: 'Work orders', device: 'phone',
+        what: 'The missing-times banner never lists more than four days',
+        how: 'On a long session with several blank days, the red banner should name at most four of them and then say "+ N more" rather than filling the screen.',
+      },
+      {
+        id: 'v121-status-pills', area: 'Work orders', device: 'desktop',
+        what: 'All seven session-status buttons fit on one line',
+        how: 'Open any work order on a laptop. The status row must show CONFIRMED · TENTATIVE · CANCELLED · TOUR · TECH · OPEN HRS · LOCKOUT all at once, on one line, with none cut off and no sideways scrolling. Check it in a narrow window too.',
+      },
+      {
+        id: 'v121-monthly-staff', area: 'Work orders', device: 'desktop',
+        what: 'The monthly lockout modal has its own Staff choice',
+        how: 'Open a work order, start the Monthly split panel. Under the times there is a Staff row with "No staff" and "Assistant". Pick No staff and apply to a fresh date range — the created days must have no staff line at all. Pick Assistant instead and each created day gets a 2ND line with an empty name.',
+      },
+      {
+        id: 'v121-myday-keep', area: 'My Day', device: 'desktop',
+        what: 'Duty checkboxes survive leaving the page and coming back',
+        how: 'Tick two or three duties on My Day. Go to the calendar, wait a few seconds, come back. They must still be ticked. Lock the laptop for ten minutes and come back — still ticked, and no red "not saved" toast.',
+      },
+      {
+        id: 'v121-mics-fresh', area: 'Runner mics', device: 'phone',
+        what: 'Another person\'s mic submission appears without force-quitting',
+        how: 'Have someone submit mic inventory for a studio while you have that studio\'s mics page open (or open on another phone). Switch away from the app and back. Their submission should be showing — no need to close and reopen the app repeatedly.',
+      },
+      {
+        id: 'v121-runner-home', area: 'Runner hub', device: 'phone',
+        what: 'The app always opens on the studio picker',
+        how: 'Open a studio, then fully close the runner app and reopen it. It must land on the "Where are you tonight?" picker every time — never jump straight into the studio you used last.',
+      },
+      {
+        id: 'v121-runner-register', area: 'Runner hub', device: 'phone',
+        what: 'Punch, guide, manual and report-a-bug are on the first screen',
+        how: 'On the runner home page, scroll down. "Missed a punch?", "App guide", "Runners manual" and "Report a bug or an idea" are all there, plus Runner notes with a studio tab row (PRS / ARS / ERS / TRS) that starts with none selected.',
+      },
+      {
+        id: 'v121-mics-soon', area: 'Runner hub', device: 'phone',
+        what: 'Mic inventory is greyed out and says Coming soon',
+        how: 'On a studio hub, the Mic inventory tile should be dimmed, read "Coming soon" instead of "Not started", and do nothing when tapped. The other four tiles work normally.',
+      },
+      {
+        id: 'v121-petty-same', area: 'Petty cash', device: 'phone',
+        what: '"Counted — no change" records the count',
+        how: 'Open petty cash for a studio and type nothing. Above Save there is a "Counted — no change" button — tap it. It should record and return you to the hub, and the studio\'s petty cash should show as done for the night on the office side.',
+      },
+      {
+        id: 'v121-receipt-thumb', area: 'Work orders', device: 'phone',
+        what: 'A receipt photo becomes a thumbnail on the expense line',
+        how: 'On a work order with a food budget, add an expense and attach a receipt photo. The camera button on that line should turn into a small picture of the receipt with a teal ring. Tap it to see the full photo.',
+      },
+      {
+        id: 'v121-notes-popover', area: 'Work orders', device: 'desktop',
+        what: 'The session-notes popover is solid, not see-through',
+        how: 'In the work order\'s Studio Time list view, click a Session Info cell. The little notes panel that opens must be a solid card — you should not be able to read the table rows through it.',
+      },
+      {
+        id: 'v121-daysheet-footer', area: 'Work orders', device: 'phone',
+        what: 'The day sheet\'s Cancel / Save buttons are fully visible',
+        how: 'On the phone, open a work order and tap a day card to open the day sheet. Scroll to the bottom — the Cancel and Save buttons must sit fully above the home indicator, not clipped by the bottom edge.',
+      },
+    ],
+  },
+  {
     id: 'sep-1-2026',
     title: 'WO history, the approvals queue, the runner notes channel, actual vs billed',
     version: 'v1.20.0',

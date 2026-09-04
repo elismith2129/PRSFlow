@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Billing list: status pills, sortable headers, day dividers</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  BILLING LIST — three asks (Eli, 2026-09-03):
+    1. colored status pills on the billing side, like COD's bin badges
+    2. column headers that sort (SORT ONLY — his call; no filter menus)
+    3. day dividers in the list, like the CRM (grouped by SESSION DATE — his call)
+
+  The pill's MEANING was left to me. Option A names WHERE THE ROW IS STUCK,
+  because inside one tab every row already shares the bucket — "In progress"
+  on ten rows says nothing, while "Needs approval / Ready to send / Returned"
+  is the thing you are scanning for. Option B is the literal COD parallel
+  (bucket name) and is shown to record why it loses on the billing side.
+
+  Nothing here changes the model: the pill reads `deriveStep` + `rejectedAt`,
+  exactly what the three lights and `nextAction` already read. No new state,
+  no migration.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1040px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.65;max-width:740px;line-height:1.6;margin-bottom:24px}
+.opt{margin-bottom:34px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:700px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:680px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.crumb{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:10px}
+
+/* ── the list ── */
+.hd,.row{display:grid;grid-template-columns:78px 1fr 128px 92px 62px 104px 26px;gap:10px;align-items:center}
+.hd{padding:0 12px 6px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45}
+.hd span{cursor:pointer;white-space:nowrap}
+.hd .on{opacity:1;color:var(--fg)}
+.hd .r{text-align:right}
+.caret{font-size:8px;opacity:.7;margin-left:2px}
+.row{background:var(--srf);box-shadow:var(--softsh);border-radius:10px;padding:9px 12px;margin-top:5px;font-size:12px}
+.wo{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.55}
+.who{font-weight:700;font-size:12.5px}
+.who small{display:block;font-size:10px;font-weight:400;opacity:.5}
+.num{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.age{text-align:right;font-size:11px;opacity:.55}
+.act{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  background:var(--wash2);padding:7px 12px;border-radius:99px;text-align:center}
+.act.go{background:var(--booked);color:var(--chip-ink)}
+.more{opacity:.35;text-align:center}
+
+/* day divider — the CRM's idiom */
+.day{display:flex;align-items:center;gap:9px;margin:14px 2px 2px}
+.day b{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
+.day i{flex:1;height:1px;background:var(--wash2)}
+.day u{font-size:9.5px;opacity:.32;text-decoration:none}
+
+/* status pill */
+.pill{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:4px 9px;border-radius:99px;white-space:nowrap;justify-self:start}
+.p-rev{background:var(--wash2);opacity:.75}
+.p-inv{background:var(--uncon);color:var(--chip-ink)}
+.p-app{background:var(--warm);color:var(--chip-ink)}
+.p-snd{background:var(--booked);color:var(--chip-ink)}
+.p-ret{background:var(--hot);color:#fff}
+.p-out{background:var(--uncon);color:var(--chip-ink)}
+.legend{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+</style>
+</head>
+<body>
+
+<h1>Billing list — status pills, sortable headers, day dividers</h1>
+<p class="lede">Three changes to the billing side of the hub. The pill is derived from what the
+row already knows (its step, plus a standing rejection) — no new state, no migration. Headers
+sort only. Day dividers group by session date.</p>
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · The pill names WHERE THE ROW IS STUCK<span class="rec">Recommended</span></div>
+  <div class="od">Inside one tab every row shares the bucket, so a bucket badge would print
+  “In progress” ten times. What you actually scan for is which of those ten are waiting on you:
+  <b>Needs invoice</b> (billing’s), <b>Needs approval</b> (the owner’s), <b>Ready to send</b>,
+  <b>Returned</b> (bounced, billing’s again). Same colours as everywhere else — amber waits on a
+  person, teal is clear to go, hot is wrong. Day dividers by session date; headers sort on click
+  (arrow shows the active column, click again to reverse).</div>
+  <div class="page">
+    <div class="crumb">Billing → In progress · sorted by Date ↓</div>
+    <div class="hd">
+      <span>WO</span>
+      <span>Client &amp; session</span>
+      <span>Status</span>
+      <span class="r on">Balance<i class="caret">▼</i></span>
+      <span class="r">Age</span>
+      <span>Next</span><span></span>
+    </div>
+
+    <div class="day"><b>Tue, Sep 2</b><i></i><u>3 sessions</u></div>
+
+    <div class="row">
+      <span class="wo">WO-1091</span>
+      <span class="who">Interscope — SZA<small>Sep 2 · B</small></span>
+      <span class="pill p-app">Needs approval</span>
+      <span class="num">$14,300</span><span class="age">—</span>
+      <span class="act go">Approve</span><span class="more">⋯</span>
+    </div>
+    <div class="row">
+      <span class="wo">WO-1090</span>
+      <span class="who">Top Dawg — Ray Vaughn<small>Sep 2 · X</small></span>
+      <span class="pill p-inv">Needs invoice</span>
+      <span class="num">$2,650</span><span class="age">—</span>
+      <span class="act">Attach invoice</span><span class="more">⋯</span>
+    </div>
+    <div class="row">
+      <span class="wo">WO-1089</span>
+      <span class="who">Capitol — Toosii<small>Sep 2 · North</small></span>
+      <span class="pill p-ret">Returned</span>
+      <span class="num">$6,900</span><span class="age">—</span>
+      <span class="act">Send for approval</span><span class="more">⋯</span>
+    </div>
+
+    <div class="day"><b>Mon, Sep 1</b><i></i><u>2 sessions</u></div>
+
+    <div class="row">
+      <span class="wo">WO-1086</span>
+      <span class="who">Def Jam — Fridayy<small>Sep 1 · C</small></span>
+      <span class="pill p-snd">Ready to send</span>
+      <span class="num">$4,150</span><span class="age">—</span>
+      <span class="act">Download</span><span class="more">⋯</span>
+    </div>
+    <div class="row">
+      <span class="wo">WO-1085</span>
+      <span class="who">10 Summers — Mustard<small>Sep 1 · ERS B</small></span>
+      <span class="pill p-rev">Needs review</span>
+      <span class="num">$983</span><span class="age">—</span>
+      <span class="act" style="opacity:.35">—</span><span class="more">⋯</span>
+    </div>
+
+    <div class="legend">
+      <span class="pill p-rev">Needs review</span>
+      <span class="pill p-inv">Needs invoice</span>
+      <span class="pill p-app">Needs approval</span>
+      <span class="pill p-snd">Ready to send</span>
+      <span class="pill p-ret">Returned</span>
+      <span class="pill p-out">Sent · aging</span>
+    </div>
+    <div class="note">The pill replaces nothing — the three lights stay. Lights show how far along
+    the line a row is; the pill names the ONE thing it is waiting on, which is what the eye is
+    hunting when you scan a tab. Sent rows carry the blue “Sent · aging” pill in Awaiting payment;
+    Paid and Closed rows wear no pill (there is nothing left to be stuck on).</div>
+  </div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · The pill names the BUCKET (the literal COD parallel)</div>
+  <div class="od">Exactly what COD does — the row wears its bin’s colour and name. On COD that
+  earns its place because several bins are latched into one merged list. On billing you are always
+  looking at one bucket, so it prints the tab’s own name on every row. Shown to record why A wins;
+  the one place this shape is right is SEARCH, where results span every bucket — and the hub
+  already does that today.</div>
+  <div class="page">
+    <div class="crumb">Billing → In progress · bucket badge on every row</div>
+    <div class="row"><span class="wo">WO-1091</span>
+      <span class="who">Interscope — SZA<small>Sep 2 · B</small></span>
+      <span class="pill p-out">In progress</span>
+      <span class="num">$14,300</span><span class="age">—</span>
+      <span class="act go">Approve</span><span class="more">⋯</span></div>
+    <div class="row"><span class="wo">WO-1090</span>
+      <span class="who">Top Dawg — Ray Vaughn<small>Sep 2 · X</small></span>
+      <span class="pill p-out">In progress</span>
+      <span class="num">$2,650</span><span class="age">—</span>
+      <span class="act">Attach invoice</span><span class="more">⋯</span></div>
+    <div class="row"><span class="wo">WO-1089</span>
+      <span class="who">Capitol — Toosii<small>Sep 2 · North</small></span>
+      <span class="pill p-out">In progress</span>
+      <span class="num">$6,900</span><span class="age">—</span>
+      <span class="act">Send for approval</span><span class="more">⋯</span></div>
+    <div class="note">Three rows, three different problems, one identical badge.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ sorting note ═══════════════ -->
+<div class="opt">
+  <div class="oh">Sorting — and what it does to the day dividers</div>
+  <div class="od">Click a header to sort, click again to reverse; the active column keeps the
+  arrow. WO · Client · Status · Balance · Age are sortable — “Next” is not, because it is derived
+  from the step and sorting by it would just be sorting by Status with a confusing name.</div>
+  <div class="page">
+    <div class="crumb">Billing → Awaiting payment · sorted by Age ↓ (dividers off)</div>
+    <div class="hd">
+      <span>WO</span><span>Client &amp; session</span><span>Status</span>
+      <span class="r">Balance</span><span class="r on">Age<i class="caret">▼</i></span>
+      <span>Next</span><span></span>
+    </div>
+    <div class="row"><span class="wo">WO-1042</span>
+      <span class="who">Warner — Zacari<small>Aug 4 · A</small></span>
+      <span class="pill p-out">Sent · aging</span>
+      <span class="num">$8,900</span><span class="age" style="color:var(--hot);opacity:1;font-weight:700">44d</span>
+      <span class="act">Mark paid</span><span class="more">⋯</span></div>
+    <div class="row"><span class="wo">WO-1051</span>
+      <span class="who">Empire — Fenix<small>Aug 12 · E</small></span>
+      <span class="pill p-out">Sent · aging</span>
+      <span class="num">$3,200</span><span class="age">36d</span>
+      <span class="act">Mark paid</span><span class="more">⋯</span></div>
+    <div class="note"><b>Day dividers appear only while the list is sorted by date</b> — the
+    default. Sort by Balance or Age and they switch off, because a “Tue, Sep 2” heading over rows
+    ordered by money is a heading that lies about what follows it. Sort back to Date and they
+    return. (This is why headers sort and don’t filter: a filter would fight the buckets, which
+    already are the filters.)</div>
+  </div>
+</div>
+
+<p class="note" style="max-width:780px">Recommendation: <b>A</b>, with the bucket badge kept for
+search results only (where it already lives). All three changes are display-side — the pill and
+the dividers read data the rows already carry, and sorting is a client-side comparator on the
+list the tab already produced.</p>
+
+</body>
+</html>

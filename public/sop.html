@@ -645,6 +645,37 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.21.0', date:'Sep 3, 2026',
+    headline:'Rent gets its own place in Billing, the runner app stops guessing which studio you\'re in, and two "it wiped my work" bugs are gone.',
+    desc:'A new Tenants section for the monthly rooms, a long-overdue fix for the checkboxes that appeared to clear themselves, and a round of small repairs from things people reported this week.',
+    changes:[
+      'Billing has a third section: TENANTS. Every monthly room is listed by building — who\'s in it, the rent, and whether this month has been sent, paid, or entered in QuickBooks. One button per row, always the next step, with an undo arrow if you tap the wrong one. Anything unpaid past the 5th turns red.',
+      'Mustard\'s runner hours are worked out for you. Open Tenants → the incidentals line → Month sheet, and you get every day laid out: his runner hours, the Encore A sessions that overlapped, and the split between full-rate and half-rate hours. The total at the bottom is what goes on the invoice. No more spreadsheet.',
+      'A day where Encore A ran but nobody typed Mustard\'s runner hours shows as a dashed empty row — so a forgotten day looks forgotten instead of looking like zero.',
+      'Monthly lockouts no longer nag for start and end times. Mustard is the exception where the runner fills those in live each day, so his work order stays quiet instead of showing thirty red errors.',
+      'When you set up a monthly lockout there\'s now a Staff choice: No staff (most tenants — it\'s just rent) or Assistant (Mustard). No more empty staff lines on thirty days.',
+      'You can no longer save a work order as CONFIRMED unless every day has a start and an end time. Tentative saves freely — so hold it as Tentative until the times are settled. This is here because a confirmed session with no times lands on the runner to guess.',
+      'My Day: the bug where navigating away appeared to clear all your checkboxes is fixed. Nothing was ever actually lost — the screen was repainting itself blank after a hiccup loading. It now keeps what\'s on screen.',
+      'Runners: mic inventory submitted by someone else now shows up on your phone without closing and reopening the app several times.',
+      'Runners: the app always opens on the studio picker now. It used to jump you straight into whichever studio you opened last, which is wrong when you move between buildings — pick where you actually are.',
+      'Runners: Missed a punch, App guide, Runners manual and Report a bug or an idea have moved to that first screen, since none of them belong to one studio. Runner notes are there too — tap a studio to read or post.',
+      'Runners: petty cash has a "Counted — no change" button. If you counted the box and it matched, tap that and you\'re done — the office sees it was counted instead of showing it as never done.',
+      'Runners: mic inventory is greyed out for about a week while we finish it. Nothing is broken — it\'s coming back.',
+      'Work orders: a receipt photo now shows as a little thumbnail right on the expense line, so you can see at a glance which ones have a picture.',
+      'Work orders: the session status buttons (Confirmed, Tentative, Lockout…) all fit on one line again — Lockout was hiding off the edge.',
+    ],
+    affects:'Billing: the Tenants tab is the new home for rent — mark each month sent, paid and in QuickBooks as it happens, and use the Mustard month sheet instead of the spreadsheet. Office: expect a stop if you try to confirm a session with missing times — keep it Tentative until you have them. Runners: the app opens on the studio list every time now, and mic inventory is greyed out for a week.',
+    dev:[
+      '<strong>Tenants</strong>: third view in the billing heading, own branch like Financials. Roster and rents are CODE (<code>TENANT_ROOMS</code> in <code>lib/tenants.ts</code> — the nadines precedent); the only stored facts are three human acts (<code>sent_at</code> / <code>paid_at</code> / <code>qb_at</code>) in <code>tenant_rent_months</code>. Everything else on the board derives.',
+      '<strong>The Mustard sheet</strong>: fully derived — his lockout WO\'s studio-time rows intersected with billed ERS·A rows (merged intervals so a double-booked day can\'t double-halve an hour), ERS·A filtered through the SAME <code>bookingShouldHaveWorkOrder</code> gate the pipeline uses. Hours only, per Eli; QuickBooks prices them.',
+      '<strong>Lockouts are the designated exception</strong>, keyed on ONE fact: <code>woNeedsTimes(status)</code>. The runner hub selects <code>[\'confirmed\',\'lockout\']</code> and is the only operational surface that admits one — daily ops, checklists and admin queues still exclude them by status. The monthly modal\'s Staff choice is its own control now, not <code>eng_visible: !monthlyNA</code>.',
+      '<strong>Confirming requires times</strong>: <code>confirmStartProblem</code> blocks the SAVE (not Complete) when a Confirmed WO has a dated day missing From or To. An earlier pass that loosened the rule for all flat unstaffed day-rate rows was reverted — Eli: "I don\'t want to build something that affects all of our work orders for one unique situation."',
+      '<strong>An empty array is an answer; a failed fetch is not.</strong> <code>fetchDuties</code>/<code>fetchEntries</code> return null on error and My Day keeps its state — one flaky read used to repaint every ticked duty unchecked. Duty ticks also moved to <code>opsToday()</code>.',
+      '<strong>Runner mics</strong>: an initials-only draft pinned the page <code>dirty</code>, which silenced the realtime channel AND the reload-on-return; reload-on-return was dirty-gated too. Both fixed — <code>load()</code> overlays the draft on server rows, so the merge is the protection, not the skip.',
+      '<strong>Error sweep</strong>: <code>/api/wo-package</code> returns named failures instead of anonymous 500s; <code>woPdf</code> strips non-WinAnsi characters (one emoji killed a package) and throws a NAMED error on an unreadable attachment rather than silently building a package missing its bill; <code>financials.priorBucket</code> clamps the day when shifting a year back (a leap-day edge produced <code>2023-02-29</code>).',
+    ],
+  },
+  {
     ver:'v1.20.0', date:'Sep 1, 2026',
     headline:'Work orders remember every change, runner notes become one running channel, and invoices line up for approval on their own.',
     desc:'Three things the old paper-and-Dropbox days did well are back, app-shaped: the folder of invoices waiting for a green light, the original work order you could always read under the pen marks, and the Slack channel where runners just talked.',
