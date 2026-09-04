@@ -90,6 +90,36 @@ export async function GET(req: NextRequest) {
   }
   const wo = wos[0]
 
+  // Filename billing can recognise in a Downloads folder without opening it.
+  // Computed here because both exits below use it.
+  const who = String(wo.label || wo.client || 'Work order').replace(/[^\w\- ]+/g, '').trim() || 'Work order'
+  const num = wo.invoice_number || wo.wo_number || ''
+  const name = `${who}${num ? ` ${num}` : ''}${woOnly ? ' WO' : ''}.pdf`.replace(/\s+/g, ' ')
+
+  // ── The as-sent artifact is FROZEN (fix, 2026-09-03) ──────────────────────
+  // Once an invoice is marked sent, the stored package is the record of what
+  // the client actually received — and this route used to rebuild AND re-store
+  // on every call, so pulling the file a month later silently replaced that
+  // record with a render of today's work order. The standing rule (Aug 11):
+  // reviewing a sent package must show the ARTIFACT, never a reconstruction.
+  // So a sent package serves the stored bytes and writes nothing. If the
+  // stored copy is unreadable, fall through and rebuild — handing over a
+  // reconstruction beats a 500 — but the store below stays gated, so the
+  // rebuild still cannot overwrite history. (`wo=1` is the work-order-only
+  // convenience export and never touched the archive.)
+  if (!woOnly && wo.invoice_sent_at && wo.invoice_package_path) {
+    const stored = await supabaseAdmin.storage.from('invoices').download(wo.invoice_package_path)
+    if (stored.data) {
+      return new NextResponse(Buffer.from(await stored.data.arrayBuffer()), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${name}"`,
+          'Cache-Control': 'no-store',
+        },
+      })
+    }
+  }
+
   const [st, rent, pay] = await Promise.all([
     supabaseAdmin.from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order'),
     supabaseAdmin.from('rental_rows').select('*').eq('work_order_id', id).order('sort_order'),
@@ -191,7 +221,12 @@ export async function GET(req: NextRequest) {
   // NON-FATAL on failure: the person asked for a file. Refusing to hand it over
   // because the archive copy failed would trade the thing they need for the
   // thing we would like.
-  if (!woOnly) {
+  //
+  // NEVER ONCE SENT (fix, 2026-09-03): the stored package is then the as-sent
+  // record, and a rebuild must not replace it — see the frozen-artifact exit
+  // above. Pull it back (which clears invoice_sent_at) is the deliberate act
+  // that reopens the archive.
+  if (!woOnly && !wo.invoice_sent_at) {
     const path = `${id}/package-${Date.now()}.pdf`
     const up = await supabaseAdmin.storage
       .from('invoices')
@@ -204,11 +239,6 @@ export async function GET(req: NextRequest) {
       if (old && old !== path) await supabaseAdmin.storage.from('invoices').remove([old])
     }
   }
-
-  // Filename billing can recognise in a Downloads folder without opening it.
-  const who = String(wo.label || wo.client || 'Work order').replace(/[^\w\- ]+/g, '').trim() || 'Work order'
-  const num = wo.invoice_number || wo.wo_number || ''
-  const name = `${who}${num ? ` ${num}` : ''}${woOnly ? ' WO' : ''}.pdf`.replace(/\s+/g, ' ')
 
   return new NextResponse(Buffer.from(merged), {
     headers: {

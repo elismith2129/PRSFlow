@@ -33,9 +33,15 @@
 //     footer row in a paginated list falls onto page 3.
 //   · APPROVAL IS OWNERS ONLY. The button is hidden for everyone else, and a
 //     Postgres trigger enforces it regardless of what the UI does.
-//   · DOUBLE-CLICK THE ROW to open it. No Open-WO button — opening a record to
-//     read it is navigation, not an action. Before the invoice it opens the
-//     work order; after, it opens the PACKAGE (both documents, one window).
+//   · CLICK THE ROW to open it (single click since 2026-09-01). No Open-WO
+//     button — opening a record to read it is navigation, not an action.
+//     Before the invoice it opens the work order; after, it opens the PACKAGE
+//     (both documents, one window).
+//   · THE STAGE BADGE REPLACED THE LIGHTS on the billing side (Eli,
+//     2026-09-03, mock billing-badges-po-simple.html): one badge names where
+//     the row is; the button column is only ever the next real act — Add PO,
+//     Download, Mark sent, Mark paid. Approve lives in the strip; Attach and
+//     re-queue are the drop gesture.
 //   · DOWNLOAD AND SENT ARE TWO ACTS. PRSFlo builds ONE merged black-and-white
 //     PDF (work order + invoice); a person emails it. So Download records only
 //     that the file was built, and Mark sent is the human confirmation. A
@@ -58,13 +64,14 @@ import { TenantsView } from '@/components/billing/TenantsView'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
-  approveInvoice, rejectInvoice, resubmitForApproval, previewPackageUrl,
+  approveInvoice, rejectInvoice, previewPackageUrl,
   markSent, markPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
-  pipelineCount,
+  pipelineCount, recordPoNumber, setNoPoNeeded, billingStage, sortByColumn,
   downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
+  type SortCol, type StageKey,
 } from '@/lib/billing'
 
 export default function BillingPage() {
@@ -109,6 +116,15 @@ export default function BillingPage() {
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
+  // COLUMN SORT — billing only (Eli, 2026-09-03: sort, never filter). Date
+  // desc is the default and the only order that shows the day dividers.
+  const [sortCol, setSortCol] = useState<SortCol>('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  // THE ADD-PO STRIP (Eli, 2026-09-03) — a fold under the row, not a modal.
+  // One open at a time; the row id is the key.
+  const [poFor, setPoFor] = useState<string | null>(null)
+  const [poNum, setPoNum] = useState('')
+  const [poFile, setPoFile] = useState<File | null>(null)
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
   const [openBooking, setOpenBooking] = useState<Booking | null>(null)
@@ -172,11 +188,22 @@ export default function BillingPage() {
       return tabsFor('cod').map(t => t.key).filter(k => codBins.has(k))
         .flatMap(k => rowsInBucket(rows, k, 'cod'))
     }
-    return rowsInBucket(rows, activeBucket, pipeline)
-  }, [rows, activeBucket, pipeline, query, searching, codBins])
+    // Billing sorts by the clicked column (date desc default). This replaces
+    // sortBucket's started-work-first order on the billing side — the day
+    // dividers + the In-progress badge carry that information now.
+    return sortByColumn(rowsInBucket(rows, activeBucket, pipeline), sortCol, sortDir)
+  }, [rows, activeBucket, pipeline, query, searching, codBins, sortCol, sortDir])
 
   // Badges only when 2+ bins are on screen — with one, the tab names it.
   const codMulti = pipeline === 'cod' && !searching && codBins.size > 1
+  // THE STAGE LAYOUT (Eli, 2026-09-03): billing rows lead with a stage badge
+  // and drop the three lights. Search gets it too — results mix pipelines, so
+  // billing hits wear their stage and COD hits wear their bin, one column.
+  const staged = pipeline === 'billing' || searching
+  // Day dividers only under date order — over money-ordered rows a date
+  // heading lies about what follows it. Billing only; COD's merged bins keep
+  // their own internal queue order.
+  const dividers = staged && !searching && sortCol === 'date'
 
   const perPage = pageSizeFor(pipeline === 'cod' ? 'progress' : activeBucket)
   const pages = pageCount(visible.length, perPage)
@@ -188,7 +215,16 @@ export default function BillingPage() {
     ? codBins.has('paid')
     : ['awaiting', 'paid', 'closed'].includes(activeBucket))
 
-  useEffect(() => { setPage(1) }, [tab, query, pipeline, codBins])
+  useEffect(() => { setPage(1); setPoFor(null) }, [tab, query, pipeline, codBins])
+
+  // Each tab's default order: Awaiting payment leads with the OLDEST debt
+  // (the chase list — sortBucket's old order, kept), everything else by date.
+  // Changing tab resets the sort so a Balance sort on one tab doesn't quietly
+  // reorder the next.
+  useEffect(() => {
+    setSortCol(tab === 'awaiting' ? 'age' : 'date')
+    setSortDir('desc')
+  }, [tab, pipeline])
 
   // Switching pipeline lands on that side's FIRST tab — for COD that is Balance
   // due, which is the whole reason it leads.
@@ -207,12 +243,15 @@ export default function BillingPage() {
     setBusy(null)
   }
 
+  // Who is acting — attach and PO writes log WO history lines now.
+  const actor = { id: profile?.id ?? null, name: profile?.display_name || '' }
+
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     const row = uploadFor.current
     e.target.value = '' // let the same file be picked again after a failure
     if (!file || !row) return
-    await run(row.workOrderId, () => uploadInvoiceDoc(row, file))
+    await run(row.workOrderId, () => uploadInvoiceDoc(row, file, actor))
   }
 
   /**
@@ -228,7 +267,7 @@ export default function BillingPage() {
     setDragOver(null)
     const file = e.dataTransfer.files?.[0]
     if (!file) return
-    await run(row.workOrderId, () => uploadInvoiceDoc(row, file))
+    await run(row.workOrderId, () => uploadInvoiceDoc(row, file, actor))
   }
 
   /**
@@ -278,10 +317,13 @@ export default function BillingPage() {
     switch (label) {
       case 'Reopen':          return run(row.workOrderId, () => reopenInvoice(row))
       case 'Mark paid':       return run(row.workOrderId, () => markPaid(row))
-      case 'Attach invoice':  uploadFor.current = row; fileInput.current?.click(); return
       case 'Approve':         return run(row.workOrderId, () => approveInvoice(row, profile?.id ?? null, profile?.display_name || undefined))
-      // Billing's half of the rejection loop — fixed, back to the owner.
-      case 'Send for approval': return run(row.workOrderId, () => resubmitForApproval(row, profile?.id ?? null, profile?.display_name || ''))
+      // THE PO ARRIVED LATE (Eli, 2026-09-03): open the fold under the row.
+      // The strip itself performs the acts (PO → replacement invoice →
+      // download); this just opens it.
+      case 'Add PO':
+        setPoFor(row.workOrderId); setPoNum(row.poNumber ?? ''); setPoFile(null)
+        return
       // SEND IS ONE PRESS (Eli, 2026-08-11): "you hit the send button and it
       // downloads, and now it says it's sent." No confirmation step — you have
       // already looked at the package to get here, so a dialogue asking whether
@@ -299,6 +341,45 @@ export default function BillingPage() {
       case 'Mark sent':       return run(row.workOrderId, () => markSent(row))
       default:                return
     }
+  }
+
+  /** Sort cycle: desc → asc → back to the date default. */
+  function clickSort(c: SortCol) {
+    if (sortCol !== c) { setSortCol(c); setSortDir('desc') }
+    else if (sortDir === 'desc') setSortDir('asc')
+    else { setSortCol('date'); setSortDir('desc') }
+  }
+
+  /**
+   * ATTACH VIA CLICK — the button is gone (the column stops narrating,
+   * 2026-09-03), so the flag cell's "Drop invoice here · or click" opens the
+   * same picker the button used to. The drop gesture is unchanged.
+   */
+  function attachFor(row: InvoiceRow) {
+    uploadFor.current = row
+    fileInput.current?.click()
+  }
+
+  /**
+   * THE ADD-PO SAVE (Eli, 2026-09-03) — four acts, one press, in order: the PO
+   * onto the work order (same field the WO writes), the re-issued invoice over
+   * the attached one (the label usually re-dates it to the PO date — the date
+   * lives in the PDF, nothing else to type), then the package builds and
+   * downloads. The approval is untouched throughout: the replacement attach no
+   * longer re-snapshots the total, so an unchanged-money swap can't drift, and
+   * a changed-money one correctly goes back to the owner.
+   */
+  async function savePoStrip(row: InvoiceRow) {
+    const po = poNum.trim()
+    if (!po) return
+    const file = poFile
+    setPoFor(null)
+    await run(row.workOrderId, async () => {
+      if (!(await recordPoNumber(row, po, actor))) return false
+      if (file && !(await uploadInvoiceDoc(row, file, actor))) return false
+      const ok = await downloadPackage(row.workOrderId)
+      return ok ? markDownloaded(row) : false
+    })
   }
 
   if (profileLoading) return null
@@ -565,7 +646,7 @@ export default function BillingPage() {
         ))}
       </div>
 
-      <div className={`c-panel${showAge ? "" : " c-bage-off"}${codMulti && !isMobile ? ' c-bmulti' : ''}`}>
+      <div className={`c-panel${showAge ? "" : " c-bage-off"}${codMulti && !isMobile ? ' c-bmulti' : ''}${staged && !isMobile ? ' c-bstaged' : ''}`}>
         <div className="c-lozenge">
           <b>{searching
             ? 'Search results'
@@ -580,7 +661,25 @@ export default function BillingPage() {
           <span className="c-ct">{visible.length}</span>
         </div>
 
-        {!isMobile && visible.length > 0 && (
+        {!isMobile && visible.length > 0 && (staged ? (
+          /* SORTABLE HEADER (Eli, 2026-09-03) — click sorts, click again
+             reverses, a third click returns to the default date order (there
+             is no Date column to click — the date lives in Client & session).
+             Sort ONLY, never filter: the buckets already are the filters.
+             "Next" is not sortable — it derives from the step, so sorting by
+             it would be Status under a confusing name. Search results keep the
+             header as plain labels. */
+          <div className="c-browhd">
+            <SortHd col="status" label="Status" {...{ searching, sortCol, sortDir, clickSort }} />
+            <SortHd col="wo" label="WO" {...{ searching, sortCol, sortDir, clickSort }} />
+            <SortHd col="client" label="Client & session" {...{ searching, sortCol, sortDir, clickSort }} />
+            <span className="c-r">Flag</span>
+            <SortHd col="balance" label="Balance" right {...{ searching, sortCol, sortDir, clickSort }} />
+            {showAge && <SortHd col="age" label="Age" right {...{ searching, sortCol, sortDir, clickSort }} />}
+            <span className="c-bacthd">Next</span>
+            <span />
+          </div>
+        ) : (
           <div className="c-browhd">
             {codMulti && <span>Bin</span>}
             <span>WO</span>
@@ -592,30 +691,79 @@ export default function BillingPage() {
             <span className="c-bacthd">Next</span>
             <span />
           </div>
-        )}
+        ))}
 
         {loading && <div className="c-bempty">Loading…</div>}
         {!loading && pageRows.length === 0 && (
           <div className="c-bempty">{searching ? 'Nothing matches that.' : 'Nothing here.'}</div>
         )}
 
-        {pageRows.map(r => (
-          <Row
-            key={r.workOrderId}
-            row={r}
-            searching={searching}
-            isOwner={isOwner}
-            busy={busy === r.workOrderId}
-            showAge={showAge}
-            badge={codMulti && !isMobile ? r.bucket : null}
-            onAct={() => act(r)}
-            onMore={() => setMoreFor(r)}
-            onOpen={() => openRow(r)}
-            dragOver={dragOver === r.workOrderId}
-            onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
-            onDragLeave={() => setDragOver(null)}
-            onDrop={e => onDropFile(r, e)}
-          />
+        {pageRows.map((r, i) => (
+          <span key={r.workOrderId} style={{ display: 'contents' }}>
+            {/* DAY DIVIDER (Eli, 2026-09-03 — the CRM's idiom, grouped by
+                session date). Only under date order; a "Sep 2" heading over
+                money-ordered rows lies about what follows it. */}
+            {dividers && (i === 0 || (pageRows[i - 1].sessionDate ?? '') !== (r.sessionDate ?? '')) && (
+              <div className="c-bday">
+                <b>{fmtDayHeading(r.sessionDate)}</b><i />
+                <u>{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length} session{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length === 1 ? '' : 's'}</u>
+              </div>
+            )}
+            <Row
+              row={r}
+              searching={searching}
+              isOwner={isOwner}
+              busy={busy === r.workOrderId}
+              showAge={showAge}
+              badge={codMulti && !isMobile ? r.bucket : null}
+              stage={staged && !r.isCod ? billingStage(r) : null}
+              codBin={staged && r.isCod ? r.bucket : null}
+              onAct={() => act(r)}
+              onAttach={() => attachFor(r)}
+              onMore={() => setMoreFor(r)}
+              onOpen={() => openRow(r)}
+              dragOver={dragOver === r.workOrderId}
+              onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
+              onDragLeave={() => setDragOver(null)}
+              onDrop={e => onDropFile(r, e)}
+            />
+            {/* THE ADD-PO STRIP — a fold under its row, not a modal. */}
+            {poFor === r.workOrderId && (
+              <div className="c-bpostrip" onClick={e => e.stopPropagation()}>
+                <span>
+                  <span className="c-bpolbl">PO number</span>
+                  <input
+                    type="text"
+                    value={poNum}
+                    autoFocus
+                    onChange={e => setPoNum(e.target.value)}
+                    placeholder="From the label"
+                  />
+                </span>
+                <span style={{ flex: 1, minWidth: 220 }}>
+                  <span className="c-bpolbl">Re-issued invoice (usually re-dated to the PO date)</span>
+                  <label className="c-bpofile" style={{ display: 'block' }}>
+                    {poFile ? poFile.name : 'Choose the new invoice PDF — replaces the attached one'}
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      style={{ display: 'none' }}
+                      onChange={e => setPoFile(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </span>
+                <button
+                  className="c-bact"
+                  disabled={!poNum.trim() || busy === r.workOrderId}
+                  onClick={() => savePoStrip(r)}
+                  title="Writes the PO to the work order, swaps the invoice if you chose one, and downloads the rebuilt package. The approval is untouched — the money never moved."
+                >
+                  Save &amp; download
+                </button>
+                <button className="c-bact c-bmuted" onClick={() => setPoFor(null)}>Cancel</button>
+              </div>
+            )}
+          </span>
         ))}
 
         {visible.length > 0 && (
@@ -635,7 +783,7 @@ export default function BillingPage() {
             ? 'Searching every bucket and both pipelines, closed included — each result shows where it lives. Clear the search to go back.'
             : pipeline === 'cod'
               ? 'COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.'
-              : 'Reviewed → Invoiced → Approved. Each light is derived; the button is whatever comes next. Drop a QuickBooks PDF straight onto a row to attach it. Approval only needs a completed, reviewed work order — a missing PO blocks SENDING, not approving, and clears when the work order gets a PO number or is marked Not req’d.'}
+              : 'The badge says where each package is; the button is only ever the next real act — Add PO, Download, Mark sent, Mark paid. Drop a QuickBooks PDF straight onto a row to attach it (that also re-queues a Not-approved row). Approving happens in the strip above; a missing PO blocks sending, never approval.'}
         </div>
       </div>
 
@@ -664,6 +812,11 @@ export default function BillingPage() {
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
           onRedownload={() => { downloadPackage(moreFor.workOrderId); setMoreFor(null) }}
+          onNoPo={() => {
+            const r = moreFor
+            setMoreFor(null)
+            run(r.workOrderId, () => setNoPoNeeded(r, true))
+          }}
           onPullBack={() => {
             const r = moreFor
             setMoreFor(null)
@@ -757,9 +910,62 @@ const BIN_COLOR: Partial<Record<BucketKey, string>> = {
   paid: 'var(--c-st-booked)',
 }
 
+/**
+ * STAGE BADGE COLOURS (Eli, 2026-09-03, from the approved mock
+ * billing-badges-po-simple.html): In progress is COD's exact blue; amber waits
+ * on someone in-house; Awaiting PO is a lighter blue (waiting on the label —
+ * fixed literal, both themes, like every status colour); Approved and Paid are
+ * green (his call — the Paid tab is rarely open, so they never sit together);
+ * Not approved is hot; Closed is the wash. Buttons are never green — colour
+ * belongs to status, a button is a verb.
+ */
+const STAGE_STYLE: Record<StageKey, React.CSSProperties> = {
+  progress:     { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
+  review:       { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
+  invoice:      { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', opacity: 0.75 },
+  approval:     { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
+  po:           { background: '#b9d5f1', color: 'var(--c-chip-ink)' },
+  approved:     { background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' },
+  not_approved: { background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' },
+  sent:         { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
+  paid:         { background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' },
+  closed:       { background: 'var(--c-wash2)', opacity: 0.65 },
+}
+
+/** "Wed, Sep 3" from a YYYY-MM-DD — local, never Date-parse of a bare string. */
+function fmtDayHeading(iso: string | null): string {
+  if (!iso) return 'No date'
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  const dt = new Date(y, m - 1, d)
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/** One sortable header cell — active column keeps the caret. */
+function SortHd({ col, label, right, searching, sortCol, sortDir, clickSort }: {
+  col: SortCol
+  label: string
+  right?: boolean
+  searching: boolean
+  sortCol: SortCol
+  sortDir: 'asc' | 'desc'
+  clickSort: (c: SortCol) => void
+}) {
+  const on = !searching && sortCol === col
+  return (
+    <span
+      className={`${right ? 'c-r' : ''}${searching ? '' : ` c-bsort${on ? ' c-on' : ''}`}`.trim()}
+      onClick={searching ? undefined : () => clickSort(col)}
+      title={searching ? undefined : 'Click to sort · again to reverse · again for date order'}
+    >
+      {label}{on ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''}
+    </span>
+  )
+}
+
 function Row({
-  row, searching, isOwner, busy, dragOver, showAge, badge, onAct, onMore, onOpen,
-  onDragOver, onDragLeave, onDrop,
+  row, searching, isOwner, busy, dragOver, showAge, badge, stage, codBin,
+  onAct, onAttach, onMore, onOpen, onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
   searching: boolean
@@ -769,7 +975,12 @@ function Row({
   showAge: boolean
   /** The row's bucket, when 2+ COD bins are latched — null renders no cell. */
   badge: BucketKey | null
+  /** The billing stage badge (2026-09-03) — replaces the three lights. */
+  stage: { key: StageKey; label: string } | null
+  /** In the staged layout a COD search hit wears its bin in the same column. */
+  codBin: BucketKey | null
   onAct: () => void
+  onAttach: () => void
   onMore: () => void
   onOpen: () => void
   onDragOver: (e: React.DragEvent) => void
@@ -778,32 +989,26 @@ function Row({
 }) {
   const overdue = isPastDue(row)
   const label = nextAction(row)
+  const inStaged = stage !== null || codBin !== null
+  // THE ROW RENDERS NO APPROVE BUTTON on the billing side (Eli, 2026-09-03 —
+  // the button column stops narrating): owners approve from the strip above
+  // the list or inside the package window, both of which show the drift ⚠ and
+  // the package first. nextAction still SAYS 'Approve' because approvalQueue's
+  // membership is that predicate — the label is hidden here, never re-derived.
+  // COD rows keep their Approve button: the COD side is untouched.
+  const hideLabel = label === 'Approve' && !row.isCod
   // Approving is owners-only, so for everyone else the row has no action rather
   // than a button that will be refused by the database.
   const canAct = label !== 'Approve' || isOwner
   // Every row accepts a dropped PDF — replacing an invoice is legitimate — but
   // only a row waiting on its invoice ADVANCES on drop (see lib/billing).
   const wantsInvoice = row.step === 1
-  // Lights only where the assembly line is still running. On a sent, paid or
-  // closed row every light is green and says nothing.
-  const showLights = ['progress', 'review', 'balance'].includes(row.bucket)
-  // The overflow only exists when there is something in it: an invoice to open,
-  // or an invoice real enough to be written off.
-  // THE PO BLOCKS SENDING, NOT APPROVING (Eli, 2026-08-31 — reversing the
-  // Aug 11 ruling). Owner approval says one thing: this work order is complete
-  // and reviewed and the invoice is correct. That judgement does not depend on
-  // a purchase order, and POs take weeks to arrive from a label — parking the
-  // internal sign-off behind one meant approval couldn't happen while the
-  // session was still fresh in anyone's mind.
-  //
-  // The gate itself is unchanged, just moved one rung later: Download and Mark
-  // sent stay disabled until there's a PO number or the work order is marked
-  // Not req'd, so nothing can still LEAVE the building without one. The
-  // Awaiting PO chip appears from step 2 as before, which is now a heads-up
-  // during approval rather than a wall.
-  const blocked = row.awaitingPo && label !== 'Approve'
+  // Lights only on the COD layout now — the billing side's stage badge already
+  // says how far along the line a row is (Eli, 2026-09-03: "you no longer
+  // need those"). In the staged layout there is no lights column at all.
+  const showLights = !inStaged && ['progress', 'review', 'balance'].includes(row.bucket)
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
-  const hasMore = row.hasInvoiceDoc || canClose
+  const hasMore = row.hasInvoiceDoc || canClose || (row.awaitingPo && !row.isCod)
 
   return (
     <div
@@ -828,6 +1033,20 @@ function Row({
           {bucketLabel(badge)}
         </span>
       )}
+      {/* THE STAGE BADGE (Eli, 2026-09-03) — the COD bin badge, on billing.
+          One word for the whole position; the lights are gone. A COD hit in
+          search wears its bin in the same column so the grid stays aligned. */}
+      {stage && (
+        <span className="c-bbin" style={STAGE_STYLE[stage.key]}>{stage.label}</span>
+      )}
+      {codBin && (
+        <span
+          className="c-bbin"
+          style={{ background: BIN_COLOR[codBin] ?? 'var(--c-wash2)', color: codBin === 'balance' ? 'var(--c-hot-text)' : 'var(--c-chip-ink)' }}
+        >
+          {bucketLabel(codBin)}
+        </span>
+      )}
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
       <span className="c-bwho">
         <b>{row.client}</b>
@@ -845,10 +1064,11 @@ function Row({
           rather than sliding everything else left. */}
       <span className="c-bflagcell">
         {row.rejectedAt ? (
-          // RETURNED: the owner looked and did not approve. Hot — this is the
-          // admin's flag for another review, and the note is the assignment.
-          <span className="c-bdrift" title={row.rejectNote ? `Owner: “${row.rejectNote}”` : 'The owner did not approve this package'}>
-            Returned — see note
+          // NOT APPROVED: the owner looked and bounced it. The badge says so;
+          // the flag carries the note and the way back — dropping the
+          // corrected invoice on the row re-queues it (2026-09-03).
+          <span className="c-bdrift" title={row.rejectNote ? `Owner: “${row.rejectNote}” — drop the corrected invoice on this row to send it back for approval` : 'The owner did not approve this package — drop the corrected invoice on this row to re-queue it'}>
+            See note · drop the corrected invoice
           </span>
         ) : row.invoiceDrift ? (
           // DRIFT: edited after the invoice went out. Hot, because the
@@ -859,16 +1079,28 @@ function Row({
           >
             Changed since invoiced
           </span>
-        ) : row.awaitingPo ? (
+        ) : row.awaitingPo && !stage ? (
+          /* On the staged layout the badge already SAYS Awaiting PO — the chip
+             here would say it twice, so the cell shows when it was approved
+             instead (the useful second fact while chasing a label). */
           <span className="c-bflag c-po">Awaiting PO</span>
+        ) : row.awaitingPo && stage && row.approvedAt ? (
+          <span className="c-bhint">Approved {fmtDayHeading(row.approvedAt.slice(0, 10))}</span>
         ) : row.closedReason ? (
           <span className="c-bflag c-soon">{row.closedReason === 'written_off' ? 'Written off' : 'Voided'}</span>
-        ) : row.notStarted && row.bucket === 'progress' ? (
-          /* Inside In progress now (Upcoming is gone, 2026-08-19) — the chip
-             is what still says "this one hasn't happened yet". */
+        ) : row.notStarted && row.bucket === 'progress' && !stage ? (
+          /* The staged layout's In-progress badge already says it. */
           <span className="c-bflag c-soon">Not started</span>
         ) : wantsInvoice ? (
-          <span className="c-bhint">{dragOver ? 'Release to attach' : 'Drop invoice here'}</span>
+          /* CLICK OR DROP (2026-09-03): the Attach button is gone, so the hint
+             is also the picker. Swallows the click so the row doesn't open. */
+          <span
+            className="c-bhint"
+            style={{ cursor: 'pointer' }}
+            onClick={e => { e.stopPropagation(); onAttach() }}
+          >
+            {dragOver ? 'Release to attach' : 'Drop invoice here · or click'}
+          </span>
         ) : row.staleDownload ? (
           // Downloaded days ago and still not sent. Hot, because the work is
           // already done and the only thing missing is the one act PRSFlo
@@ -882,16 +1114,18 @@ function Row({
           // a row with no button and no explanation reads as broken, so it says
           // where to go instead.
           <span className="c-bhint">Record payment on the WO</span>
-        ) : row.hasInvoiceDoc && !showLights ? (
-          // Sent, paid and closed rows show no lights, so without this there is
-          // no sign at all that the invoice is stapled on. Same cell the "Drop
-          // invoice here" hint used to occupy — the question and its answer end
-          // up in the same place.
+        ) : row.hasInvoiceDoc && !showLights && !stage ? (
+          // COD's sent/paid/closed rows show no lights, so without this there
+          // is no sign the invoice is stapled on. The staged layout doesn't
+          // need it — Invoiced is step 2, and every badge from Needs approval
+          // up implies it.
           <span className="c-bflag c-soon">Invoice on file</span>
         ) : null}
       </span>
 
-      <span>{showLights && <Lights row={row} />}</span>
+      {/* The lights column only exists on the COD layout — the staged grid has
+          no cell for it (the badge replaced it, 2026-09-03). */}
+      {!inStaged && <span>{showLights && <Lights row={row} />}</span>}
 
       <span className="c-bamt">{row.balance > 0 ? formatCurrency(String(row.balance)) : '—'}</span>
       {showAge && <span className="c-bage">{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>}
@@ -911,23 +1145,13 @@ function Row({
           Approve fired the button AND opened the work order behind it. Buttons
           swallow the double-click; only the row itself opens. */}
       <span className="c-bactcell" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-        {label && canAct && (
-          <button
-            className={`c-bact${blocked ? ' c-bmuted' : ''}`}
-            onClick={blocked ? undefined : onAct}
-            disabled={blocked}
-            // A disabled button in the SAME PLACE as the live one teaches where
-            // the control lives and says why it isn't available. Hiding it
-            // taught nothing and read as a broken row.
-            title={blocked ? 'Approved, but this package needs a PO before it can be sent — add the PO number on the work order, or press Not req’d there' : undefined}
-            style={blocked ? { cursor: 'default' } : undefined}
-          >
-            {/* THE LABEL DOES NOT CHANGE WHEN BLOCKED (fix, 2026-08-11). It used
-                to read "Needs PO", which put the reason in two places at once —
-                the flag column already says AWAITING PO — and made the button
-                look like a different control from the one on the row above it.
-                A greyed Approve says "this is the next step and you can't take
-                it yet"; the flag says why. One fact, one place. */}
+        {/* THE GREYED DOWNLOAD IS GONE (2026-09-03). An Awaiting-PO row's
+            button used to be a disabled Download pointing at the work order;
+            now it is Add PO — the thing you actually came to do — so nothing
+            here ever renders disabled. Nothing can still leave without a PO:
+            Download simply isn't offered until one exists (nextAction). */}
+        {label && canAct && !hideLabel && (
+          <button className="c-bact" onClick={onAct}>
             {label}
           </button>
         )}
@@ -947,13 +1171,14 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo }: {
   row: InvoiceRow
   onCancel: () => void
   onOpenDoc: () => void
   onClose: () => void
   onPullBack: () => void
   onRedownload: () => void
+  onNoPo: () => void
 }) {
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   return (
@@ -963,6 +1188,14 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
         <div style={{ fontSize: 12.5, marginBottom: 12 }}>{row.client}</div>
         {row.hasInvoiceDoc && (
           <button className="c-bact c-bblock" onClick={onOpenDoc}>Open the attached invoice PDF</button>
+        )}
+        {/* The rare sibling of Add PO — this job goes out without one. Same
+            work_orders.no_po_needed field the WO screen writes; here because
+            the WO trip was the whole complaint (2026-09-03). */}
+        {row.awaitingPo && !row.isCod && (
+          <button className="c-bact c-bblock" onClick={onNoPo}>
+            No PO required — this one can go out without it
+          </button>
         )}
         {/* Build the package again — after a correction, or because the first
             download went astray. Here rather than on the row: the row's button
@@ -1128,7 +1361,7 @@ function PackageModal({ row, booking, onClose, isOwner, approverId, approverName
             assignment, visible to whoever opens the window next. */}
         {row.rejectedAt && (
           <div className="c-bnote" style={{ padding: '0 14px 6px', color: 'var(--c-st-hot)' }}>
-            Returned by the owner{row.rejectNote ? <> — “{row.rejectNote}”</> : ''}. Fix the work order, then press Send for approval on the row.
+            Returned by the owner{row.rejectNote ? <> — “{row.rejectNote}”</> : ''}. Fix the work order, then drop the corrected invoice on the row — that puts it back in the approval queue.
           </div>
         )}
 
@@ -1172,7 +1405,9 @@ function PackageModal({ row, booking, onClose, isOwner, approverId, approverName
             >Don&apos;t approve…</button>
             <button
               className="c-bact"
-              style={{ background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', opacity: busy ? 0.5 : 1 }}
+              // Not green (Eli, 2026-09-03): colour belongs to status — a
+              // button is a verb. The approvals strip's Approve is plain too.
+              style={{ opacity: busy ? 0.5 : 1 }}
               disabled={busy}
               onClick={doApprove}
             >{busy ? 'Working…' : `Approve ${formatCurrency(String(row.total))}`}</button>

@@ -250,6 +250,49 @@ export type InvoiceRow = {
   rooms: string | null
   /** True when the session's last date has passed — drives the Open sort. */
   ended: boolean
+  /**
+   * The work has ARRIVED for the office: the session's last day has passed OR a
+   * runner submitted a day (the 2026-08-18 rule — submission is a signal to the
+   * office). Same value the bucket gate uses; carried on the row so the stage
+   * badge can tell "In progress" (still running) from "Needs review" (waiting
+   * on billing) without re-deriving it.
+   */
+  arrived: boolean
+}
+
+/**
+ * THE STAGE BADGE (Eli, 2026-09-03) — the COD bin badge, brought to the billing
+ * side, REPLACING the three lights ("if you have the badges on the left in one
+ * place, it just indicates where it is. You no longer need those"). The ladder
+ * is strictly linear, so one word carries the whole position: a row that reads
+ * NEEDS APPROVAL is by definition already reviewed and invoiced.
+ *
+ * Derived from exactly what the lights and nextAction read — step, rejection,
+ * PO gate, bucket — so the badge can never disagree with the button.
+ * BILLING ROWS ONLY: COD keeps its bins untouched.
+ */
+export type StageKey =
+  | 'progress' | 'review' | 'invoice' | 'approval' | 'po'
+  | 'approved' | 'not_approved' | 'sent' | 'paid' | 'closed'
+
+export function billingStage(row: InvoiceRow): { key: StageKey; label: string } {
+  if (row.bucket === 'closed') return { key: 'closed', label: 'Closed' }
+  if (row.step >= 5 || row.bucket === 'paid') return { key: 'paid', label: 'Paid' }
+  if (row.bucket === 'awaiting') return { key: 'sent', label: 'Sent' }
+  // The owner bounced it — hot until the corrected invoice is dropped on it.
+  if (row.rejectedAt && row.step === 2) return { key: 'not_approved', label: 'Not approved' }
+  if (row.step === 3) {
+    return row.awaitingPo
+      ? { key: 'po', label: 'Awaiting PO' }
+      : { key: 'approved', label: 'Approved' }
+  }
+  if (row.step === 2) return { key: 'approval', label: 'Needs approval' }
+  if (row.step === 1) return { key: 'invoice', label: 'Needs invoice' }
+  // Step 0: either the session is still running (nothing to do — COD's exact
+  // "In progress" meaning) or it has arrived and is waiting on billing's eyes.
+  return row.arrived
+    ? { key: 'review', label: 'Needs review' }
+    : { key: 'progress', label: 'In progress' }
 }
 
 /**
@@ -588,6 +631,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       dateRange,
       rooms,
       ended,
+      arrived: ended || anySubmitted,
     }
   })
 }
@@ -667,6 +711,33 @@ export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] 
     }
     return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
   })
+}
+
+/**
+ * COLUMN SORT — billing list only (Eli, 2026-09-03: header click sorts, SORT
+ * ONLY, no filter menus — the buckets already ARE the filters). 'date' is the
+ * default and the only order that carries day dividers; the others are plain
+ * comparators over the rows the tab already produced. Sorting by date desc
+ * DOES put a not-yet-run session above last night's work — accepted, because
+ * the divider and the In-progress badge both say so (supersedes the Aug 19
+ * started-work-first sub-order for the default view; approved on the mock).
+ */
+export type SortCol = 'date' | 'wo' | 'client' | 'status' | 'balance' | 'age'
+
+export function sortByColumn(rows: InvoiceRow[], col: SortCol, dir: 'asc' | 'desc'): InvoiceRow[] {
+  const flip = dir === 'asc' ? -1 : 1
+  const cmp = (a: InvoiceRow, b: InvoiceRow): number => {
+    switch (col) {
+      case 'wo':      return (b.woNumber ?? '').localeCompare(a.woNumber ?? '')
+      case 'client':  return (b.client ?? '').localeCompare(a.client ?? '')
+      // Status sorts by position on the ladder — step already IS that number.
+      case 'status':  return b.step - a.step
+      case 'balance': return b.balance - a.balance
+      case 'age':     return (b.ageDays ?? -1) - (a.ageDays ?? -1)
+      default:        return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
+    }
+  }
+  return [...rows].sort((a, b) => flip * cmp(a, b) || (b.sessionDate ?? '').localeCompare(a.sessionDate ?? ''))
 }
 
 export function bucketCounts(rows: InvoiceRow[], pipeline: Pipeline): Record<string, number> {
@@ -855,12 +926,15 @@ export function isPastDue(row: InvoiceRow): boolean {
  */
 export function nextAction(row: InvoiceRow): string | null {
   if (row.bucket === 'closed') return 'Reopen'
-  // A REJECTED package's next act belongs to billing, not the owner: fix the
-  // work order, then send it back (2026-09-01). Clearing the rejection is an
-  // explicit press — an edit alone must not silently re-queue something the
-  // owner bounced.
+  // A REJECTED package's next act belongs to billing: fix the work order and
+  // attach the corrected invoice. SINCE 2026-09-03 THE DROP IS THE RE-QUEUE
+  // (softening the Sep 1 "explicit press" ruling — a drop is not a save
+  // side-effect, it is aimed at the invoice): uploadInvoiceDoc clears the
+  // rejection on a replacement attach, so there is no button here. Returning
+  // null ALSO keeps the row out of approvalQueue, which is the point — the
+  // owner already looked.
   if (row.rejectedAt && row.step === 2 && (row.bucket === 'progress' || (row.isCod && row.bucket === 'paid'))) {
-    return 'Send for approval'
+    return null
   }
   // A PAID COD session that is reviewed + invoiced still owes the owner's
   // sign-off (Eli, 2026-09-01) — Paid is where the money is settled, not
@@ -871,7 +945,10 @@ export function nextAction(row: InvoiceRow): string | null {
   // is to surface it — double-click does the rest. Approval waits for Paid.
   if (row.bucket === 'balance') return null
   if (row.step === 0) return null
-  if (row.step === 1) return 'Attach invoice'
+  // ATTACHING IS THE DROP (Eli, 2026-09-03 — the button column stops
+  // narrating). The row's flag cell says "Drop invoice here · or click", and
+  // the click opens the same picker the button used to. No button.
+  if (row.step === 1) return null
   if (row.isCod) return null
   // Approve is the gate everything queues behind: reviewed and invoiced.
   // NOT the PO (Eli, 2026-08-31 — reversing Aug 11): owner approval asserts
@@ -879,7 +956,21 @@ export function nextAction(row: InvoiceRow): string | null {
   // the day the session ends. A label's PO can take weeks, and holding the
   // internal sign-off for it meant approving from memory a month later. The PO
   // now blocks DOWNLOAD/SEND instead, so nothing leaves without one.
+  //
+  // NOTE FOR THE ROW: 'Approve' stays here because approvalQueue's membership
+  // IS `nextAction(r) === 'Approve'` (the badge/banner/strip derivation), but
+  // the LIST renders no Approve button since 2026-09-03 — owners approve from
+  // the strip (or the package window). The row hides this one label.
   if (row.step === 2) return 'Approve'
+  // THE PO ARRIVED LATE (Eli, 2026-09-03). An approved package that cannot go
+  // out for want of a PO used to show a greyed Download pointing at the work
+  // order. Now the button is the thing you actually came to do: Add PO opens
+  // the inline strip — PO number, the re-issued invoice, Save & download —
+  // and the approval is untouched throughout, because the money never moved
+  // and the money is the only thing an owner signed. (Reverses the Aug 11
+  // "PO is edited on the WO only" ruling for the post-approval case: a late
+  // PO now drags a new PDF and a send with it, which are hub acts.)
+  if (row.awaitingPo) return 'Add PO'
   // TWO ACTS, NOT ONE (ruling 2026-08-11). PRSFlo builds the file; a person
   // emails it. So the button asks for what only they know, in order:
   //   Download  → build the package
@@ -1032,14 +1123,34 @@ export async function previewPackageUrl(workOrderId: string): Promise<string | n
 
 /**
  * Record the PO. No state change — `awaitingPo` is derived, so writing the
- * number is the whole act and the flag clears itself on reload.
+ * number is the whole act and the flag clears itself on reload. Same
+ * `work_orders.po_number` field the WO screen writes: the hub's Add PO strip
+ * is a second door to ONE field, not a second field.
  */
-export async function recordPoNumber(row: InvoiceRow, poNumber: string): Promise<boolean> {
+export async function recordPoNumber(
+  row: InvoiceRow, poNumber: string,
+  actor?: { id: string | null; name: string },
+): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
     .update({ po_number: poNumber })
     .eq('id', row.workOrderId)
-  return dbResult('Saving PO number', error)
+  const ok = dbResult('Saving PO number', error)
+  if (ok) {
+    // This write bypasses the WO popup's save diff, so it logs its own history
+    // line — a late PO on an approved package is exactly the kind of change
+    // the feed exists to explain.
+    void logWoActivity({
+      workOrderId: row.workOrderId,
+      actorId: actor?.id ?? null,
+      actorName: actor?.name ?? '',
+      source: 'office',
+      kind: 'saved',
+      afterInvoice: row.hasInvoiceDoc,
+      changes: [{ what: 'PO number', from: row.poNumber ?? undefined, to: poNumber }],
+    })
+  }
+  return ok
 }
 
 /** This package can go out without a PO. Same field the WO screen writes. */
@@ -1211,7 +1322,10 @@ export async function enterInvoicePipeline(workOrderId: string): Promise<boolean
  * combine step is deleted rather than digitised — that step only ever existed
  * because the work order used to be paper.
  */
-export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boolean> {
+export async function uploadInvoiceDoc(
+  row: InvoiceRow, file: File,
+  actor?: { id: string | null; name: string },
+): Promise<boolean> {
   const ext = file.name.split('.').pop() || 'pdf'
   const path = `${row.workOrderId}/${Date.now()}.${ext}`
 
@@ -1226,10 +1340,25 @@ export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boo
   // Dropbox. Only advances a work order that was waiting on its invoice;
   // replacing the PDF on an already-approved invoice must not reset it.
   const advance = row.state === 'needs_invoice'
-  // SNAPSHOT WHAT THE CLIENT WAS BILLED. Any later edit to hours, rentals or
-  // damages then shows as drift instead of silently disagreeing with the PDF
-  // that already went out.
-  const snapshot = { invoice_total: row.total }
+  // SNAPSHOT WHAT THE CLIENT WAS BILLED — ON THE FIRST ATTACH ONLY (fix,
+  // 2026-09-03). This used to re-snapshot on EVERY attach, which was a hole
+  // straight through the approval rule: edit a rate after approval (drift →
+  // demoted back to Needs approval), drop a replacement PDF, and the snapshot
+  // updated to today's total — drift vanished and the row read Approved again
+  // with no owner involved. Now a replacement never touches the snapshot: a
+  // pure PDF swap keeps the approval (nothing moved, so no drift either way),
+  // and a swap after a money change correctly still needs the owner —
+  // approving is what re-snapshots (see approveInvoice).
+  const snapshot = row.hasInvoiceDoc ? {} : { invoice_total: row.total }
+  // THE DROP IS ALSO THE RE-QUEUE (Eli, 2026-09-03 — softening the Sep 1
+  // "explicit press" ruling, which killed the Send-for-approval button). A
+  // real fix always ends with a corrected invoice, so dropping the new PDF on
+  // a Not-approved row is the deliberate act that clears the rejection and
+  // puts it back in the owner's queue. A drop is not a save side-effect — it
+  // is aimed at the invoice.
+  const requeue = row.rejectedAt
+    ? { invoice_rejected_at: null, invoice_rejected_by: null, invoice_reject_note: null }
+    : {}
   const next = row.isCod
     // COD returns to a COMPUTED bucket — balance owed or paid — because whether
     // COD money arrived is answered by the payments, never by a stamp.
@@ -1238,9 +1367,21 @@ export async function uploadInvoiceDoc(row: InvoiceRow, file: File): Promise<boo
 
   const { error } = await supabase
     .from('work_orders')
-    .update({ invoice_doc_path: path, ...snapshot, ...(advance ? next : {}) })
+    .update({ invoice_doc_path: path, ...snapshot, ...requeue, ...(advance ? next : {}) })
     .eq('id', row.workOrderId)
-  return dbResult('Attaching invoice', error)
+  const ok = dbResult('Attaching invoice', error)
+  if (ok && row.rejectedAt) {
+    void logWoActivity({
+      workOrderId: row.workOrderId,
+      actorId: actor?.id ?? null,
+      actorName: actor?.name ?? '',
+      source: 'office',
+      kind: 'resubmitted',
+      afterInvoice: true,
+      changes: [{ what: 'Corrected invoice attached — back in the approval queue' }],
+    })
+  }
+  return ok
 }
 
 /**

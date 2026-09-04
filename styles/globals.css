@@ -1910,6 +1910,50 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-bmulti.c-bage-off .c-brow, .c-bmulti.c-bage-off .c-browhd {
   grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
 }
+/* THE STAGE BADGE LAYOUT (Eli, 2026-09-03) — billing rows (and search, which
+   mixes both pipelines) lead with a stage badge and the three lights are GONE:
+   the ladder is linear, so the badge already says how far along a row is. The
+   old 210px lights column becomes the flag column's room. */
+.c-bstaged .c-brow, .c-bstaged .c-browhd {
+  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 46px 120px 26px;
+}
+.c-bstaged.c-bage-off .c-brow, .c-bstaged.c-bage-off .c-browhd {
+  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 120px 26px;
+}
+/* Sortable header (billing only): the active column is legible, the caret says
+   which way. Sort only, never filter — the buckets already are the filters. */
+.c-bsort { cursor: pointer; user-select: none; }
+.c-bsort:hover { opacity: .8; }
+.c-browhd .c-bsort.c-on { opacity: 1; color: var(--c-fg); }
+/* Day divider — the CRM's idiom, grouped by session date. Only rendered while
+   the list is sorted by date; over money-ordered rows a date heading lies. */
+.c-bday { display: flex; align-items: center; gap: 9px; margin: 12px 2px 2px; }
+.c-bday b {
+  font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  opacity: .4; white-space: nowrap;
+}
+.c-bday i { flex: 1; height: 1px; background: var(--c-wash2); }
+.c-bday u { font-size: 9px; opacity: .3; text-decoration: none; white-space: nowrap; }
+/* The inline Add PO strip — a fold under the row, not a modal (Eli: "I don't
+   want more modals and more modals"). */
+.c-bpostrip {
+  background: var(--c-wash); border-radius: 0 0 12px 12px; margin: -2px 6px 6px;
+  padding: 11px 13px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+}
+.c-bpostrip .c-bpolbl {
+  display: block; font-size: 8.5px; font-weight: 800; letter-spacing: .07em;
+  text-transform: uppercase; opacity: .5; margin-bottom: 4px;
+}
+.c-bpostrip input[type="text"] {
+  background: var(--c-srf); border: none; border-radius: 9px; padding: 8px 11px;
+  font-size: 12px; color: var(--c-fg); width: 160px; box-shadow: var(--c-softsh);
+}
+.c-bpofile {
+  border: 1.5px dashed var(--c-wash2); border-radius: 9px; padding: 7px 12px;
+  font-size: 11px; opacity: .65; cursor: pointer; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 300px;
+}
+.c-bpofile:hover { opacity: .9; }
 .c-bbin {
   font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   border-radius: 5px; padding: 3px 6px; text-align: center;
