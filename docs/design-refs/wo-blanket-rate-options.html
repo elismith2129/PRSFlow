@@ -37,6 +37,30 @@
 
   4. "IM JUST A GOOD SALESMAN." The 8% is deliberate, not an anomaly.
 
+  ── FOUR MORE RULINGS (Eli, same session, closing §6) ───────────────────────
+
+  5. OVERTIME IS PRICED OFF RACK. Not off the discounted share. "OT is rack."
+     The blanket deal was struck on BOOKED time; it does not follow the client
+     into the overrun. Studio B's 2 hours over = 2 × $155 (rack ÷ 10), never
+     2 × $142.60. This is now settled — do not re-derive it.
+
+  6. A BUNDLE MAY SPAN VENUES. "One WO can already have diff rooms." Correct —
+     the work order is not venue-scoped, and §4 of WO-SPEC segments the
+     projection by room, so Paramount + Encore on one blanket rate needs no new
+     mechanism. Bundle membership stays a CHOSEN SET OF ROWS; nothing anywhere
+     may narrow it to "all rooms at this location."
+
+  7. THE RATE CARD BECOMES A TABLE. Approved. Pro-rata works today off the rate
+     typed on each row, but the allocation basis should not be a number someone
+     retyped — and the skill's rate sheet has ALREADY drifted (Studio A quoted
+     at $1,650 for months when it is $1,750). A room_rates table auto-fills the
+     rows, gives the allocation a real basis, and gives the client-facing rate
+     sheet one source. Prerequisite to nothing, worth doing early.
+
+  8. THE CALENDAR CARD IS PARKED — DELIBERATELY, WITH A REMINDER OWED.
+     "We'll come back to that, nothing for now, just remind me. There might be
+     a cool way to do something there." NOT dropped, NOT decided. See §6.
+
   ── THE DATA LAW every option shares ────────────────────────────────────────
 
   A bundle is a property of a SET OF ROWS, never of one row:
@@ -434,15 +458,32 @@ never prints.</p>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════ -->
-<h2><span class="n">6</span>Still open</h2>
-<p class="sub">Four questions this mock deliberately does not answer.</p>
-<div class="wo" style="max-width:760px">
+<h2><span class="n">6</span>Answered — and the one thing parked</h2>
+<p class="sub">All four closed by Eli in the same session. Three are rulings; the fourth is
+deliberately held open with a reminder owed.</p>
+<div class="wo" style="max-width:790px">
   <table class="st">
     <tbody>
-      <tr><td><b>Is OT priced off rack or off the discounted share?</b></td><td class="dim" style="width:44%">Drawn as rack. A discounted OT rate would mean the blanket deal follows the client past the booked hours, which is probably not the intent — but it is Eli's call.</td></tr>
-      <tr><td><b>Can a bundle span two venues?</b></td><td class="dim">Paramount + Encore on one blanket rate. The model allows it (membership is a set of rows). Nothing in the UI drawn here does.</td></tr>
-      <tr><td><b>Does the rate card become a table?</b></td><td class="dim">Pro-rata works today off the rate typed on each row. A real <span class="mono">room_rates</span> table would auto-fill them and stop the rate sheet drifting — worth doing, not a blocker.</td></tr>
-      <tr><td><b>Does a bundled day show anything on the calendar card?</b></td><td class="dim">Five cards each show a share, not the blanket. A card might want to say "whole building" instead of a number.</td></tr>
+      <tr><td style="width:38%"><b>OT — rack or discounted share?</b></td>
+        <td><b style="color:var(--booked)">RACK.</b> <span class="dim">"OT is rack." The deal was struck on booked time and does not follow the client into the overrun. Studio B's 2 hrs over = 2 × $155, never 2 × $142.60. Settled — do not re-derive.</span></td></tr>
+      <tr><td><b>Can a bundle span venues?</b></td>
+        <td><b style="color:var(--booked)">YES.</b> <span class="dim">"One WO can already have diff rooms." The WO is not venue-scoped and the projection segments by room, so Paramount + Encore on one blanket rate needs no new mechanism. Membership stays a chosen set of rows — never narrow it to "all rooms at this location."</span></td></tr>
+      <tr><td><b>Does the rate card become a table?</b></td>
+        <td><b style="color:var(--booked)">YES — BUILD IT.</b> <span class="dim">A <span class="mono">room_rates</span> table auto-fills the rows, gives the allocation a real basis, and gives the client-facing rate sheet one source. The drift is already proven: Studio A quoted at $1,650 for months when it is $1,750.</span></td></tr>
+      <tr><td><b>The bundled calendar card</b></td>
+        <td><b style="color:var(--warm)">PARKED — REMINDER OWED.</b> <span class="dim">"We'll come back to that, nothing for now, just remind me. There might be a cool way to do something there." Five cards currently each show a share rather than the blanket. Not dropped and not decided — <b>raise this unprompted when the blanket rate is next picked up.</b></span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2><span class="n">7</span>State of play — where to resume</h2>
+<div class="wo" style="max-width:790px">
+  <table class="st">
+    <tbody>
+      <tr><td style="width:38%"><b>Decided</b></td><td class="dim">One WO not five · pro-rata by room rate · one invoice line with rooms unpriced · OT off rack · bundles may span venues · rate card becomes a table · Option <b>B</b> (day header owns the price) is the recommendation, <b>not yet ruled on</b>.</td></tr>
+      <tr><td><b>Next decision</b></td><td class="dim">Eli picks A / B / C from §2. Everything downstream waits on that one word.</td></tr>
+      <tr><td><b>Then, in order</b></td><td class="dim">1 · <span class="mono">room_rates</span> table + migration. 2 · <span class="mono">wo_rate_bundles</span> + <span class="mono">studio_time_rows.bundle_id</span> migration. 3 · the recompute guard (the landmine). 4 · WO UI. 5 · <span class="mono">lib/woPdf.ts</span> single line. 6 · rebuild the live two-day booking as one WO.</td></tr>
+      <tr><td><b>Owed elsewhere</b></td><td class="dim">The <span class="mono">prs-rate-sheet</span> skill still quotes Studio A at $1,650 — offered, not yet fixed. Nothing here has shipped, so no CHANGELOG / SOP VERSIONS / test-batch entry is due yet.</td></tr>
     </tbody>
   </table>
 </div>
