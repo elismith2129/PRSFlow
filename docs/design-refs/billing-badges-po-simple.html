@@ -98,7 +98,8 @@ h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;m
 .age{text-align:right;font-size:11px;opacity:.55}
 .act{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
   background:var(--wash2);padding:7px 10px;border-radius:99px;text-align:center}
-.act.go{background:var(--booked);color:var(--chip-ink)}
+/* Buttons are NEVER green (Eli) — colour belongs to status; a button is a verb. */
+.act.go{background:var(--wash2)}
 .act.none{background:none;opacity:.3}
 .more{opacity:.35;text-align:center}
 .flag{font-size:9.5px;justify-self:start}
@@ -109,11 +110,15 @@ h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;m
    column so every badge left-aligns like COD's do. */
 .bin{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
   padding:5px 0;border-radius:99px;white-space:nowrap;text-align:center;width:118px}
+/* ONLY PAID IS GREEN (Eli). In progress matches COD's exact color. */
+.b-prog{background:var(--uncon);color:var(--chip-ink)}
 .b-rev{background:var(--warm);color:var(--chip-ink)}
 .b-inv{background:var(--warm);color:var(--chip-ink);opacity:.75}
 .b-app{background:var(--warm);color:var(--chip-ink)}
-.b-po{background:var(--uncon);color:var(--chip-ink)}
-.b-snd{background:var(--booked);color:var(--chip-ink)}
+.b-po{background:#b9d5f1;color:var(--chip-ink)}          /* lighter blue */
+/* Approved is GREEN (Eli: "approved green seems needed" — the Paid tab is
+   rarely open, so green Approved won't sit next to green Paid in practice). */
+.b-appd{background:var(--booked);color:var(--chip-ink)}
 .b-ret{background:var(--hot);color:#fff}
 .b-out{background:var(--uncon);color:var(--chip-ink)}
 .b-paid{background:var(--booked);color:var(--chip-ink)}
@@ -132,7 +137,7 @@ h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;m
 .pofield{background:var(--srf);border-radius:9px;padding:8px 11px;font-size:12px;min-width:150px;box-shadow:var(--softsh)}
 .podrop{border:1.5px dashed var(--wash2);border-radius:9px;padding:8px 14px;font-size:11px;opacity:.6;flex:1;min-width:220px;text-align:center}
 .pobtn{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
-  background:var(--booked);color:var(--chip-ink);padding:9px 14px;border-radius:99px;white-space:nowrap}
+  background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:99px;white-space:nowrap}
 .pocancel{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
   background:var(--wash2);padding:9px 14px;border-radius:99px}
 .pohint{flex-basis:100%;font-size:10px;opacity:.5;line-height:1.5}
@@ -159,11 +164,13 @@ no modal, no re-approval, no trip to the work order.</p>
 <div class="opt">
   <div class="oh">1 · The list, re-badged<span class="rec">The main change</span></div>
   <div class="od">In progress, default sort (by date, day dividers on — the CRM's idiom).
-  The badge column sits where COD's bin badge sits. Colour is the house law: <b>amber =
-  waiting on someone in-house</b> (review, invoice, approval), <b>blue = waiting on someone
-  outside</b> (a label's PO, a client's money), <b>teal = clear to go / done</b>, <b>hot =
-  something is wrong</b>. The flag column stays for the exceptions that ride on top of a stage
-  — drift, a returned note, not-started.</div>
+  The badge column sits where COD's bin badge sits. The colours: <b>In progress</b> is COD's
+  exact blue, <b>amber</b> waits on someone in-house (review, invoice, approval),
+  <b>Awaiting PO</b> is a lighter blue (waiting on the label), <b>Approved</b> and
+  <b>Paid</b> are green (the Paid tab is rarely open, so they never sit together in practice),
+  <b>Not approved</b> is hot. Buttons are never green — colour belongs to status; a button is
+  a verb. The flag column stays for the exceptions that ride on top of a stage — drift, the
+  owner's note.</div>
   <div class="page">
     <div class="crumb">Billing → In progress · sorted by Date ↓</div>
     <div class="hd">
@@ -174,6 +181,17 @@ no modal, no re-approval, no trip to the work order.</p>
       <span class="r on">Balance <i class="caret">▼</i></span>
       <span class="r">Age</span>
       <span>Next</span><span></span>
+    </div>
+
+    <div class="day"><b>Thu, Sep 4</b><i></i><u>1 session</u></div>
+
+    <div class="row">
+      <span class="bin b-prog">In progress</span>
+      <span class="wo">WO-1087</span>
+      <span class="who">10K Projects<small>PayGotti · Sep 4 · X</small></span>
+      <span class="flag dim">Session hasn’t run yet</span>
+      <span class="num">$1,560.00</span><span class="age">—</span>
+      <span class="act none">—</span><span class="more">⋯</span>
     </div>
 
     <div class="day"><b>Wed, Sep 3</b><i></i><u>4 sessions</u></div>
@@ -203,7 +221,7 @@ no modal, no re-approval, no trip to the work order.</p>
       <span class="act none">—</span><span class="more">⋯</span>
     </div>
     <div class="row">
-      <span class="bin b-ret">Returned</span>
+      <span class="bin b-ret">Not approved</span>
       <span class="wo">WO-1080</span>
       <span class="who">GR Business MGMT<small>Nine Vicious · Sep 3 · North</small></span>
       <span class="flag hot">See note · drop the corrected invoice to re-queue</span>
@@ -222,7 +240,7 @@ no modal, no re-approval, no trip to the work order.</p>
       <span class="act go">Add PO</span><span class="more">⋯</span>
     </div>
     <div class="row">
-      <span class="bin b-snd">Ready to send</span>
+      <span class="bin b-appd">Approved</span>
       <span class="wo">WO-1074</span>
       <span class="who">GR Business MGMT<small>Nine Vicious · Aug 31 · North</small></span>
       <span class="flag dim"></span>
@@ -231,12 +249,13 @@ no modal, no re-approval, no trip to the work order.</p>
     </div>
 
     <div class="legend">
+      <span class="bin b-prog">In progress</span>
       <span class="bin b-rev">Needs review</span>
       <span class="bin b-inv">Needs invoice</span>
       <span class="bin b-app">Needs approval</span>
       <span class="bin b-po">Awaiting PO</span>
-      <span class="bin b-snd">Ready to send</span>
-      <span class="bin b-ret">Returned</span>
+      <span class="bin b-appd">Approved</span>
+      <span class="bin b-ret">Not approved</span>
       <span class="bin b-out">Sent</span>
       <span class="bin b-paid">Paid</span>
       <span class="bin b-clsd">Closed</span>
@@ -251,7 +270,7 @@ no modal, no re-approval, no trip to the work order.</p>
     elsewhere — the WO and the approval strip) → <b>Add PO</b> if one is needed →
     <b>Download</b> → <b>Mark sent</b>, which starts the aging clock and moves it to Awaiting
     payment → <b>Mark paid</b> there when the money lands. Four words, in order, never more
-    than one at a time. A Returned row re-queues itself the moment the corrected invoice is
+    than one at a time. A Not-approved row re-queues itself the moment the corrected invoice is
     dropped on it — no button.</div>
   </div>
 </div>
