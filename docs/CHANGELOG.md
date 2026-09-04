@@ -19,6 +19,118 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.22.0 — Billing badges, the minimal button ladder, and the late PO — Sep 3, 2026
+
+**No migrations.** One session, all display/derivation side plus two silent-bug
+fixes. The mock is `docs/design-refs/billing-badges-po-simple.html`, whose
+header comment records the rulings verbatim.
+
+**The stage badge replaces the three lights (billing only).** `billingStage()`
+in `lib/billing.ts` — the COD bin badge, promoted to the billing rows: In
+progress (COD's exact blue) → Needs review → Needs invoice → Needs approval
+(amber = waiting on someone in-house) → Awaiting PO (lighter blue `#b9d5f1`,
+waiting on the label) → Approved (green — Eli's call; the Paid tab is rarely
+open so the two greens never sit together) → Sent → Paid, plus hot **Not
+approved** for a standing rejection and grey Closed. The ladder is strictly
+linear, so one word carries the whole position. COD's lights and bins are
+untouched; in search, billing hits wear their stage and COD hits wear their
+bin in the same leading column (`.c-bstaged` grid).
+
+**The button column stops narrating.** A billing row's button is only ever a
+real act: **Add PO → Download → Mark sent → Mark paid** (+ Reopen in Closed).
+Gone from the rows: *Approve* (owners approve from the strip or the package
+window — `nextAction` still returns it, because `approvalQueue` membership IS
+that predicate; the Row merely hides the label), *Attach invoice* (the flag
+cell's "Drop invoice here · or click" opens the picker), and *Send for
+approval* (see the drop-to-requeue below). The greyed Download on PO-blocked
+rows is gone too — `nextAction` returns **Add PO** there, so nothing on a
+billing row ever renders disabled. Buttons are never green (colour belongs to
+status; a button is a verb) — the package window's Approve lost its green fill
+to match.
+
+**Add PO — the late-PO flow (reverses Aug 11's "PO is edited on the WO only"
+for the post-approval case).** An approved package waiting on its PO gets an
+inline strip under the row (`.c-bpostrip` — a fold, not a modal): PO number
+(same `work_orders.po_number` field the WO writes), optionally the re-issued
+invoice PDF (labels usually re-date it to the PO date; the date lives in the
+PDF), then Save & download → the row's button is Mark sent. **No re-approval —
+the money never moved, and the money is the only thing an owner signed.** The
+PO write and the strip both log `wo_activity` lines. "No PO required" moved
+into the row's ⋯. A PO arriving after SENDING is deliberately not built —
+pending Eli's confirmation it ever happens.
+
+**Drop-to-requeue (softens Sep 1's "explicit press" ruling).** Dropping a
+corrected invoice on a Not-approved row clears the rejection and returns it to
+the owner's queue, logged as `resubmitted`. A drop is not a save side-effect —
+it is aimed at the invoice, and a real fix always ends in a corrected invoice.
+`resubmitForApproval` still exists but nothing renders it.
+
+**Silent bug #1 — replacement attach no longer re-baselines an approved
+total.** `uploadInvoiceDoc` snapshots `invoice_total` on the FIRST attach only
+(`!row.hasInvoiceDoc`). It used to re-snapshot on every attach, so edit-a-rate
+→ drift demotes 3→2 → drop a new PDF → drift vanished and the row read
+Approved with no owner. Now a pure PDF swap keeps the approval (no money
+moved) and a post-edit swap stays demoted; `approveInvoice`'s re-snapshot is
+the one place the baseline moves.
+
+**Silent bug #2 — the as-sent artifact is frozen.** `/api/wo-package` used to
+rebuild and re-store on every call; pulling a sent package a month later
+replaced the record of what the client received. Once `invoice_sent_at` is
+set the route serves the STORED bytes and writes nothing (fallback: rebuild
+without storing if the stored copy is unreadable). Pull it back — which clears
+`invoice_sent_at` — is the deliberate act that reopens the archive.
+
+**Not started is a tab (half-reverses Aug 19's "ditch the upcoming bin").**
+Future sessions were clogging the date-sorted In progress list. New billing
+bucket `notstarted` — ONLY sessions whose first day is in the future, so
+today's work stays In progress (which is what the Aug 19 complaint was
+actually about). Soonest first; excluded from `pipelineCount` (the heading
+number tracks work, not the booking calendar); In progress is still the
+landing tab. In practice these rows are all step 0 (Eli: nothing is invoiced
+or approved before the session).
+
+**Sort + day dividers.** Billing headers sort on click (desc → asc → back to
+the date default; Status/WO/Client/Balance/Age; "Next" deliberately not —
+it derives from the step). Day dividers (`.c-bday`, session-date groups)
+render only under date order — over money-ordered rows a date heading lies.
+Awaiting payment defaults to Age (the chase order, kept); Not started to
+soonest-first. **Page size unified at 15** (was 10/20).
+
+**WATCH-OUT #1 — `nextAction` still says 'Approve'; the Row hides it.**
+`approvalQueue`, the Rail badge, the banner, the strip and the "Waiting on
+approval" stat (now literally `nextAction(r) === 'Approve'` — the old
+`step===2 && bucket==='progress'` copy would have missed a parked row) all
+read that one predicate. Do not "clean up" nextAction to return null at step
+2, and do not re-add an Approve button to billing rows without removing the
+hide in `Row` (`hideLabel`).
+
+**WATCH-OUT #2 — `invoice_total` moves in exactly two places now:** the first
+attach and `approveInvoice`. A third writer reopens silent-bug #1. If a
+replacement PDF shows a drift ⚠ at step 2 that the new PDF already fixed,
+that is by design — approving re-baselines.
+
+**WATCH-OUT #3 — the route's store is gated on `!invoice_sent_at`.** Any new
+caller of `/api/wo-package` gets the frozen artifact for sent rows
+automatically. A genuine re-send feature must go through a deliberate design
+(new column or activity entry for the re-send date, aging keeps the original)
+— not by removing the gate.
+
+**WATCH-OUT #4 — `notstarted` is billing-only and derived.** COD never gets
+it (`deriveBucket`'s COD branch returns first). The rejected-row check in
+`nextAction` includes it; anything else that special-cases `bucket ===
+'progress'` on the billing side should ask whether it means notstarted too.
+
+**WATCH-OUT #5 — the staged grid has no lights column.** `.c-bstaged` (billing
+pipeline, or any search) is a different template from `.c-bmulti` (COD
+latches). A COD search hit renders its bin badge and NO lights; that is
+deliberate — one grid per panel.
+
+**Files:** `lib/billing.ts`, `app/(main)/billing/page.tsx`,
+`app/api/wo-package/route.ts`, `styles/globals.css`,
+`docs/design-refs/billing-badges-po-simple.html` (new mock).
+
+---
+
 ## v1.21.0 — Tenants, the Mustard exception, and two stale-page bugs — Sep 2–3, 2026
 
 **One migration, hand-run.** A new billing section, a designated exception

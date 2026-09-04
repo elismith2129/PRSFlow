@@ -645,6 +645,33 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.22.0', date:'Sep 3, 2026',
+    headline:'Billing gets the COD-style color badges, one button per row, and a fast lane for POs that arrive after approval.',
+    desc:'The billing list is easier to read at a glance and the buttons only ever say the next real thing to do. Plus a new home for future sessions so they stop crowding the working list.',
+    changes:[
+      'Every billing row now wears a big colored badge on the left, just like COD: In progress, Needs review, Needs invoice, Needs approval, Awaiting PO, Approved, Not approved, Sent, Paid. The little Reviewed → Invoiced → Approved dots are gone — the badge says it all in one word.',
+      'The button on a row is only ever one of four real actions: Add PO, Download, Mark sent, Mark paid. Attaching an invoice is now just dragging the PDF onto the row (or clicking where it says "Drop invoice here"). Approving happens in the "Ready for your approval" strip at the top, same as before.',
+      'A PO that arrives AFTER approval no longer means a trip through the work order. The row\'s button says "Add PO" — press it, type the PO, drop the re-issued invoice from QuickBooks, and Save & download. Then Mark sent, exactly as if the PO had been there all along. No re-approval needed — nothing about the money changed.',
+      'If the label doesn\'t need a PO at all, that\'s in the row\'s ⋯ menu now: "No PO required".',
+      'If an owner pressed "Don\'t approve" on a package, fixing it is simpler: correct the work order, then drop the corrected invoice on the row — that automatically sends it back for approval. No extra button to remember.',
+      'Future sessions have their own tab: NOT STARTED. They used to pile up at the top of In progress; now In progress only holds work that has actually begun. The new tab lists what\'s coming, soonest first.',
+      'Column headers sort: click Balance to see the biggest first, Age for the oldest, click again to flip, and a third click puts it back in date order. When the list is in date order, small day headers group the sessions like the CRM does.',
+      'Lists show 15 rows per page now, everywhere in billing.',
+      'Behind the scenes, two important fixes: editing a work order after approval now ALWAYS sends it back for approval, even if a new invoice is attached afterward — and re-downloading a package that was already sent gives you the exact file that went out, never a rebuilt version.',
+    ],
+    affects:'Billing: scan the badge column — amber means it\'s waiting on someone here, light blue means we\'re waiting on the label, red means something needs fixing. One button per row is always your next step. When a PO comes in late, do the whole thing from the billing list: Add PO → drop the new invoice → Save & download → Mark sent. Owners: nothing changed for you — approve from the strip or the package window like before.',
+    dev:[
+      '<code>billingStage()</code> in lib/billing.ts — the stage badge derivation, same family as <code>nextAction</code> so badge and button can never disagree. Billing only; COD bins/lights untouched. Search mixes stage + bin badges in one <code>.c-bstaged</code> column (no lights column there).',
+      'The Row hides the Approve label (<code>hideLabel</code>) but <code>nextAction</code> still returns it — <code>approvalQueue</code> membership IS that predicate; the "Waiting on approval" stat now reads it too instead of its own <code>step===2</code> copy.',
+      'Add PO: <code>nextAction === \'Add PO\'</code> on approved+awaitingPo rows opens an inline strip (<code>.c-bpostrip</code>) — writes the same <code>work_orders.po_number</code>, optional replacement invoice, then download + markDownloaded; PO and requeue write <code>wo_activity</code> lines. Reverses Aug 11 "PO on the WO only" for the post-approval case. No re-send path built.',
+      'Drop-to-requeue: <code>uploadInvoiceDoc</code> clears a standing rejection on replacement attach (logs <code>resubmitted</code>) — softens the Sep 1 explicit-press ruling; <code>resubmitForApproval</code> is no longer rendered anywhere.',
+      'Silent bug #1: <code>uploadInvoiceDoc</code> snapshots <code>invoice_total</code> on FIRST attach only — a replacement after a money edit used to silently re-approve itself. The baseline moves only at first attach and <code>approveInvoice</code>.',
+      'Silent bug #2: <code>/api/wo-package</code> serves the STORED bytes once <code>invoice_sent_at</code> is set and its store is gated on <code>!invoice_sent_at</code> — the as-sent artifact is frozen; Pull it back reopens it.',
+      'New billing bucket <code>notstarted</code> (first day in the future only — today\'s sessions stay In progress; half-reverses Aug 19). Excluded from <code>pipelineCount</code>; soonest-first; rejected-row check in <code>nextAction</code> includes it.',
+      'Sortable headers (<code>sortByColumn</code>; cycle desc → asc → date default) + day dividers only under date order; Awaiting payment defaults to Age (chase order kept). <code>PAGE_SIZE</code> unified at 15.',
+    ],
+  },
+  {
     ver:'v1.21.0', date:'Sep 3, 2026',
     headline:'Rent gets its own place in Billing, the runner app stops guessing which studio you\'re in, and two "it wiped my work" bugs are gone.',
     desc:'A new Tenants section for the monthly rooms, a long-overdue fix for the checkboxes that appeared to clear themselves, and a round of small repairs from things people reported this week.',

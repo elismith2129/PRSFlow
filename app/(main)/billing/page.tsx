@@ -218,12 +218,13 @@ export default function BillingPage() {
   useEffect(() => { setPage(1); setPoFor(null) }, [tab, query, pipeline, codBins])
 
   // Each tab's default order: Awaiting payment leads with the OLDEST debt
-  // (the chase list — sortBucket's old order, kept), everything else by date.
-  // Changing tab resets the sort so a Balance sort on one tab doesn't quietly
-  // reorder the next.
+  // (the chase list — sortBucket's old order, kept); Not started reads
+  // soonest-first (the next session to happen leads); everything else by date,
+  // newest first. Changing tab resets the sort so a Balance sort on one tab
+  // doesn't quietly reorder the next.
   useEffect(() => {
     setSortCol(tab === 'awaiting' ? 'age' : 'date')
-    setSortDir('desc')
+    setSortDir(tab === 'notstarted' ? 'asc' : 'desc')
   }, [tab, pipeline])
 
   // Switching pipeline lands on that side's FIRST tab — for COD that is Balance
@@ -921,6 +922,10 @@ const BIN_COLOR: Partial<Record<BucketKey, string>> = {
  */
 const STAGE_STYLE: Record<StageKey, React.CSSProperties> = {
   progress:     { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
+  // A dimmed In-progress: same family (the session side of the line), clearly
+  // not yet in play. Lives mostly in its own tab; search is where it earns
+  // the distinct look.
+  not_started:  { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)', opacity: 0.55 },
   review:       { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
   invoice:      { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', opacity: 0.75 },
   approval:     { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },

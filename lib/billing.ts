@@ -86,10 +86,11 @@ export type Pipeline = 'billing' | 'cod'
  */
 export type BucketKey =
   // Shared
-  | 'progress'   // being assembled — includes sessions that haven't started yet
+  | 'progress'   // being assembled
   | 'paid'
   | 'closed'     // written off / voided — the archive for BOTH pipelines
   // Billing
+  | 'notstarted' // first day is in the future — parked out of the working list
   | 'awaiting'   // sent, waiting on the client's money
   // COD
   | 'balance'    // collection was missed. Rare, critical, leads its side.
@@ -98,10 +99,19 @@ export type BucketKey =
 export type Bucket = { key: BucketKey; label: string; pill: string; hot?: boolean }
 
 export const BILLING_TABS: Bucket[] = [
-  { key: 'progress', label: 'In progress',      pill: 'c-fill-warm' },
-  { key: 'awaiting', label: 'Awaiting payment', pill: 'c-fill-uncon' },
-  { key: 'paid',     label: 'Paid',             pill: 'c-fill-booked' },
-  { key: 'closed',   label: 'Closed',           pill: 'c-fill-dead' },
+  { key: 'progress',   label: 'In progress',      pill: 'c-fill-warm' },
+  // NOT STARTED (Eli, 2026-09-03: "all my future sessions are clogging up the
+  // top of the billing item list… a not started yet category that is a tab
+  // that defaults to off"). This half-reverses his own Aug 19 "ditch the
+  // upcoming bin" — but only half: the Aug 19 complaint was a session on its
+  // OWN DAY, after its start time, being filed as not-work-yet. This bucket
+  // catches only sessions whose FIRST day is in the future, so today's work
+  // stays in In progress and the date-sorted list stops leading with next
+  // month's lockouts. "Defaults to off" = In progress stays the landing tab.
+  { key: 'notstarted', label: 'Not started',      pill: 'c-fill-uncon' },
+  { key: 'awaiting',   label: 'Awaiting payment', pill: 'c-fill-uncon' },
+  { key: 'paid',       label: 'Paid',             pill: 'c-fill-booked' },
+  { key: 'closed',     label: 'Closed',           pill: 'c-fill-dead' },
 ]
 
 export const COD_TABS: Bucket[] = [
@@ -272,13 +282,18 @@ export type InvoiceRow = {
  * BILLING ROWS ONLY: COD keeps its bins untouched.
  */
 export type StageKey =
-  | 'progress' | 'review' | 'invoice' | 'approval' | 'po'
+  | 'progress' | 'not_started' | 'review' | 'invoice' | 'approval' | 'po'
   | 'approved' | 'not_approved' | 'sent' | 'paid' | 'closed'
 
 export function billingStage(row: InvoiceRow): { key: StageKey; label: string } {
   if (row.bucket === 'closed') return { key: 'closed', label: 'Closed' }
   if (row.step >= 5 || row.bucket === 'paid') return { key: 'paid', label: 'Paid' }
   if (row.bucket === 'awaiting') return { key: 'sent', label: 'Sent' }
+  // Parked in its own tab (2026-09-03) — but a search result or an
+  // invoiced-early row still needs the badge to say why nothing is happening.
+  if (row.bucket === 'notstarted' && row.step === 0) {
+    return { key: 'not_started', label: 'Not started' }
+  }
   // The owner bounced it — hot until the corrected invoice is dropped on it.
   if (row.rejectedAt && row.step === 2) return { key: 'not_approved', label: 'Not approved' }
   if (row.step === 3) {
@@ -310,14 +325,13 @@ export type SummaryStat = {
 /** Aging threshold. 31+ days past SENT is the figure Eli's AR review uses. */
 export const PAST_DUE_DAYS = 31
 
-export const PAGE_SIZE = 10
 /**
- * In progress gets 20 (Eli, 2026-08-11). It is the working list — the one you
- * scan top to bottom every morning — and paging through last night's work in
- * tens is friction on the path people take daily. The finished lists stay at 10
- * because you arrive at those looking for one specific thing.
+ * 15 everywhere (Eli, 2026-09-03: "I think it should be 15"), unifying the old
+ * 10/20 split — with future sessions parked in Not started, In progress no
+ * longer needs the bigger page, and one number beats two.
  */
-export const PROGRESS_PAGE_SIZE = 20
+export const PAGE_SIZE = 15
+export const PROGRESS_PAGE_SIZE = 15
 export function pageSizeFor(bucket: BucketKey): number {
   return bucket === 'progress' ? PROGRESS_PAGE_SIZE : PAGE_SIZE
 }
@@ -391,8 +405,10 @@ export function deriveBucket(args: {
   balance: number
   grand: number
   ended: boolean
+  /** Billing only: first day in the future → parked in Not started. */
+  notStarted?: boolean
 }): BucketKey {
-  const { state, isCod, step, balance, grand, ended } = args
+  const { state, isCod, step, balance, grand, ended, notStarted } = args
   if (state === 'closed') return 'closed'
 
   if (isCod) {
@@ -413,8 +429,10 @@ export function deriveBucket(args: {
 
   if (step >= 5) return 'paid'
   if (step === 4) return 'awaiting'
-  // Steps 0–3 are one package being assembled. Which rung it is on shows as
-  // lights on the row, not as four different tabs.
+  // A session whose first day hasn't come is parked (Eli, 2026-09-03) — it is
+  // not being assembled, it just exists. Steps 0–3 with a started session are
+  // one package being assembled; the rung shows on the stage badge.
+  if (notStarted) return 'notstarted'
   return 'progress'
 }
 
@@ -575,6 +593,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     if (invoiceDrift && step === 3) step = 2
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
+    const notStarted = ((firstDate ?? w.session_date) ?? '') > today
 
     return {
       workOrderId: w.id,
@@ -584,12 +603,13 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       client: (w as any).label || w.client || 'Unknown',
       artist: w.artist ?? null,
       sessionDate: w.session_date ?? null,
-      notStarted: ((firstDate ?? w.session_date) ?? '') > today,
+      notStarted,
       isCod,
       pipeline: (isCod ? 'cod' : 'billing') as Pipeline,
       bucket: deriveBucket({
         state, isCod, step, balance: totals.balance, grand: totals.grand,
         ended: ended || anySubmitted,
+        notStarted,
       }),
       step,
       state,
@@ -701,6 +721,11 @@ export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] 
     if (bucket === 'awaiting') {
       return (b.ageDays ?? 0) - (a.ageDays ?? 0)
     }
+    if (bucket === 'notstarted') {
+      // Soonest first — the old Upcoming order: the next session to happen
+      // leads the parked list.
+      return (a.sessionDate ?? '9999').localeCompare(b.sessionDate ?? '9999')
+    }
     if (bucket === 'progress') {
       const fa = a.notStarted ? 1 : 0
       const fb = b.notStarted ? 1 : 0
@@ -764,7 +789,12 @@ export function bucketCounts(rows: InvoiceRow[], pipeline: Pipeline): Record<str
  * should read 0, not 400. A count that only ever grows is wallpaper.
  */
 export function pipelineCount(rows: InvoiceRow[], pipeline: Pipeline): number {
-  return activeRows(rows).filter(r => r.pipeline === pipeline && r.bucket !== 'paid').length
+  // Not started is excluded too (2026-09-03): a parked future session is not
+  // "anything for me over there" — counting it would make the heading number
+  // grow with the booking calendar rather than with the work.
+  return activeRows(rows).filter(r =>
+    r.pipeline === pipeline && r.bucket !== 'paid' && r.bucket !== 'notstarted',
+  ).length
 }
 
 export function hasCodAlert(rows: InvoiceRow[]): boolean {
@@ -891,8 +921,11 @@ export function summarise(rows: InvoiceRow[], pipeline: Pipeline): SummaryStat[]
     },
     { value: money(received), label: 'Received this month', goto: 'paid' },
     {
-      // Step 2 = invoiced, waiting on an owner. This is Eli's own queue.
-      value: String(live.filter(r => r.step === 2 && r.bucket === 'progress').length),
+      // Invoiced, waiting on an owner — the SAME predicate as approvalQueue
+      // (`nextAction === 'Approve'`), so this figure can never disagree with
+      // the strip. The old `step === 2 && bucket === 'progress'` copy would
+      // have missed an invoiced-early session parked in Not started.
+      value: String(live.filter(r => nextAction(r) === 'Approve').length),
       label: 'Waiting on approval', goto: 'progress',
     },
     {
@@ -933,7 +966,7 @@ export function nextAction(row: InvoiceRow): string | null {
   // rejection on a replacement attach, so there is no button here. Returning
   // null ALSO keeps the row out of approvalQueue, which is the point — the
   // owner already looked.
-  if (row.rejectedAt && row.step === 2 && (row.bucket === 'progress' || (row.isCod && row.bucket === 'paid'))) {
+  if (row.rejectedAt && row.step === 2 && (row.bucket === 'progress' || row.bucket === 'notstarted' || (row.isCod && row.bucket === 'paid'))) {
     return null
   }
   // A PAID COD session that is reviewed + invoiced still owes the owner's

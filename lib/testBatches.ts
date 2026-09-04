@@ -55,6 +55,76 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-3-2026-billing',
+    title: 'Billing badges, the button ladder, and the late PO',
+    version: 'v1.22.0',
+    date: 'Sep 3, 2026',
+    intro:
+      'The billing list now wears COD-style stage badges (the three dots are gone), rows carry at most one of four buttons, POs added after approval happen in a strip under the row, and future sessions moved to a Not started tab. Everything here is on the desktop Billing page; two items need an owner login. The COD side should look completely unchanged — that is itself a check.',
+    items: [
+      {
+        id: 'v122-badges', area: 'Billing', device: 'desktop',
+        what: 'Every billing row leads with a colored stage badge and the Reviewed/Invoiced/Approved dots are gone',
+        how: 'Open Billing → In progress. Each row starts with one badge — Needs review, Needs invoice, Needs approval, Awaiting PO (light blue), Approved (green), or Not approved (red). Nowhere on the billing side should you still see the three little progress dots. Check both dark and light themes.',
+      },
+      {
+        id: 'v122-buttons', area: 'Billing', device: 'desktop',
+        what: 'Row buttons are only ever Add PO, Download, Mark sent, or Mark paid — and none are green or greyed',
+        how: 'Scan the In progress and Awaiting payment tabs. No row shows "Attach invoice", "Approve", or "Send for approval" as its button, no button is filled green, and no button sits greyed-out/disabled. Rows that have nothing actionable show no button at all.',
+      },
+      {
+        id: 'v122-attach-click', area: 'Billing', device: 'desktop',
+        what: 'Clicking "Drop invoice here · or click" opens the file picker and attaches',
+        how: 'Find a Needs invoice row. Click the "Drop invoice here · or click" text (not the row around it). A file picker opens; choose a PDF. The row should flip to Needs approval without opening the work order behind it.',
+      },
+      {
+        id: 'v122-notstarted-tab', area: 'Billing', device: 'desktop',
+        what: 'Future sessions live in the Not started tab, not In progress',
+        how: 'In progress should contain no session whose first day is after today (the Mustard/DJ Camper monthlies covering today still count as started). Click the Not started tab: only future sessions, soonest first, each wearing a dimmed blue Not started badge.',
+      },
+      {
+        id: 'v122-sort', area: 'Billing', device: 'desktop',
+        what: 'Header click sorts, second click reverses, third returns to date order — and day headers only show in date order',
+        how: 'On In progress, click the Balance header: biggest balance first, ▼ beside Balance, and the little day headers (like "Wed, Sep 3") disappear. Click Balance again: smallest first, ▲. Click a third time: back to date order with the day headers back.',
+      },
+      {
+        id: 'v122-pagesize', area: 'Billing', device: 'desktop',
+        what: 'Lists page at 15 rows',
+        how: 'On any billing tab with more than 15 rows, the pager at the bottom should read "1–15 of …". (If no tab has 16+ rows, check the count on In progress + Not started combined and mark this pass if neither pages early.)',
+      },
+      {
+        id: 'v122-addpo', area: 'Billing', device: 'desktop',
+        what: 'Add PO on an approved row runs the whole flow in a strip under the row',
+        how: 'Find an approved row with the light-blue Awaiting PO badge (its button says Add PO). Press it: a strip unfolds under the row with a PO number field and an invoice drop. Type a PO, choose a replacement PDF, press Save & download. The package downloads, the badge becomes Approved, and the button now says Mark sent. Open the work order: the PO number is on it.',
+      },
+      {
+        id: 'v122-addpo-noapproval', area: 'Billing', device: 'desktop',
+        what: 'Adding a PO does NOT send the row back for approval',
+        how: 'After the previous item, confirm the row did not return to Needs approval and it does not appear in the "Ready for your approval" strip. The approval date on the package window header is unchanged.',
+      },
+      {
+        id: 'v122-drift-guard', area: 'Billing', device: 'desktop',
+        what: 'Editing money after approval demotes the row — and attaching a new PDF does NOT sneak it back to Approved',
+        how: 'Open an approved work order, change a rate, save. The row should drop to Needs approval with the red "Changed since invoiced" flag. Now drop a new PDF on that row. It must STAY at Needs approval (this used to silently re-approve). Owner then approves from the strip to restore it — which also clears the drift flag.',
+      },
+      {
+        id: 'v122-requeue', area: 'Billing', device: 'desktop',
+        what: 'A Not approved row goes back to the owner when the corrected invoice is dropped on it',
+        how: 'OWNER: open a Needs approval row\'s package and press "Don\'t approve…" with a note. The row turns red Not approved with no button. Now drop any PDF onto that row: the badge returns to Needs approval and the row reappears in the "Ready for your approval" strip.',
+      },
+      {
+        id: 'v122-assent-frozen', area: 'Billing', device: 'desktop',
+        what: 'A sent package always re-opens exactly as it went out, even after edits',
+        how: 'On a row in Awaiting payment (already sent), open it and look at the "As sent" tab — note the total on the PDF. Close, open the work order, change a rate, save. Re-open the row\'s "As sent" tab: the PDF still shows the ORIGINAL figures, not the edit.',
+      },
+      {
+        id: 'v122-cod-unchanged', area: 'COD', device: 'desktop',
+        what: 'The COD side is completely untouched',
+        how: 'Switch to COD. The latching tabs, the bin badges when 2+ tabs are on, the three progress dots on rows, and the Approve buttons on paid+reviewed rows all still look and work exactly as before.',
+      },
+    ],
+  },
+  {
     id: 'sep-3-2026',
     title: 'Tenants, the Mustard exception, and the stale-page fixes',
     version: 'v1.21.0',

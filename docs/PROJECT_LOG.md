@@ -5072,3 +5072,87 @@ Recorded here because they are live defects, not design questions:
    `/api/wo-package` stores its bytes on every call, so pulling the file again
    later rebuilds from today's WO and replaces the record of what the client
    received. Fix: once `invoice_sent_at` is set, serve the stored bytes.
+
+---
+
+### Sep 3, 2026 — The badge does the talking: billing gets COD's colour, the buttons go quiet, and the late PO gets a lane (v1.22.0)
+
+**The session ran mock-first and the mock was rewritten three times as Eli
+refined it live — worth recording because each rewrite was a ruling, not a
+polish.** The morning handoff prompt proposed a small "stuck-on" pill
+mid-row plus keeping the three lights. Eli's spoken direction unmade that in
+three steps: (1) *"those big color badges are very helpful [on COD]. I think
+we should just put that on the billing side as well"* — the badge is the BIG
+left-column bin badge, not a polite pill; (2) *"I don't think we need the
+progress portion… if you have the badges on the left in one place, it just
+indicates where it is. You no longer need those"* — the badge REPLACES the
+lights, which works only because the billing ladder is strictly linear (a row
+reading NEEDS APPROVAL is by definition reviewed and invoiced — three cells
+of information in one word); (3) *"we just need download button and mark
+sent"* — the button column stops narrating. The final grammar: **colour
+belongs to status; a button is a verb.** Only Paid was to be green, then Eli
+amended his own rule the same hour ("approved green seems needed — the Paid
+page isn't going to be on anyway most of the time"), which is the kind of
+practical override the two-tabs-never-open-together observation makes safe.
+
+**Where do the dropped buttons go?** Approve → the Sep 1 strip and the
+package window (both show the drift ⚠ and the package first, which the row
+never did). Attach invoice → the drop, or clicking the hint (the drop was
+always the primary; the button was a vestige). Send for approval → **the drop
+is the re-queue**: a real fix always ends with a corrected invoice, so
+dropping the new PDF on a Not-approved row clears the rejection. This softens
+the Sep 1 "explicit press, never a side effect" ruling deliberately — a drop
+aimed at the invoice is not a save side-effect, and Eli's question ("once a
+WO is approved and invoiced it already triggers the approval process right?")
+showed the explicit press read as friction, not safety.
+
+**The late PO (Eli's part-two brief, near-verbatim law).** Two post-approval
+scenarios only. An ERROR goes back through the whole loop — and already does,
+by drift demotion; untouched. A LATE PO — the common case; labels often want
+the invoice re-dated to the PO date — is four acts with one intention: PO on
+the WO, re-cut invoice attached, package rebuilt, sent. **It never returns to
+the owner.** Built as `nextAction === 'Add PO'` opening an inline strip under
+the row (*"I don't want more modals and more modals"*), which reverses the
+Aug 11 "adding a PO is done on the WO, one place" ruling for the
+post-approval case — post-approval, a PO drags a new PDF and a send with it,
+both hub acts, so WO-only meant the OTHER three steps happened elsewhere: the
+two-doors problem pointing the other way. The WO's PO field stays for POs
+known at booking; the strip writes the same column. **Rejected:** option C,
+inline PO typing on the row (hides that a PO means a NEW invoice — the likely
+outcome is a package contradicting itself); an "Add PO & re-send" path for
+already-sent invoices (not built — Eli hasn't confirmed a re-issued invoice
+ever actually goes back out post-send; if it does, note the aging clock must
+keep the ORIGINAL sent date, which needs a separate column or activity entry
+because `ageDays` reads `invoice_sent_at`).
+
+**The two holes scoped yesterday were closed as part of this** (see the
+v1.21.0 "KNOWN, NOT YET FIXED" note): the replacement-attach re-snapshot
+(the reasoning held — `invoice_total` now moves only at first attach and at
+approval) and the as-sent overwrite (`/api/wo-package` serves stored bytes
+once sent, store gated on `!invoice_sent_at`; the frozen-artifact exit sits
+BEFORE the build, so serving a sent package also stopped costing a full
+rebuild). While in there, the "Waiting on approval" summary stat was unified
+onto `nextAction(r) === 'Approve'` — it was a narrower re-implementation of
+the approvalQueue predicate, exactly the class of copy the Sep 1 watch-out
+warned about, and the new notstarted bucket would have broken it.
+
+**Not started became a tab at the end of the session** (Eli: future sessions
+"clogging up the top" of the date-sorted list — a consequence of this same
+session's choice of date-desc as the default order, so partly self-inflicted
+and worth owning). This half-reverses his own Aug 19 "ditch the upcoming
+bin": HALF, because Aug 19's actual complaint was a session on its own day,
+after its start time, filed as not-work-yet — the new bucket takes only rows
+whose FIRST day is in the future, so today's work stays in In progress.
+Eli's clarification mid-build ("anything in the future won't have an invoice
+or be approved — that only happens after the session") means parked rows are
+step 0 in practice; the badge/queue fall-throughs for an invoiced-early row
+are defensive only. Excluded from `pipelineCount` so the heading number
+tracks work, not the booking calendar. Page size unified at 15 on his call
+(was 10/20 — the 20 existed to fit future rows that no longer live there).
+
+**Also recorded:** Sent and In progress share COD's blue — they never share a
+tab (only search mixes them) and the words differ; flagged to Eli, accepted.
+"Outstanding" still includes parked future sessions' balances — deliberately
+unchanged (a money figure shouldn't move as a side effect of a layout
+session); raise it with Eli if the number reads wrong now that the rows are
+out of sight.
