@@ -645,6 +645,25 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.23.0', date:'Sep 5, 2026',
+    headline:'Lead pages get a "Log Activity" box — notes that stamp themselves with your initials and the time.',
+    desc:'Until now the only way to get something into a lead\'s activity history was the Contact button, so updates ended up in the Notes box with no date and no name on them. Now there\'s a proper place for them.',
+    changes:[
+      'Every lead has a new "Log Activity" box, right under Notes. Type what happened — a call, a rate you quoted, what the client said — and press Log. It lands in the Activity list with your initials and the exact time, automatically. You never type the date or your initials again.',
+      'The Activity list now starts open on every lead, so the whole history is visible the moment you open the lead — no more clicking the little arrow.',
+      'The regular Notes box is unchanged. Keep using it for the standing facts: who the person is, what the booking needs. Log Activity is for things that HAPPEN: conversations, rate updates, promises made.',
+      'Activity is live — if a teammate logs a note on a lead you have open, it appears without a refresh.',
+    ],
+    affects:'Two boxes, two jobs. Notes = who they are and what they need (edit it any time). Log Activity = what happened and when (each entry is stamped and permanent). Stop writing dated updates into Notes — log them instead, and the history builds itself.',
+    dev:[
+      'Log Activity inserts <code>lead_activity</code> rows with <code>type:\'note\'</code>, text stored <code>XX - your note</code> (same shape as touches); initials auto-resolve from <code>useUserProfile</code>; Cmd/Ctrl+Enter saves.',
+      'Entries interleave with Contact touches in the Activity fold, newest first; typed notes get the full-strength ink dot — <code>activityColor()</code> keyword matching stays touch-only so a note mentioning "call" isn\'t mis-coloured.',
+      'Activity fold defaults OPEN via controlled state (Tags pattern); static Notes band untouched.',
+      'Realtime: per-lead <code>crm-lead-activity-[id]</code> channel + <code>activityVersion</code> bump; own writes refresh immediately.',
+      'The CRM\'s main fetch keeps <code>.eq(\'type\',\'touch\')</code> — notes never feed the touch/cooldown machinery; logging a note is deliberately NOT a touch.',
+    ],
+  },
+  {
     ver:'v1.22.0', date:'Sep 3, 2026',
     headline:'Billing gets the COD-style color badges, one button per row, and a fast lane for POs that arrive after approval.',
     desc:'The billing list is easier to read at a glance and the buttons only ever say the next real thing to do. Plus a new home for future sessions so they stop crowding the working list.',

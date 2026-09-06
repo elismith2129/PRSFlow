@@ -55,6 +55,41 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-5-2026-activity-notes',
+    title: 'CRM activity notes — the log gets a pen',
+    version: 'v1.23.0',
+    date: 'Sep 5, 2026',
+    intro:
+      'Leads gained a "Log Activity" box under Notes that stamps entries with your initials and the time, and the Activity list now starts open. The old Notes box should behave exactly as before — that is itself a check. All desktop CRM work; one item needs a second browser or a teammate.',
+    items: [
+      {
+        id: 'v123-log-note', area: 'CRM', device: 'desktop',
+        what: 'Logging an activity note stamps it with initials + time and it appears at the top of Activity',
+        how: 'Open any lead. In the Log Activity box (under Notes), type "test rate update" — a small preview of your initials and the current time appears next to a Log button. Press Log. The box clears and the entry shows at the top of the Activity list below, reading like "XX - test rate update" with the timestamp.',
+      },
+      {
+        id: 'v123-fold-open', area: 'CRM', device: 'desktop',
+        what: 'The Activity list is open by default on every lead',
+        how: 'Click through three different leads. On each, the Activity section is already expanded — you can see the entries without clicking the fold. Collapse it, switch to another lead: it may open again (that is fine — open is the default).',
+      },
+      {
+        id: 'v123-static-notes', area: 'CRM', device: 'desktop',
+        what: 'The regular Notes box still saves exactly as before',
+        how: 'On a lead, add a line to the Notes box (the one above Log Activity) and click somewhere else on the page. Reload the page and reopen the lead: your line is still there. Nothing about it got a timestamp or initials — it is the same plain notes box as before.',
+      },
+      {
+        id: 'v123-not-a-touch', area: 'CRM', device: 'desktop',
+        what: 'Logging an activity note does NOT count as a contact',
+        how: 'Find a lead showing the Needs Contact state (or note a lead\'s "last contact" info). Log an activity note on it. The Needs Contact state and last-contact date must NOT change — only the Contact button clears those.',
+      },
+      {
+        id: 'v123-realtime', area: 'CRM', device: 'desktop',
+        what: 'A note logged elsewhere appears in the open Activity list without a refresh',
+        how: 'Open the same lead in two browser windows (or have a teammate open it). Log a note in one window. Within a couple of seconds the entry appears in the other window\'s Activity list without touching the page. (If this fails, tell Eli — it means the realtime SQL step needs re-checking, not that the feature is broken.)',
+      },
+    ],
+  },
+  {
     id: 'sep-3-2026-billing',
     title: 'Billing badges, the button ladder, and the late PO',
     version: 'v1.22.0',

@@ -5156,3 +5156,59 @@ tab (only search mixes them) and the words differ; flagged to Eli, accepted.
 unchanged (a money figure shouldn't move as a side effect of a layout
 session); raise it with Eli if the number reads wrong now that the rows are
 out of sight.
+
+### Sep 5, 2026 — The activity log gets a pen: two boxes, two jobs (v1.23.0)
+
+**The problem, in Eli's words:** the Contact button is the only thing that
+triggers the activity log, "which people aren't doing — and just updating the
+static notes section, but there's no time stamp or initials." Conversation
+history and rate updates were accumulating as an undated blob.
+
+**The ruling — two boxes, two jobs, both kept.** An earlier sketch this
+session had notes replacing the blob entirely (timestamped entries as the
+whole Notes section). Eli redirected before any code: keep the static Notes
+band exactly as it is — it holds the standing booking notes on the person and
+what they need — and add a separate composer whose entries land in the
+activity log. Notes = who they are and what they need. Log Activity = what
+happened and when. The distinction is the feature; don't merge the boxes
+later without re-reading this paragraph.
+
+**Build:** `lead_activity` already had everything needed (`type` column,
+`created_at`, per-lead fetch in the fold, `XX - text` convention from
+touches), so a note is just `type:'note'` — no new table, no new column. The
+composer auto-stamps initials from `useUserProfile` and previews the stamp
+beside the Log button so staff see what they're getting. Fold rendering
+interleaves notes with touches, newest first; typed notes wear the full-ink
+dot because `activityColor()`'s keyword matching is built for machine-written
+touch strings and would paint a free-text note that mentions "call" as hot.
+
+**Decisions rejected:** RichNote for the composer (activity entries are plain
+text everywhere — formatting in one entry type would make the feed lie about
+what it stores); renaming the fold to "Activity & Notes" (Eli: "just keep it
+activity"); a keyword-coloured dot for notes (see above).
+
+**Fold defaults open** (second commit, Eli's call): a collapsed Activity fold
+was the other half of the problem — the log was invisible, so nobody wrote to
+it. Controlled state per the Tags pattern, still collapsible.
+
+**Deliberately NOT a touch:** the main CRM fetch's `.eq('type','touch')`
+filter now does double duty — it keeps notes out of the cooldown/Needs
+Contact machinery. Logging what a client said is not the same act as
+contacting them; the Contact button remains the only thing that clears
+Needs Contact. Test batch item v123-not-a-touch pins this.
+
+**DB:** migration `20260905130000_lead_activity_notes_realtime.sql` (run by
+Eli in the SQL editor before the deploy) — adds `lead_activity` to the
+realtime publication + `REPLICA IDENTITY FULL`, idempotent, plus a verify
+SELECT for any CHECK constraint on `type` (none found). Note `lead_activity`
+itself predates the repo's migration history — this is the first repo file
+that touches it.
+
+**Workflow note (operational, first session under it):** Claude Code is
+retired from the loop. Claude now edits the repo directly in the Cowork
+session and hands Eli exact git lines to paste into Terminal; Eli verifies on
+the live site (this session went straight to main on his call — small,
+additive, CRM-only). Same wrap-up ritual, same selftest gate.
+
+Shipped straight to main: `55cfe3b` (composer + migration) / `78ae389`
+(fold open by default). Docs + batch in the wrap-up commit that follows.

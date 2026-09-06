@@ -19,6 +19,53 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.23.0 — The activity log gets a pen: typed notes with a stamp — Sep 5, 2026
+
+**Migration `20260905130000_lead_activity_notes_realtime.sql`** (run by Eli
+same day): adds `lead_activity` to the `supabase_realtime` publication +
+`REPLICA IDENTITY FULL` (idempotent), and carries a verify SELECT for any
+CHECK constraint on `type` — none found, `'note'` inserts cleanly.
+
+**Log Activity composer on the CRM lead panel.** Staff were writing
+conversation and rate updates into the static Notes blob — undated,
+uninitialed — because the Contact button was the only way into the activity
+log. New band under Notes: type, press Log (or Cmd/Ctrl+Enter) → inserts a
+`lead_activity` row with `type:'note'`, text stored `XX - your note` (same
+shape as touch entries), initials auto-resolved from `useUserProfile`. A live
+preview of the stamp shows beside the button. Entries render interleaved with
+touches in the Activity fold, newest first; typed notes get the full-strength
+ink dot (`var(--c-fg)`) — the keyword colouring in `activityColor()` is for
+machine-built touch text and would mis-colour a free-text note that mentions
+"call".
+
+**The Activity fold defaults OPEN** (controlled `activityOpen` state, same
+pattern as Tags) — a collapsed fold hiding the log was half of why staff
+bypassed it. **The static Notes band is untouched**: it stays the standing
+booking notes (who the person is / what they need); dated happenings go in
+Log Activity.
+
+**Realtime:** new per-lead channel `crm-lead-activity-[id]` on
+`lead_activity` bumps `activityVersion` → the fold refetches; own writes bump
+it directly so the entry appears even before the publication event lands.
+
+**WATCH-OUTS:**
+1. **The CRM's main `lead_activity` fetch filters `.eq('type','touch')` — keep
+   it that way.** `'note'` rows must never feed the touch/cooldown machinery
+   (`latestTouch`, Needs Contact); logging a note is deliberately NOT a touch.
+2. `lead_activity` was created outside the repo's migration history — the
+   Sep 5 migration is the first repo file to touch it. If the table is ever
+   rebuilt from repo SQL alone, it won't exist; its DDL lives only in the
+   live DB.
+3. Initials are parsed from the leading `XX - ` of the note text (same
+   convention as touches) — don't change the stored shape without checking
+   `activityColor()` and any future initials parsing.
+
+**Files:** `app/(main)/crm/page.tsx`,
+`supabase/migrations/20260905130000_lead_activity_notes_realtime.sql`.
+(`55cfe3b` / `78ae389`)
+
+---
+
 ## v1.22.0 — Billing badges, the minimal button ladder, and the late PO — Sep 3, 2026
 
 **No migrations.** One session, all display/derivation side plus two silent-bug
