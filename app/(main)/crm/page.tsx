@@ -1725,6 +1725,17 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [creatorInitials, setCreatorInitials] = useState<string | null>(null)
   const [regTokenDates, setRegTokenDates] = useState<{ created_at: string; used_at: string | null } | null>(null)
   const [statusDDOpen, setStatusDDOpen] = useState(false)
+  // ── Activity notes (typed log entries) ────────────────────────────────────
+  // Staff were writing conversation/rate updates into the static Notes blob
+  // (no timestamp, no initials) because the Contact button was the only way
+  // into the activity log. This composer logs a dated, initialed entry into
+  // lead_activity (type 'note'); the static Notes band stays for booking
+  // notes on the person and what they need.
+  const { profile: myProfile } = useUserProfile()
+  const myInitials = myProfile?.initials || profileInitials(myProfile?.display_name)
+  const [activityNoteVal, setActivityNoteVal] = useState('')
+  const [activityVersion, setActivityVersion] = useState(0)
+  const [savingActivityNote, setSavingActivityNote] = useState(false)
 
   // ── Returning-client badge (SQL approved F-7) ────────────────────────────
   // Match the lead to a client on normalized EMAIL OR digits-only PHONE, then
@@ -1869,12 +1880,15 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
   useEffect(() => {
     setActivityLog([])
-    supabase.from('lead_activity').select('note, created_at').eq('lead_id', lead.id)
+    supabase.from('lead_activity').select('note, created_at, type').eq('lead_id', lead.id)
       .order('created_at', { ascending: false }).then(({ data }) => {
         const items = (data || []).map(row => ({
           ts: row.created_at,
           label: row.note || '',
-          color: activityColor(row.note || ''),
+          // Typed notes get the full-strength ink dot — keyword colouring is
+          // for touch entries, whose text is machine-built ("XX - Call - …");
+          // running it on free text would color a note that mentions "call".
+          color: row.type === 'note' ? 'var(--c-fg)' : activityColor(row.note || ''),
         }))
         // Lead Created is rendered as a dedicated always-last row below the log, not injected here.
         const synth: Array<{ ts: string; label: string; color: string }> = []
@@ -1883,7 +1897,19 @@ const parsedLoc0 = parseLocation(lead.location || '')
         const all = [...items, ...synth].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
         setActivityLog(all)
       })
-  }, [lead.id, lead.last_contact, regTokenDates])
+  }, [lead.id, lead.last_contact, regTokenDates, activityVersion])
+
+  // Realtime pair for the activity fetch above (hard rule: every fetch has a
+  // subscription). NOTE: fires only once lead_activity is in the
+  // supabase_realtime publication — migration 20260905130000. Until then the
+  // local activityVersion bump still refreshes after our own writes.
+  useEffect(() => {
+    const ch = supabase.channel(`crm-lead-activity-${lead.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_activity', filter: `lead_id=eq.${lead.id}` },
+        () => setActivityVersion(v => v + 1))
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [lead.id])
 
   // Resolve the creator's initials for the dedicated "Lead Created" row.
   // Web Inquiry rows are attributed to "Inquiry" (no staff lookup). Otherwise
@@ -1939,6 +1965,18 @@ const parsedLoc0 = parseLocation(lead.location || '')
     onUpdate(key, val)
     setSavedField(key)
     setTimeout(() => setSavedField(null), 600)
+  }
+
+  async function addActivityNote() {
+    const text = activityNoteVal.trim()
+    if (!text || !myInitials || savingActivityNote) return
+    setSavingActivityNote(true)
+    const { error } = await supabase.from('lead_activity')
+      .insert({ lead_id: lead.id, type: 'note', note: `${myInitials} - ${text}` })
+    setSavingActivityNote(false)
+    if (!dbResult('Logging activity note', error)) return
+    setActivityNoteVal('')
+    setActivityVersion(v => v + 1)
   }
 
   async function addTag(tag: string) {
@@ -2605,6 +2643,30 @@ const parsedLoc0 = parseLocation(lead.location || '')
         placeholder="Add notes…"
         style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6, minHeight: 0 }}
       />
+      </div>
+
+      {/* ─── Log Activity — typed entry into the activity log, stamped with
+          the author's initials + timestamp on save. Static Notes above stays
+          the booking notes (who the person is / what they need); this is for
+          conversations and rate updates, dated. */}
+      <div className="c-band">
+      <div className="c-band-head">Log Activity</div>
+      <textarea
+        className="c-area"
+        value={activityNoteVal}
+        onChange={e => setActivityNoteVal(e.target.value)}
+        onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') addActivityNote() }}
+        placeholder="Conversation, rate update… saved to Activity with your initials + time"
+        style={{ width: '100%', resize: 'none', lineHeight: 1.5, minHeight: 34 }}
+      />
+      {activityNoteVal.trim().length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 5 }}>
+          <span style={{ fontSize: 10, opacity: .45, fontFamily: 'DM Mono' }}>{myInitials || '—'} · {fmtActivityTime(new Date().toISOString())}</span>
+          <button onClick={addActivityNote} disabled={savingActivityNote || !myInitials}>
+            {savingActivityNote ? 'Logging…' : 'Log'}
+          </button>
+        </div>
+      )}
       </div>
 
       {/* ─── Activity + Tags: STACKED full-width folds (Eli 2026-08-07 rev 2 —
