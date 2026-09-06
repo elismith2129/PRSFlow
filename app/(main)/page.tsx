@@ -1056,7 +1056,11 @@ export default function DashboardPage() {
           grid stretched the track past the viewport and dragged Today's
           Sessions off the right edge of the phone with it. minmax(0,…) pins
           the track to the screen; wide console content scrolls inside itself. */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1.35fr 1fr', gap: 12, alignItems: 'start' }}>
+      {/* Desktop tracks pinned too (2026-09-06): the Aug 26 minmax(0,…) fix
+          was mobile-only, so a single wide child could still stretch the
+          desktop tracks past the viewport and shove Today's Sessions off the
+          right edge. minmax(0,…) is invisible when content fits. */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1.35fr) minmax(0, 1fr)', gap: 12, alignItems: 'start' }}>
 
         {/* (The Needs Action list is retired — the Pipeline indicator in the
             command row replaced it, ruling 2026-08-07. Leads are worked in the
@@ -1163,7 +1167,7 @@ export default function DashboardPage() {
         {/* minWidth 0 + own sideways scroll on mobile (2026-08-26): the My Day /
             My Tasks pair and the staff grid are wider than a phone; they scroll
             within this column instead of widening the page. Desktop untouched. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2, minWidth: 0, overflowX: 'auto' as const } : { gridColumn: '1', gridRow: '1' }) }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(isMobile ? { order: 2, minWidth: 0, overflowX: 'auto' as const } : { gridColumn: '1', gridRow: '1', minWidth: 0 }) }}>
         <div className="c-panel">
 
           {/* THE FLO BOX — the app's single AI mouthpiece. Flat, ringed, and the

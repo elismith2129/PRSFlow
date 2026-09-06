@@ -806,13 +806,19 @@ export async function fetchBalancesQueue(opts?: {
   const from = opts?.fromDate ?? shiftDate(today, -90)
   const to = opts?.toDate ?? today
 
-  const { data: wos, error } = await supabase
+  const { data: wosAll, error } = await supabase
     .from('work_orders')
-    .select('id, booking_id, invoice_number, client, label, artist, session_date')
+    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status')
     .gte('session_date', from)
     .lte('session_date', to)
   if (!dbResult('Loading work orders for balances', error)) return []
-  if (!wos || wos.length === 0) return []
+
+  // COD ONLY (Eli, 2026-09-06). A label WO with a balance is not "outstanding"
+  // — it is somewhere in the billing pipeline (invoice → approval → PO → sent)
+  // and is tracked there; counting it here made the Flo line shout about money
+  // that is simply mid-process. Same predicate as lib/billing.ts.
+  const wos = (wosAll ?? []).filter(w => ((w as any).payment_status ?? '').toUpperCase() === 'COD')
+  if (wos.length === 0) return []
 
   const ids = wos.map(w => w.id)
 
