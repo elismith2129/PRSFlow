@@ -145,6 +145,25 @@ export const BACKLOG_FLAG_THRESHOLD = 3
 export const STICKY_CADENCES: DutyCadence[] = ['monthly']
 
 /**
+ * Days each role is actually IN (0=Sun…6=Sat, same encoding as due_days).
+ * null = every day.
+ *
+ * Fernando is off Sat/Sun (Eli, 2026-09-06): a DAILY duty is not due on a day
+ * the person isn't in, so weekends never go red on the grid or in the Flo
+ * briefing — and Monday covers the weekend for free, because every backlog and
+ * lateness judgement walks due days only and simply steps over Sat/Sun.
+ *
+ * Scope is deliberate: this gates DAILY cadence only. Weekly and monthly
+ * due_days are chosen by hand (the valley checks are Tue/Fri on purpose), and
+ * a sticky monthly landing on a weekend must still escalate rather than
+ * silently never come due — so those judge off due_days exactly as before.
+ */
+export const ROLE_WORKDAYS: Record<MyDayRole, number[] | null> = {
+  manager: [1, 2, 3, 4, 5],
+  billing: [1, 2, 3, 4, 5], // same Mon–Fri (Eli, 2026-09-06)
+}
+
+/**
  * How far back a sticky duty looks for the OLDEST occurrence it still owes.
  * Just over a year, so several consecutively missed months are all found rather
  * than the scan stopping at the most recent one and understating the lateness.
@@ -213,8 +232,14 @@ export function shortDayLabel(iso: string): string {
  */
 export function isDutyDueOn(duty: MyDayDuty, iso: string): boolean {
   if (!duty.is_active) return false
-  if (duty.cadence === 'daily') return true
   const d = new Date(iso + 'T12:00:00')
+  if (duty.cadence === 'daily') {
+    // "Every day" means every day the role is IN (ROLE_WORKDAYS) — the
+    // manager's daily duties are not due on his weekend, so Sat/Sun never go
+    // red and Monday covers the weekend (backlog walks due days only).
+    const workdays = ROLE_WORKDAYS[duty.role]
+    return !workdays || workdays.includes(d.getDay())
+  }
   const days = duty.due_days ?? []
   if (duty.cadence === 'weekly') return days.includes(d.getDay())
   return days.includes(d.getDate())
@@ -232,7 +257,10 @@ export function isDutyDueOn(duty: MyDayDuty, iso: string): boolean {
  */
 export function isDutyShownOn(duty: MyDayDuty, iso: string): boolean {
   if (!duty.is_active) return false
-  return duty.always_available || isDutyDueOn(duty, iso)
+  // Daily duties still RENDER on an off-day (they're just not DUE): if
+  // Fernando does come in on a Saturday, the card lets him tick the work as
+  // an optional extra — same treatment as always_available on a non-due day.
+  return duty.always_available || duty.cadence === 'daily' || isDutyDueOn(duty, iso)
 }
 
 /**
