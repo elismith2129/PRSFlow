@@ -1340,7 +1340,11 @@ export default function DashboardPage() {
         {/* Under the console: staff 14-day grid (live, Eli view only)
             + the Flags indicator (count + latest; "+ add" keeps quick
             reporting; the card grid moved to /flags). */}
-        <div style={{ display: 'grid', gridTemplateColumns: (isEli && viewAs === 'eli' && !isMobile) ? '1.3fr 1fr' : '1fr', gap: 12, alignItems: 'end' }}>
+        {/* minmax(0,…) here too (2026-09-06): a long flag note is nowrap, and
+            on bare fr tracks its min-content blew the flags track past the
+            column and painted it over Today's Sessions. Pinned tracks let the
+            ellipsis do its job. */}
+        <div style={{ display: 'grid', gridTemplateColumns: (isEli && viewAs === 'eli' && !isMobile) ? 'minmax(0, 1.3fr) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: 12, alignItems: 'end' }}>
           {isEli && viewAs === 'eli' && !isMobile && (
             <div className="c-panel">
               <SectionHeader carved title="Staff — 14 days" action={{ label: 'HR →', onClick: () => router.push('/punches') }} />
@@ -1365,7 +1369,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-          <div className="c-flagmini" onClick={() => router.push('/flags')}>
+          <div className="c-flagmini" style={{ minWidth: 0 }} onClick={() => router.push('/flags')}>
             <span className="c-fm-num">{flagsLoading ? '–' : flags.length}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="c-fm-name">Flags</div>
