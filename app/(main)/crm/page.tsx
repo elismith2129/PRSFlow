@@ -1736,6 +1736,9 @@ const parsedLoc0 = parseLocation(lead.location || '')
   const [activityNoteVal, setActivityNoteVal] = useState('')
   const [activityVersion, setActivityVersion] = useState(0)
   const [savingActivityNote, setSavingActivityNote] = useState(false)
+  // Open by default (Eli 2026-09-05): a collapsed Activity fold was hiding
+  // the log, which is half of why staff wrote updates into static Notes.
+  const [activityOpen, setActivityOpen] = useState(true)
 
   // ── Returning-client badge (SQL approved F-7) ────────────────────────────
   // Match the lead to a client on normalized EMAIL OR digits-only PHONE, then
@@ -2673,7 +2676,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
           side-by-side opened wrong; the summaries just need to be VISIBLE
           without scrolling, and the compaction already buys that. Scrolling
           once a fold is open is fine). */}
-      <details className="c-fold" style={{ marginTop: 4 }}>
+      <details className="c-fold" style={{ marginTop: 4 }} open={activityOpen} onToggle={e => setActivityOpen((e.currentTarget as HTMLDetailsElement).open)}>
       <summary>Activity · {activityLog.length + 1}</summary>
       <div className="c-fold-body" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {activityLog.map((entry, i) => (
