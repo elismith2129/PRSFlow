@@ -75,7 +75,32 @@ export const TEST_BATCHES: TestBatch[] = [
       {
         id: 'v124-yourlist', area: 'Dashboard', device: 'desktop',
         what: 'Your List merges duties, tasks and approvals — ticking a duty works, tasks/approvals click through',
-        how: 'Tick a duty row: it strikes through and the progress count updates (and the change survives a reload). Click a task row: you land on /tasks. Click an approve row (owners): you land on Billing. On Eli\'s view, the Mine/Fernando/Aaron tabs swap the list without the box changing size.',
+        how: 'Tick a duty row: it strikes through and the progress count updates (and the change survives a reload). Click a task row: you land on /tasks. Click an approve row (owners): you land on Billing. On Eli\'s view, the Mine/Fernando/Billing tabs swap the list without the box changing size.',
+      },
+      {
+        id: 'v124-stage-colours', area: 'Billing', device: 'desktop',
+        what: 'The stage badges speak one colour language — grey dormant, ORANGE review, BLUE approval',
+        how: 'Open Billing. In progress and Not started rows wear grey badges; Needs review is orange; Needs approval is blue; Approved/Paid green; Balance due red. Then look at the dashboard money box: the "need review" tile is orange and "wait on approval" is blue — the same colours as the badges.',
+      },
+      {
+        id: 'v124-cod-sweep', area: 'Billing — COD', device: 'desktop',
+        what: 'The COD page works like the Billing page now — badges, buttons, Not started tab, Add a PO',
+        how: 'Switch to COD. Rows wear stage badges (no more three little lights); a Not started tab holds future sessions; an approved COD row shows a Download button; the ⋯ menu on an in-progress COD row offers "Add a PO number". A paid COD session that was never reviewed should NOT look finished — its badge says where it really is.',
+      },
+      {
+        id: 'v124-page2', area: 'Billing', device: 'desktop',
+        what: 'Page 2 holds still — no more one-row-at-a-time',
+        how: 'On a bucket with more than 15 rows, go to page 2. It shows ALL the rows after 15 at once, and the footer (e.g. "16–22 of 22") agrees. Work a few rows (review, attach, approve): the rows around them stay put — nothing shuffles between pages while you work.',
+      },
+      {
+        id: 'v124-billing-name', area: 'Whole app', device: 'desktop',
+        what: 'The billing seat says "Billing" everywhere — Aaron\'s name is gone',
+        how: 'Check the dashboard view-as toggle and Your List tabs, the Tasks page tabs, the assign-to dropdown, Shift Notes\' card, and Flo\'s briefing. Every one should say "Billing" — if you find "Aaron" anywhere, report where.',
+      },
+      {
+        id: 'v124-inq-blue', area: 'Dashboard', device: 'desktop',
+        what: 'New web inquiries glow BLUE, not red',
+        how: 'With at least one new web inquiry outstanding, the inquiry block in the CRM box breathes blue and names the person. With none, it sits quiet and grey. Nothing on the dashboard should glow red except an actual overdue/owed line in Flo.',
       },
       {
         id: 'v124-money', area: 'Dashboard', device: 'desktop',

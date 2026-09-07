@@ -19,16 +19,19 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.24.0 — THE NOIR DASHBOARD (UNRELEASED — lives on `feature/dashboard-noir`) — Sep 6–7, 2026
+## v1.24.0 — THE NOIR DASHBOARD — Sep 6–7, 2026 (merged to main Sep 7)
 
-**⚠ NOT ON MAIN YET.** This entry ships with the branch merge. Remaining
-before merge: wire the Flo glow + Bebas stone header + rail treatment (no
-grey ground; hover lighten+grow; NO ivory fill on the selected item — Eli's
-ruling), then Eli's full preview walk. Design law:
-`docs/design-refs/dashboard-flo-ribbon-final.html` (final) and
-`dashboard-anchor-noir.html` A1 (layout); session narrative in PROJECT_LOG.
+Built on `feature/dashboard-noir`, merged whole. The Flo glow/light show
+was CUT before merge (Eli: "ditch the light show" — the CSS survives in
+`docs/design-refs/dashboard-flo-ribbon-final.html` if ever wanted). Design
+law: `dashboard-anchor-noir.html` A1 (layout); narrative in PROJECT_LOG.
 
-**No migrations.**
+**Migration `20260907120000_billing_seat_rename.sql`** (run by Eli, Sep 7):
+`user_profiles.display_name` 'Aaron' → **'Billing'** for the billing seat —
+every surface that names the seat (staff grid, dashboard view-as/queue
+tabs, task tabs, briefings) reads display_name, so the rename is the fix.
+`lib/tasks.ts` labels/primaryName follow ('Aaron' kept as a names fallback);
+shift-notes card label 'Billing Ops' → 'Billing'.
 
 **The dashboard absorbs /my-day and goes noir.** `app/(main)/page.tsx`
 rebuilt: statement Flo (composeBriefing's real bullets, reds first, landed
@@ -59,6 +62,31 @@ channel's admin view MOVED here off Daily Ops; manager log paginates by
 stub** to `/` (the /clients precedent). **CRM:** page height reclaims the
 52px the retired top nav still subtracted; Log Activity composer moved
 above static Notes.
+
+**Sep 7 additions (same branch, before merge):**
+
+- **Billing stage colours (Eli ruling):** In progress + Not started = GREY
+  (dormant, not signals); **Needs review = AMBER** (work in front of you);
+  **Needs approval = BLUE** (waiting on an owner); Awaiting PO light blue,
+  Approved/Paid green, Balance due / Not approved hot. `STAGE_STYLE` +
+  the dashboard money tiles match — they must never diverge again.
+- **THE FULL COD SWEEP:** the staged layout is universal (`staged = true`) —
+  COD rows wear stage badges via `billingStage`'s new COD ladder branch
+  (incl. new StageKey `'balance'`), the lights and bin badges are retired,
+  COD gets the Not started split (`deriveBucket` + tab), a Download button
+  after approval (`nextAction`), and Add-a-PO from the ⋯ menu.
+- **Pagination made stable (the "page 2 deals one WO at a time" bug):** the
+  fetch ordered by `session_date` alone and sessions cluster on the same
+  days, so Postgres returned equal-date rows in ARBITRARY order — and every
+  action's realtime refetch could permute them, changing which row occupied
+  slot 16. Fix: `workOrderId` as the final tiebreaker in `sortByColumn` AND
+  every `sortBucket` branch, plus a secondary `.order('id')` on the fetch.
+  **Watch-out: any new comparator over invoice rows must end on a total
+  order** or page membership churns again.
+- **Inquiry block goes uncontacted-BLUE** on the dashboard (red reads as a
+  problem; a lead is good news). A red pending-flags square was built
+  alongside and ditched the same day (commit `efdc2fa` adds it, the merge
+  commit removes it) — don't resurrect it from the diff.
 
 **WATCH-OUTS:**
 1. The noir dashboard is theme-FIXED dark (`html.n-page` + `.n-home`

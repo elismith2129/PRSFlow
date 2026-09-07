@@ -19,7 +19,6 @@
 //                          as the billing page and the Rail badge.
 //   · fetchHoldsWeek     — holds to check, next 7 days. A parameterised
 //                          fetchHoldsQueue — one queue, one derivation.
-//   · fetchFlagsPending  — the red square's count: flags not yet resolved.
 //
 // House rules honoured here:
 //   · NULL ON FAILURE, NOT [] (the 2026-09-02 "my checkboxes cleared" lesson)
@@ -158,25 +157,6 @@ export async function fetchBillingPulse(): Promise<BillingPulse | null> {
     approvalTotal: approvals.reduce((s, r) => s + (r.invoicedTotal ?? 0), 0),
     send: act.filter(r => !r.isCod && billingStage(r).key === 'approved').length,
   }
-}
-
-// ─── Pending flags ───────────────────────────────────────────────────────────
-
-/**
- * The little red square's one number (Eli, 2026-09-07: "a simple flag box that
- * tells you there are pending flags. thats it"). Pending = anything not yet
- * RESOLVED — an acknowledged flag is still an open problem, so it stays in the
- * count (same reading as the old dashboard flags panel). Count-only query;
- * the names live in Admin → Flags where the box links.
- */
-export async function fetchFlagsPending(): Promise<number | null> {
-  const { count, error } = await supabase
-    .from('flags')
-    .select('id', { count: 'exact', head: true })
-    .is('deleted_at', null)
-    .neq('status', 'resolved')
-  if (!dbResult('Loading pending flags', error)) return null
-  return count ?? 0
 }
 
 // ─── Holds this week ─────────────────────────────────────────────────────────

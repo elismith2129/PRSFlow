@@ -45,7 +45,7 @@ import {
   type MyDayRole, type MyDayDashboard, type GridRow, type DutyView, type QueueBookingItem,
 } from '@/lib/myday'
 import {
-  fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek, fetchFlagsPending,
+  fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek,
   type LandedItem, type InquiryLead, type BillingPulse,
 } from '@/lib/home'
 
@@ -217,14 +217,11 @@ export default function DashboardPage() {
   const [inquiries, setInquiries] = useState<InquiryLead[]>([])
   const [pulse, setPulse] = useState<BillingPulse | null>(null)
   const [codOut, setCodOut] = useState<{ total: number; worst: number }>({ total: 0, worst: 0 })
-  const [flagsPending, setFlagsPending] = useState<number | null>(null)
 
   useEffect(() => {
     // Paired with the page's bookings channel (dashDataVersion).
     fetchLandedToday().then(v => { if (v) setLanded(v) })
     fetchHoldsWeek().then(setHolds)
-    // Paired with the page's flags channel (same version counter).
-    fetchFlagsPending().then(v => { if (v !== null) setFlagsPending(v) })
   }, [dashDataVersion])
   useEffect(() => {
     // Paired with WebInquiryProvider's leads channel.
@@ -266,7 +263,6 @@ export default function DashboardPage() {
       .channel('dashboard-data')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => setDashDataVersion(v => v + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_tasks' }, () => setDashDataVersion(v => v + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => setDashDataVersion(v => v + 1))
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -579,21 +575,6 @@ export default function DashboardPage() {
               <div className="n-bn">{pulse?.send ?? '–'}</div>
               <div className="n-bk">Ready to go out</div>
             </div>
-          </div>
-        </div>
-
-        {/* THE FLAG SQUARE (Eli, 2026-09-07): "a simple flag box that tells
-            you there are pending flags. thats it." One number, red when it
-            matters, quiet when zero. Red belongs HERE now — the inquiry block
-            went blue in the same ruling. */}
-        <div
-          className={`n-portal n-flagbox${(flagsPending ?? 0) > 0 ? ' n-flagged' : ''}`}
-          onClick={() => router.push('/admin?section=flags_log')}
-        >
-          <div className="n-pt"><b>Flags</b><span className="n-arrow">→</span></div>
-          <div className="n-flagbody">
-            <div className="n-flagnum">{flagsPending ?? '–'}</div>
-            <div className="n-flagk">{(flagsPending ?? 0) === 1 ? 'pending flag' : 'pending flags'}</div>
           </div>
         </div>
       </div>

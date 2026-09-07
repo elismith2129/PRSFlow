@@ -5279,3 +5279,23 @@ in dashboard-flo-ribbon-final.html — half-strength, emanating right-only);
 Bebas stone header + 17px Flo lines; rail treatment — NO grey ground, hover
 = lighten + grow ~4.5%, and **NO ivory fill on the selected item** (Eli's
 parting ruling); then Eli's full preview walk and the merge.
+
+**Sep 7 coda — the merge day.** The stage-colour ruling landed ("needs review
+orange, approval blue" — I had them backwards once; grey = dormant), then THE
+FULL COD SWEEP (Eli: "we never gave the COD page the same sweep" — the whole
+v1.22.0 treatment, not just badges: Not started split, lights retired, big
+buttons, PO attach). Then the page-2 bug: "only shows one at a time. as i
+clicked the last one another would just come." Audited the entire chain —
+paginate/pageCount/pageSizeFor/render all provably correct at 15/page — before
+finding the real disease: **no total order.** The fetch sorted by session_date
+alone, sessions cluster on the same days, and Postgres returns equal-key rows
+in arbitrary order per query — so every action's realtime refetch could
+reshuffle which row sat in slot 16. Fixed with a workOrderId tiebreaker
+everywhere rows are sorted (lesson recorded as a changelog watch-out: every
+comparator over shared-key data must end on a total order). Aaron's name
+retired for the role name ("just change it to Billing" — one SQL on
+display_name fixes every surface, because they all read the profile row).
+The inquiry block went uncontacted-blue; a red pending-flags square was built,
+looked at, and ditched within the hour ("actually ditch the flag thing") —
+rejected because the top row earns its slimness, not because flags don't
+matter. Then the merge to main.
