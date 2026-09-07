@@ -177,8 +177,9 @@ export function WorkTheList({ leads, loading, myInitials, onReload, onOpenLead }
         </div>
       ) : (
         <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* WHO */}
-          <div className="c-well" style={{ padding: '12px 14px' }}>
+          {/* WHO — plain soft-skin block (§7c second-level holder: flat wash,
+              radius 12). NOT .c-well — that's the 32px input-well primitive. */}
+          <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '12px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, letterSpacing: '-0.01em' }}>{name}</span>
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg-2)' }}>{current.status}</span>
@@ -204,7 +205,7 @@ export function WorkTheList({ leads, loading, myInitials, onReload, onOpenLead }
           </div>
 
           {/* THE PLAY */}
-          <div className="c-well" style={{ padding: '12px 14px' }}>
+          <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '12px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
               <PRSFloIcon size={16} />
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>Flo's play</span>
