@@ -18,6 +18,7 @@ import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { RegistrationBanner } from '@/components/clients/RegistrationBanner'
 import { RegistrationsView } from '@/components/crm/RegistrationsView'
+import { WorkTheList } from '@/components/crm/WorkTheList'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -364,7 +365,7 @@ function toSegments(groups: Record<string, number>) {
 }
 
 type TouchMap = Record<number, { initials: string, method: string, created_at: string }>
-type CrmView = 'needs-action' | 'all-leads' | 'analytics'
+type CrmView = 'work' | 'needs-action' | 'all-leads' | 'analytics'
 type LabelSuggestion = Client & { _anrName?: string; _anrContactId?: string; _anrEmail?: string | null; _anrPhone?: string | null }
 
 // Universal client search result (label mode) — one row per label / A&R / artist match.
@@ -435,6 +436,14 @@ export default function CRMPage() {
   useEffect(() => {
     try { sessionStorage.setItem('crm_view', view) } catch {}
   }, [view])
+
+  // Kids land in the dealer (Eli ruling 2026-09-07): roles below
+  // owner/manager/billing default to Work the List — the full page stays one
+  // tab away. A view they picked this session (sessionStorage) wins.
+  useEffect(() => {
+    if (!profile?.role || ['owner', 'manager', 'billing'].includes(profile.role)) return
+    try { if (!sessionStorage.getItem('crm_view')) setView('work') } catch {}
+  }, [profile?.role])
 
   const load = useCallback(async () => {
     let allLeads: Lead[] = []
@@ -572,8 +581,22 @@ export default function CRMPage() {
     }
     const { data: rows, error } = await supabase.from('leads').insert(insertData).select('id').single()
     if (!dbResult('Creating lead', error)) return null
+    const newId = (rows as { id: number } | null)?.id ?? null
+    // Flo triage, fire-and-forget: tier + first play land via realtime; the
+    // nightly sweep catches any miss. The lead itself is already saved.
+    if (newId) {
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const token = sess.session?.access_token
+        if (token) fetch('/api/lead-ai', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead_id: newId }),
+        }).catch((): void => undefined)
+      } catch {}
+    }
     await load()
-    return (rows as { id: number } | null)?.id ?? null
+    return newId
   }
 
   const selected = leads.find(l => l.id === selectedId) || null
@@ -647,8 +670,8 @@ export default function CRMPage() {
           {/* Sub-nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'nowrap', marginBottom: 14, flexShrink: 0 }}>
             <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 6, maxWidth: '100%', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined, overflowX: isMobile ? 'auto' : undefined }}>
-              {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
-                const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
+              {(['work', 'needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
+                const labels: Record<CrmView, string> = { 'work': 'Work the List', 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
                 return (
                   <button key={v} onClick={() => setView(v)} className={`c-soft c-control c-raised${active ? ' c-on' : ''}`} style={{ position: 'relative', flexShrink: 0 }}>
@@ -752,6 +775,16 @@ export default function CRMPage() {
             <div style={{ flex: 1, overflowY: 'auto' }}>
               <AnalyticsView leads={leads} />
             </div>
+          )}
+
+          {view === 'work' && (
+            <WorkTheList
+              leads={leads}
+              loading={loading}
+              myInitials={profile?.initials || profileInitials(profile?.display_name)}
+              onReload={load}
+              onOpenLead={(id) => { setView('all-leads'); setSelectedId(id) }}
+            />
           )}
         </>
       )}
@@ -1346,6 +1379,13 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                         : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--c-fg-2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
                   </>}
                 />
+                {/* Flo's tier: priority = upper management's lead, never dealt
+                    to the volume queue. Wash chip — tier is not a status (§5). */}
+                {l.ai_tier === 'priority' && (
+                  <span title={l.ai_tier_reason || undefined} style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 99, background: 'var(--c-wash2)', color: 'var(--c-fg)', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    priority
+                  </span>
+                )}
                 {/* Escalation pill — hot fill is sanctioned needs-you-now (§5).
                     The lead stopped hiding; now it gets louder the longer it sits. */}
                 {activeBucket.key !== 'coming' && overdueDays(l) > 0 && (

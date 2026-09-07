@@ -3,6 +3,12 @@ import { createClient } from '@supabase/supabase-js'
 import type { Lead } from '@/lib/supabase'
 import { overdueDays, isParked } from '@/lib/crm'
 import { DEMOTE_AFTER_OVERDUE_DAYS } from '@/lib/settings'
+import { sweepUntriaged } from '@/lib/server/leadAI'
+
+// 60 is the safe ceiling on every Vercel plan — so the sweep below is capped
+// at 8 leads/night (~3s per model call). New inquiries triage inline at the
+// door, so the sweep only ever chews old backlog, 8 at a time.
+export const maxDuration = 60
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTO-DEMOTE, rewritten 2026-09-07 (Eli ruling: decay surfaces, never hides).
@@ -68,12 +74,18 @@ export async function GET(request: Request) {
       demoted.push({ id: l.id, from: l.status, to: patch.status, name, overdue: od })
     }
 
+    // Triage safety net: anything that slipped through untriaged (manual
+    // leads created while the API was down, pre-migration rows) gets Flo's
+    // read overnight. Capped inside; never fails the demote pass.
+    const triaged = await sweepUntriaged(8)
+
     return NextResponse.json({
       success: true,
       timestamp: now,
       demoted_hot_to_warm: demoted.filter(d => d.from === 'hot').length,
       demoted_warm_to_cold: demoted.filter(d => d.from === 'warm').length,
       demoted,
+      triaged,
     })
   } catch (error: any) {
     console.error('Auto-demote cron error:', error)

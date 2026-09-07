@@ -63,6 +63,14 @@ export interface Lead {
   created_by: string | null
   tags: string[]
   email_opt_out: boolean
+  // ── Flo's triage + play (migration 20260907200000; server-written only —
+  // lib/server/leadAI.ts). tier 'priority' routes to upper management and is
+  // excluded from the Work-the-List dealer; 'volume' is the kids' queue;
+  // NULL = not yet triaged (dealt with a generic first-contact play).
+  ai_tier: 'priority' | 'volume' | null
+  ai_tier_reason: string | null
+  ai_play: { why?: string; say?: string; method?: string } | null
+  ai_play_at: string | null
   created_at: string
   updated_at: string | null
 }

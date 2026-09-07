@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { sendMail, esc } from '@/lib/sendMail'
+import { runLeadAI } from '@/lib/server/leadAI'
 
 // Node runtime (service-role client); never cached.
 export const runtime = 'nodejs'
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
   }
 
-  const { error } = await supabaseAdmin.from('leads').insert({
+  const { data: inserted, error } = await supabaseAdmin.from('leads').insert({
     fname,
     lname,
     email,
@@ -76,12 +77,21 @@ export async function POST(req: NextRequest) {
     status: 'uncontacted',
     source: 'Web Inquiry',
     created_at: new Date().toISOString(),
-  })
+  }).select('id').single()
 
   if (error) {
     console.error('inquiry insert failed:', error)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
+
+  // ── Flo triage (2026-09-07) ──────────────────────────────────────────────
+  // AWAITED like the alert email below (a serverless function can freeze the
+  // moment it returns, so fire-and-forget may never run) and best-effort by
+  // construction: runLeadAI never throws — a lead that saved but wasn't
+  // triaged is caught by the nightly sweep. Priority leads route to upper
+  // management; volume leads land in the kids' Work-the-List queue with a
+  // first-contact play already written.
+  if (inserted?.id) await runLeadAI(inserted.id, 'inquiry')
 
   // ── Alert the team ────────────────────────────────────────────────────────
   // AFTER the insert, and awaited but never checked. The lead is the thing that

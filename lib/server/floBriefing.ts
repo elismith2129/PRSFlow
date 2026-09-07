@@ -88,7 +88,7 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
       return d.toISOString().slice(0, 10)
     })()
 
-    const [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles, pipeLeads, demotions] =
+    const [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles, pipeLeads, demotions, touches] =
       await Promise.all([
         db.from('myday_note_posts')
           .select('role, date, shift, session_notes, studio_notes, created_at, author:user_profiles(display_name)')
@@ -138,9 +138,14 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
           .select('lead_id, note, created_at')
           .eq('type', 'system')
           .gte('created_at', since26h),
+        // The floor's touches (notes start "XX - ..."), for the queue report.
+        db.from('lead_activity')
+          .select('note')
+          .eq('type', 'touch')
+          .gte('created_at', since26h),
       ])
 
-    const firstErr = [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles, pipeLeads, demotions]
+    const firstErr = [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles, pipeLeads, demotions, touches]
       .find(r => r.error)?.error
     if (firstErr) throw firstErr
 
@@ -223,10 +228,24 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
         overdue_follow_ups: overdueLeads,
         uncontacted_count: allLeads.filter(l => l.status === 'uncontacted').length,
         parked_coming_up_count: allLeads.filter(isComingUp).length,
+        // Priority-tier leads still uncontacted = a whale is waiting on a human.
+        priority_leads_waiting: allLeads
+          .filter(l => l.ai_tier === 'priority' && l.status === 'uncontacted')
+          .map(l => ({ name: leadName(l), reason: l.ai_tier_reason, waiting_days: daysAgo(l.created_at) })),
         demoted_by_flo_last_26h: (demotions.data ?? []).map(d => ({
           lead: nameByLeadId.get(d.lead_id) ?? `Lead ${d.lead_id}`,
           what: d.note,
         })),
+        // Who worked the queue: touch counts by the initials that stamp every
+        // activity note ("XX - Call - ..."). Deterministic parse, not AI math.
+        touches_last_26h_by_initials: (() => {
+          const counts: Record<string, number> = {}
+          for (const t of touches.data ?? []) {
+            const init = (t.note ?? '').split(' - ')[0]?.trim()
+            if (init && init.length <= 4) counts[init] = (counts[init] ?? 0) + 1
+          }
+          return counts
+        })(),
       },
     }
 
@@ -256,7 +275,7 @@ A Line is {"text": string, "go": string} — "go" names where the reader acts on
 
 shared — 2 to 5 lines everyone sees: what the night's notes say that matters today, new or worsening flags, which holds need a follow-up call this week (name the client and the day), and the CRM pipeline: leads overdue for a follow-up (worst first — name and days overdue, go "crm") and any lead you demoted overnight — going cold is news, never silent. If two nights of notes mention the same problem, say so — patterns are the point.
 slices.manager / slices.billing / slices.asst_manager — that seat's own outstanding record: duties whose due days went unticked (use the tick record and due_days; daily duties are due Monday–Friday only), tasks open past a few days, flags in their lane nobody owns. 1 to 3 lines each. If a seat is fully caught up, exactly one line: {"text": "Nothing outstanding."}
-slices.owner — the cross-seat read for the owners: who is behind on what, repeated problems, anything aging that nobody owns. 2 to 4 lines.
+slices.owner — the cross-seat read for the owners: who is behind on what, repeated problems, anything aging that nobody owns, and the CRM floor report — a priority lead still uncontacted is the first line every time (go "crm"); who worked the lead queue and who didn't (touches_last_26h_by_initials names them). 2 to 4 lines.
 
 RULES:
 - The whole briefing stays under 120 words across all sections. One fact per line. When there is more than fits, keep the oldest and the worsening — drop the rest; the pages have the long tail.
