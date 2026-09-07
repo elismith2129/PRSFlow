@@ -2585,6 +2585,24 @@ html.n-page .c-frame { background: #0b0a09; }
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .n-home .n-src{font-size:9.5px;color:var(--n-ink3);font-family:Inter,system-ui;font-weight:600}
 
+/* THE 8:50 BRIEFING modal — Flo's AI reading of the night. Noir card, big
+   modal radius (14 — the step-down ladder), below the nav (99999). */
+.n-home .n-bmwrap{position:fixed;inset:0;background:rgba(6,5,4,.72);z-index:10005;
+  display:flex;align-items:flex-start;justify-content:center;padding:9vh 20px 40px;overflow-y:auto}
+.n-home .n-bmodal{background:var(--n-card);border-radius:14px;padding:22px 26px 18px;
+  width:min(640px,100%);color:var(--n-ink)}
+.n-home .n-bmhead{display:flex;align-items:center;gap:9px;padding-bottom:12px}
+.n-home .n-bmhead b{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.01em}
+.n-home .n-bmdate{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--n-ink3)}
+.n-home .n-bmx{margin-left:auto;cursor:pointer;color:var(--n-ink3);font-size:13px;padding:2px 6px}
+.n-home .n-bmx:hover{color:var(--n-ink)}
+.n-home .n-bmln{margin:0 0 9px;font-size:14px;line-height:1.55;font-weight:500}
+.n-home .n-bmseat{margin-top:14px;padding-top:12px;border-top:1px solid var(--n-wash)}
+.n-home .n-bmseathd{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--n-ink3);padding-bottom:7px}
+.n-home .n-bmfoot{margin-top:16px;padding-top:10px;border-top:1px solid var(--n-wash);
+  font-size:10px;line-height:1.5;color:var(--n-ink3)}
+
 /* the money — stage tiles in billing-ladder colours */
 .n-home .n-stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch;min-height:0}
 .n-home.n-mobile .n-stagegrid{grid-template-columns:1fr 1fr}
