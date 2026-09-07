@@ -67,15 +67,17 @@
 > **Rollout to the other ten TVs** = same URL with each room's slug from
 > `lib/displayRooms.ts`, one panel at a time.
 >
-> **Poll rate is a WordPress-host budget, not a Vercel one (2026-09-03).**
-> Every panel's change-detection poll routes through the WordPress host, and
-> its Varnish layer rate-limits by IP — multiple panels at the original 5s
+> **Poll rate is a WordPress-host budget, not a Vercel one (2026-09-03;
+> resolved 2026-09-07).** Every panel's change-detection poll routes through
+> the WordPress host, and its Varnish layer rate-limits by IP — panels at 5s
 > tripped "Error 429 Too Many Requests", which Varnish serves BEFORE the
 > plugin runs, so the self-healing Reconnecting page can't save the panel; it
-> sits on the error until HTML5 Browser is relaunched. `POLL_MS` in
-> `app/display/[room]/route.ts` is 30s for that reason — before shortening it
-> or adding many more panels, remember the whole building shares one IP at
-> the WordPress host.
+> sits on the error until HTML5 Browser is relaunched. **Fixed for good on
+> 2026-09-07: the host (Bill) whitelisted the four static studio IPs**, and
+> `POLL_MS` went back to 5s (watchdog refresh back to 15 min). If 429s ever
+> return — hosting migrated, whitelist lost, new building — set `POLL_MS`
+> to 60000 + the watchdog to 3600 first, then re-request the whitelist.
+> The whole building shares one public IP at the WordPress host.
 
 *Per-room wall calendars on Sharp Info Displays (signage screens that render a
 web page). First up in a fresh session: mock → Eli picks → build. Start with
