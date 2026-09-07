@@ -378,28 +378,9 @@ export default function DailyOpsPage() {
         </div>
       </div>
 
-      {/* ── Runner notes — the ADMIN VIEW of the channel (Eli, 2026-09-01).
-          Same component the studio hub mounts, so the office reads exactly
-          what runners read — and can post into it (an office post wears an
-          Office chip). The sweep card's per-night notes popup stays; this is
-          the whole channel, day-less, one studio at a time. */}
-      <div style={{ marginTop: 18, maxWidth: 640 }}>
-        <div className="c-label" style={{ marginBottom: 3 }}>
-          Runner notes · the channel
-          <Hint tip="The full running notes channel for each studio — everything runners have ever posted, newest first. You can post too; your note shows an Office chip. The sweep cards above still show just the night's notes." />
-        </div>
-        <div style={{ display: 'flex', gap: 6, margin: '7px 0 10px' }}>
-          {OPS_STUDIOS.map(s => (
-            <button
-              key={s.key}
-              onClick={() => setNotesStudio(s.key)}
-              className={`c-soft${notesStudio === s.key ? ' c-on' : ''}`}
-              style={{ cursor: 'pointer' }}
-            >{s.abbr}</button>
-          ))}
-        </div>
-        <RunnerNotesChannel studio={notesStudio} maxHeight={380} subscribe={false} reloadKey={notesV} />
-      </div>
+      {/* (The runner-notes channel MOVED to /shift-notes → Runner notes tab,
+          2026-09-06 — all the building's notes live on one page now. The sweep
+          card's per-night notes popup stays.) */}
 
       {/* Shift-log popup — the full night */}
       {logOpen && (

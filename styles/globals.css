@@ -505,7 +505,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── Containers: carved IN ──────────────────────────────────────────────── */
 .c-panel {
   background: var(--c-bg);
-  border-radius: 40px;
+  border-radius: 16px; /* was 40 — radius step-down 2026-09-06 */
   padding: 12px; /* was 17 — §2b density */
   box-shadow: inset 5px 5px 15px rgba(0, 0, 0, .4),
               inset -5px -5px 15px rgba(255, 255, 255, .03);
@@ -680,7 +680,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* ── RoomCard ───────────────────────────────────────────────────────────── */
 .c-room {
   position: relative; display: flex; flex-direction: column;
-  border-radius: 26px; min-height: 92px; padding: 11px 13px;
+  border-radius: 12px; min-height: 92px; padding: 11px 13px;
 }
 .c-room.c-room-empty { opacity: 0.6; }
 /* Explicit line-heights throughout: the card clips its own overflow, and both
@@ -740,7 +740,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-table { width: 100%; }
 .c-table-row {
   display: grid; align-items: baseline;
-  padding: 10px 18px; border-radius: 26px;
+  padding: 10px 18px; border-radius: 12px;
   font-size: 12.5px;
 }
 .c-table-row:nth-child(odd) {
@@ -763,7 +763,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 [data-theme="light"] .c-modal-backdrop { background: rgba(42, 39, 34, .35); }
 .c-modal {
-  background: var(--c-bg); border-radius: 40px; padding: 24px;
+  background: var(--c-bg); border-radius: 16px; padding: 24px;
   max-width: 520px; width: 100%;
   box-shadow: 0 18px 50px rgba(0, 0, 0, .6),
               inset 5px 5px 15px rgba(0, 0, 0, .4),
@@ -835,7 +835,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    option A). Pipeline indicator + studio cards, ported with polarity flip. */
 .c-pipe {
   display: flex; flex-direction: column; gap: 8px; padding: 14px 16px;
-  border-radius: 20px; cursor: pointer; background: var(--c-bg);
+  border-radius: 16px; cursor: pointer; background: var(--c-bg);
   box-shadow: inset 5px 5px 14px rgba(0, 0, 0, .35), inset -5px -5px 14px rgba(255, 255, 255, .03);
 }
 [data-theme="light"] .c-pipe {
@@ -1108,7 +1108,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    carry. Circular sign-off toggles pair with .c-pressed when latched. */
 .c-oprow {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  border-radius: 20px; padding: 12px 16px; cursor: pointer;
+  border-radius: 12px; padding: 12px 16px; cursor: pointer;
   transition: opacity .16s ease;
 }
 .c-oprow:hover { opacity: 0.85; }
@@ -1131,7 +1131,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    that opens the WO. */
 .c-hovercard {
   position: fixed; z-index: 9998; pointer-events: none;
-  background: var(--c-bg); border-radius: 20px; padding: 15px;
+  background: var(--c-bg); border-radius: 12px; padding: 15px;
   min-width: 210px; max-width: 300px;
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .04);
   animation: c-hovercard-in .12s ease both;
@@ -1321,7 +1321,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 .c-sheet {
   background: var(--c-bg);
   color: var(--c-fg);
-  border-radius: 40px;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 18px 50px rgba(0, 0, 0, .6),
               inset 5px 5px 15px rgba(0, 0, 0, .4),
@@ -1586,7 +1586,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* BAND — grouping ground. One tone step, NO border and NO depth. This is the
    third grouping level: carved container > band > nothing. Bands must NOT carve,
    or nested groups turn into a hall of dents. */
-.c-band { background: var(--c-wash); border-radius: 16px; padding: 8px 10px; margin-top: 6px; }
+.c-band { background: var(--c-wash); border-radius: 12px; padding: 8px 10px; margin-top: 6px; }
 .c-band-head {
   font-size: 9.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   opacity: .5; margin-bottom: 4px;
@@ -2103,7 +2103,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 .c-bmodal {
   background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh);
-  border-radius: 18px; padding: 14px; width: 100%; max-width: 420px;
+  border-radius: 14px; padding: 14px; width: 100%; max-width: 420px;
 }
 
 /* THE PACKAGE WINDOW — the work order and the invoice in one place, so you can
@@ -2111,7 +2111,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
    design: this is a reading surface, not a dialogue. */
 .c-bpkg {
   background: var(--c-srf, var(--c-bg)); box-shadow: var(--c-softsh);
-  border-radius: 18px; width: 100%; max-width: 1120px; height: 90vh;
+  border-radius: 14px; width: 100%; max-width: 1120px; height: 90vh;
   display: flex; flex-direction: column; overflow: hidden;
 }
 .c-bpkghd {

@@ -31,8 +31,13 @@ import {
   fetchNoteDraft, saveNoteDraft, clearNoteDraft, shortDayLabel,
   type MyDayNotePost,
 } from '@/lib/myday'
+import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
+import { OPS_STUDIOS } from '@/lib/dailyOps'
 
 const BILLING_CARD_LABEL = 'Billing Ops'
+/** Notes-log pagination: day-groups shown before "Load more" (Eli 2026-09-06 —
+    the log must never be a mile long). */
+const DAYS_PER_PAGE = 7
 
 export default function ShiftNotesPage() {
   const { profile, loading: profileLoading } = useUserProfile()
@@ -44,6 +49,11 @@ export default function ShiftNotesPage() {
   // (manager, asst manager, owner) to the manager card — same rule as /my-day.
   const postRole = profile?.role === 'billing' ? 'billing' as const : 'manager' as const
 
+  // Manager notes | Runner notes — the runner channel's admin view moved here
+  // from Daily Ops (Eli 2026-09-06): all the building's notes, one tab.
+  const [tab, setTab] = useState<'manager' | 'runner'>('manager')
+  const [runnerStudio, setRunnerStudio] = useState<string>('paramount')
+  const [daysShown, setDaysShown] = useState(DAYS_PER_PAGE)
   const [noteLog, setNoteLog] = useState<MyDayNotePost[]>([])
   const [drafts, setDrafts] = useState({ session: '', studio: '' })
   const [posting, setPosting] = useState(false)
@@ -233,7 +243,7 @@ export default function ShiftNotesPage() {
 
   return (
     <div className="c-root" style={{ maxWidth: 980, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 14px', flexWrap: isMobile ? 'wrap' : undefined }}>
         <div>
           <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
             The referenceable history — every shift, signed
@@ -242,8 +252,33 @@ export default function ShiftNotesPage() {
             Shift Notes
           </h1>
         </div>
+        <div style={{ flex: 1 }} />
+        <span className="c-seg" style={{ flexShrink: 0 }}>
+          <button className={tab === 'manager' ? 'c-on' : ''} onClick={() => setTab('manager')}>Manager notes</button>
+          <button className={tab === 'runner' ? 'c-on' : ''} onClick={() => setTab('runner')}>Runner notes</button>
+        </span>
       </div>
 
+      {/* ── RUNNER NOTES — the channel's admin view, one studio at a time.
+          Same component the studio hub mounts; an office post wears an
+          Office chip. Moved here from Daily Ops (2026-09-06). ── */}
+      {tab === 'runner' && (
+        <div style={{ maxWidth: 720 }}>
+          <div style={{ display: 'flex', gap: 6, margin: '2px 0 10px' }}>
+            {OPS_STUDIOS.map(s => (
+              <button
+                key={s.key}
+                onClick={() => setRunnerStudio(s.key)}
+                className={`c-soft${runnerStudio === s.key ? ' c-on' : ''}`}
+                style={{ cursor: 'pointer' }}
+              >{s.abbr}</button>
+            ))}
+          </div>
+          <RunnerNotesChannel studio={runnerStudio} maxHeight={620} />
+        </div>
+      )}
+
+      {tab === 'manager' && (<>
       {/* THE COMPOSER — two boxes, one signed post. */}
       <div className="c-panel" style={{ marginBottom: 12 }}>
         <div className="c-lozenge">
@@ -302,7 +337,7 @@ export default function ShiftNotesPage() {
             <span className="c-who" style={{ opacity: 0.5 }}>No notes yet — submitted posts appear here.</span>
           </div>
         )}
-        {days.map(d => (
+        {days.slice(0, daysShown).map(d => (
           <div key={d.date} style={{ marginBottom: 4 }}>
             <span className="c-label" style={{ display: 'block', padding: '8px 6px 3px' }}>
               {d.date === noteDay ? 'Today' : shortDayLabel(d.date)}
@@ -343,7 +378,17 @@ export default function ShiftNotesPage() {
             })}
           </div>
         ))}
+        {days.length > daysShown && (
+          <button
+            className="c-soft"
+            onClick={() => setDaysShown(n => n + DAYS_PER_PAGE)}
+            style={{ display: 'block', margin: '10px auto 4px', cursor: 'pointer' }}
+          >
+            Load {Math.min(DAYS_PER_PAGE, days.length - daysShown)} more day{Math.min(DAYS_PER_PAGE, days.length - daysShown) === 1 ? '' : 's'} ↓
+          </button>
+        )}
       </div>
+      </>)}
     </div>
   )
 }
