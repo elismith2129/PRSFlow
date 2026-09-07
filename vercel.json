@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/reset-needs-action",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/flo-briefing",
+      "schedule": "50 15 * * *"
+    },
+    {
+      "path": "/api/cron/flo-briefing",
+      "schedule": "50 16 * * *"
     }
   ]
 }
