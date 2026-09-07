@@ -710,6 +710,10 @@ export default function BillingPage() {
                 <u>{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length} session{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length === 1 ? '' : 's'}</u>
               </div>
             )}
+            {/* THE COD SWEEP (2026-09-07): every row wears its STAGE now —
+                billingStage carries a COD ladder branch, so a paid session
+                that still owes review no longer looks finished. The bin badge
+                (`badge`) still leads in the multi-bin COD view. */}
             <Row
               row={r}
               searching={searching}
@@ -717,8 +721,7 @@ export default function BillingPage() {
               busy={busy === r.workOrderId}
               showAge={showAge}
               badge={codMulti && !isMobile ? r.bucket : null}
-              stage={staged && !r.isCod ? billingStage(r) : null}
-              codBin={staged && r.isCod ? r.bucket : null}
+              stage={staged ? billingStage(r) : null}
               onAct={() => act(r)}
               onAttach={() => attachFor(r)}
               onMore={() => setMoreFor(r)}
@@ -921,22 +924,24 @@ const BIN_COLOR: Partial<Record<BucketKey, string>> = {
  * belongs to status, a button is a verb.
  */
 const STAGE_STYLE: Record<StageKey, React.CSSProperties> = {
-  // RECOLOURED (Eli, 2026-09-07): nothing-is-happening stages are GREY — a
-  // running session and a future one are dormant, not signals. That frees
-  // COD's blue for NEEDS REVIEW, so review and approval finally differ
-  // (both were amber). Matches the dashboard money tiles: review = blue,
-  // approval = amber.
+  // RECOLOURED (Eli, 2026-09-07, corrected same day): nothing-is-happening
+  // stages are GREY — a running session and a future one are dormant, not
+  // signals. NEEDS REVIEW stays AMBER (the work in front of you); NEEDS
+  // APPROVAL takes COD's freed blue (waiting on an owner). Review and
+  // approval finally differ. The dashboard money tiles mirror this.
   progress:     { background: 'var(--c-wash2)', color: 'var(--c-fg)' },
   not_started:  { background: 'var(--c-wash2)', color: 'var(--c-fg)', opacity: 0.55 },
-  review:       { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
+  review:       { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
   invoice:      { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', opacity: 0.75 },
-  approval:     { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
+  approval:     { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
   po:           { background: '#b9d5f1', color: 'var(--c-chip-ink)' },
   approved:     { background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' },
   not_approved: { background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' },
   sent:         { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
   paid:         { background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' },
   closed:       { background: 'var(--c-wash2)', opacity: 0.65 },
+  // COD's own stage (the sweep, 2026-09-07): a missed collection is hot.
+  balance:      { background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' },
 }
 
 /** "Wed, Sep 3" from a YYYY-MM-DD — local, never Date-parse of a bare string. */
@@ -971,7 +976,7 @@ function SortHd({ col, label, right, searching, sortCol, sortDir, clickSort }: {
 }
 
 function Row({
-  row, searching, isOwner, busy, dragOver, showAge, badge, stage, codBin,
+  row, searching, isOwner, busy, dragOver, showAge, badge, stage,
   onAct, onAttach, onMore, onOpen, onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
@@ -982,10 +987,9 @@ function Row({
   showAge: boolean
   /** The row's bucket, when 2+ COD bins are latched — null renders no cell. */
   badge: BucketKey | null
-  /** The billing stage badge (2026-09-03) — replaces the three lights. */
+  /** The stage badge (2026-09-03; COD joined 2026-09-07) — one word for the
+      whole position, both pipelines. */
   stage: { key: StageKey; label: string } | null
-  /** In the staged layout a COD search hit wears its bin in the same column. */
-  codBin: BucketKey | null
   onAct: () => void
   onAttach: () => void
   onMore: () => void
@@ -996,7 +1000,7 @@ function Row({
 }) {
   const overdue = isPastDue(row)
   const label = nextAction(row)
-  const inStaged = stage !== null || codBin !== null
+  const inStaged = stage !== null
   // THE ROW RENDERS NO APPROVE BUTTON on the billing side (Eli, 2026-09-03 —
   // the button column stops narrating): owners approve from the strip above
   // the list or inside the package window, both of which show the drift ⚠ and
@@ -1045,14 +1049,6 @@ function Row({
           search wears its bin in the same column so the grid stays aligned. */}
       {stage && (
         <span className="c-bbin" style={STAGE_STYLE[stage.key]}>{stage.label}</span>
-      )}
-      {codBin && (
-        <span
-          className="c-bbin"
-          style={{ background: BIN_COLOR[codBin] ?? 'var(--c-wash2)', color: codBin === 'balance' ? 'var(--c-hot-text)' : 'var(--c-chip-ink)' }}
-        >
-          {bucketLabel(codBin)}
-        </span>
       )}
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
       <span className="c-bwho">

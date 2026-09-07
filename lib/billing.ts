@@ -283,10 +283,25 @@ export type InvoiceRow = {
  */
 export type StageKey =
   | 'progress' | 'not_started' | 'review' | 'invoice' | 'approval' | 'po'
-  | 'approved' | 'not_approved' | 'sent' | 'paid' | 'closed'
+  | 'approved' | 'not_approved' | 'sent' | 'paid' | 'closed' | 'balance'
 
 export function billingStage(row: InvoiceRow): { key: StageKey; label: string } {
   if (row.bucket === 'closed') return { key: 'closed', label: 'Closed' }
+  // THE COD SWEEP (Eli, 2026-09-07) — COD rows get the stage badge too. The
+  // bin said which tab a row lives in; the stage says where it is on COD's
+  // ladder (reviewed → invoiced → APPROVED, the true end of the line) — so a
+  // paid session that still owes review no longer looks finished. Balance due
+  // stays its own hot stage: collection was missed, nothing else matters.
+  if (row.isCod) {
+    if (row.bucket === 'balance') return { key: 'balance', label: 'Balance due' }
+    if (row.rejectedAt && row.step === 2) return { key: 'not_approved', label: 'Not approved' }
+    if (row.step >= 3) return { key: 'approved', label: 'Approved' }
+    if (row.step === 2) return { key: 'approval', label: 'Needs approval' }
+    if (row.step === 1) return { key: 'invoice', label: 'Needs invoice' }
+    return row.arrived
+      ? { key: 'review', label: 'Needs review' }
+      : { key: 'progress', label: 'In progress' }
+  }
   if (row.step >= 5 || row.bucket === 'paid') return { key: 'paid', label: 'Paid' }
   if (row.bucket === 'awaiting') return { key: 'sent', label: 'Sent' }
   // Parked in its own tab (2026-09-03) — but a search result or an
