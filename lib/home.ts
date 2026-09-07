@@ -188,6 +188,29 @@ export async function fetchFloBriefing(): Promise<FloBriefing | null> {
   return { date: row.date, shared: row.shared, slices: row.slices ?? {} }
 }
 
+/**
+ * "Brief me now" — asks the server to regenerate today's briefing (owner /
+ * manager / billing only; the route checks). Returns true when a fresh
+ * briefing was written; the realtime channel then delivers it, so callers
+ * don't need the response body. Takes 5–15s — show a waiting state.
+ */
+export async function requestFloBriefing(): Promise<{ ok: boolean; error?: string }> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) return { ok: false, error: 'Not signed in' }
+  try {
+    const res = await fetch('/api/flo-briefing-now', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const body = await res.json().catch((): null => null)
+    if (!res.ok) return { ok: false, error: body?.error ?? `Request failed (${res.status})` }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: String(e) }
+  }
+}
+
 // ─── Holds this week ─────────────────────────────────────────────────────────
 
 /** Holds to check — tentative bookings in the next 7 days. One queue, one

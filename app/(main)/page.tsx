@@ -45,7 +45,7 @@ import {
   type MyDayRole, type MyDayDashboard, type GridRow, type DutyView, type QueueBookingItem,
 } from '@/lib/myday'
 import {
-  fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek, fetchFloBriefing,
+  fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek, fetchFloBriefing, requestFloBriefing,
   type LandedItem, type InquiryLead, type BillingPulse, type FloBriefing,
 } from '@/lib/home'
 
@@ -227,6 +227,17 @@ export default function DashboardPage() {
   // Flo's AI briefing (the 8:50 cron). Null = none yet — no affordance shows.
   const [briefing, setBriefing] = useState<FloBriefing | null>(null)
   const [briefOpen, setBriefOpen] = useState(false)
+  const [briefBusy, setBriefBusy] = useState(false)
+  const [briefErr, setBriefErr] = useState<string | null>(null)
+  const canBrief = isEli || ['owner', 'manager', 'billing'].includes(profile?.role ?? '')
+  async function briefNow() {
+    if (briefBusy) return
+    setBriefBusy(true); setBriefErr(null)
+    const r = await requestFloBriefing()
+    if (!r.ok) setBriefErr(r.error ?? 'Something went wrong')
+    else { const fresh = await fetchFloBriefing(); if (fresh) { setBriefing(fresh); setBriefOpen(true) } }
+    setBriefBusy(false)
+  }
 
   useEffect(() => {
     // Paired with the page's bookings channel (dashDataVersion).
@@ -533,13 +544,23 @@ export default function DashboardPage() {
             writes today's briefing. The affordance only exists when a briefing
             does; the statement above stays deterministic and authoritative for
             numbers. ("Ask Flo" chat is phase 2 — this repurposes its slot.) */}
-        {briefing ? (
-          <div className="n-askflo" style={{ cursor: 'pointer' }} onClick={() => setBriefOpen(true)}>
-            Full briefing →
-          </div>
-        ) : (
-          <div className="n-askflo">Ask Flo →</div>
-        )}
+        <div style={{ display: 'flex', gap: 18, alignItems: 'baseline' }}>
+          {briefing && (
+            <div className="n-askflo" style={{ cursor: 'pointer' }} onClick={() => setBriefOpen(true)}>
+              Full briefing →
+            </div>
+          )}
+          {canBrief && (
+            <div
+              className="n-askflo"
+              style={{ cursor: briefBusy ? 'default' : 'pointer', opacity: briefBusy ? 0.55 : undefined }}
+              onClick={briefNow}
+            >
+              {briefBusy ? 'Flo is reading the room…' : briefing ? 'Re-brief ↻' : 'Brief me now →'}
+            </div>
+          )}
+          {briefErr && <div className="n-askflo" style={{ color: 'var(--n-hot)' }}>{briefErr}</div>}
+        </div>
       </div>
 
       {briefOpen && briefing && (
