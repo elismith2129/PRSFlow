@@ -568,6 +568,47 @@ export default function DashboardPage() {
       {/* ── ROW 2: Tonight · Your list · Landed & in the air ── */}
       <div className="n-row1">
 
+        <div className="n-portal" style={{ cursor: 'default' }}>
+          <div className="n-pt">
+            <b>Your list</b>
+            {effectiveView === 'eli' && isEli && (
+              <span className="n-qtabs" onClick={e => e.stopPropagation()}>
+                <button className={qTab === 'mine' ? 'n-on' : ''} onClick={() => setQTab('mine')}>Mine</button>
+                <button className={qTab === 'fernando' ? 'n-on' : ''} onClick={() => setQTab('fernando')}>
+                  {gridRows.find(g => g.role === 'manager')?.who ?? 'Mgr'}
+                </button>
+                <button className={qTab === 'aaron' ? 'n-on' : ''} onClick={() => setQTab('aaron')}>
+                  {gridRows.find(g => g.role === 'billing')?.who ?? 'Billing'}
+                </button>
+              </span>
+            )}
+            <span className="n-prog">{qDone} of {qRows.length}</span>
+            <span className="n-arrow" style={{ marginLeft: 8 }} onClick={() => router.push('/tasks')}>→</span>
+          </div>
+          <div className="n-qscroll">
+            {qRows.map(r => (
+              <div
+                key={r.key}
+                className={`n-q${r.done ? ' n-done' : ''}${r.red ? ' n-redq' : ''}`}
+                style={{ opacity: savingDuty && r.duty?.duty.id === savingDuty ? 0.5 : undefined }}
+                onClick={() => {
+                  if (r.duty) toggleDuty(r.duty)
+                  else if (r.href) router.push(r.href)
+                }}
+              >
+                <span className="n-bx" />
+                <span className={`n-tag${r.kind === 'approve' ? ' n-ap' : ''}`}>{r.kind}</span>
+                <span className="n-tx">{r.text}</span>
+                {r.mn && <span className="n-mn">{r.mn}</span>}
+              </div>
+            ))}
+            {qRows.length === 0 && <div className="n-quiet">Quiet — nothing on you today.</div>}
+            {qRows.length > 0 && qRows.length < 6 && qRows.every(r => r.done) && (
+              <div className="n-quiet">All clear.</div>
+            )}
+          </div>
+        </div>
+
         <div className="n-portal" onClick={() => router.push('/calendar')}>
           <div className="n-pt">
             <b>{calDate.toDateString() === new Date().toDateString() ? "Today's sessions" : calDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</b>
@@ -616,47 +657,6 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </div>
-
-        <div className="n-portal" style={{ cursor: 'default' }}>
-          <div className="n-pt">
-            <b>Your list</b>
-            {effectiveView === 'eli' && isEli && (
-              <span className="n-qtabs" onClick={e => e.stopPropagation()}>
-                <button className={qTab === 'mine' ? 'n-on' : ''} onClick={() => setQTab('mine')}>Mine</button>
-                <button className={qTab === 'fernando' ? 'n-on' : ''} onClick={() => setQTab('fernando')}>
-                  {gridRows.find(g => g.role === 'manager')?.who ?? 'Mgr'}
-                </button>
-                <button className={qTab === 'aaron' ? 'n-on' : ''} onClick={() => setQTab('aaron')}>
-                  {gridRows.find(g => g.role === 'billing')?.who ?? 'Billing'}
-                </button>
-              </span>
-            )}
-            <span className="n-prog">{qDone} of {qRows.length}</span>
-            <span className="n-arrow" style={{ marginLeft: 8 }} onClick={() => router.push('/tasks')}>→</span>
-          </div>
-          <div className="n-qscroll">
-            {qRows.map(r => (
-              <div
-                key={r.key}
-                className={`n-q${r.done ? ' n-done' : ''}${r.red ? ' n-redq' : ''}`}
-                style={{ opacity: savingDuty && r.duty?.duty.id === savingDuty ? 0.5 : undefined }}
-                onClick={() => {
-                  if (r.duty) toggleDuty(r.duty)
-                  else if (r.href) router.push(r.href)
-                }}
-              >
-                <span className="n-bx" />
-                <span className={`n-tag${r.kind === 'approve' ? ' n-ap' : ''}`}>{r.kind}</span>
-                <span className="n-tx">{r.text}</span>
-                {r.mn && <span className="n-mn">{r.mn}</span>}
-              </div>
-            ))}
-            {qRows.length === 0 && <div className="n-quiet">Quiet — nothing on you today.</div>}
-            {qRows.length > 0 && qRows.length < 6 && qRows.every(r => r.done) && (
-              <div className="n-quiet">All clear.</div>
-            )}
-          </div>
         </div>
 
         <div className="n-portal" onClick={() => router.push('/calendar')}>
