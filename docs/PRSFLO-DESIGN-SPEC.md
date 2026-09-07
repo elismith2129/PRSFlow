@@ -123,12 +123,19 @@ consumer. There will be **no end-of-project rename sweep** to reclaim clean name
   --c-st-uncon:  #7fb2e5;             /* harbor — uncontacted/tour */
   --c-st-dead:   #cfd6d4;             /* driftglass — DNB/tech/open */
 }
-[data-theme="dark"]{                  /* DARK — the dim room */
-  --c-bg:      #1b1a17;
-  --c-fg:      #d9d6cd;               /* warm ivory, NOT white */
-  --c-wash:    rgba(217,214,205,.07);
-  --c-wash2:   rgba(217,214,205,.13);
-  /* status values unchanged — dimming is a rule, not a second palette (§6) */
+[data-theme="dark"]{                  /* DARK — NOIR (v1.24.0, Sep 2026 —
+                                         superseded the dim-room values; "PRSFlo
+                                         went dark". High contrast is the point:
+                                         near-black ground, bright ivory ink.) */
+  --c-bg:      #0b0a09;               /* was #1b1a17 */
+  --c-fg:      #f2efe7;               /* was #d9d6cd — brighter ivory, still NOT white */
+  --c-srf:     #151412;               /* was #242320 */
+  /* washes/fg-tiers/flo-ink/zebra re-tuned to match — styles/globals.css is
+     the value source of truth. Status values unchanged — dimming is a rule,
+     not a second palette (§6). Light mode untouched. RADIUS moved to the
+     step-down ladder in the same release: containers 16 · inner 12 · big
+     modals 14 · pills 99 (supersedes the 40/26/20/18 ladder wherever they
+     conflict). */
 }
 ```
 
