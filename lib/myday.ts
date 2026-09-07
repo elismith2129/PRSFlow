@@ -1328,12 +1328,15 @@ export function composeBriefing(input: BriefingInput): Briefing {
     })
   }
 
-  // ── AMBER — queue pressure ──
+  // ── COD outstanding is RED (Eli, 2026-09-07): the queue is COD-only since
+  //    v1.23.1, and COD money out wears hot everywhere else (the money tile,
+  //    the billing page). It also SAYS COD now — "balances" undersold it.
   if (balances.length > 0) {
     const sum = balances.reduce((s, b) => s + b.balance, 0)
     bullets.push({
-      color: C_WARM,
-      text: `${balances.length} balance${balances.length === 1 ? '' : 's'} outstanding · ${money0(sum)}`,
+      color: C_HOT,
+      alert: true,
+      text: `${balances.length} COD balance${balances.length === 1 ? '' : 's'} outstanding · ${money0(sum)}`,
     })
   }
   // COD outstanding, as typed into yesterday's capture (Phase 1 — HR-SPEC §4).

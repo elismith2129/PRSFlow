@@ -2474,6 +2474,7 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-ln{display:block;font-family:Inter,system-ui,sans-serif;font-size:16.5px;
   font-weight:600;line-height:1.5;padding:1.5px 0;width:fit-content;color:var(--n-ink2)}
 .n-home .n-ln.n-red{color:var(--n-hot)}
+.n-home .n-ln.n-warmln{color:var(--n-warm)}
 .n-home .n-ln.n-dim{color:var(--n-ink2);font-size:17px}
 .n-home .n-grad{font-family:'Archivo Black',sans-serif;font-weight:400;
   background:linear-gradient(100deg,var(--n-ok),var(--n-cold) 60%,var(--n-uncon));

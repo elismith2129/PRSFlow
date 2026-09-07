@@ -339,7 +339,15 @@ export default function DashboardPage() {
   //    Red bullets lead (max 2), the landed line follows when we landed
   //    anything, then the synopsis as the quiet coda. Same numbers as ever
   //    (composeBriefing); only the volume changed.
-  const alertLines = (myDay?.briefing.bullets ?? []).filter(b => b.alert).slice(0, 2)
+  const alertLines = (myDay?.briefing.bullets ?? []).filter(b => b.alert).slice(0, 3)
+  // THE REVIEW LINE (Eli, 2026-09-07 — "Monday: he's got a ton from the
+  // weekend; prioritize getting the WOs reviewed and ready for approval").
+  // Same billingStage-derived count as the money tile, so Flo and the tile
+  // can never disagree. Monday gets the weekend framing.
+  const isMonday = clockNow.getDay() === 1
+  const reviewLine = pulse && pulse.review > 0
+    ? `${isMonday ? 'Weekend catch-up: ' : ''}${pulse.review} work order${pulse.review === 1 ? '' : 's'} need${pulse.review === 1 ? 's' : ''} review — get ${pulse.review === 1 ? 'it' : 'them'} ready for approval.`
+    : null
   const calmLine = (myDay?.briefing.bullets ?? []).find(b => !b.alert)
   const landedNames = Array.from(new Set(landed.map(l => l.client)))
   const landedLine = landedNames.length > 0
@@ -495,6 +503,9 @@ export default function DashboardPage() {
         {alertLines.map((b, i) => (
           <span key={i} className="n-ln n-red" style={{ fontSize: isMobile ? 17 : undefined }}>{b.text}</span>
         ))}
+        {reviewLine && (
+          <span className="n-ln n-warmln" style={{ fontSize: isMobile ? 17 : undefined }}>{reviewLine}</span>
+        )}
         {landedLine && (
           <span className="n-ln" style={{ fontSize: isMobile ? 17 : undefined }}>
             We landed <span className="n-grad">{landedNames.slice(0, -1).join(', ')}{landedNames.length > 1 ? ' and ' : ''}{landedNames[landedNames.length - 1]}</span> today.
