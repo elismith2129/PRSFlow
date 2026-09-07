@@ -36,7 +36,7 @@ import { fetchMyTasks } from '@/lib/tasks'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { formatCurrency } from '@/lib/format'
-import { getLocalToday } from '@/lib/time'
+import { getLocalToday, opsToday } from '@/lib/time'
 import { fetchApprovalsQueue, type InvoiceRow } from '@/lib/billing'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import {
@@ -49,6 +49,11 @@ import {
   type LandedItem, type InquiryLead, type BillingPulse, type FloBriefing,
 } from '@/lib/home'
 import { FLO_GO_ROUTES, FLO_GO_LABELS, type FloLine } from '@/lib/floLines'
+
+/** Per-device "I saw today's briefing" marker (Eli 2026-09-07 — the popup is
+ *  the shift-start tap on the shoulder; forced 8:50 logout was rejected as
+ *  disruptive and no guarantee anyone reads). Stores the briefing DATE seen. */
+const BRIEF_SEEN_KEY = 'prsflo-brief-seen'
 
 /** '2026-09-07' → 'Mon, Sep 7' — the briefing modal's date chip. */
 function fmtBriefDate(d: string): string {
@@ -239,6 +244,25 @@ export default function DashboardPage() {
     else { const fresh = await fetchFloBriefing(); if (fresh) { setBriefing(fresh); setBriefOpen(true) } }
     setBriefBusy(false)
   }
+  // AUTO-OPEN ONCE PER OPS DAY: the first dashboard visit after 8:50 opens
+  // the briefing by itself; dismiss = seen (per device, localStorage). Also
+  // fires for someone already sitting on the page when the 8:50 cron lands —
+  // the realtime channel delivers the fresh briefing and this effect re-runs.
+  // Before 8:50 the newest briefing IS the current ops day's, so the date
+  // check stays honest around midnight shifts.
+  useEffect(() => {
+    if (!briefing || briefOpen || briefBusy) return
+    if (briefing.date !== opsToday()) return
+    try { if (localStorage.getItem(BRIEF_SEEN_KEY) === briefing.date) return } catch { return }
+    setBriefOpen(true)
+  }, [briefing, briefOpen, briefBusy])
+  // Any open (auto or manual) marks today seen — so a hand-opened briefing
+  // doesn't re-pop later, and dismissing the auto-open sticks.
+  useEffect(() => {
+    if (briefOpen && briefing) {
+      try { localStorage.setItem(BRIEF_SEEN_KEY, briefing.date) } catch { /* private mode — popup just re-offers next visit */ }
+    }
+  }, [briefOpen, briefing])
   // One briefing line: headline + optional jump chip (Eli 2026-09-07 — "a
   // bullet, and a button to the page they need"). The go→route map lives in
   // lib/floLines with the line shape itself.
