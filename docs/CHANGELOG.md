@@ -19,6 +19,79 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.25.0 — FLO SPEAKS: the AI briefing, and the Lonzo fix — Sep 7, 2026
+
+**Migration `20260907150000_flo_briefings.sql`** (run by Eli same day): the
+`flo_briefings` table — one row per operational day, `shared` jsonb string[]
++ `slices` jsonb per-seat, authenticated SELECT only (service role is the
+only writer), realtime publication + REPLICA IDENTITY FULL.
+
+**Flo's first real AI.** `lib/server/floBriefing.ts` (SERVER-ONLY — never
+import client-side) gathers the night's office shift notes + runner channel
+(26h), open flags with ages, holds overlapping the next 7 days, the 8-day
+duty tick record, and open non-private tasks; sends ONE Sonnet call; writes
+the day's `flo_briefings` row. **The prompt in that file IS Flo's
+personality** — voice ruling: just the facts, no invented numbers, dashboard
+numbers stay the deterministic statement's job. Audience ruling: `shared`
+for everyone; per-seat `slices` accountability (each person sees their own;
+owners see all — sliced by REAL role in the UI, not RLS). Two callers:
+`/api/cron/flo-briefing` (Vercel cron 15:50 + 16:50 UTC — the DST pair;
+idempotent, `?force=1` regenerates) and `/api/flo-briefing-now` (POST — the
+dashboard's **Brief me now** button; verifies the caller's Supabase access
+token + role owner/manager/billing). Dashboard: "Full briefing →" opens the
+pop-up; "Brief me now → / Re-brief ↻" with a reading state.
+
+**The plumbing gauntlet (all fixed, in order):** Vercel's bot firewall
+challenges curl (the button exists because of this); `ANTHROPIC_API_KEY`
+was never set in Vercel production (new `prsflow` console key created —
+NOTE: the receipt-OCR route shares this key and its model id is equally
+stale); model id `claude-sonnet-4-5-20251001` 404'd → **`claude-sonnet-5`**;
+Sonnet 5's default ADAPTIVE THINKING spent the max_tokens budget before any
+JSON was written → `thinking: { type: 'disabled' }` + ceiling 4000 + 350-word
+budget + outermost-{} parser.
+
+**THE LONZO FIVE (dup-session bug + guard).** Five WOs (1123–1127) for one
+Sep 5 session, minutes apart: Start Booking's URL-param effect
+(`/calendar?newBooking=1&clientId=…`) created a session+WO per firing, and
+`router.replace` strips the params ASYNCHRONOUSLY — plus human retries when
+nothing seemed to happen. Fix in `app/(main)/calendar/page.tsx`:
+consume-once ref on BOTH param effects (resets when the URL is clean);
+in-flight latch on `createBookingAndOpenWO`; and **THE DUPLICATE GUARD** —
+before creating, look for a live (confirmed/tentative, non-imported) session
+for the same client (client_id, else name/label/artist, case-insensitive)
+overlapping the same dates → `window.confirm`; Cancel opens the existing
+session's WO instead of creating a twin.
+
+**Dashboard follow-ups:** holds queue now includes holds ALREADY UNDERWAY
+(`fetchBookingQueue` gained a `span` flag — end_date-overlap match, holds
+only; the missing Invoke hold) and the slice(0,6) cap is gone (the box
+scrolls); row 1 columns 1.2fr/1.6fr/.8fr (Landed & in the air slimmed for
+Your List); room grid rows stretch to fill the 356px portal
+(`grid-auto-rows:minmax(78px,1fr)`) + card type bumped.
+
+**WATCH-OUTS:**
+1. **The 8:50 boundary now lives in THREE places:** `lib/time` (client),
+   the shift-note RLS policies (SQL), and `opsTodayLA()` in
+   `lib/server/floBriefing.ts` (server — lib/time's version reads the
+   runtime's LOCAL clock and is wrong on a UTC server). Move one, move all.
+2. **Do not re-enable thinking** on the briefing call and do not assume a
+   dated Sonnet id — both failure modes present as Brief-me-now errors
+   (ceiling hit / 404).
+3. A `flo_briefings` row is readable by ALL authenticated staff — the
+   per-seat slice privacy is UI-enforced. Never feed the generator anything
+   truly private (private tasks are excluded at the query).
+4. `fetchBookingQueue`'s `span` flag is HOLDS-ONLY on purpose — the booked
+   and open-hours queues still window on start_date.
+5. The receipt-OCR route still uses the stale dated Sonnet id — first
+   runner receipt scan will 404; same one-line fix as the briefing.
+
+**Files:** `lib/server/floBriefing.ts` (new), `app/api/cron/flo-briefing/`
+(new), `app/api/flo-briefing-now/` (new), `app/(main)/page.tsx`,
+`app/(main)/calendar/page.tsx`, `lib/home.ts`, `lib/myday.ts`,
+`styles/globals.css`, `vercel.json`, `supabase/migrations/20260907150000`.
+
+---
+
 ## v1.24.0 — THE NOIR DASHBOARD — Sep 6–7, 2026 (merged to main Sep 7)
 
 Built on `feature/dashboard-noir`, merged whole. The Flo glow/light show

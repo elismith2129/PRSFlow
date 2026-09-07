@@ -5299,3 +5299,49 @@ The inquiry block went uncontacted-blue; a red pending-flags square was built,
 looked at, and ditched within the hour ("actually ditch the flag thing") —
 rejected because the top row earns its slimness, not because flags don't
 matter. Then the merge to main.
+
+### Sep 7, 2026 (evening) — Flo speaks: the AI briefing ships, and the Lonzo five (v1.25.0)
+
+**The spark:** "We talked about creating my own local LLM... I want it to read
+all the notes, all the flags, give updates, understand holds... helpful
+accountability. I want there to be a thing that is, well, me." Settled the
+privacy question first (API data isn't trained on, deleted ~30 days; a
+briefing sends a few KB, not "the whole business") and the cost question
+(~$1/month for the briefing). Rulings taken by question: audience = each
+person sees their own slice, owners see all; tone = just the facts; trigger
+= self-running at 8:50 (the operational boundary — deliberate).
+
+**Architecture:** one server-only generator (lib/server/floBriefing.ts) with
+two doors — the cron and the Brief-me-now button. The prompt IS the product;
+everything else is plumbing. The deterministic Flo statement keeps ownership
+of numbers; the AI reads words. Private tasks never enter the model because
+the output row is readable by all staff.
+
+**The launch gauntlet, for the record:** shipped to production by accident
+("oh shit we went straight to production") → tried to pull back to a preview
+branch → Vercel produced no preview deployment → "fuck it lets just work on
+main" (revert-of-revert). Then, in order: Vercel's bot firewall ate curl (the
+Brief-me-now button exists BECAUSE of this — better than the curl anyway);
+ANTHROPIC_API_KEY had never existed in Vercel prod (meaning receipt OCR has
+been silently keyless — new 'prsflow' console key, one key per app);
+the dated Sonnet 4.5 model id 404'd on the new key → claude-sonnet-5; and
+two token-ceiling hits that were NOT verbosity — Sonnet 5 thinks by default
+(adaptive) and its thinking spends max_tokens, so thinking is disabled on
+this call. Every failure was plumbing; the idea worked first try after.
+
+**The Lonzo five:** billing showed duplicate Balance-due WOs for one Sep 5
+session. SQL timeline: FIVE work orders (1123–1127), 20:01→20:05, one per
+Start Booking attempt — the URL-param effect created a session per firing
+(router.replace strips params asynchronously), and the person retried
+because each failure was invisible. 1127 was the real one; 1123 carried the
+same invoice number (34769) — the dangerous twin. Fixes: consume-once ref,
+in-flight latch, and the duplicate guard (same client + overlapping dates →
+confirm; Cancel opens the existing WO). Rejected: guarding at WO-save — too
+late; in this flow the session exists before the WO opens.
+
+**Also:** holds queue includes holds already underway (span flag — the
+missing Invoke hold) + cap removed; row-1 rebalanced 1.2/1.6/.8; room grid
+fills its portal. Aaron's name retired for 'Billing' everywhere (profile
+display_name rename — one SQL fixed every surface). Next session (separate
+chat, prompt handed to Eli): dial the briefing voice, then the CRM AI push —
+follow-up call-to-action, keep-hot timer UX, weekly cold/DNB email roundup.

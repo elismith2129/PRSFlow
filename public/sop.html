@@ -645,6 +645,28 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.25.0', date:'Sep 7, 2026',
+    headline:'Flo is real now — she reads the notes and writes your morning briefing.',
+    desc:'Every morning at 8:50, Flo reads last night\'s shift notes, the runner channel, the open flags, this week\'s holds, and what\'s still unticked — and writes the day\'s briefing herself. Not canned text: she actually reads what you all wrote.',
+    changes:[
+      'Under Flo\'s statement on the Dashboard there\'s now "Full briefing →". Open it: a shared read of the night for everyone, then a "For you" section — YOUR outstanding items only. Nobody sees anyone else\'s section except the owners.',
+      'Owners, Fernando and Billing also get "Brief me now →" — press it anytime and Flo re-reads everything on the spot (takes about ten seconds).',
+      'Flo speaks in plain facts. She never invents numbers — the live counters on the dashboard stay the math; Flo reads the words.',
+      'Booking safety: if you start a booking for someone who already has a session on those dates, the app now warns you before creating a second one — and can take you to the existing session instead. (This is how five Lonzo Ball work orders happened. It can\'t anymore.)',
+      'Holds fixed: a hold that already started still shows in "Holds to check", and the list no longer cuts off at six.',
+    ],
+    affects:'Read Flo first thing — the shared part is the night in thirty seconds, and "For you" is your own catch-up list. If the app warns you a session already exists, click Cancel and check the calendar before creating another.',
+    dev:[
+      'lib/server/floBriefing.ts (server-only) = the generator; THE PROMPT IS FLO\'S PERSONALITY. One claude-sonnet-5 call, thinking disabled (adaptive thinking spent the max_tokens budget), 4000 ceiling, 350-word budget, outermost-{} parse.',
+      'flo_briefings: one row per ops day, shared[] + per-seat slices; authenticated read, service-role write, realtime. Slice privacy is UI-enforced — never feed the generator private data (private tasks excluded at query).',
+      'Doors: /api/cron/flo-briefing (15:50+16:50 UTC, idempotent, ?force=1) + /api/flo-briefing-now (POST, Supabase token, owner/manager/billing). The button exists because Vercel\'s bot firewall challenges curl.',
+      'opsTodayLA() = the 8:50 boundary\'s THIRD home (lib/time + shift-note RLS + here). Move one, move all.',
+      'The Lonzo fix: consume-once ref on both ?newBooking param effects + in-flight latch + duplicate guard (same client, overlapping dates, live statuses → confirm; Cancel opens the existing WO).',
+      'Holds: fetchBookingQueue span flag (holds-only) matches on end_date overlap; slice(0,6) cap removed.',
+      'Watch-out: receipt-OCR still uses the stale dated Sonnet id — first scan 404s; same one-line fix.',
+    ],
+  },
+  {
     ver:'v1.24.0', date:'Sep 2026',
     headline:'PRSFlo went dark — and your whole day now lives on one page.',
     desc:'The biggest visual change since launch. The app has a new high-contrast look (near-black with bright text), and the Dashboard and My Day pages became ONE page. Everything you used to check in two places is now in one.',

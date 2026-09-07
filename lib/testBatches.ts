@@ -55,6 +55,51 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-7-2026-flo-briefing',
+    title: "Flo's AI briefing + the duplicate-session guard",
+    version: 'v1.25.0',
+    date: 'Sep 7, 2026',
+    intro:
+      'Flo now writes a real morning briefing from the notes, flags, holds and duty record, and the app warns before creating a duplicate session. Test on the live site, desktop.',
+    items: [
+      {
+        id: 'v125-briefing-auto', area: 'Dashboard', device: 'desktop',
+        what: "The morning briefing writes itself at 8:50 and appears without a refresh",
+        how: 'With the dashboard open across 8:50 AM (or first load after), "Full briefing →" appears under Flo\'s statement on its own. Open it: the shared lines should reference things that actually happened — real notes, real flags, real holds. If any line names something that does not exist, screenshot it and report it.',
+      },
+      {
+        id: 'v125-brief-now', area: 'Dashboard', device: 'desktop',
+        what: 'Brief me now regenerates on demand (owners, Fernando, Billing)',
+        how: 'Press "Brief me now →" (or "Re-brief ↻"). It should read "Flo is reading the room…" for ~10 seconds and then open a fresh briefing. Asst managers and techs should NOT see the button.',
+      },
+      {
+        id: 'v125-slices', area: 'Dashboard', device: 'desktop',
+        what: 'Each person sees only their own "For you" section; owners see every seat',
+        how: 'Have Fernando open the briefing: he sees the shared part plus HIS section only — no Billing section, no cross-seat list. Eli/Adam-Mike see every seat plus "Across the seats".',
+      },
+      {
+        id: 'v125-dup-guard', area: 'Calendar / CRM', device: 'desktop',
+        what: 'Starting a booking for someone who already has a session that day warns first',
+        how: 'Pick a client with a session this week. From their lead, press Start Booking for the same date. A warning should name the existing session; Cancel should open the EXISTING work order (no new session created — check the calendar), OK should create a second one.',
+      },
+      {
+        id: 'v125-no-dupes', area: 'Calendar / CRM', device: 'desktop',
+        what: 'Start Booking creates exactly ONE session, even when clicked impatiently',
+        how: 'From a lead, click Start Booking and wait for the work order to open. Then check the calendar and the Billing list: exactly one session and one WO for that client and date. (Five duplicates was the old failure.)',
+      },
+      {
+        id: 'v125-holds-span', area: 'Dashboard', device: 'desktop',
+        what: 'A hold that already started still shows in "Holds to check", and long lists scroll',
+        how: 'Find (or make) a tentative hold whose first day is in the past but which runs into this week. It should appear in the Landed & in the air box. With 7+ holds, the list scrolls instead of stopping at six.',
+      },
+      {
+        id: 'v125-rooms-fill', area: 'Dashboard', device: 'desktop',
+        what: "Today's sessions fills its box — no dead band at the bottom",
+        how: 'Look at the room grid: the cards stretch so the last row ends at the bottom of the box, and the artist/time text is slightly larger than before.',
+      },
+    ],
+  },
+  {
     id: 'sep-6-2026-noir-dashboard',
     title: 'The Noir dashboard + Shift Notes page',
     version: 'v1.24.0',
