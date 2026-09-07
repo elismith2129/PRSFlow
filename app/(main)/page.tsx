@@ -455,12 +455,15 @@ export default function DashboardPage() {
       {/* HEADER — greeting label, title, view-as (Eli), datechip. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '2px 4px 16px', flexWrap: isMobile ? 'wrap' : undefined }}>
         <div>
-          <span className="n-label" style={{ display: 'block', marginBottom: 3 }}>
-            {greeting}{viewedName ? ` ${viewedName}` : ''}
-          </span>
-          <h1 className="n-arch" style={{ fontSize: isMobile ? 20 : 26, letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+          {/* THE STONE HEADER (locked T1, 2026-09-07): PARAMOUNT in Bebas — the
+              building's own voice, distinct from Flo's Archivo. No motion, no
+              glow up here; the header is stone. */}
+          <h1 className="n-title" style={isMobile ? { fontSize: 30 } : undefined}>
             Paramount Recording Studios
           </h1>
+          <div className="n-titlesub">
+            {greeting}{viewedName ? ` ${viewedName}` : ''} · Hollywood, CA
+          </div>
         </div>
         <div style={{ flex: 1 }} />
         {isEli && !isMobile && (

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -933,7 +933,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   /* Slimmed from the mock's 212px (Eli ruling 2026-08-07 — less real estate). */
   width: 176px; flex-shrink: 0; padding: 14px 8px 12px 10px;
   display: flex; flex-direction: column; gap: 2px;
-  background: var(--c-wash);
+  /* no ground (Eli 2026-09-07) — the rail floats on the stage */
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
   z-index: 99999; /* the frame stays above modals, as the top nav did */
 }
@@ -949,14 +949,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   font-size: 12.5px; font-weight: 600; font-family: inherit; text-align: left;
   color: var(--c-fg); opacity: .6; text-decoration: none; cursor: pointer;
   background: none;
-  transition: opacity .16s ease, background .16s ease;
+  transition: opacity .16s ease, transform .16s ease;
+  transform-origin: left center;
 }
-.c-rail-link:hover { opacity: .85; background: var(--c-wash); }
-.c-rail-link.c-on {
-  opacity: 1; background: var(--c-ivory); color: #1b1a17;
-  box-shadow: 2px 2px 7px rgba(0, 0, 0, .35);
-}
-[data-theme="light"] .c-rail-link.c-on { background: var(--c-fg); color: var(--c-bg); }
+/* Hover lightens AND grows a touch (Eli 2026-09-07) — the item leans toward
+   the cursor. Selected = full ink, NOTHING ELSE: no fill, no bar, no shadow. */
+.c-rail-link:hover { opacity: .9; transform: scale(1.045); }
+.c-rail-link.c-on { opacity: 1; font-weight: 700; }
 .c-rail-ic { width: 16px; text-align: center; opacity: .75; flex-shrink: 0; font-size: 13px; }
 .c-rail-badge {
   margin-left: auto; min-width: 19px; height: 17px; border-radius: 99px; padding: 0 6px;
@@ -2452,6 +2451,10 @@ html.n-page .c-frame { background: #0b0a09; }
   color:var(--n-ink);
 }
 .n-home .n-label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--n-ink3)}
+.n-home .n-title{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:42px;
+  line-height:.95;letter-spacing:.02em;text-transform:uppercase}
+.n-home .n-titlesub{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--n-ink3);margin-top:3px}
 .n-home .n-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
 .n-home .n-mono{font-family:'DM Mono',ui-monospace,monospace}
 
@@ -2468,11 +2471,12 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-statement{padding:8px 0 26px;max-width:920px}
 .n-home .n-fhead{display:flex;align-items:center;gap:9px;padding-bottom:8px}
 .n-home .n-fname{font-family:'Archivo Black',sans-serif;font-size:14px}
-.n-home .n-ln{display:block;font-family:'Archivo Black',sans-serif;font-size:24px;
-  line-height:1.32;letter-spacing:-.015em;padding:2px 0;width:fit-content}
+.n-home .n-ln{display:block;font-family:Inter,system-ui,sans-serif;font-size:16.5px;
+  font-weight:600;line-height:1.5;padding:1.5px 0;width:fit-content;color:var(--n-ink2)}
 .n-home .n-ln.n-red{color:var(--n-hot)}
 .n-home .n-ln.n-dim{color:var(--n-ink2);font-size:17px}
-.n-home .n-grad{background:linear-gradient(100deg,var(--n-ok),var(--n-cold) 60%,var(--n-uncon));
+.n-home .n-grad{font-family:'Archivo Black',sans-serif;font-weight:400;
+  background:linear-gradient(100deg,var(--n-ok),var(--n-cold) 60%,var(--n-uncon));
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .n-home .n-askflo{margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.08em;
   text-transform:uppercase;color:var(--n-ink3)}
