@@ -30,9 +30,9 @@ type RailItem = { href: string; label: string; ic: string; dim?: boolean }
 const TOP: RailItem[] = [
   { href: '/', label: 'Dashboard', ic: '▦' },
   { href: '/calendar', label: 'Calendar', ic: '▤' },
-  // My Day sits with them (MYDAY-BUILD §6.3) — it is the personal cadence
-  // layer over both worlds, not part of either.
-  { href: '/my-day', label: 'My Day', ic: '◑' },
+  // My Day is RETIRED (2026-09-06, the dashboard∪my-day merge) — the Noir
+  // dashboard IS my day now. /my-day redirects home; Shift Notes, the one
+  // piece that needed its own room, lives under Operations.
 ]
 const BUSINESS: RailItem[] = [
   { href: '/crm', label: 'CRM', ic: '◎' },
@@ -43,6 +43,9 @@ const BUSINESS: RailItem[] = [
   { href: '/billing', label: 'Billing', ic: '▽' },
 ]
 const OPERATIONS: RailItem[] = [
+  // The notes channel, promoted from /my-day to its own reading page
+  // (2026-09-06 ruling: notes want a LARGE box, not a dashboard squint box).
+  { href: '/shift-notes', label: 'Shift Notes', ic: '✎' },
   { href: '/daily-ops', label: 'Daily Ops', ic: '◔' },
   { href: '/runner', label: 'Runner Hub', ic: '▷' },
   { href: '/mic-inventory', label: 'Mic Inventory', ic: '◌' },
@@ -90,11 +93,10 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const filterItems = (items: RailItem[]) => items.filter(item => {
     if (profile?.role === 'tech' && item.href === '/crm') return false
     if (item.href === '/nadines' && !isEli) return false
-    // My Day exists for the two role cards it was built around (MYDAY-BUILD §0)
-    // plus Eli, who oversees both. Asst managers joined 2026-08-24 for the
-    // shift notes ("all admin has access to read and write and submit") — the
-    // page gives them a notes-only view. tech/runner still get nothing.
-    if (item.href === '/my-day'
+    // Shift Notes inherits /my-day's audience (2026-08-24: "all admin has
+    // access to read and write and submit") — owner/manager/billing/asst
+    // manager. tech/runner still get nothing (runners have their own channel).
+    if (item.href === '/shift-notes'
       && !isEli
       && profile?.role !== 'manager'
       && profile?.role !== 'billing'
