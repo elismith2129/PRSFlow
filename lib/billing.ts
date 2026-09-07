@@ -126,6 +126,8 @@ export const COD_TABS: Bucket[] = [
   { key: 'progress', label: 'In progress',  pill: 'c-fill-uncon' },
   { key: 'review',   label: 'Needs review', pill: 'c-fill-warm' },
   { key: 'paid',     label: 'Paid',         pill: 'c-fill-booked' },
+  // The sweep (2026-09-07): future sessions park here, same as billing.
+  { key: 'notstarted', label: 'Not started', pill: 'c-fill-uncon' },
 ]
 
 export function tabsFor(pipeline: Pipeline): Bucket[] {
@@ -293,6 +295,7 @@ export function billingStage(row: InvoiceRow): { key: StageKey; label: string } 
   // paid session that still owes review no longer looks finished. Balance due
   // stays its own hot stage: collection was missed, nothing else matters.
   if (row.isCod) {
+    if (row.bucket === 'notstarted') return { key: 'not_started', label: 'Not started' }
     if (row.bucket === 'balance') return { key: 'balance', label: 'Balance due' }
     if (row.rejectedAt && row.step === 2) return { key: 'not_approved', label: 'Not approved' }
     if (row.step >= 3) return { key: 'approved', label: 'Approved' }
@@ -427,6 +430,9 @@ export function deriveBucket(args: {
   if (state === 'closed') return 'closed'
 
   if (isCod) {
+    // THE COD SWEEP (2026-09-07): COD gets the Not-started split too — a
+    // session whose first day hasn't come is parked, exactly like billing's.
+    if (notStarted) return 'notstarted'
     // Still running (and no runner submission yet) → In progress. This gate
     // comes FIRST: an unfinished session with an outstanding balance is not a
     // missed collection, it's a session that isn't over.
@@ -997,7 +1003,11 @@ export function nextAction(row: InvoiceRow): string | null {
   // narrating). The row's flag cell says "Drop invoice here · or click", and
   // the click opens the same picker the button used to. No button.
   if (row.step === 1) return null
-  if (row.isCod) return null
+  // THE COD SWEEP (2026-09-07): COD gets the big button too. After the
+  // owner's approval the one real act left is downloading the package —
+  // everything else on COD is derived (paid) or a drop (attach). Approve
+  // stays in the strip, same as billing.
+  if (row.isCod) return row.step >= 3 ? 'Download' : null
   // Approve is the gate everything queues behind: reviewed and invoiced.
   // NOT the PO (Eli, 2026-08-31 — reversing Aug 11): owner approval asserts
   // that the work order is complete and the invoice is right, which is knowable

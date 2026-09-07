@@ -199,7 +199,10 @@ export default function BillingPage() {
   // THE STAGE LAYOUT (Eli, 2026-09-03): billing rows lead with a stage badge
   // and drop the three lights. Search gets it too — results mix pipelines, so
   // billing hits wear their stage and COD hits wear their bin, one column.
-  const staged = pipeline === 'billing' || searching
+  // THE COD SWEEP (2026-09-07): the staged layout is universal now — COD rows
+  // get the stage badge, the drop-to-attach flag cell and the single button
+  // column, exactly like billing. The old bin-badge multi view retires with it.
+  const staged = true
   // Day dividers only under date order — over money-ordered rows a date
   // heading lies about what follows it. Billing only; COD's merged bins keep
   // their own internal queue order.
@@ -647,7 +650,7 @@ export default function BillingPage() {
         ))}
       </div>
 
-      <div className={`c-panel${showAge ? "" : " c-bage-off"}${codMulti && !isMobile ? ' c-bmulti' : ''}${staged && !isMobile ? ' c-bstaged' : ''}`}>
+      <div className={`c-panel${showAge ? "" : " c-bage-off"}${staged && !isMobile ? ' c-bstaged' : ''}`}>
         <div className="c-lozenge">
           <b>{searching
             ? 'Search results'
@@ -720,7 +723,7 @@ export default function BillingPage() {
               isOwner={isOwner}
               busy={busy === r.workOrderId}
               showAge={showAge}
-              badge={codMulti && !isMobile ? r.bucket : null}
+              badge={null /* bin badge retired with the sweep — the stage says it */}
               stage={staged ? billingStage(r) : null}
               onAct={() => act(r)}
               onAttach={() => attachFor(r)}
@@ -820,6 +823,11 @@ export default function BillingPage() {
             const r = moreFor
             setMoreFor(null)
             run(r.workOrderId, () => setNoPoNeeded(r, true))
+          }}
+          onAddPo={() => {
+            const r = moreFor
+            setMoreFor(null)
+            setPoFor(r.workOrderId); setPoNum(r.poNumber ?? ''); setPoFile(null)
           }}
           onPullBack={() => {
             const r = moreFor
@@ -1174,7 +1182,7 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo, onAddPo }: {
   row: InvoiceRow
   onCancel: () => void
   onOpenDoc: () => void
@@ -1182,6 +1190,7 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
   onPullBack: () => void
   onRedownload: () => void
   onNoPo: () => void
+  onAddPo: () => void
 }) {
   const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
   return (
@@ -1198,6 +1207,13 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
         {row.awaitingPo && !row.isCod && (
           <button className="c-bact c-bblock" onClick={onNoPo}>
             No PO required — this one can go out without it
+          </button>
+        )}
+        {/* THE COD SWEEP (2026-09-07): rare, but a COD client can send a PO —
+            same strip, same work_orders.po_number field, never blocking. */}
+        {row.isCod && row.step >= 1 && (
+          <button className="c-bact c-bblock" onClick={onAddPo}>
+            Add a PO number{row.poNumber ? ` (currently ${row.poNumber})` : ''}
           </button>
         )}
         {/* Build the package again — after a correction, or because the first

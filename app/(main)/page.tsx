@@ -560,11 +560,14 @@ export default function DashboardPage() {
               <div className="n-bn">${Math.round(codOut.total).toLocaleString('en-US')}</div>
               <div className="n-bk">COD out{codOut.worst > 0 ? ` · worst ${codOut.worst}d` : ''}</div>
             </div>
-            <div className="n-stile n-coldt">
+            {/* Colours mirror the billing badges (Eli 2026-09-07): review =
+                amber (work in front of you), approval = blue (waiting on an
+                owner). */}
+            <div className="n-stile n-warmt">
               <div className="n-bn">{pulse?.review ?? '–'}</div>
               <div className="n-bk">WOs need review</div>
             </div>
-            <div className="n-stile n-warmt">
+            <div className="n-stile n-coldt">
               <div className="n-bn">{pulse?.approval ?? '–'}</div>
               <div className="n-bk">Wait on approval{pulse && pulse.approvalTotal > 0 ? ` · ${formatCurrency(String(pulse.approvalTotal))}` : ''}</div>
             </div>
