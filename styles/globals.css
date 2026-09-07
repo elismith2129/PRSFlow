@@ -2483,13 +2483,13 @@ html.n-page .c-frame { background: #0b0a09; }
 
 /* PORTALS — fixed geometry. Row 1 = 356px, row 2 = 200px (desktop). */
 .n-home .n-row1{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:14px}
-.n-home .n-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-top:14px}
+.n-home .n-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-bottom:14px}
 .n-home .n-portal{background:var(--n-card);border-radius:18px;padding:16px 18px;cursor:pointer;
   display:flex;flex-direction:column;overflow:hidden;
   transition:transform .18s ease,background .18s ease;box-shadow:0 2px 12px rgba(0,0,0,.5)}
 .n-home .n-portal:hover{transform:translateY(-3px);background:var(--n-card2)}
 .n-home .n-row1 .n-portal{height:356px}
-.n-home .n-row2 .n-portal{height:196px}
+.n-home .n-row2 .n-portal{height:140px}
 .n-home.n-mobile .n-row1,.n-home.n-mobile .n-row2{grid-template-columns:minmax(0,1fr)}
 .n-home.n-mobile .n-row1 .n-portal,.n-home.n-mobile .n-row2 .n-portal{height:auto;min-height:0}
 .n-home .n-pt{display:flex;align-items:baseline;gap:9px;margin-bottom:11px;flex-shrink:0}
@@ -2561,9 +2561,9 @@ html.n-page .c-frame { background: #0b0a09; }
 /* CRM portal */
 .n-home .n-pbody{display:flex;gap:16px;align-items:stretch;flex:1;min-height:0}
 .n-home .n-pleft{display:flex;flex-direction:column;justify-content:space-between;flex-shrink:0}
-.n-home .n-pipebig{font-family:'Archivo Black',sans-serif;font-size:52px;line-height:1;letter-spacing:-.02em}
+.n-home .n-pipebig{font-family:'Archivo Black',sans-serif;font-size:36px;line-height:1;letter-spacing:-.02em}
 .n-home .n-pipesub{font-size:11px;color:var(--n-ink3);padding-top:2px}
-.n-home .n-pstat{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.n-home .n-pstat{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:5px}
 .n-home .n-inqblock{flex:1;background:rgba(255,90,77,.26);border-radius:14px;position:relative;
   padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:2px;
   animation:n-inqbreathe 3.6s ease-in-out infinite;min-width:0}
@@ -2577,21 +2577,21 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-inqblock.n-quietblock .n-inqk{color:var(--n-ink3)}
 .n-home .n-pulse{width:8px;height:8px;border-radius:50%;background:var(--n-hot);animation:n-np 1.6s ease-in-out infinite}
 @keyframes n-np{0%,100%{opacity:.25}50%{opacity:1}}
-.n-home .n-who{font-family:'Archivo Black',sans-serif;font-size:14.5px;line-height:1.3;color:var(--n-ink);
+.n-home .n-who{font-family:'Archivo Black',sans-serif;font-size:12.5px;line-height:1.3;color:var(--n-ink);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .n-home .n-src{font-size:9.5px;color:var(--n-ink3);font-family:Inter,system-ui;font-weight:600}
 
 /* the money — stage tiles in billing-ladder colours */
 .n-home .n-stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch;min-height:0}
 .n-home.n-mobile .n-stagegrid{grid-template-columns:1fr 1fr}
-.n-home .n-stile{border-radius:14px;padding:13px 15px;color:var(--n-chip-ink);cursor:pointer;
+.n-home .n-stile{border-radius:12px;padding:10px 13px;color:var(--n-chip-ink);cursor:pointer;
   display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease;min-width:0}
 .n-home .n-stile:hover{transform:translateY(-2px)}
-.n-home .n-stile .n-bn{font-family:'Archivo Black',sans-serif;font-size:30px;line-height:1;white-space:nowrap}
-.n-home .n-stile .n-bk{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
-  opacity:.8;padding-top:10px;line-height:1.35}
+.n-home .n-stile .n-bn{font-family:'Archivo Black',sans-serif;font-size:23px;line-height:1;white-space:nowrap}
+.n-home .n-stile .n-bk{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  opacity:.8;padding-top:6px;line-height:1.3}
 .n-home .n-stile.n-hotf{background:transparent;color:var(--n-ink);padding-left:2px}
-.n-home .n-stile.n-hotf .n-bn{color:var(--n-hot);font-size:30px}
+.n-home .n-stile.n-hotf .n-bn{color:var(--n-hot);font-size:25px}
 .n-home .n-stile.n-hotf .n-bk{color:var(--n-ink3);opacity:1}
 .n-home .n-stile.n-coldt{background:var(--n-uncon)}
 .n-home .n-stile.n-warmt{background:var(--n-warm)}

@@ -507,7 +507,65 @@ export default function DashboardPage() {
         <div className="n-askflo">Ask Flo →</div>
       </div>
 
-      {/* ── ROW 1: Tonight · Your list · Landed & in the air ── */}
+      {/* ── ROW 1 (Eli 2026-09-07): CRM + Money LEAD — the business numbers outrank the day view. Slimmed to ~1/4 of the page. ── */}
+      <div className="n-row2">
+
+        <div className="n-portal" onClick={() => router.push('/crm')}>
+          <div className="n-pt"><b>CRM — pipeline</b><span className="n-arrow">→</span></div>
+          <div className="n-pbody">
+            <div className="n-pleft">
+              <div>
+                <div className="n-pipebig">{loading ? '–' : pipelineLeads.length}</div>
+                <div className="n-pipesub">active leads</div>
+              </div>
+              <div className="n-pstat">
+                <span className="n-chip n-h">{pipeHot} hot</span>
+                <span className="n-chip n-wchip">{pipeWarm} warm</span>
+                <span className="n-chip n-u">{pipeUncon} uncon</span>
+              </div>
+            </div>
+            <div className={`n-inqblock${inquiries.length === 0 ? ' n-quietblock' : ''}`}>
+              {inquiries.length === 0 ? (
+                <div className="n-inqk">No new inquiries</div>
+              ) : (
+                <>
+                  <div className="n-inqk"><span className="n-pulse" />{inquiryCount || inquiries.length} new inquir{(inquiryCount || inquiries.length) === 1 ? 'y' : 'ies'}</div>
+                  {inquiries.slice(0, 2).map(q => (
+                    <div key={q.id} className="n-who">
+                      {q.name} <span className="n-src">· web form{q.createdAt ? ` · ${shortDayLabel(q.createdAt.slice(0, 10))}` : ''}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="n-portal" onClick={() => router.push('/billing')}>
+          <div className="n-pt"><b>The money — where billing is at</b><span className="n-arrow">→</span></div>
+          <div className="n-stagegrid">
+            <div className="n-stile n-hotf">
+              {/* Whole dollars — cents made the figure bleed out of its tile. */}
+              <div className="n-bn">${Math.round(codOut.total).toLocaleString('en-US')}</div>
+              <div className="n-bk">COD out{codOut.worst > 0 ? ` · worst ${codOut.worst}d` : ''}</div>
+            </div>
+            <div className="n-stile n-coldt">
+              <div className="n-bn">{pulse?.review ?? '–'}</div>
+              <div className="n-bk">WOs need review</div>
+            </div>
+            <div className="n-stile n-warmt">
+              <div className="n-bn">{pulse?.approval ?? '–'}</div>
+              <div className="n-bk">Wait on approval{pulse && pulse.approvalTotal > 0 ? ` · ${formatCurrency(String(pulse.approvalTotal))}` : ''}</div>
+            </div>
+            <div className="n-stile n-okt">
+              <div className="n-bn">{pulse?.send ?? '–'}</div>
+              <div className="n-bk">Ready to go out</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ROW 2: Tonight · Your list · Landed & in the air ── */}
       <div className="n-row1">
 
         <div className="n-portal" onClick={() => router.push('/calendar')}>
@@ -621,64 +679,6 @@ export default function DashboardPage() {
                 <span className="n-chip n-w">{roomChip(h.location, h.studio)}</span>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── ROW 2: CRM pipeline · The money ── */}
-      <div className="n-row2">
-
-        <div className="n-portal" onClick={() => router.push('/crm')}>
-          <div className="n-pt"><b>CRM — pipeline</b><span className="n-arrow">→</span></div>
-          <div className="n-pbody">
-            <div className="n-pleft">
-              <div>
-                <div className="n-pipebig">{loading ? '–' : pipelineLeads.length}</div>
-                <div className="n-pipesub">active leads</div>
-              </div>
-              <div className="n-pstat">
-                <span className="n-chip n-h">{pipeHot} hot</span>
-                <span className="n-chip n-wchip">{pipeWarm} warm</span>
-                <span className="n-chip n-u">{pipeUncon} uncon</span>
-              </div>
-            </div>
-            <div className={`n-inqblock${inquiries.length === 0 ? ' n-quietblock' : ''}`}>
-              {inquiries.length === 0 ? (
-                <div className="n-inqk">No new inquiries</div>
-              ) : (
-                <>
-                  <div className="n-inqk"><span className="n-pulse" />{inquiryCount || inquiries.length} new inquir{(inquiryCount || inquiries.length) === 1 ? 'y' : 'ies'}</div>
-                  {inquiries.slice(0, 3).map(q => (
-                    <div key={q.id} className="n-who">
-                      {q.name} <span className="n-src">· web form{q.createdAt ? ` · ${shortDayLabel(q.createdAt.slice(0, 10))}` : ''}</span>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="n-portal" onClick={() => router.push('/billing')}>
-          <div className="n-pt"><b>The money — where billing is at</b><span className="n-arrow">→</span></div>
-          <div className="n-stagegrid">
-            <div className="n-stile n-hotf">
-              {/* Whole dollars — cents made the figure bleed out of its tile. */}
-              <div className="n-bn">${Math.round(codOut.total).toLocaleString('en-US')}</div>
-              <div className="n-bk">COD out{codOut.worst > 0 ? ` · worst ${codOut.worst}d` : ''}</div>
-            </div>
-            <div className="n-stile n-coldt">
-              <div className="n-bn">{pulse?.review ?? '–'}</div>
-              <div className="n-bk">WOs need review</div>
-            </div>
-            <div className="n-stile n-warmt">
-              <div className="n-bn">{pulse?.approval ?? '–'}</div>
-              <div className="n-bk">Wait on approval{pulse && pulse.approvalTotal > 0 ? ` · ${formatCurrency(String(pulse.approvalTotal))}` : ''}</div>
-            </div>
-            <div className="n-stile n-okt">
-              <div className="n-bn">{pulse?.send ?? '–'}</div>
-              <div className="n-bk">Ready to go out</div>
-            </div>
           </div>
         </div>
       </div>
