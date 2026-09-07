@@ -660,7 +660,8 @@ export default function DashboardPage() {
           <div className="n-pt"><b>The money — where billing is at</b><span className="n-arrow">→</span></div>
           <div className="n-stagegrid">
             <div className="n-stile n-hotf">
-              <div className="n-bn">{formatCurrency(String(codOut.total))}</div>
+              {/* Whole dollars — cents made the figure bleed out of its tile. */}
+              <div className="n-bn">${Math.round(codOut.total).toLocaleString('en-US')}</div>
               <div className="n-bk">COD out{codOut.worst > 0 ? ` · worst ${codOut.worst}d` : ''}</div>
             </div>
             <div className="n-stile n-coldt">
