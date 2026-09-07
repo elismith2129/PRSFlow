@@ -45,16 +45,9 @@ import {
   type MyDayRole, type MyDayDashboard, type GridRow, type DutyView, type QueueBookingItem,
 } from '@/lib/myday'
 import {
-  fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek, fetchFloBriefing,
-  type LandedItem, type InquiryLead, type BillingPulse, type FloBriefing,
+  fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek,
+  type LandedItem, type InquiryLead, type BillingPulse,
 } from '@/lib/home'
-
-/** '2026-09-07' → 'Mon, Sep 7' — the briefing modal's date chip. */
-function fmtBriefDate(d: string): string {
-  return new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC',
-  })
-}
 
 type ViewAs = 'eli' | 'fernando' | 'aaron'
 type QueueTab = 'mine' | 'fernando' | 'aaron'
@@ -224,16 +217,11 @@ export default function DashboardPage() {
   const [inquiries, setInquiries] = useState<InquiryLead[]>([])
   const [pulse, setPulse] = useState<BillingPulse | null>(null)
   const [codOut, setCodOut] = useState<{ total: number; worst: number }>({ total: 0, worst: 0 })
-  // Flo's AI briefing (the 8:50 cron). Null = none yet — no affordance shows.
-  const [briefing, setBriefing] = useState<FloBriefing | null>(null)
-  const [briefOpen, setBriefOpen] = useState(false)
 
   useEffect(() => {
     // Paired with the page's bookings channel (dashDataVersion).
     fetchLandedToday().then(v => { if (v) setLanded(v) })
     fetchHoldsWeek().then(setHolds)
-    // Paired with the page's flo_briefings channel (same version counter).
-    fetchFloBriefing().then(setBriefing)
   }, [dashDataVersion])
   useEffect(() => {
     // Paired with WebInquiryProvider's leads channel.
@@ -275,7 +263,6 @@ export default function DashboardPage() {
       .channel('dashboard-data')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => setDashDataVersion(v => v + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_tasks' }, () => setDashDataVersion(v => v + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'flo_briefings' }, () => setDashDataVersion(v => v + 1))
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -528,67 +515,8 @@ export default function DashboardPage() {
           <span className="n-ln" style={{ fontSize: isMobile ? 17 : undefined }}>{calmLine.text}</span>
         )}
         <span className="n-ln n-dim">{myDay?.briefing.synopsis ?? '…'}</span>
-        {/* THE 8:50 BRIEFING (2026-09-07) — Flo's first real AI: the cron
-            reads the night's notes, flags, holds and the duty/task record and
-            writes today's briefing. The affordance only exists when a briefing
-            does; the statement above stays deterministic and authoritative for
-            numbers. ("Ask Flo" chat is phase 2 — this repurposes its slot.) */}
-        {briefing ? (
-          <div className="n-askflo" style={{ cursor: 'pointer' }} onClick={() => setBriefOpen(true)}>
-            Full briefing →
-          </div>
-        ) : (
-          <div className="n-askflo">Ask Flo →</div>
-        )}
+        <div className="n-askflo">Ask Flo →</div>
       </div>
-
-      {briefOpen && briefing && (
-        <div className="n-bmwrap" onClick={() => setBriefOpen(false)}>
-          <div className="n-bmodal" onClick={e => e.stopPropagation()}>
-            <div className="n-bmhead">
-              <PRSFloIcon size={22} />
-              <b>The 8:50 briefing</b>
-              <span className="n-bmdate">{fmtBriefDate(briefing.date)}</span>
-              <span className="n-bmx" onClick={() => setBriefOpen(false)}>✕</span>
-            </div>
-            {briefing.shared.map((ln, i) => (
-              <p key={`s${i}`} className="n-bmln">{ln}</p>
-            ))}
-            {/* THE AUDIENCE RULING (Eli): each person sees their own seat's
-                accountability; owners see every seat. Sliced by REAL role —
-                the view-as toggle previews layouts, not people's mail. */}
-            {(() => {
-              const seatDefs: { key: 'manager' | 'billing' | 'asst_manager'; label: string }[] = [
-                { key: 'manager', label: gridRows.find(g => g.role === 'manager')?.who ?? 'Manager' },
-                { key: 'billing', label: gridRows.find(g => g.role === 'billing')?.who ?? 'Billing' },
-                { key: 'asst_manager', label: 'Asst Mgr' },
-              ]
-              const role = profile?.role
-              const isOwnerRole = isEli || role === 'owner'
-              const seats = isOwnerRole
-                ? seatDefs
-                : seatDefs.filter(s => s.key === role)
-              return (
-                <>
-                  {isOwnerRole && (briefing.slices.owner?.length ?? 0) > 0 && (
-                    <div className="n-bmseat">
-                      <div className="n-bmseathd">Across the seats</div>
-                      {briefing.slices.owner!.map((ln, i) => <p key={i} className="n-bmln">{ln}</p>)}
-                    </div>
-                  )}
-                  {seats.map(s => (briefing.slices[s.key]?.length ?? 0) > 0 && (
-                    <div key={s.key} className="n-bmseat">
-                      <div className="n-bmseathd">{isOwnerRole ? s.label : 'For you'}</div>
-                      {briefing.slices[s.key]!.map((ln, i) => <p key={i} className="n-bmln">{ln}</p>)}
-                    </div>
-                  ))}
-                </>
-              )
-            })()}
-            <div className="n-bmfoot">Written by Flo from last night's notes, the open flags, this week's holds, and the duty record. The numbers above the fold are computed live — this is the reading.</div>
-          </div>
-        </div>
-      )}
 
       {/* ── ROW 1 (Eli 2026-09-07): CRM + Money LEAD — the business numbers outrank the day view. Slimmed to ~1/4 of the page. ── */}
       <div className="n-row2">

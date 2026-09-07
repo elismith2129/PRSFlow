@@ -19,8 +19,6 @@
 //                          as the billing page and the Rail badge.
 //   · fetchHoldsWeek     — holds to check, next 7 days. A parameterised
 //                          fetchHoldsQueue — one queue, one derivation.
-//   · fetchFloBriefing   — today's AI-written 8:50 briefing (flo_briefings,
-//                          written by the cron route; null when none exists).
 //
 // House rules honoured here:
 //   · NULL ON FAILURE, NOT [] (the 2026-09-02 "my checkboxes cleared" lesson)
@@ -34,7 +32,7 @@
 
 import { supabase } from './supabase'
 import { dbResult } from './db'
-import { getLocalToday, opsToday } from './time'
+import { getLocalToday } from './time'
 import { fetchInvoices, activeRows, approvalQueue, billingStage } from './billing'
 import { fetchHoldsQueue, type QueueBookingItem } from './myday'
 
@@ -159,33 +157,6 @@ export async function fetchBillingPulse(): Promise<BillingPulse | null> {
     approvalTotal: approvals.reduce((s, r) => s + (r.invoicedTotal ?? 0), 0),
     send: act.filter(r => !r.isCod && billingStage(r).key === 'approved').length,
   }
-}
-
-// ─── Flo's 8:50 briefing ─────────────────────────────────────────────────────
-
-export type FloBriefing = {
-  date: string
-  shared: string[]
-  slices: { owner?: string[]; manager?: string[]; billing?: string[]; asst_manager?: string[] }
-}
-
-/**
- * Today's AI briefing (written by /api/cron/flo-briefing at 8:50). Keyed on
- * opsToday — before 8:50 the newest briefing IS yesterday's, correctly, and
- * the realtime channel delivers the new one the moment the cron lands.
- * Null = none written (cron missed, or pre-launch) — the dashboard simply
- * doesn't show the affordance; the deterministic statement stands alone.
- */
-export async function fetchFloBriefing(): Promise<FloBriefing | null> {
-  const { data, error } = await supabase
-    .from('flo_briefings')
-    .select('date, shared, slices')
-    .eq('date', opsToday())
-    .limit(1)
-  if (!dbResult('Loading Flo briefing', error)) return null
-  const row = data?.[0]
-  if (!row || !Array.isArray(row.shared)) return null
-  return { date: row.date, shared: row.shared, slices: row.slices ?? {} }
 }
 
 // ─── Holds this week ─────────────────────────────────────────────────────────
