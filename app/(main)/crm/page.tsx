@@ -642,9 +642,13 @@ export default function CRMPage() {
     // divided by the zoom so the page still fills the viewport (vh units
     // measure the real viewport, then get scaled with the element). Mobile
     // keeps 100% — the phone layout was built for its own width.
+    // Height reclaim (2026-09-06): the old calc subtracted 52px for the TOP NAV
+    // the rail replaced — the page ended short of the viewport and hid the
+    // lead panel's lower bands (the Log Activity composer, minimally, must
+    // show). The layout's own vertical chrome is 14px top + 20px bottom.
     <div style={{ display: 'flex', flexDirection: 'column', ...(isMobile
-      ? { height: 'calc(100vh - 52px - 24px)' }
-      : { zoom: 0.9, height: 'calc((100vh - 52px - 24px) / 0.9)' }) }}>
+      ? { height: 'calc(100vh - 36px)' }
+      : { zoom: 0.9, height: 'calc((100vh - 36px) / 0.9)' }) }}>
       {emailModal && selected && <EmailModal lead={selected} onClose={() => setEmailModal(false)} />}
       {newLeadOpen && (
         <NewLeadModal
@@ -2633,25 +2637,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
       </div>
       </div>
 
-      {/* ─── Session Notes ─────────────────────────────── */}
-      <div className="c-band">
-      <div className="c-band-head">Notes</div>
-      <textarea
-        className="c-area"
-        value={notesVal}
-        onChange={e => setNotesVal(e.target.value)}
-        onBlur={() => { if (notesDirty) save('notes', notesVal) }}
-        onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
-        ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
-        placeholder="Add notes…"
-        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6, minHeight: 0 }}
-      />
-      </div>
-
       {/* ─── Log Activity — typed entry into the activity log, stamped with
-          the author's initials + timestamp on save. Static Notes above stays
-          the booking notes (who the person is / what they need); this is for
-          conversations and rate updates, dated. */}
+          the author's initials + timestamp on save. ABOVE the static Notes
+          band (2026-09-06): logging is the frequent act and must be visible
+          without scrolling; standing notes are reference. */}
       <div className="c-band">
       <div className="c-band-head">Log Activity</div>
       <textarea
@@ -2670,6 +2659,22 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </button>
         </div>
       )}
+      </div>
+
+      {/* ─── Session Notes — the standing booking notes (who the person is /
+          what they need). Below the composer since 2026-09-06. */}
+      <div className="c-band">
+      <div className="c-band-head">Notes</div>
+      <textarea
+        className="c-area"
+        value={notesVal}
+        onChange={e => setNotesVal(e.target.value)}
+        onBlur={() => { if (notesDirty) save('notes', notesVal) }}
+        onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+        ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
+        placeholder="Add notes…"
+        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6, minHeight: 0 }}
+      />
       </div>
 
       {/* ─── Activity + Tags: STACKED full-width folds (Eli 2026-08-07 rev 2 —
