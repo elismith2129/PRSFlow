@@ -80,10 +80,10 @@
 
 :root {
   /* DARK — the dim room (attribute absent) */
-  --c-bg:       #1b1a17;
-  --c-fg:       #d9d6cd;              /* warm ivory, NOT white */
-  --c-wash:     rgba(217, 214, 205, .07);   /* grouping fill, level 1 */
-  --c-wash2:    rgba(217, 214, 205, .13);   /* grouping fill, level 2 */
+  --c-bg:       #0b0a09;              /* NOIR (2026-09-06): near-black stage */
+  --c-fg:       #f2efe7;              /* NOIR bright ivory — high contrast is the ground */
+  --c-wash:     rgba(242, 239, 231, .06);   /* grouping fill, level 1 */
+  --c-wash2:    rgba(242, 239, 231, .12);   /* grouping fill, level 2 */
   --c-chip-ink: #1c2626;              /* text ON status fills — same both themes */
 
   /* Status palette — Lagoon. Identical values in both themes: dark dims them by
@@ -106,8 +106,8 @@
   /* Muted ink steps. The spec works in opacity, which is right for whole elements
      but useless when only the text colour should drop — these give the legacy
      --text2/--text3/--cold tokens a 1:1 carved equivalent during migration. */
-  --c-fg-2: rgba(217, 214, 205, .72);
-  --c-fg-3: rgba(217, 214, 205, .45);
+  --c-fg-2: rgba(242, 239, 231, .72);
+  --c-fg-3: rgba(242, 239, 231, .45);
 
   /* Semantic aliases — components reference these, never a raw slot. */
   --c-ivory:    #d5d0c2;              /* dark-mode SMALL accents only (spec Law 5) */
@@ -115,7 +115,7 @@
 
   /* Flo ring/halo ink (spec §14c) — bare RGB triplet, consumed via
      rgba(var(--c-flo-ink), a). The Flo box is the ONLY glow in the app. */
-  --c-flo-ink: 213, 208, 194;         /* ivory in dark */
+  --c-flo-ink: 242, 239, 231;         /* ivory in dark */
 }
 
 [data-theme="light"] {
@@ -1502,7 +1502,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* The zebra band, as an opaque colour rather than a wash — a sticky first column
    has to paint the same band, and an alpha wash over the scrolling cells beneath
    it lets them show through. */
-:root { --c-surface-band: #201f1c; }
+:root { --c-surface-band: #100f0d; }
 [data-theme="light"] { --c-surface-band: #efece5; }
 
 /* Row totals and the section total — bare bold mono, no container. */
@@ -2154,7 +2154,7 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 
 :root {
   /* DARK — surfaces lift slightly off the ground */
-  --c-srf:    #242320;
+  --c-srf:    #151412;              /* NOIR: cards lift off the black */
   --c-softsh: 0 2px 5px rgba(0, 0, 0, .25), 0 8px 22px rgba(0, 0, 0, .22);
   --c-ctlsh:  0 1px 4px rgba(0, 0, 0, .3);
 }
