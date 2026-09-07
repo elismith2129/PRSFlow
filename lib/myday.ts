@@ -877,14 +877,20 @@ async function fetchBookingQueue(
   refType: QueueRefType,
   statuses: string[],
   window: { from: string; to: string },
+  /** Include bookings already UNDERWAY at `from` (started earlier, still
+   *  running — matched on end_date, the repo's multi-day pattern). Holds use
+   *  this: a hold that began Friday and spans the week is exactly the one to
+   *  chase, and start_date-only windows hid it (Eli, 2026-09-07 — the
+   *  missing Invoke hold). */
+  span = false,
 ): Promise<QueueBookingItem[]> {
-  const { data: bookingsRaw, error } = await supabase
+  let q = supabase
     .from('bookings')
-    .select('id, status, start_date, location, studio, client_name, label, artist, imported_at')
+    .select('id, status, start_date, end_date, location, studio, client_name, label, artist, imported_at')
     .in('status', statuses)
-    .gte('start_date', window.from)
     .lte('start_date', window.to)
-    .order('start_date')
+  q = span ? q.gte('end_date', window.from) : q.gte('start_date', window.from)
+  const { data: bookingsRaw, error } = await q.order('start_date')
   if (!dbResult('Loading My Day queue', error)) return []
   // Imported WordPress history is excluded entirely (Eli, 2026-08-26): these
   // sessions were fully handled in the old system — Email/Calendar/QB/Staff
@@ -917,7 +923,7 @@ export function fetchHoldsQueue(opts?: { fromDate?: string; toDate?: string }) {
   return fetchBookingQueue('hold', ['tentative'], {
     from: opts?.fromDate ?? today,
     to: opts?.toDate ?? shiftDate(today, 60),
-  })
+  }, true /* holds already underway still need checking */)
 }
 
 /** Recently confirmed bookings — the booked pipeline. Steps: Calendar · QB · WO. */

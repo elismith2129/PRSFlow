@@ -2483,7 +2483,9 @@ html.n-page .c-frame { background: #0b0a09; }
   text-transform:uppercase;color:var(--n-ink3)}
 
 /* PORTALS — fixed geometry. Row 1 = 356px, row 2 = 200px (desktop). */
-.n-home .n-row1{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+/* Landed & in the air slimmed to .8fr (Eli, 2026-09-07) — the reclaimed
+   width goes to Your List so duty/task lines stop truncating so early. */
+.n-home .n-row1{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) minmax(0,.8fr);gap:14px}
 .n-home .n-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-bottom:14px}
 .n-home .n-portal{background:var(--n-card);border-radius:18px;padding:16px 18px;cursor:pointer;
   display:flex;flex-direction:column;overflow:hidden;
@@ -2499,7 +2501,10 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-portal:hover .n-pt .n-arrow{color:var(--n-ink);transform:translateX(3px)}
 
 /* rooms — solid status fills, chip ink, full standard card info */
-.n-home .n-rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;flex:1;min-height:0;align-content:start}
+/* Rows stretch to fill the portal (Eli, 2026-09-07: "fill out the calendar
+   in its box... size to the cards") — was align-content:start, which left a
+   dead band under the third row of a 356px box. */
+.n-home .n-rgrid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(78px,1fr);gap:7px;flex:1;min-height:0}
 .n-home.n-mobile .n-rgrid{grid-template-columns:repeat(2,1fr)}
 .n-home .n-rc{border-radius:10px;min-height:78px;padding:7px 9px;background:var(--n-wash);
   overflow:hidden;position:relative;display:flex;flex-direction:column}
@@ -2510,10 +2515,10 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-rc.n-warmc .n-rn{color:rgba(18,16,14,.6)}
 .n-home .n-rc.n-hotc{background:var(--n-hot);color:var(--n-hot-text)}
 .n-home .n-rc.n-hotc .n-rn{color:rgba(255,244,242,.7)}
-.n-home .n-rc .n-a{font-family:'Archivo Black',sans-serif;font-size:11px;margin-top:2px;
+.n-home .n-rc .n-a{font-family:'Archivo Black',sans-serif;font-size:12px;margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.n-home .n-rc .n-c{font-size:8.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.n-home .n-rc .n-tm{font-size:8.5px;opacity:.85;margin-top:auto;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-rc .n-c{font-size:9.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-rc .n-tm{font-size:9.5px;opacity:.85;margin-top:auto;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .n-home .n-rc .n-eng{position:absolute;right:7px;bottom:6px;font-family:'DM Mono',ui-monospace,monospace;font-size:7px;opacity:.6}
 .n-home .n-loccount{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 .n-home .n-loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;

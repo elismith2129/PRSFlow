@@ -445,7 +445,9 @@ export default function DashboardPage() {
     await refreshDayBookings()
   }
 
-  const holdsWeek = holds.slice(0, 6)
+  // No cap (2026-09-07 — the Invoke hold fell off the end of a slice(0,6)):
+  // the list lives in an n-qscroll, so a busy week scrolls instead of hiding.
+  const holdsWeek = holds
 
   return (
     <>
