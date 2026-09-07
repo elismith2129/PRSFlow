@@ -24,7 +24,10 @@
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 
-const MODEL = 'claude-sonnet-4-5-20251001'
+// claude-sonnet-5: the current Sonnet (the dated 4-5 id 404'd on the new
+// prsflow key, 2026-09-07). If Anthropic retires this id someday the symptom
+// is the same 404 in the Brief-me-now error line — swap the id here.
+const MODEL = 'claude-sonnet-5'
 
 export type BriefingResult =
   | { ok: true; date: string; skipped?: string; lines?: number; inputs?: Record<string, number> }
