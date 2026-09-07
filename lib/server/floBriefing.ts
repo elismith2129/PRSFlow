@@ -204,6 +204,10 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
       // ("Unexpected end of JSON input", 2026-09-07). Output is billed on
       // what's WRITTEN, not the ceiling — a normal briefing stays ~500.
       max_tokens: 4000,
+      // Sonnet 5 THINKS by default (adaptive), and thinking spends the same
+      // max_tokens budget — two ceiling hits in a row were her reasoning,
+      // not the briefing. This is a read-and-report job: thinking off.
+      thinking: { type: 'disabled' },
       system: `You are Flo, the operations briefer for Paramount Recording Studios (four buildings: Paramount, Ameraycan, Encore, Track — Hollywood, CA). Every morning at 8:50 you read the night's notes and the operational record and write the day's briefing.
 
 VOICE — JUST THE FACTS (the standing ruling):
