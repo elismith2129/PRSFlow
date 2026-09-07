@@ -48,6 +48,7 @@ import {
   fetchLandedToday, fetchNewInquiries, fetchBillingPulse, fetchHoldsWeek, fetchFloBriefing, requestFloBriefing,
   type LandedItem, type InquiryLead, type BillingPulse, type FloBriefing,
 } from '@/lib/home'
+import { FLO_GO_ROUTES, FLO_GO_LABELS, type FloLine } from '@/lib/floLines'
 
 /** '2026-09-07' → 'Mon, Sep 7' — the briefing modal's date chip. */
 function fmtBriefDate(d: string): string {
@@ -238,6 +239,22 @@ export default function DashboardPage() {
     else { const fresh = await fetchFloBriefing(); if (fresh) { setBriefing(fresh); setBriefOpen(true) } }
     setBriefBusy(false)
   }
+  // One briefing line: headline + optional jump chip (Eli 2026-09-07 — "a
+  // bullet, and a button to the page they need"). The go→route map lives in
+  // lib/floLines with the line shape itself.
+  const briefLine = (ln: FloLine, key: string) => (
+    <p key={key} className="n-bmln">
+      {ln.text}
+      {ln.go && (
+        <span
+          className="n-bmgo"
+          onClick={() => { setBriefOpen(false); router.push(FLO_GO_ROUTES[ln.go!]) }}
+        >
+          {FLO_GO_LABELS[ln.go]} →
+        </span>
+      )}
+    </p>
+  )
 
   useEffect(() => {
     // Paired with the page's bookings channel (dashDataVersion).
@@ -574,9 +591,7 @@ export default function DashboardPage() {
               <span className="n-bmdate">{fmtBriefDate(briefing.date)}</span>
               <span className="n-bmx" onClick={() => setBriefOpen(false)}>✕</span>
             </div>
-            {briefing.shared.map((ln, i) => (
-              <p key={`s${i}`} className="n-bmln">{ln}</p>
-            ))}
+            {briefing.shared.map((ln, i) => briefLine(ln, `s${i}`))}
             {/* THE AUDIENCE RULING (Eli): each person sees their own seat's
                 accountability; owners see every seat. Sliced by REAL role —
                 the view-as toggle previews layouts, not people's mail. */}
@@ -596,13 +611,13 @@ export default function DashboardPage() {
                   {isOwnerRole && (briefing.slices.owner?.length ?? 0) > 0 && (
                     <div className="n-bmseat">
                       <div className="n-bmseathd">Across the seats</div>
-                      {briefing.slices.owner!.map((ln, i) => <p key={i} className="n-bmln">{ln}</p>)}
+                      {briefing.slices.owner!.map((ln, i) => briefLine(ln, `o${i}`))}
                     </div>
                   )}
                   {seats.map(s => (briefing.slices[s.key]?.length ?? 0) > 0 && (
                     <div key={s.key} className="n-bmseat">
                       <div className="n-bmseathd">{isOwnerRole ? s.label : 'For you'}</div>
-                      {briefing.slices[s.key]!.map((ln, i) => <p key={i} className="n-bmln">{ln}</p>)}
+                      {briefing.slices[s.key]!.map((ln, i) => briefLine(ln, `${s.key}${i}`))}
                     </div>
                   ))}
                 </>

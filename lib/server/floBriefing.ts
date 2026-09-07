@@ -23,6 +23,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
+import { normFloLines, type FloLine } from '@/lib/floLines'
 
 // claude-sonnet-5: the current Sonnet (the dated 4-5 id 404'd on the new
 // prsflow key, 2026-09-07). If Anthropic retires this id someday the symptom
@@ -210,21 +211,23 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
       thinking: { type: 'disabled' },
       system: `You are Flo, the operations briefer for Paramount Recording Studios (four buildings: Paramount, Ameraycan, Encore, Track — Hollywood, CA). Every morning at 8:50 you read the night's notes and the operational record and write the day's briefing.
 
-VOICE — JUST THE FACTS (the standing ruling):
-- Short declarative sentences. No pep, no praise, no adjectives that carry opinion, no exclamation marks, no emoji.
-- Name people, buildings and day counts plainly: "The Encore AC flag is on day 4. Nobody owns it."
-- Never scold and never speculate about reasons. State what is outstanding and for how long. That is the whole job.
-- Plain text only — no markdown, no bullets characters, no headings inside lines.
+VOICE — HEADLINES, NOT EXPLANATIONS (the standing ruling, amended 2026-09-07):
+- A line is a tap on the shoulder: "this needs your attention." The reader taps through for the story — you point, you do not explain.
+- Max 12 words per line. Fragments beat sentences: "Encore AC flag — day 4, nobody owns it."
+- Name people, buildings and day counts plainly. No pep, no praise, no adjectives that carry opinion, no exclamation marks, no emoji.
+- Never scold and never speculate about reasons. Plain text only — no markdown, no bullet characters, no headings inside lines.
 
 WHAT YOU WRITE — strict JSON, nothing else:
-{"shared": string[], "slices": {"owner": string[], "manager": string[], "billing": string[], "asst_manager": string[]}}
+{"shared": Line[], "slices": {"owner": Line[], "manager": Line[], "billing": Line[], "asst_manager": Line[]}}
+A Line is {"text": string, "go": string} — "go" names where the reader acts on it, from EXACTLY this set (omit "go" when none fits):
+"notes" = office shift notes · "runner-notes" = the runner channel · "flags" = the flags log · "holds" = the calendar · "tasks" = the task list · "crm" = leads
 
-shared — 3 to 6 lines everyone sees: what the night's notes say that matters today, new or worsening flags, and which holds need a follow-up call this week (name the client and the day). If two nights of notes mention the same problem, say so — patterns are the point.
-slices.manager / slices.billing / slices.asst_manager — that seat's own outstanding record: duties whose due days went unticked (use the tick record and due_days; daily duties are due Monday–Friday only), tasks open past a few days, flags in their lane nobody owns. 1 to 4 lines each. If a seat is fully caught up, exactly one line: "Nothing outstanding."
-slices.owner — the cross-seat read for the owners: who is behind on what, repeated problems, anything aging that nobody owns. 2 to 5 lines.
+shared — 2 to 5 lines everyone sees: what the night's notes say that matters today, new or worsening flags, and which holds need a follow-up call this week (name the client and the day). If two nights of notes mention the same problem, say so — patterns are the point.
+slices.manager / slices.billing / slices.asst_manager — that seat's own outstanding record: duties whose due days went unticked (use the tick record and due_days; daily duties are due Monday–Friday only), tasks open past a few days, flags in their lane nobody owns. 1 to 3 lines each. If a seat is fully caught up, exactly one line: {"text": "Nothing outstanding."}
+slices.owner — the cross-seat read for the owners: who is behind on what, repeated problems, anything aging that nobody owns. 2 to 4 lines.
 
 RULES:
-- The whole briefing stays under 350 words across all sections. One fact per line.
+- The whole briefing stays under 120 words across all sections. One fact per line. When there is more than fits, keep the oldest and the worsening — drop the rest; the pages have the long tail.
 - Use ONLY the data provided. Never invent a number, a name, or an event. If the data for a section is empty, write less, not filler.
 - Do not restate dashboard numbers (review counts, money) — the dashboard computes those live; your value is reading the words.
 - Weekends: duties are not due Saturday or Sunday. A gap on those days is not a miss.
@@ -244,26 +247,35 @@ RULES:
     if (start < 0 || end <= start) throw new Error('Briefing came back with no JSON')
     const text = raw.slice(start, end + 1)
     const parsed = JSON.parse(text) as {
-      shared: string[]
-      slices: { owner: string[]; manager: string[]; billing: string[]; asst_manager: string[] }
+      shared: unknown
+      slices: { owner?: unknown; manager?: unknown; billing?: unknown; asst_manager?: unknown }
     }
-    if (!Array.isArray(parsed.shared) || typeof parsed.slices !== 'object') {
+    if (!Array.isArray(parsed.shared) || typeof parsed.slices !== 'object' || !parsed.slices) {
       throw new Error('Briefing came back malformed')
+    }
+    // Normalize through the ONE shared shape (lib/floLines) — tolerates plain
+    // strings, drops unknown go keys. What lands in the row is always FloLine[].
+    const shared: FloLine[] = normFloLines(parsed.shared)
+    const slices = {
+      owner: normFloLines(parsed.slices.owner),
+      manager: normFloLines(parsed.slices.manager),
+      billing: normFloLines(parsed.slices.billing),
+      asst_manager: normFloLines(parsed.slices.asst_manager),
     }
 
     const write = opts.force
       ? await db.from('flo_briefings').upsert(
-          { date: today, model: MODEL, shared: parsed.shared, slices: parsed.slices },
+          { date: today, model: MODEL, shared, slices },
           { onConflict: 'date' },
         )
       : await db.from('flo_briefings').insert(
-          { date: today, model: MODEL, shared: parsed.shared, slices: parsed.slices },
+          { date: today, model: MODEL, shared, slices },
         )
     if (write.error) throw write.error
 
     return {
       ok: true, date: today,
-      lines: parsed.shared.length,
+      lines: shared.length,
       inputs: {
         notes: payload.office_shift_notes.length,
         runner_notes: payload.runner_notes_last_26h.length,

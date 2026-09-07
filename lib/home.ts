@@ -37,6 +37,7 @@ import { dbResult } from './db'
 import { getLocalToday, opsToday } from './time'
 import { fetchInvoices, activeRows, approvalQueue, billingStage } from './billing'
 import { fetchHoldsQueue, type QueueBookingItem } from './myday'
+import { normFloLines, type FloLine } from './floLines'
 
 // ─── Landed today ────────────────────────────────────────────────────────────
 
@@ -165,8 +166,8 @@ export async function fetchBillingPulse(): Promise<BillingPulse | null> {
 
 export type FloBriefing = {
   date: string
-  shared: string[]
-  slices: { owner?: string[]; manager?: string[]; billing?: string[]; asst_manager?: string[] }
+  shared: FloLine[]
+  slices: { owner?: FloLine[]; manager?: FloLine[]; billing?: FloLine[]; asst_manager?: FloLine[] }
 }
 
 /**
@@ -185,7 +186,18 @@ export async function fetchFloBriefing(): Promise<FloBriefing | null> {
   if (!dbResult('Loading Flo briefing', error)) return null
   const row = data?.[0]
   if (!row || !Array.isArray(row.shared)) return null
-  return { date: row.date, shared: row.shared, slices: row.slices ?? {} }
+  // Rows written before 2026-09-07 are string[]; normFloLines reads both shapes.
+  const s = (row.slices ?? {}) as Record<string, unknown>
+  return {
+    date: row.date,
+    shared: normFloLines(row.shared),
+    slices: {
+      owner: normFloLines(s.owner),
+      manager: normFloLines(s.manager),
+      billing: normFloLines(s.billing),
+      asst_manager: normFloLines(s.asst_manager),
+    },
+  }
 }
 
 /**

@@ -2602,6 +2602,11 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-bmx{margin-left:auto;cursor:pointer;color:var(--n-ink3);font-size:13px;padding:2px 6px}
 .n-home .n-bmx:hover{color:var(--n-ink)}
 .n-home .n-bmln{margin:0 0 9px;font-size:14px;line-height:1.55;font-weight:500}
+/* Briefing jump chip (2026-09-07): a line points, the chip goes there. Same
+   register as .n-askflo — tiny tracked caps, ink3 → ink on hover, no box. */
+.n-home .n-bmgo{margin-left:10px;font-size:9px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--n-ink3);cursor:pointer;white-space:nowrap}
+.n-home .n-bmgo:hover{color:var(--n-ink)}
 .n-home .n-bmseat{margin-top:14px;padding-top:12px;border-top:1px solid var(--n-wash)}
 .n-home .n-bmseathd{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
   color:var(--n-ink3);padding-bottom:7px}

@@ -55,6 +55,13 @@ export default function ShiftNotesPage() {
   // from Daily Ops (Eli 2026-09-06): all the building's notes, one tab.
   const [tab, setTab] = useState<'manager' | 'runner'>('manager')
   const [runnerStudio, setRunnerStudio] = useState<string>('paramount')
+  // Deep link: /shift-notes?tab=runner (the briefing's runner-notes jump chip).
+  // window.location.search on mount — the existing CRM ?lead= pattern, no
+  // useSearchParams Suspense restructure.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('tab') === 'runner') setTab('runner')
+  }, [])
   const [daysShown, setDaysShown] = useState(DAYS_PER_PAGE)
   const [noteLog, setNoteLog] = useState<MyDayNotePost[]>([])
   const [drafts, setDrafts] = useState({ session: '', studio: '' })
