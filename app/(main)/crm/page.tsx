@@ -3,7 +3,8 @@ import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react
 import { useRouter } from 'next/navigation'
 import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType, StaffMode } from '@/lib/supabase'
 import { StaffPicker } from '@/components/shared/StaffPicker'
-import { TOUCH_INTERVAL_DAYS } from '@/lib/settings'
+import { NEXT_TOUCH_DAYS } from '@/lib/settings'
+import { daysSince, isParked, isDue, daysUntilTouch, overdueDays, isComingUp, getMissing } from '@/lib/crm'
 import { ContactPicker } from '@/components/shared/ContactPicker'
 import { ArtistPicker } from '@/components/shared/ArtistPicker'
 import PhoneInput from '@/components/shared/PhoneInput'
@@ -153,13 +154,6 @@ const fieldLabelStyle: React.CSSProperties = {
   textTransform: 'uppercase', marginBottom: 2,
 }
 
-function daysSince(d: string) {
-  if (!d) return 999
-  const n = new Date(d).getTime()
-  if (isNaN(n)) return 999
-  return Math.floor((Date.now() - n) / 86400000)
-}
-
 function fmtActivityTime(ts: string) {
   if (!ts) return ''
   const d = new Date(ts)
@@ -233,19 +227,9 @@ function fmtDateTime(d: string) {
   }).replace(',', '').toLowerCase()
 }
 
-function isParked(l: Lead) {
-  return !!(l.parked_until && new Date(l.parked_until) > new Date())
-}
-
-function isKhuDue(l: Lead) {
-  if (!l.keep_hot_until) return daysSince(l.last_contact || l.created_at) >= (l.status === 'hot' ? TOUCH_INTERVAL_DAYS.hot : TOUCH_INTERVAL_DAYS.warm)
-  return new Date(l.keep_hot_until) <= new Date()
-}
-
-function daysUntilKhu(l: Lead): number | null {
-  if (!l.keep_hot_until) return null
-  return Math.ceil((new Date(l.keep_hot_until).getTime() - Date.now()) / 86400000)
-}
+// isParked / isDue / daysUntilTouch / overdueDays / getMissing now come from
+// lib/crm — the single predicate source shared with the dashboard, the
+// auto-demote cron and Flo's briefing. Never re-define them here.
 
 function dateKey(d: string) {
   const dt = new Date(d)
@@ -351,16 +335,6 @@ function touchAge(iso: string | null | undefined): string {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h`
   return `${Math.floor(hrs / 24)}d`
-}
-
-function getMissing(l: Lead) {
-  const m: string[] = []
-  if (!l.fname) m.push('first name')
-  if (!l.lname) m.push('last name')
-  if (!l.email) m.push('email')
-  if (!l.phone) m.push('phone')
-  if (!l.quote && !l.rate_daily) m.push('quote')
-  return m
 }
 
 function parseTouchNote(note: string): { initials: string, method: string } {
@@ -521,8 +495,8 @@ export default function CRMPage() {
     // open by explicit tap (or the ?lead= deep-link above) — never auto-selected.
     if (isMobile || loading || hasAutoSelected.current || leads.length === 0) return
     const uncontacted = leads.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status)))
-    const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l))
-    const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l))
+    const hotDue = leads.filter(l => l.status === 'hot' && isDue(l) && !isParked(l))
+    const warmDue = leads.filter(l => l.status === 'warm' && isDue(l) && !isParked(l))
     // Matches the Needs Action buckets exactly. The old "incomplete" fallback was
     // dropped with that tab — it only ever re-listed hot/warm/uncontacted leads.
     const first = uncontacted[0] || hotDue[0] || warmDue[0]
@@ -535,16 +509,13 @@ export default function CRMPage() {
     const updateData: Partial<Lead> = { last_contact: now, needs_contact: false }
     if (statusOverride) {
       updateData.status = statusOverride as LeadStatus
-      if (statusOverride === 'hot') {
-        const khu = new Date(); khu.setDate(khu.getDate() + 5)
-        updateData.keep_hot_until = khu.toISOString()
-      } else if (statusOverride === 'warm') {
-        const khu = new Date(); khu.setDate(khu.getDate() + 3)
+      if (statusOverride === 'hot' || statusOverride === 'warm') {
+        const khu = new Date(); khu.setDate(khu.getDate() + NEXT_TOUCH_DAYS[statusOverride])
         updateData.keep_hot_until = khu.toISOString()
       }
     } else if (lead?.status === 'uncontacted') {
       updateData.status = 'hot'
-      const khu = new Date(); khu.setDate(khu.getDate() + 5)
+      const khu = new Date(); khu.setDate(khu.getDate() + NEXT_TOUCH_DAYS.hot)
       updateData.keep_hot_until = khu.toISOString()
     }
     const activityNote = notes.trim() ? `${initials} - ${method} - ${notes.trim()}` : `${initials} - ${method}`
@@ -559,7 +530,7 @@ export default function CRMPage() {
     const lead = leads.find(l => l.id === id)
     const isWarm = (status || lead?.status) === 'warm'
     const label = isWarm ? 'Kept Warm' : 'Kept Hot'
-    const days = isWarm ? 3 : 5
+    const days = isWarm ? NEXT_TOUCH_DAYS.warm : NEXT_TOUCH_DAYS.hot
     const now = new Date().toISOString()
     const keepHotUntil = new Date(); keepHotUntil.setDate(keepHotUntil.getDate() + days)
     const activityNote = notes.trim() ? `${initials} - ${label} - ${notes.trim()}` : `${initials} - ${label}`
@@ -595,11 +566,8 @@ export default function CRMPage() {
     if (!insertData.staff_name) insertData.staff_name = null
     if (!insertData.staff_role) insertData.staff_role = 'assistant'
     if (!insertData.status) insertData.status = 'uncontacted'
-    if (insertData.status === 'hot') {
-      const khu = new Date(); khu.setDate(khu.getDate() + 5)
-      insertData.keep_hot_until = khu.toISOString()
-    } else if (insertData.status === 'warm') {
-      const khu = new Date(); khu.setDate(khu.getDate() + 3)
+    if (insertData.status === 'hot' || insertData.status === 'warm') {
+      const khu = new Date(); khu.setDate(khu.getDate() + NEXT_TOUCH_DAYS[insertData.status])
       insertData.keep_hot_until = khu.toISOString()
     }
     const { data: rows, error } = await supabase.from('leads').insert(insertData).select('id').single()
@@ -630,8 +598,8 @@ export default function CRMPage() {
   // its leads were already counted in the three below, so the badge overstated
   // the real queue.
   const naUncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status))) && l.needs_contact !== false)
-  const naHot = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
-  const naWarm = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
+  const naHot = leads.filter(l => l.status === 'hot' && isDue(l) && !isParked(l) && l.needs_contact !== false)
+  const naWarm = leads.filter(l => l.status === 'warm' && isDue(l) && !isParked(l) && l.needs_contact !== false)
   const needsActionCount = naUncontacted.length + naHot.length + naWarm.length
 
   return (
@@ -1247,8 +1215,8 @@ function DeadLeadPrompt({ leadId, onSubmit, onCancel }: {
 // Warm (its filter was literally those three statuses plus a missing-field
 // check), so it double-counted the queue and inflated the header total. Missing
 // fields still surface on the lead itself via getMissing().
-type NeedsActionTab = 'uncontacted' | 'hot' | 'warm'
-const NEEDS_ACTION_TABS: NeedsActionTab[] = ['uncontacted', 'hot', 'warm']
+type NeedsActionTab = 'uncontacted' | 'hot' | 'warm' | 'coming'
+const NEEDS_ACTION_TABS: NeedsActionTab[] = ['uncontacted', 'hot', 'warm', 'coming']
 
 function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading, isMobile }: {
   leads: Lead[]
@@ -1282,14 +1250,22 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)
 
   const uncontacted = leads.filter(l => (l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status))) && l.needs_contact !== false)
-  const hotDue = leads.filter(l => l.status === 'hot' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
-  const warmDue = leads.filter(l => l.status === 'warm' && isKhuDue(l) && !isParked(l) && l.needs_contact !== false)
+  // Due lanes sort MOST overdue first — the rotting lead is the loudest row.
+  const byOverdue = (a: Lead, b: Lead) => overdueDays(b) - overdueDays(a) || a.id - b.id
+  const hotDue = leads.filter(l => l.status === 'hot' && isDue(l) && !isParked(l) && l.needs_contact !== false).sort(byOverdue)
+  const warmDue = leads.filter(l => l.status === 'warm' && isDue(l) && !isParked(l) && l.needs_contact !== false).sort(byOverdue)
+  // COMING UP (Eli ruling 2026-09-07): Keep Hot parks a lead VISIBLY — it
+  // sits here with its comeback date instead of vanishing until overdue.
+  // Soonest return first.
+  const comingUp = leads.filter(isComingUp)
+    .sort((a, b) => (daysUntilTouch(a) ?? 0) - (daysUntilTouch(b) ?? 0) || a.id - b.id)
   const totalCount = uncontacted.length + hotDue.length + warmDue.length
 
   const tabs: { key: NeedsActionTab; label: string; color: string; items: Lead[]; emptyMsg: string }[] = [
     { key: 'uncontacted', label: 'Uncontacted', color: 'var(--c-st-uncon)', items: uncontacted, emptyMsg: 'No fresh uncontacted leads.' },
     { key: 'hot', label: 'Hot', color: 'var(--c-st-hot)', items: hotDue, emptyMsg: 'All hot leads are up to date.' },
     { key: 'warm', label: 'Warm', color: 'var(--c-st-warm)', items: warmDue, emptyMsg: 'All warm leads are up to date.' },
+    { key: 'coming', label: 'Coming Up', color: 'var(--c-fg-3)', items: comingUp, emptyMsg: 'Nothing parked — every lead is due or fresh.' },
   ]
   const activeBucket = tabs.find(t => t.key === activeTab)!
 
@@ -1357,10 +1333,27 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
                     {activeBucket.key === 'uncontacted'
                       ? <span style={{ color: 'var(--c-fg-3)' }}>never contacted · added {fmtDate(l.created_at)}</span>
-                      : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--c-fg-2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
+                      : activeBucket.key === 'coming'
+                        ? <span style={{ color: 'var(--c-fg-2)' }}>
+                            {(() => {
+                              // Parked leads show the calendar date; scheduled touches count down.
+                              if (isParked(l) && l.parked_until) return `back ${fmtDate(l.parked_until)}`
+                              const d = daysUntilTouch(l) ?? 0
+                              return d <= 1 ? 'back tomorrow' : `back in ${d}d`
+                            })()}
+                            {touch?.initials && <> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</>}
+                          </span>
+                        : <>{daysSince(l.last_contact || l.created_at)}d ago{touch?.initials && <span style={{ color: 'var(--c-fg-2)' }}> · {touch.initials}{touch.method ? ` via ${touch.method}` : ''}</span>}</>}
                   </>}
                 />
-                {(l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1 && (
+                {/* Escalation pill — hot fill is sanctioned needs-you-now (§5).
+                    The lead stopped hiding; now it gets louder the longer it sits. */}
+                {activeBucket.key !== 'coming' && overdueDays(l) > 0 && (
+                  <span style={{ flexShrink: 0, padding: '2px 8px', borderRadius: 99, background: 'var(--c-st-hot)', color: 'var(--c-hot-text, #fff4f2)', fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    overdue {overdueDays(l)}d
+                  </span>
+                )}
+                {(l.status === 'hot' || l.status === 'warm') && daysUntilTouch(l) !== null && (daysUntilTouch(l) as number) <= 1 && (
                   <button
                     onClick={e => {
                       e.stopPropagation()
@@ -1573,7 +1566,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           const isTouchPrompting = touchPromptId === l.id
           const isKeepHotPrompting = keepHotPromptId === l.id
           const isPrompting = isTouchPrompting || isKeepHotPrompting
-          const showKeepHot = (l.status === 'hot' || l.status === 'warm') && daysUntilKhu(l) !== null && (daysUntilKhu(l) as number) <= 1
+          const showKeepHot = (l.status === 'hot' || l.status === 'warm') && daysUntilTouch(l) !== null && (daysUntilTouch(l) as number) <= 1
           const keepLabel = l.status === 'warm' ? 'Keep Warm?' : 'Keep Hot?'
           const keepColor = l.status === 'warm' ? 'var(--c-st-warm)' : 'var(--c-st-hot)'
           const prevLead = idx > 0 ? paginated[idx - 1] : null
@@ -2021,11 +2014,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
   async function saveStatus(newStatus: string) {
     if (newStatus === lead.status) return
     const updates: Partial<Lead> = { status: newStatus as LeadStatus }
-    if (newStatus === 'hot') {
-      const khu = new Date(); khu.setDate(khu.getDate() + 5)
-      updates.keep_hot_until = khu.toISOString()
-    } else if (newStatus === 'warm') {
-      const khu = new Date(); khu.setDate(khu.getDate() + 3)
+    if (newStatus === 'hot' || newStatus === 'warm') {
+      const khu = new Date(); khu.setDate(khu.getDate() + NEXT_TOUCH_DAYS[newStatus])
       updates.keep_hot_until = khu.toISOString()
     } else {
       updates.keep_hot_until = null

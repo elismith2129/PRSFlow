@@ -49,6 +49,7 @@ import {
   type LandedItem, type InquiryLead, type BillingPulse, type FloBriefing,
 } from '@/lib/home'
 import { FLO_GO_ROUTES, FLO_GO_LABELS, type FloLine } from '@/lib/floLines'
+import { daysSince, isParked, isDue } from '@/lib/crm'
 
 /** Per-device "I saw today's briefing" marker (Eli 2026-09-07 — the popup is
  *  the shift-start tap on the shoulder; forced 8:50 logout was rejected as
@@ -65,21 +66,9 @@ function fmtBriefDate(d: string): string {
 type ViewAs = 'eli' | 'fernando' | 'aaron'
 type QueueTab = 'mine' | 'fernando' | 'aaron'
 
-// Needs Action predicates — mirror the CRM bucket logic so the pipeline number
-// agrees with the CRM Needs Action tab.
-function daysSince(d: string): number {
-  if (!d) return 99999
-  const t = new Date(d).getTime()
-  if (isNaN(t)) return 99999
-  return (Date.now() - t) / (1000 * 60 * 60 * 24)
-}
-function isParked(l: Lead): boolean {
-  return !!(l.parked_until && new Date(l.parked_until) > new Date())
-}
-function isKhuDue(l: Lead): boolean {
-  if (!l.keep_hot_until) return daysSince(l.last_contact || l.created_at) >= (l.status === 'hot' ? 5 : 3)
-  return new Date(l.keep_hot_until) <= new Date()
-}
+// Needs Action predicates come from lib/crm — the single source shared with
+// the CRM page (this page's local copies had drifted: warm fallback 3d vs the
+// CRM's 8d, found 2026-09-07 when the predicates were extracted).
 
 const ROOMS: { venue: string; studio: string; label: string; bookable?: boolean }[] = [
   { venue: 'Paramount', studio: 'Studio A', label: 'PRS · A' },
@@ -390,8 +379,8 @@ export default function DashboardPage() {
   const pipelineLeads = leads.filter(l => {
     if (l.needs_contact === false) return false
     const uncontacted = l.status === 'uncontacted' || (!l.last_contact && l.status !== 'booked' && l.status !== 'dead')
-    const hot = l.status === 'hot' && isKhuDue(l) && !isParked(l)
-    const warm = l.status === 'warm' && isKhuDue(l) && !isParked(l)
+    const hot = l.status === 'hot' && isDue(l) && !isParked(l)
+    const warm = l.status === 'warm' && isDue(l) && !isParked(l)
     const incomplete = (l.status === 'hot' || l.status === 'warm' || l.status === 'uncontacted')
       && (!l.fname || !l.lname || !l.email || !l.phone || (!l.quote && !l.rate_daily))
     return uncontacted || hot || warm || incomplete

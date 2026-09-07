@@ -1,5 +1,27 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { Lead } from '@/lib/supabase'
+import { overdueDays, isParked } from '@/lib/crm'
+import { DEMOTE_AFTER_OVERDUE_DAYS } from '@/lib/settings'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO-DEMOTE, rewritten 2026-09-07 (Eli ruling: decay surfaces, never hides).
+// The old cron demoted the moment keep_hot_until expired and handed the
+// demoted lead a fresh +3d timer — so a neglected lead spent its whole life
+// invisible and went cold without anyone being told. Now:
+//   · a due lead sits VISIBLY in the CRM's Due lane, escalating ("overdue Nd")
+//   · only after DEMOTE_AFTER_OVERDUE_DAYS ignored does it drop a temperature
+//   · hot→warm resets keep_hot_until to NOW — the lead lands DUE in the warm
+//     lane immediately (visible), and the overdue clock restarts so it gets
+//     the same visible grace before going cold
+//   · warm→cold clears the timer; cold feeds the weekly re-engage roundup
+//   · every demotion writes a lead_activity entry (type 'system') and is
+//     reported by Flo's morning briefing
+//   · parked leads (parked_until in the future) are never demoted — parking
+//     is a deliberate human act
+// Predicates come from lib/crm — the same math the CRM page renders, so the
+// cron can never disagree with what staff saw on screen.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -15,54 +37,43 @@ export async function GET(request: Request) {
   const now = new Date().toISOString()
 
   try {
-    // Find hot leads past their keep_hot_until deadline
-    const { data: hotLeads, error: hotFetchError } = await supabase
+    const { data, error } = await supabase
       .from('leads')
-      .select('id, fname, lname')
-      .eq('status', 'hot')
-      .lt('keep_hot_until', now)
-      .not('keep_hot_until', 'is', null)
+      .select('*')
+      .in('status', ['hot', 'warm'])
+    if (error) throw error
 
-    if (hotFetchError) throw hotFetchError
+    const leads = (data ?? []) as Lead[]
+    const demoted: { id: number; from: string; to: string; name: string; overdue: number }[] = []
 
-    // Demote hot → warm, give 3 more days
-    if (hotLeads && hotLeads.length > 0) {
-      const newKeepWarmUntil = new Date()
-      newKeepWarmUntil.setDate(newKeepWarmUntil.getDate() + 3)
+    for (const l of leads) {
+      if (isParked(l)) continue
+      const od = overdueDays(l)
+      if (od < DEMOTE_AFTER_OVERDUE_DAYS) continue
 
-      const { error } = await supabase
-        .from('leads')
-        .update({ status: 'warm', keep_hot_until: newKeepWarmUntil.toISOString() })
-        .in('id', hotLeads.map(l => l.id))
+      const isHot = l.status === 'hot'
+      const patch = isHot
+        ? { status: 'warm', keep_hot_until: now } // due NOW in the warm lane — visible, clock restarted
+        : { status: 'cold', keep_hot_until: null } // cold: no cadence; the weekly roundup owns it
+      const { error: e1 } = await supabase.from('leads').update(patch).eq('id', l.id)
+      if (e1) { console.error(`auto-demote: lead ${l.id} update failed`, e1); continue }
 
-      if (error) throw error
-    }
+      const name = [l.label, `${l.fname ?? ''} ${l.lname ?? ''}`.trim()].filter(Boolean).join(' / ') || `Lead ${l.id}`
+      const note = isHot
+        ? `Flo - Demoted Hot → Warm - ${od}d overdue`
+        : `Flo - Demoted Warm → Cold - ${od}d overdue`
+      const { error: e2 } = await supabase.from('lead_activity').insert({ lead_id: l.id, type: 'system', note })
+      if (e2) console.error(`auto-demote: lead ${l.id} activity insert failed`, e2)
 
-    // Find warm leads past their keep_hot_until deadline
-    const { data: warmLeads, error: warmFetchError } = await supabase
-      .from('leads')
-      .select('id, fname, lname')
-      .eq('status', 'warm')
-      .lt('keep_hot_until', now)
-      .not('keep_hot_until', 'is', null)
-
-    if (warmFetchError) throw warmFetchError
-
-    // Demote warm → cold, clear timer
-    if (warmLeads && warmLeads.length > 0) {
-      const { error } = await supabase
-        .from('leads')
-        .update({ status: 'cold', keep_hot_until: null })
-        .in('id', warmLeads.map(l => l.id))
-
-      if (error) throw error
+      demoted.push({ id: l.id, from: l.status, to: patch.status, name, overdue: od })
     }
 
     return NextResponse.json({
       success: true,
       timestamp: now,
-      demoted_hot_to_warm: hotLeads?.length ?? 0,
-      demoted_warm_to_cold: warmLeads?.length ?? 0,
+      demoted_hot_to_warm: demoted.filter(d => d.from === 'hot').length,
+      demoted_warm_to_cold: demoted.filter(d => d.from === 'warm').length,
+      demoted,
     })
   } catch (error: any) {
     console.error('Auto-demote cron error:', error)

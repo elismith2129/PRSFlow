@@ -24,6 +24,8 @@
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
 import { normFloLines, type FloLine } from '@/lib/floLines'
+import { isDue, isParked, overdueDays, isComingUp } from '@/lib/crm'
+import type { Lead } from '@/lib/supabase'
 
 // claude-sonnet-5: the current Sonnet (the dated 4-5 id 404'd on the new
 // prsflow key, 2026-09-07). If Anthropic retires this id someday the symptom
@@ -86,7 +88,7 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
       return d.toISOString().slice(0, 10)
     })()
 
-    const [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles] =
+    const [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles, pipeLeads, demotions] =
       await Promise.all([
         db.from('myday_note_posts')
           .select('role, date, shift, session_notes, studio_notes, created_at, author:user_profiles(display_name)')
@@ -126,9 +128,19 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
         db.from('user_profiles')
           .select('id, display_name, role')
           .is('deleted_at', null),
+        // CRM pipeline (2026-09-07): active leads for the overdue/coming-up
+        // read, cold included only so demotion entries can resolve a name.
+        db.from('leads')
+          .select('*')
+          .in('status', ['hot', 'warm', 'uncontacted', 'cold']),
+        // Flo's own overnight demotions (auto-demote cron writes these).
+        db.from('lead_activity')
+          .select('lead_id, note, created_at')
+          .eq('type', 'system')
+          .gte('created_at', since26h),
       ])
 
-    const firstErr = [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles]
+    const firstErr = [notes, runnerNotes, openFlags, closedFlags, holds, duties, entries, tasks, profiles, pipeLeads, demotions]
       .find(r => r.error)?.error
     if (firstErr) throw firstErr
 
@@ -161,6 +173,17 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
       client: h.label || h.client_name, artist: h.artist,
       first_day: h.start_date, last_day: h.end_date, where: `${h.location} ${h.studio}`.trim(),
     }))
+
+    // CRM pipeline read — deterministic math from lib/crm (the same predicates
+    // the CRM page renders); the model reads these numbers, it never derives.
+    const allLeads = (pipeLeads.data ?? []) as Lead[]
+    const leadName = (l: Lead) =>
+      [l.label, `${l.fname ?? ''} ${l.lname ?? ''}`.trim()].filter(Boolean).join(' / ') || `Lead ${l.id}`
+    const nameByLeadId = new Map(allLeads.map(l => [l.id, leadName(l)]))
+    const overdueLeads = allLeads
+      .filter(l => (l.status === 'hot' || l.status === 'warm') && isDue(l) && !isParked(l))
+      .map(l => ({ name: leadName(l), status: l.status, overdue_days: overdueDays(l) }))
+      .sort((a, b) => b.overdue_days - a.overdue_days)
 
     const payload = {
       today,
@@ -196,6 +219,15 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
         open_for_days: daysAgo(t.created_at),
         due: t.due_date,
       })),
+      crm_pipeline: {
+        overdue_follow_ups: overdueLeads,
+        uncontacted_count: allLeads.filter(l => l.status === 'uncontacted').length,
+        parked_coming_up_count: allLeads.filter(isComingUp).length,
+        demoted_by_flo_last_26h: (demotions.data ?? []).map(d => ({
+          lead: nameByLeadId.get(d.lead_id) ?? `Lead ${d.lead_id}`,
+          what: d.note,
+        })),
+      },
     }
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -222,7 +254,7 @@ WHAT YOU WRITE — strict JSON, nothing else:
 A Line is {"text": string, "go": string} — "go" names where the reader acts on it, from EXACTLY this set (omit "go" when none fits):
 "notes" = office shift notes · "runner-notes" = the runner channel · "flags" = the flags log · "holds" = the calendar · "tasks" = the task list · "crm" = leads
 
-shared — 2 to 5 lines everyone sees: what the night's notes say that matters today, new or worsening flags, and which holds need a follow-up call this week (name the client and the day). If two nights of notes mention the same problem, say so — patterns are the point.
+shared — 2 to 5 lines everyone sees: what the night's notes say that matters today, new or worsening flags, which holds need a follow-up call this week (name the client and the day), and the CRM pipeline: leads overdue for a follow-up (worst first — name and days overdue, go "crm") and any lead you demoted overnight — going cold is news, never silent. If two nights of notes mention the same problem, say so — patterns are the point.
 slices.manager / slices.billing / slices.asst_manager — that seat's own outstanding record: duties whose due days went unticked (use the tick record and due_days; daily duties are due Monday–Friday only), tasks open past a few days, flags in their lane nobody owns. 1 to 3 lines each. If a seat is fully caught up, exactly one line: {"text": "Nothing outstanding."}
 slices.owner — the cross-seat read for the owners: who is behind on what, repeated problems, anything aging that nobody owns. 2 to 4 lines.
 

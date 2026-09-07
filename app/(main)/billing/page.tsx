@@ -1026,7 +1026,11 @@ function Row({
   // says how far along the line a row is (Eli, 2026-09-03: "you no longer
   // need those"). In the staged layout there is no lights column at all.
   const showLights = !inStaged && ['progress', 'review', 'balance'].includes(row.bucket)
-  const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
+  // ANY live row can be closed (Eli, 2026-09-07 — the Lonzo duplicates were
+  // step-0/1 rows, and the old `step >= 2` gate left them with NO ⋯ menu and
+  // no way out of AR; "Voided — should never have existed" is exactly the
+  // duplicate case). Paid and already-closed rows still can't.
+  const canClose = row.bucket !== 'closed' && row.bucket !== 'paid'
   const hasMore = row.hasInvoiceDoc || canClose || (row.awaitingPo && !row.isCod)
 
   return (
@@ -1192,7 +1196,9 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
   onNoPo: () => void
   onAddPo: () => void
 }) {
-  const canClose = row.step >= 2 && row.bucket !== 'closed' && row.bucket !== 'paid'
+  // Mirrors Row's canClose — any live row (the step >= 2 gate trapped
+  // duplicate step-0/1 rows in AR with no exit, 2026-09-07).
+  const canClose = row.bucket !== 'closed' && row.bucket !== 'paid'
   return (
     <div className="c-bmodal-wrap" onClick={onCancel}>
       <div className="c-bmodal" onClick={e => e.stopPropagation()}>
