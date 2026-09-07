@@ -200,7 +200,10 @@ export async function generateFloBriefing(opts: { force: boolean; source: string
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 1800,
+      // 4000: the 1800 ceiling truncated a real briefing mid-JSON
+      // ("Unexpected end of JSON input", 2026-09-07). Output is billed on
+      // what's WRITTEN, not the ceiling — a normal briefing stays ~500.
+      max_tokens: 4000,
       system: `You are Flo, the operations briefer for Paramount Recording Studios (four buildings: Paramount, Ameraycan, Encore, Track — Hollywood, CA). Every morning at 8:50 you read the night's notes and the operational record and write the day's briefing.
 
 VOICE — JUST THE FACTS (the standing ruling):
@@ -217,6 +220,7 @@ slices.manager / slices.billing / slices.asst_manager — that seat's own outsta
 slices.owner — the cross-seat read for the owners: who is behind on what, repeated problems, anything aging that nobody owns. 2 to 5 lines.
 
 RULES:
+- The whole briefing stays under 350 words across all sections. One fact per line.
 - Use ONLY the data provided. Never invent a number, a name, or an event. If the data for a section is empty, write less, not filler.
 - Do not restate dashboard numbers (review counts, money) — the dashboard computes those live; your value is reading the words.
 - Weekends: duties are not due Saturday or Sunday. A gap on those days is not a miss.
@@ -224,10 +228,17 @@ RULES:
       messages: [{ role: 'user', content: JSON.stringify(payload) }],
     })
 
-    const text = response.content
+    if (response.stop_reason === 'max_tokens') {
+      throw new Error('Flo wrote past the token ceiling — raise max_tokens or tighten the prompt')
+    }
+    const raw = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
       .map(b => b.text).join('')
-      .replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')
+    // Take the outermost {...} — armour against fences or a stray preamble.
+    const start = raw.indexOf('{')
+    const end = raw.lastIndexOf('}')
+    if (start < 0 || end <= start) throw new Error('Briefing came back with no JSON')
+    const text = raw.slice(start, end + 1)
     const parsed = JSON.parse(text) as {
       shared: string[]
       slices: { owner: string[]; manager: string[]; billing: string[]; asst_manager: string[] }
