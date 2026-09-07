@@ -921,12 +921,14 @@ const BIN_COLOR: Partial<Record<BucketKey, string>> = {
  * belongs to status, a button is a verb.
  */
 const STAGE_STYLE: Record<StageKey, React.CSSProperties> = {
-  progress:     { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
-  // A dimmed In-progress: same family (the session side of the line), clearly
-  // not yet in play. Lives mostly in its own tab; search is where it earns
-  // the distinct look.
-  not_started:  { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)', opacity: 0.55 },
-  review:       { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
+  // RECOLOURED (Eli, 2026-09-07): nothing-is-happening stages are GREY — a
+  // running session and a future one are dormant, not signals. That frees
+  // COD's blue for NEEDS REVIEW, so review and approval finally differ
+  // (both were amber). Matches the dashboard money tiles: review = blue,
+  // approval = amber.
+  progress:     { background: 'var(--c-wash2)', color: 'var(--c-fg)' },
+  not_started:  { background: 'var(--c-wash2)', color: 'var(--c-fg)', opacity: 0.55 },
+  review:       { background: 'var(--c-st-uncon)', color: 'var(--c-chip-ink)' },
   invoice:      { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', opacity: 0.75 },
   approval:     { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
   po:           { background: '#b9d5f1', color: 'var(--c-chip-ink)' },
