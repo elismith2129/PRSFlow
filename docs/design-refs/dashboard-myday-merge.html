@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Dashboard ∪ My Day: THE MERGE v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  DASHBOARD ∪ MY DAY — MERGE v4 (Eli's rearrange + masonry fix, 2026-09-06)
+
+  v4 on top of v3:
+  · NOTHING floats above the grid except BANNERS (approvals etc.) — full width,
+    above the even top line. Pipeline moved DOWN into the left column's top.
+  · Middle column: FLAGS on top, calendar below it.
+  · Week Ahead pane REMOVED (Eli's ruling from the options round).
+  · THE BOTTOM LINE LAW, final form (v5b — "JUSTIFIED COLUMNS"): panes clip to
+    content, feeds cap + scroll, and the columns are brought to ONE shared bottom
+    line by tuning DENSITY — padding, row height, text size, rows shown — never
+    by hollow space and never by stretching an empty pane. Box sizes are the
+    flexible variable; emptiness is the forbidden one. At build time the tallest
+    natural column (usually the console) sets the line and the other two are
+    tuned up to it.
+  · v5: calendar grouped under little venue headers (Paramount · Ameraycan ·
+    Encore · Track). Right column = COD OUTSTANDING (back, top right) → Booked
+    today → Holds (scrolls after ~5).
+
+  Skin: SOFT (§7c ruling 2026-08-07) — flat raised surfaces, faint drop shadow,
+  wash fills inside, NO carving. v2's carved recipes were stale; corrected here.
+
+  v3 rulings on top of v2:
+  · GLOW = AI ONLY (§14c law, reaffirmed): the ring + halo wrap the BRIEFING alone —
+    the AI part, where Ask Flo lands in phase 2. Duties sit BELOW the ring in the
+    same pane, flat. Same place, no glow around human checkboxes.
+  · STATUS = SOLID FILL + CHIP INK (§5, corrected): booked rooms are solid #43dfae
+    with dark ink like the live calendar chips — no more tinted pools or colored
+    text-on-tint chips.
+  · RADIUS STEP-DOWN (proposed amendment, Eli's corner note): panels 16px, inner
+    cards/rows 10px, pills 99px. The old 20-40px corners crowded text and pills
+    sitting near them. If blessed, this becomes a spec line applied site-wide.
+  · Everything else per v2: calendar middle · full real duty rosters (9+9) with
+    Fernando|Aaron tabs on Eli's view · Shift Notes = its own nav page · right
+    column = week ribbon (click a day → holds filter) + Booked today + Holds 7d.
+  LAW: every pane hugs its content; every feed scrolls in its own capped box.
+  Mock polarity; app polarity inverts.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --srf:#ffffff; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2;
+  --softsh:0 1px 5px rgba(42,39,34,.10);
+  --ctlsh:0 1px 3px rgba(42,39,34,.14);
+  --flo-ink:42,39,34;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --srf:#242320; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --softsh:0 2px 8px rgba(0,0,0,.35);
+  --ctlsh:0 1px 4px rgba(0,0,0,.4);
+  --flo-ink:213,208,194;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  transition:background .2s,color .2s}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+.frame{display:flex;min-height:100vh}
+.rail{width:212px;flex-shrink:0;padding:18px 12px 16px 16px;display:flex;flex-direction:column;
+  gap:2px;background:var(--wash)}
+.rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:16px;padding:2px 10px 14px}
+.rail .wm .flo{opacity:.45}
+.rail .grp{margin-top:13px;padding:0 10px 5px}
+.rail a{display:flex;align-items:center;gap:10px;padding:7.5px 12px;border-radius:12px;
+  font-size:13px;font-weight:600;color:var(--fg);opacity:.6;text-decoration:none;cursor:pointer}
+.rail a:hover{opacity:.85;background:var(--wash)}
+.rail a.on{opacity:1;background:var(--fg);color:var(--bg);box-shadow:var(--ctlsh)}
+[data-theme="dark"] .rail a.on{background:var(--ivory);color:#1b1a17}
+.rail a .ic{width:16px;text-align:center;opacity:.75;flex-shrink:0;font-size:13px}
+.rail .badge{margin-left:auto;min-width:19px;height:17px;border-radius:99px;padding:0 6px;
+  font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.badge.hot{background:var(--st-hot);color:var(--hot-text)}
+.badge.warm{background:var(--st-warm);color:var(--chip-ink)}
+.badge.ok{background:var(--st-booked);color:var(--chip-ink)}
+.badge.new{background:var(--st-cold);color:var(--chip-ink)}
+.rail .foot{margin-top:auto;padding-top:12px}
+.rail .gone{opacity:.22;text-decoration:line-through;pointer-events:none}
+
+.main{flex:1;min-width:0;padding:22px 26px 40px}
+
+.hbar{display:flex;align-items:center;gap:16px;padding:6px 4px 20px}
+.hbar .greetlabel{display:block;margin-bottom:3px}
+.hbar h1{font-family:'Archivo Black',sans-serif;font-size:28px;letter-spacing:-.03em;line-height:1.05}
+.hbar .grow{flex:1}
+.datechip{background:var(--fg);color:var(--bg);border-radius:13px;padding:9px 17px;
+  font-family:'Archivo Black',sans-serif;font-size:14px;text-align:center;flex-shrink:0;
+  box-shadow:var(--ctlsh)}
+.datechip small{display:block;font-size:9.5px;opacity:.6;font-family:system-ui;font-weight:800;letter-spacing:.1em}
+.viewas{display:inline-flex;background:var(--srf);border-radius:99px;padding:4px;gap:2px;flex-shrink:0;
+  box-shadow:var(--softsh)}
+.viewas button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.5}
+.viewas button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .viewas button.on{background:var(--ivory);color:#1b1a17}
+
+/* COMMAND ROW — soft flat surfaces, 16px radius */
+.cmdrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:12px;margin-bottom:12px;align-items:stretch}
+.pipe{background:var(--srf);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:var(--softsh);cursor:pointer}
+.pipe .toprow{display:flex;align-items:baseline;gap:12px}
+.pipe .n{font-family:'Archivo Black',sans-serif;font-size:38px;line-height:1}
+.pipe .split{font-size:11px;opacity:.6}
+.pipe .go{margin-left:auto;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.4}
+.inqbar{background:var(--st-hot);color:var(--hot-text);border-radius:10px;padding:8px 13px;
+  font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:9px}
+.newpulse{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#fff;animation:np 1.6s ease-in-out infinite}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+.appr{background:var(--srf);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;
+  position:relative;overflow:hidden;cursor:pointer;box-shadow:var(--softsh)}
+.appr .bar{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--st-booked)}
+.appr .n{font-family:'Archivo Black',sans-serif;font-size:26px;color:var(--st-booked)}
+.appr b{font-size:13px}
+.appr .sub{display:block;font-size:11px;opacity:.55}
+.appr .rev{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--st-booked);color:var(--chip-ink);padding:8px 15px;border-radius:99px;flex-shrink:0;box-shadow:var(--ctlsh)}
+
+/* THIRDS — console LEFT, calendar MIDDLE, pipeline RIGHT */
+/* THE BOTTOM LINE LAW (v4): columns stretch to one shared bottom; each column
+   has ONE absorber pane (.grow) that soaks the height difference internally.
+   Whitespace may pool inside an absorber, never at ragged column feet. */
+.cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;height:832px}
+/* pipeline as the left column's designed shim — hero treatment */
+.pipe.grow{justify-content:space-between}
+.pipe.grow .n{font-size:54px}
+.statrow{display:flex;gap:7px;flex-wrap:wrap}
+.statrow span{border-radius:99px;padding:4px 11px;font-size:9px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;background:var(--wash2)}
+.statrow .h{background:var(--st-hot);color:var(--hot-text)}
+.statrow .w{background:var(--st-warm);color:var(--chip-ink)}
+.statrow .u{background:var(--st-uncon);color:var(--chip-ink)}
+.stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+/* v8 — FIXED GEOMETRY. Every box has ONE designed height that never changes —
+   not per view, not per day. The square is achieved at design time by SIZING
+   the boxes so each column sums to the same total. Two kinds of emptiness:
+   DATA-empty is fine (a fixed Holds box reads "no holds" on a quiet day);
+   STRUCTURAL emptiness is banned (no box is hollow by design). The shim box
+   per column — the one whose size was chosen to true up the column — is:
+   LEFT = the PIPELINE (sized up into a hero; it earns it), MIDDLE = FLAGS
+   (row count picked to fill above the untouched calendar), RIGHT = HOLDS
+   (cutoff picked to close the column). Duties/tasks is NOT a shim — its
+   content is constant, so flexing it manufactures a permanent void.
+   Mock mechanics: .cols has the designed total height and shims compute their
+   px via flex ONCE — content is constant, so it renders identically every
+   load. The build hardcodes the resulting numbers. */
+.stack .grow{flex:1;min-height:0;display:flex;flex-direction:column}
+.pane.grow > .qbox{flex:1;max-height:none;min-height:0}
+.pane.grow > .minibox{flex:1;min-height:0;overflow-y:auto;padding-bottom:8px}
+.vhead{padding:8px 15px 2px;font-size:8.5px;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;opacity:.45}
+.vhead:first-of-type{padding-top:2px}
+.pane{background:var(--srf);border-radius:16px;overflow:hidden;box-shadow:var(--softsh)}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 15px}
+.ph b{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.ph a{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  opacity:.4;text-decoration:none;color:var(--fg);cursor:pointer}
+.ph .ct{font-family:ui-monospace,Menlo,monospace;font-size:10px;opacity:.5}
+.subhead{display:flex;align-items:center;justify-content:space-between;padding:10px 15px 5px}
+.subhead b{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.4}
+
+/* THE FLO BOX — glow wraps the BRIEFING ONLY (glow = AI, §14c). */
+.ringwrap{position:relative;border-radius:13px;overflow:hidden;padding:1.5px;margin:12px 12px 4px;
+  box-shadow:0 0 16px 3px rgba(var(--flo-ink),.045)}
+.ringwrap::before{content:"";position:absolute;inset:-120%;
+  background:conic-gradient(
+    rgba(var(--flo-ink),.06) 0deg, rgba(var(--flo-ink),.32) 90deg,
+    rgba(var(--flo-ink),.06) 200deg, rgba(var(--flo-ink),.06) 360deg);
+  animation:flospin 8s linear infinite}
+@keyframes flospin{to{transform:rotate(360deg)}}
+.ringwrap .inner{position:relative;border-radius:11.5px;background:var(--srf);padding:12px 14px}
+@media (prefers-reduced-motion: reduce){.ringwrap::before{animation:none}}
+.flohead{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.flohead .fname{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em}
+.flohead .ftag{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+.fb .b{display:flex;gap:9px;align-items:baseline;font-size:12.5px;line-height:1.5;margin-bottom:5px}
+.fb .b .dot{position:relative;top:-1px;width:7px;height:7px}
+.fb .b.alert{color:var(--st-hot);font-weight:600}
+.fb .syn{font-size:11.5px;opacity:.55;font-style:italic;margin-top:4px}
+.fb .askflo{margin-top:9px;font-size:9px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;opacity:.4;cursor:pointer}
+
+/* DUTIES — below the ring, FLAT. Human checkboxes get no glow. */
+.dutyhead{display:flex;align-items:center;gap:8px;padding:12px 15px 4px}
+.dutyhead b{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.5}
+.dutyhead .prog{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;
+  background:var(--st-warm);color:var(--chip-ink);border-radius:99px;padding:2px 9px}
+.dutytabs{display:inline-flex;gap:3px}
+.dutytabs button{border-radius:99px;padding:2.5px 9px;font-size:8px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.45;background:var(--wash)}
+.dutytabs button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .dutytabs button.on{background:var(--ivory);color:#1b1a17}
+.duty{display:flex;align-items:center;gap:10px;padding:5px 15px;font-size:12.5px;cursor:pointer;border-radius:10px}
+.duty:hover{background:var(--wash)}
+.duty .bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--wash2)}
+.duty.done .bx{background:var(--st-booked);position:relative}
+.duty.done .bx::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:800;color:var(--chip-ink)}
+.duty.done .tx{text-decoration:line-through;opacity:.45}
+.duty .tx{flex:1;min-width:0}
+.duty .scope{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;opacity:.55;flex-shrink:0}
+.duty.red .tx,.duty.red .scope{color:var(--st-hot);font-weight:600;opacity:1}
+.duty .cad{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--wash2);border-radius:99px;padding:1.5px 7px;opacity:.55;flex-shrink:0}
+
+/* tasks */
+.item{display:flex;align-items:center;gap:10px;padding:7px 15px;font-size:13px}
+.item .bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--wash2)}
+.addrow{margin:5px 13px 12px;background:var(--wash2);border-radius:10px;padding:6px;
+  text-align:center;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  opacity:.55;cursor:pointer}
+.mini{padding:9px 15px;display:flex;gap:9px;align-items:center;font-size:12.5px}
+.mini .fx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+
+/* staff grid */
+.dgrid{padding:2px 14px 12px}
+.dgrid table{border-collapse:separate;border-spacing:2px}
+.dgrid .who{font-size:10.5px;font-weight:600;text-align:left;padding-right:7px;white-space:nowrap}
+.dgrid td.sq{width:11px;height:11px;border-radius:3px;background:var(--wash2)}
+.dgrid td.g{background:var(--st-booked)}
+.dgrid td.r{background:var(--st-hot)}
+.dgrid .bk{font-size:8px;font-weight:800;color:var(--st-hot);white-space:nowrap;padding-left:5px}
+
+/* sessions (middle) — STATUS = SOLID FILL + CHIP INK (§5, the live convention) */
+.loccount{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:2.5px 7px;background:var(--wash2);opacity:.7}
+.loccount span.live{background:var(--st-booked);color:var(--chip-ink);opacity:1}
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:2px 13px 13px}
+.room{background:var(--wash);border-radius:10px;min-height:76px;padding:8px 11px;
+  position:relative;display:flex;flex-direction:column}
+.room .rn{font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.45;white-space:nowrap}
+.room.book{background:var(--st-booked);color:var(--chip-ink);box-shadow:var(--ctlsh)}
+.room.book .rn{opacity:.7}
+.room.tent{background:var(--st-warm);color:var(--chip-ink);box-shadow:var(--ctlsh)}
+.room.tent .rn{opacity:.7}
+.room.hotb{background:var(--st-hot);color:var(--hot-text);box-shadow:var(--ctlsh)}
+.room.hotb .rn{opacity:.8}
+.room .artist{font-family:'Archivo Black',sans-serif;font-size:12.5px;margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .meta{font-size:9.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .eng{position:absolute;right:8px;bottom:6px;font-family:ui-monospace,Menlo,monospace;font-size:8px;opacity:.6}
+.room.empty{opacity:.5}
+
+/* RIGHT: the booking pipeline story */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:2px 13px 6px}
+.day{border-radius:10px;padding:6px 4px 7px;text-align:center;cursor:pointer;background:var(--wash);
+  border:1.5px solid transparent}
+.day:hover{background:var(--wash2)}
+.day.sel{border-color:var(--st-warm)}
+.day .dn{font-size:7.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.5;display:block}
+.day .stackbar{display:flex;flex-direction:column;gap:2px;margin:5px 4px 4px;height:34px;justify-content:flex-end}
+.day .seg{border-radius:3px;min-height:4px}
+.day .seg.b{background:var(--st-booked)}
+.day .seg.h{background:var(--st-warm)}
+.day .seg.o{background:var(--wash2)}
+.day .nums{font-family:ui-monospace,Menlo,monospace;font-size:8px;opacity:.6}
+.legend{display:flex;gap:11px;padding:0 15px 11px;font-size:8px;font-weight:800;
+  letter-spacing:.07em;text-transform:uppercase;opacity:.7}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.legend .k{width:8px;height:8px;border-radius:3px}
+
+/* v5b: right-column rows run ROOMIER than the console's — that's the density
+   knob that justifies this column's bottom to the shared line. */
+.prow{display:flex;align-items:center;gap:10px;padding:9.5px 15px 9.5px 12px;font-size:13px;
+  border-left:3px solid transparent;cursor:pointer}
+.prow:hover{background:var(--wash)}
+.prow.b{border-left-color:var(--st-booked)}
+.prow.h{border-left-color:var(--st-warm)}
+.prow .d{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;opacity:.55;flex-shrink:0;width:58px}
+.prow .who{flex:1;min-width:0}
+.prow .who b{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .who span{font-size:10.5px;opacity:.5}
+.prow .roomchip{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:2.5px 8px;flex-shrink:0;color:var(--chip-ink)}
+.prow.b .roomchip{background:var(--st-booked)}
+.prow.h .roomchip{background:var(--st-warm)}
+.prow .money{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;opacity:.7;flex-shrink:0}
+.light{display:inline-flex;align-items:center;gap:4px;font-size:8px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;opacity:.4;flex-shrink:0}
+.light .lz{width:7px;height:7px;border-radius:50%;background:var(--wash2)}
+.light.on{opacity:1;color:var(--st-booked)}
+.light.on .lz{background:var(--st-booked)}
+.step{border-radius:99px;padding:2px 8px;font-size:8px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;background:var(--wash2);opacity:.5;cursor:pointer;flex-shrink:0}
+.step.on{opacity:1;background:var(--st-booked);color:var(--chip-ink)}
+.qbox{max-height:266px;overflow-y:auto;padding-bottom:6px}
+.empty-note{padding:8px 15px 12px;font-size:11px;opacity:.45;font-style:italic}
+
+.themebtn{position:fixed;right:16px;bottom:14px;z-index:50;background:var(--fg);color:var(--bg);
+  border-radius:99px;padding:8px 15px;font-size:9.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;cursor:pointer;box-shadow:var(--ctlsh)}
+[data-theme="dark"] .themebtn{background:var(--ivory);color:#1b1a17}
+@media (max-width:1150px){.cols{grid-template-columns:1fr 1fr}.cmdrow{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<button class="themebtn" id="themeBtn" onclick="flip()">View light</button>
+
+<div class="frame">
+
+<nav class="rail">
+  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <a class="on"><span class="ic">▦</span>Dashboard</a>
+  <a><span class="ic">▤</span>Calendar</a>
+  <a class="gone"><span class="ic">◔</span>My Day</a>
+  <div class="grp label">Business</div>
+  <a><span class="ic">◎</span>CRM<span class="badge warm">2</span></a>
+  <a><span class="ic">$</span>Billing<span class="badge ok">4</span></a>
+  <div class="grp label">Operations</div>
+  <a><span class="ic">✎</span>Shift Notes<span class="badge new">NEW</span></a>
+  <a><span class="ic">◔</span>Daily Ops</a>
+  <a><span class="ic">▷</span>Runner Hub</a>
+  <a><span class="ic">◌</span>Mic Inventory</a>
+  <a><span class="ic">♪</span>Engineers</a>
+  <a><span class="ic">✓</span>Tasks</a>
+  <a><span class="ic">⚑</span>Flags<span class="badge warm">16</span></a>
+  <a><span class="ic">♫</span>Nadine's</a>
+  <div class="grp label">HR</div>
+  <a><span class="ic">◷</span>Punches</a>
+  <a><span class="ic">✎</span>Hiring</a>
+  <a><span class="ic">✦</span>Training</a>
+  <div class="foot"><a><span class="ic">⚙</span>Settings</a></div>
+</nav>
+
+<main class="main">
+
+  <div class="hbar">
+    <div>
+      <span class="label greetlabel" id="greetlabel">Good afternoon Eli</span>
+      <h1>Paramount Recording Studios</h1>
+    </div>
+    <div class="grow"></div>
+    <div class="viewas">
+      <button class="on" id="vEli" onclick="setView('eli')">Eli</button>
+      <button id="vFer" onclick="setView('fernando')">Fernando</button>
+      <button id="vAar" onclick="setView('aaron')">Aaron</button>
+    </div>
+    <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+  </div>
+
+  <!-- BANNERS — the only thing above the even top line (v4 ruling). Full width. -->
+  <div class="appr" id="apprBanner" style="margin-bottom:12px">
+    <span class="bar"></span>
+    <span class="n">4</span>
+    <div><b>Invoices ready for approval</b><span class="sub">$6,025.00 waiting on your sign-off</span></div>
+    <span class="rev">Review →</span>
+  </div>
+
+  <div class="cols">
+
+    <!-- LEFT: pipeline on top (down off its lonely perch — v4), then the console.
+         Flo's ring holds ONLY the briefing; duties + tasks below, flat. The
+         console is this column's ABSORBER (flex:1, list scrolls inside). -->
+    <div class="stack">
+      <div class="pane">
+        <div class="ringwrap"><div class="inner fb">
+          <div class="flohead">
+            <svg width="22" height="14" viewBox="0 0 22 14" fill="none"><path d="M1 7c2.6-5.2 5.2-5.2 7.8 0s5.2 5.2 7.8 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M3 10.5c2.2-3.6 4.4-3.6 6.6 0s4.4 3.6 6.6 0" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg>
+            <span class="fname">Flo</span><span class="ftag">· Your briefing · Sep 6</span>
+          </div>
+          <div id="bullets"></div>
+          <div class="syn" id="synopsis"></div>
+          <div class="askflo">Ask Flo →</div>
+        </div></div>
+
+        <div class="dutyhead">
+          <b id="dutywho">Duties</b>
+          <span class="dutytabs" id="dutytabs">
+            <button class="on" id="dtF" onclick="setDuties('fernando')">Fernando</button>
+            <button id="dtA" onclick="setDuties('aaron')">Aaron</button>
+          </span>
+          <span class="prog" id="prog">1 of 9</span>
+        </div>
+        <div id="duties"></div>
+
+        <div class="subhead"><b>My tasks</b><a class="label" style="letter-spacing:.05em">Show all →</a></div>
+        <div class="item"><span class="bx"></span><span class="tx">Call SIR re: rental return</span></div>
+        <div class="addrow">+ add task</div>
+      </div>
+
+      <!-- FLAGS — the left column's shim, below the console (v8c swap). -->
+      <div class="pane grow">
+        <div class="ph"><b>Flags</b><span class="ct">16</span><a style="margin-left:auto">+ add</a><a>All →</a></div>
+        <div class="minibox">
+          <div class="mini"><span class="dot" style="background:var(--st-hot)"></span><span class="fx">PRS-B lounge AC weak again — vendor scheduled Tuesday</span></div>
+          <div class="mini"><span class="dot" style="background:var(--st-warm)"></span><span class="fx">PRS opening shift 9/5 — clocked in 2pm — went on huge store run because…</span></div>
+          <div class="mini"><span class="dot" style="background:var(--st-warm)"></span><span class="fx">ERS-A tie lines crackling on inputs 9–12 — Sierra patched, needs parts</span></div>
+          <div class="mini"><span class="dot" style="background:var(--st-warm)"></span><span class="fx">Mic 04 missing clip — runner flagged at close</span></div>
+          <div class="mini"><span class="dot" style="background:var(--st-warm)"></span><span class="fx">TRK kitchen fridge running warm — watching it</span></div>
+        </div>
+      </div>
+
+      <!-- Staff 14-day grid REMOVED from the dashboard (v6b, Eli) — it existed
+           only on his view and broke the identical-bottoms guarantee. The data
+           still lives in HR → Punches; it can resurface there or in a future
+           oversight page. -->
+    </div>
+
+    <!-- MIDDLE: flags on top, calendar below (v4). The sessions pane is this
+         column's ABSORBER — it stretches to the shared bottom line. -->
+    <div class="stack">
+    <!-- CRM — the middle column's shim, above the calendar (v8c swap), with a
+         pane header like every other box. -->
+    <div class="pane grow" style="display:flex;flex-direction:column">
+      <div class="ph"><b>CRM — pipeline</b><a>CRM →</a></div>
+      <div class="pipe grow" style="background:none;box-shadow:none;border-radius:0;padding:0 16px 14px">
+        <div class="toprow">
+          <span class="n">22</span>
+          <div class="split">active leads</div>
+        </div>
+        <div class="statrow">
+          <span class="h">11 hot</span><span class="w">4 warm</span><span class="u">5 uncontacted</span><span>2 cold</span>
+        </div>
+        <div class="inqbar"><span class="newpulse"></span>2 new inquiries</div>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="ph"><b>Today's sessions</b>
+        <span class="loccount">
+          <span class="live">PRS 4</span><span class="live">ARS 1</span><span>ERS 1</span><span class="live">TRK 1</span>
+        </span>
+      </div>
+      <div class="vhead">Paramount</div>
+      <div class="rooms" style="padding-bottom:4px">
+        <div class="room book"><span class="rn">PRS · A</span><div class="artist">Jalen Haris</div><div class="meta">11A–6P</div></div>
+        <div class="room book"><span class="rn">PRS · B</span><div class="artist">Zach Tuchman</div><div class="meta">2P–6P</div></div>
+        <div class="room book"><span class="rn">PRS · C</span><div class="artist">Sam Lorimore</div><div class="meta">12P–6P</div></div>
+        <div class="room empty"><span class="rn">PRS · E</span></div>
+        <div class="room hotb"><span class="rn">PRS · X</span><div class="artist">Honestav</div><div class="meta">Gamma Media · 7P–3A</div></div>
+        <div class="room empty"><span class="rn">PRS · Nadine's</span></div>
+      </div>
+      <div class="vhead">Ameraycan</div>
+      <div class="rooms" style="padding-bottom:4px">
+        <div class="room empty"><span class="rn">ARS · A</span></div>
+        <div class="room book"><span class="rn">ARS · B</span><div class="artist">Jason Mater</div><div class="meta">12P–6P</div><span class="eng">1ST-TW</span></div>
+      </div>
+      <div class="vhead">Encore</div>
+      <div class="rooms" style="padding-bottom:4px">
+        <div class="room empty"><span class="rn">ERS · A</span></div>
+        <div class="room book"><span class="rn">ERS · B</span><div class="artist">Mustard</div><div class="meta">10 Summers · 2P–9:30P</div></div>
+      </div>
+      <div class="vhead">Track</div>
+      <div class="rooms">
+        <div class="room book"><span class="rn">TRK · N</span><div class="artist">DJ Camper</div><div class="meta">2P–10P</div></div>
+        <div class="room empty"><span class="rn">TRK · S</span></div>
+      </div>
+    </div>
+    </div>
+
+    <!-- RIGHT (v5): COD outstanding → Booked today → Holds (caps + scrolls). -->
+    <div class="stack">
+      <div class="pane">
+        <div class="ph"><b>COD outstanding</b><a>Billing →</a></div>
+        <div style="display:flex;align-items:baseline;gap:10px;padding:0 15px 6px">
+          <span class="arch" style="font-family:'Archivo Black',sans-serif;font-size:26px;line-height:1">$16,627</span>
+          <span style="font-size:10px;opacity:.5">5 balances</span>
+        </div>
+        <div class="qbox" style="max-height:176px">
+          <div class="prow" style="border-left-color:var(--st-hot)"><span class="d">41d</span><div class="who"><b>Gamma Media · Honestav</b></div><span class="money">$6,200</span></div>
+          <div class="prow" style="border-left-color:var(--st-hot)"><span class="d">33d</span><div class="who"><b>Slauson Ave · Rico B</b></div><span class="money">$4,150</span></div>
+          <div class="prow"><span class="d">12d</span><div class="who"><b>Zach Tuchman</b></div><span class="money">$3,077</span></div>
+          <div class="prow"><span class="d">8d</span><div class="who"><b>Sam Lorimore</b></div><span class="money">$1,950</span></div>
+          <div class="prow"><span class="d">3d</span><div class="who"><b>Harbor · Nova Beats</b></div><span class="money">$1,250</span></div>
+        </div>
+      </div>
+
+      <div class="pane">
+        <div class="ph"><b>Booked today</b><span class="ct">3 · $11,400</span></div>
+        <div class="qbox">
+          <div class="prow b"><span class="d">Sep 14</span><div class="who"><b>Kestrel Music · Jalen Haris</b><span>3 days · day rate</span></div><span class="roomchip">PRS·A</span><span class="money">$5,400</span><span class="light on"><span class="lz"></span>Staff</span><span class="step on" onclick="this.classList.toggle('on')">QB</span></div>
+          <div class="prow b"><span class="d">Sep 9</span><div class="who"><b>Gamma Media · Honestav</b><span>1 day · hourly</span></div><span class="roomchip">PRS·X</span><span class="money">$2,600</span><span class="light"><span class="lz"></span>Staff</span><span class="step" onclick="this.classList.toggle('on')">QB</span></div>
+          <div class="prow b"><span class="d">Sep 21</span><div class="who"><b>10 Summers · Mustard</b><span>2 days · day rate</span></div><span class="roomchip">ERS·B</span><span class="money">$3,400</span><span class="light on"><span class="lz"></span>Staff</span><span class="step" onclick="this.classList.toggle('on')">QB</span></div>
+        </div>
+      </div>
+
+      <div class="pane grow">
+        <div class="ph"><b>Holds — next 7 days</b><span class="ct" id="holdCt">6</span><a id="holdClear" style="margin-left:auto;display:none" onclick="clearDaySel()">Show all ✕</a></div>
+        <div class="qbox" id="holds"></div>
+        <div class="empty-note" id="holdEmpty" style="display:none">No holds that day — the rooms are open.</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+
+/* THE REAL DUTY ROSTERS (20260810 seed + SRS) */
+var DUTIES = {
+  fernando: [
+    {t:'Studio check-in — Paramount (PRS)', done:true},
+    {t:'Studio check-in — Ameraycan (ARS)', done:true},
+    {t:'Studio check-in — Encore (ERS)', done:true},
+    {t:'Studio check-in — Track (TRK)'},
+    {t:'ADP runner timecards', done:true},
+    {t:'Deliverables / schedule'},
+    {t:'Staff tasks review'},
+    {t:'Office stock', cad:'Wed'},
+    {t:'Valley checks (ARS · ERS · TRK)', cad:'Tue · Fri'},
+  ],
+  aaron: [
+    {t:'Approve Ramp transactions + chase missing receipts'},
+    {t:'Collect + accuracy-check yesterday’s WOs', done:true},
+    {t:'Update last night’s invoices in QB'},
+    {t:'COD invoicing + outstanding follow-up', red:true, scope:'covering 8 days'},
+    {t:'Tenant rent follow-up', red:true, scope:'missed yesterday'},
+    {t:'Ramp weekly report', cad:'Mon'},
+    {t:'Open / sent-invoice follow-up list', cad:'Mon'},
+    {t:'Round up SRS bookings for payment', red:true, cad:'Monthly', scope:'5d late'},
+    {t:'Create tenant rent invoices', cad:'Monthly'},
+  ],
+};
+var BULLETS = {
+  eli: [
+    {c:'var(--st-hot)', a:1, t:'Aaron missed COD invoicing + outstanding follow-up — covering 8 days'},
+    {c:'var(--st-hot)', a:1, t:'Aaron: Round up SRS bookings was due Tue 9/1 — 5 days late'},
+    {c:'var(--st-warm)', t:'5 COD balances outstanding · $16,627'},
+    {c:'var(--st-booked)', t:'Booked $11,400 today across 3 sessions'},
+    {c:'var(--st-booked)', t:'Fernando cleared everything yesterday'},
+  ],
+  fernando: [
+    {c:'var(--st-booked)', t:'All studios staffed for tonight'},
+    {c:'var(--st-warm)', t:'6 holds need dates confirmed this week'},
+    {c:'var(--st-booked)', t:'Booked 3 sessions today — all staffed but Honestav'},
+  ],
+  aaron: [
+    {c:'var(--st-hot)', a:1, t:'COD invoicing + outstanding follow-up — covering 8 days'},
+    {c:'var(--st-hot)', a:1, t:'Round up SRS bookings was due Tue 9/1 — 5 days late'},
+    {c:'var(--st-warm)', t:'5 COD balances outstanding · $16,627'},
+    {c:'var(--st-warm)', t:'Tomorrow: Ramp weekly report · Open / sent-invoice follow-up list'},
+  ],
+};
+var SYN = {
+  eli: '3 things need attention — all Aaron’s column. Fernando is clear.',
+  fernando: 'Steady Sunday — TRK check-in left, then the holds.',
+  aaron: '3 things need you today — start with the longest backlog.',
+};
+
+var curView='eli', curDuty='fernando';
+function renderBullets(){
+  document.getElementById('bullets').innerHTML = BULLETS[curView].map(function(b){
+    return '<div class="b'+(b.a?' alert':'')+'"><span class="dot" style="background:'+b.c+'"></span>'+b.t+'</div>';
+  }).join('');
+  document.getElementById('synopsis').textContent = SYN[curView];
+}
+function renderDuties(){
+  var who = curView==='eli' ? curDuty : curView;
+  document.getElementById('duties').innerHTML = DUTIES[who].map(function(d){
+    return '<div class="duty'+(d.done?' done':'')+(d.red?' red':'')+'" onclick="tick(this)">'
+      +'<span class="bx"></span><span class="tx">'+d.t+'</span>'
+      +(d.scope?'<span class="scope">'+d.scope+'</span>':'')
+      +(d.cad?'<span class="cad">'+d.cad+'</span>':'')
+      +'</div>';
+  }).join('');
+  document.getElementById('dutywho').textContent = 'Duties — '+(who==='fernando'?'Fernando':'Aaron');
+  document.getElementById('dutytabs').style.display = curView==='eli' ? '' : 'none';
+  prog();
+}
+function prog(){
+  var done=document.querySelectorAll('#duties .duty.done').length;
+  var all=document.querySelectorAll('#duties .duty').length;
+  document.getElementById('prog').textContent=done+' of '+all;
+}
+function tick(el){
+  el.classList.toggle('done'); el.classList.remove('red');
+  var s=el.querySelector('.scope'); if(s) s.remove();
+  prog();
+}
+function setDuties(w){
+  curDuty=w;
+  document.getElementById('dtF').classList.toggle('on',w==='fernando');
+  document.getElementById('dtA').classList.toggle('on',w==='aaron');
+  renderDuties();
+}
+function setView(v){
+  curView=v;
+  ['vEli','vFer','vAar'].forEach(function(id){document.getElementById(id).classList.remove('on')});
+  document.getElementById(v==='eli'?'vEli':v==='fernando'?'vFer':'vAar').classList.add('on');
+  document.getElementById('greetlabel').textContent='Good afternoon '+(v==='eli'?'Eli':v==='fernando'?'Fernando':'Aaron');
+  document.getElementById('apprBanner').style.display = v==='eli'?'':'none';
+  if(v==='aaron') curDuty='aaron'; if(v==='fernando') curDuty='fernando';
+  renderBullets(); renderDuties();
+}
+
+/* WEEK AHEAD ribbon: 11 rooms/night; click a day → holds filter */
+var WEEK = [
+  {d:'Mon', n:'9/7',  booked:3, held:1},
+  {d:'Tue', n:'9/8',  booked:4, held:2},
+  {d:'Wed', n:'9/9',  booked:5, held:1},
+  {d:'Thu', n:'9/10', booked:3, held:1},
+  {d:'Fri', n:'9/11', booked:6, held:1},
+  {d:'Sat', n:'9/12', booked:2, held:0},
+  {d:'Sun', n:'9/13', booked:1, held:0},
+];
+var HOLDS = [
+  {day:'9/7',  d:'Mon 9/7',  who:'Harbor · Nova Beats', sub:'wants 2 days', room:'ERS·A'},
+  {day:'9/8',  d:'Tue 9/8',  who:'Kestrel Music · Jalen Haris', sub:'extension hold', room:'PRS·A'},
+  {day:'9/8',  d:'Tue 9/8',  who:'Zach Tuchman', sub:'hold since Thu', room:'PRS·B'},
+  {day:'9/9',  d:'Wed 9/9',  who:'Slauson Ave · Rico B', sub:'quote sent', room:'PRS·C'},
+  {day:'9/10', d:'Thu 9/10', who:'Sam Lorimore', sub:'waiting on label', room:'PRS·C'},
+  {day:'9/11', d:'Fri 9/11', who:'Gamma Media · Honestav', sub:'second date', room:'PRS·X'},
+];
+var ROOMS_PER_NIGHT = 11, selDay = null;
+function renderWeek(){
+  document.getElementById('week').innerHTML = WEEK.map(function(w){
+    var open = ROOMS_PER_NIGHT - w.booked - w.held;
+    function h(n){ return Math.max(n===0?0:4, Math.round(n/ROOMS_PER_NIGHT*34)); }
+    return '<div class="day'+(selDay===w.n?' sel':'')+'" onclick="selDayFn(\''+w.n+'\')">'
+      +'<span class="dn">'+w.d+'</span>'
+      +'<div class="stackbar">'
+      +(open>0?'<div class="seg o" style="height:'+h(open)+'px"></div>':'')
+      +(w.held>0?'<div class="seg h" style="height:'+h(w.held)+'px"></div>':'')
+      +(w.booked>0?'<div class="seg b" style="height:'+h(w.booked)+'px"></div>':'')
+      +'</div>'
+      +'<span class="nums">'+w.booked+'·'+w.held+'·'+open+'</span>'
+      +'</div>';
+  }).join('');
+}
+function renderHolds(){
+  var rows = HOLDS.filter(function(x){ return !selDay || x.day===selDay; });
+  document.getElementById('holds').innerHTML = rows.map(function(x){
+    return '<div class="prow h"><span class="d">'+x.d+'</span>'
+      +'<div class="who"><b>'+x.who+'</b><span>'+x.sub+'</span></div>'
+      +'<span class="roomchip">'+x.room+'</span></div>';
+  }).join('');
+  document.getElementById('holdCt').textContent = rows.length + (selDay? ' on '+selDay : '');
+  document.getElementById('holdClear').style.display = selDay? '' : 'none';
+  document.getElementById('holdEmpty').style.display = rows.length===0? '' : 'none';
+}
+function selDayFn(n){ selDay = (selDay===n? null : n); renderWeek(); renderHolds(); }
+function clearDaySel(){ selDay=null; renderWeek(); renderHolds(); }
+
+renderBullets(); renderDuties(); renderHolds();
+</script>
+</body>
+</html>

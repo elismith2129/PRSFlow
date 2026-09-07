@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Anchor Noir: A1–A4</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  ANCHOR NOIR (2026-09-06) — the R4 Anchor rebuilt four ways on a TRUE BLACK
+  stage. Grey-on-grey is dead in this file: the ground is near-black, ink is
+  bright ivory/white, and every accent earns full saturation. Flo's statement
+  leads every variant (Eli: "most like what we have now").
+
+  Shared bones (from R4, locked): Flo statement w/ real ribbon + gradient key
+  phrase + sentences-as-buttons → portal zones below (Tonight / Your list /
+  Landed & in the air / Pipeline & money) → every zone clicks to its page →
+  landed & holds carry NAMES, never money → fixed geometry.
+
+  A1 · NOIR — the straight port: portals as lifted near-black cards. The
+       buildable one; v8c could re-skin to this next week.
+  A2 · INK — portals lose their boxes entirely: zones divided by space and
+       big white Archivo titles on pure black. The Sheet's soul in the
+       Anchor's body. Hover paints a hairline door.
+  A3 · NEON — each portal wears its zone's colour: red for Your List, sea
+       green for Tonight, blue for Pipeline. Edge-lit cards, coloured glows
+       (rule-break: glow means zone, not just AI). The arcade.
+  A4 · HERO — M1's spotlight grafted in: statement → the #1 red action as a
+       full-width DO-THIS banner → the portal row beneath. Action gets the
+       marquee slot inside the Anchor structure.
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412; --card2:#1b1917;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --chip-ink:#12100e;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--ink);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 70px}
+.topbar{display:flex;align-items:center;gap:12px;padding:4px 0 20px}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px}
+.optswitch button{border-radius:99px;padding:5px 13px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.optswitch button.on{color:var(--chip-ink);background:var(--ink)}
+.chipx{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;
+  font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--chip-ink);flex-shrink:0}
+.chipx.b{background:var(--st-booked)}
+.chipx.w{background:var(--st-warm)}
+.chipx.h{background:var(--st-hot);color:var(--hot-text)}
+.chipx.u{background:var(--st-uncon)}
+.ribbon{display:inline-block;vertical-align:-2px;flex-shrink:0}
+.grad{background:linear-gradient(100deg,var(--st-booked),var(--st-cold) 60%,var(--st-uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ── THE STATEMENT (shared, from R4 — Eli's keeper) ── */
+.statement{padding:8px 0 26px;max-width:920px}
+.statement .fhead{display:flex;align-items:center;gap:9px;padding-bottom:8px}
+.statement .fname{font-family:'Archivo Black',sans-serif;font-size:14px}
+.statement .ln{display:block;font-family:'Archivo Black',sans-serif;font-size:24px;
+  line-height:1.32;letter-spacing:-.015em;cursor:pointer;padding:2px 0;width:fit-content}
+.statement .ln .go{font-family:system-ui;font-size:9.5px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;opacity:0;margin-left:12px;vertical-align:6px;transition:opacity .15s}
+.statement .ln:hover .go{opacity:.6}
+.statement .ln.red{color:var(--st-hot)}
+.statement .ln.dim{color:var(--ink2);font-size:19px}
+
+/* ── shared portal internals ── */
+.rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rc{border-radius:9px;min-height:54px;padding:6px 8px;background:var(--wash);overflow:hidden}
+.rc .rn{font-size:6.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.rc.on{background:var(--st-booked);color:var(--chip-ink)}
+.rc.on .rn{color:rgba(18,16,14,.6)}
+.rc.hot{background:var(--st-hot);color:var(--hot-text)}
+.rc.hot .rn{color:rgba(255,244,242,.7)}
+.rc .a{font-family:'Archivo Black',sans-serif;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+.q .bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--wash2)}
+.q.done{opacity:.35;text-decoration:line-through}
+.q.done .bx{background:var(--st-booked)}
+.q.red{color:var(--st-hot);font-weight:600}
+.q .mn{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--ink3);flex-shrink:0}
+.landhead{font-size:8.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);padding:2px 0 8px}
+.landed{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px}
+.land{border-radius:99px;padding:6px 13px;background:var(--st-booked);color:var(--chip-ink);
+  font-family:'Archivo Black',sans-serif;font-size:11.5px}
+.holdrow{display:flex;align-items:baseline;gap:9px;padding:4.5px 0;font-size:12.5px;color:var(--ink2)}
+.holdrow b{color:var(--ink);font-weight:600}
+.holdrow .d{font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--ink3);width:54px;flex-shrink:0}
+.holdrow .chipx{margin-left:auto}
+.pipebig{font-family:'Archivo Black',sans-serif;font-size:46px;line-height:1;letter-spacing:-.02em}
+.pipesub{font-size:11px;color:var(--ink3);padding:4px 0 12px}
+.pstat{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:12px}
+.inqbar{background:var(--st-hot);color:var(--hot-text);border-radius:10px;padding:8px 13px;
+  font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  display:flex;align-items:center;gap:9px}
+.pulse{width:7px;height:7px;border-radius:50%;background:#fff;animation:np 1.6s ease-in-out infinite}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+.money{display:flex;gap:26px;padding-top:4px}
+.money .mv{font-family:'Archivo Black',sans-serif;font-size:22px}
+.money .mv.hotv{color:var(--st-hot)}
+.money small{display:block;font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:3px}
+.pt{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+.pt b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2)}
+.pt .arrow{margin-left:auto;font-size:13px;color:var(--ink3);transition:opacity .15s,transform .15s,color .15s}
+
+/* ═════ A1 · NOIR — lifted cards on black ═════ */
+/* v2 refinements (Eli): calendar column WIDER, cells carry the standard card
+   info (artist · client/label · time · eng initials — always); the inquiries
+   alert is a chunky block with a big number, never a skinny bar; money loses
+   flags and gains the ROLE LENS — COD out for everyone + the viewer's own
+   billing-pipeline stage (owner: approve · manager: send · billing: build). */
+/* FIXED GEOMETRY (v8 law, proven here with the REAL rosters): every box has
+   ONE designed height that never changes — per view, per day, per anything.
+   Row 1 = 356px, row 2 = 196px. Underfill reads as quiet (data-empty is
+   legal); overflow scrolls inside. The build hardcodes these numbers. */
+.a1 .portals{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:14px}
+.a1 .portals .portal{height:356px;display:flex;flex-direction:column;overflow:hidden}
+.a1 .portals2 .portal{height:196px;display:flex;flex-direction:column;overflow:hidden}
+.a1 .qscroll{flex:1;min-height:0;overflow-y:auto}
+.a1 .qtabs{display:inline-flex;gap:2px;background:var(--wash);border-radius:99px;padding:3px}
+.a1 .qtabs button{border-radius:99px;padding:2px 9px;font-size:7.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.a1 .qtabs button.on{background:var(--ink);color:var(--chip-ink)}
+.a1 .q .tag{font-size:6.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:4px;padding:2px 6px;flex-shrink:0;background:var(--wash2);color:var(--ink2)}
+.a1 .q .tag.ap{background:var(--st-warm);color:var(--chip-ink)}
+.a1 .quiet{font-size:11.5px;color:var(--ink3);font-style:italic;padding:8px 0}
+.a1 .rgridL{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.a1 .rcL{border-radius:10px;min-height:78px;padding:7px 9px;background:var(--wash);
+  overflow:hidden;position:relative;display:flex;flex-direction:column}
+.a1 .rcL .rn{font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.a1 .rcL.on{background:var(--st-booked);color:var(--chip-ink)}
+.a1 .rcL.on .rn{color:rgba(18,16,14,.6)}
+.a1 .rcL.hot{background:var(--st-hot);color:var(--hot-text)}
+.a1 .rcL.hot .rn{color:rgba(255,244,242,.7)}
+.a1 .rcL .a{font-family:'Archivo Black',sans-serif;font-size:11px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a1 .rcL .c{font-size:8.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.a1 .rcL .tm{font-size:8.5px;opacity:.85;margin-top:auto;font-weight:600}
+.a1 .rcL .eng{position:absolute;right:7px;bottom:6px;font-family:ui-monospace,Menlo,monospace;font-size:7px;opacity:.6}
+/* Quieted (Eli 2026-09-06): the alert keeps its size and its red VOICE — hot
+   edge blade, hot label, red pulse — but loses the wall of red fill. Names in
+   bright ink on a lifted card; the red chip carries the count. */
+.a1 .inqblock{flex:1;background:rgba(255,90,77,.16);border-radius:14px;position:relative;
+  padding:12px 15px 12px 19px;display:flex;flex-direction:column;cursor:pointer;
+  transition:transform .15s ease;animation:inqbreathe 3.6s ease-in-out infinite}
+@keyframes inqbreathe{
+  0%,100%{box-shadow:0 0 10px 0 rgba(255,90,77,.18)}
+  50%{box-shadow:0 0 26px 4px rgba(255,90,77,.42)}}
+@media (prefers-reduced-motion: reduce){.a1 .inqblock{animation:none}}
+.a1 .inqblock::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3.5px;
+  border-radius:99px;background:var(--st-hot);box-shadow:0 0 14px 2px rgba(255,90,77,.6)}
+.a1 .inqblock:hover{transform:scale(1.015)}
+.a1 .inqblock .k{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--st-hot);display:flex;align-items:center;gap:8px;padding-bottom:7px}
+.a1 .inqblock .k .pulse{background:var(--st-hot)}
+.a1 .inqblock .who{font-family:'Archivo Black',sans-serif;font-size:15px;line-height:1.25;padding:2px 0;color:var(--ink)}
+.a1 .inqblock .src{font-size:9.5px;color:var(--ink3);font-family:system-ui;font-weight:600}
+/* THE BILLING PIPELINE — "where are we at", same for every seat. Three stage
+   tiles in ladder order (review → approval → send), each in its stage colour,
+   beside COD out. Solid fill + chip ink, like the billing badges. */
+.a1 .pbody{display:flex;gap:16px;align-items:stretch;min-height:128px}
+.a1 .pleft{display:flex;flex-direction:column;justify-content:space-between;flex-shrink:0}
+.a1 .stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch}
+.a1 .stile{border-radius:14px;padding:13px 15px;color:var(--chip-ink);cursor:pointer;
+  display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease}
+.a1 .stile:hover{transform:translateY(-2px)}
+.a1 .stile .bn{font-family:'Archivo Black',sans-serif;font-size:30px;line-height:1}
+.a1 .stile .bk{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  opacity:.8;padding-top:10px;line-height:1.35}
+.a1 .stile.hotf{background:transparent;color:var(--ink);padding-left:2px}
+.a1 .stile.hotf .bn{color:var(--st-hot);font-size:34px}
+.a1 .stile.hotf .bk{color:var(--ink3);opacity:1}
+.a1 .stile.cold{background:var(--st-uncon)}
+.a1 .stile.warm{background:var(--st-warm)}
+.a1 .stile.ok{background:var(--st-booked)}
+.a1 .mtabs{display:inline-flex;gap:2px;background:var(--wash);border-radius:99px;padding:3px;margin-left:auto}
+.a1 .mtabs button{border-radius:99px;padding:2.5px 9px;font-size:7.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.a1 .mtabs button.on{background:var(--ink);color:var(--chip-ink)}
+.a1 .portal{background:var(--card);border-radius:18px;padding:16px 18px;cursor:pointer;
+  transition:transform .18s ease,background .18s ease;box-shadow:0 2px 12px rgba(0,0,0,.5)}
+.a1 .portal:hover{transform:translateY(-3px);background:var(--card2)}
+.a1 .portal:hover .arrow{color:var(--ink);transform:translateX(3px)}
+.a1 .portals2{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding-top:14px}
+
+/* ═════ A2 · INK — no boxes, space + type ═════ */
+.a2 .zones{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:44px}
+.a2 .zone{cursor:pointer;padding:6px 0}
+.a2 .zone .zt{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.01em;
+  padding-bottom:14px;display:flex;align-items:baseline;gap:10px}
+.a2 .zone .zt .arrow{margin-left:auto;color:var(--ink3);opacity:0;transition:all .15s}
+.a2 .zone:hover .zt .arrow{opacity:1;transform:translateX(3px);color:var(--ink)}
+.a2 .zone .zt small{font-family:system-ui;font-size:9.5px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink3)}
+.a2 .zone:hover{box-shadow:inset 3px 0 0 var(--wash2);padding-left:14px;transition:padding .18s ease}
+.a2 .zones2{display:grid;grid-template-columns:1fr 1fr;gap:44px;padding-top:40px}
+
+/* ═════ A3 · NEON — edge-lit colour-blocked portals ═════ */
+.a3 .portals{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px}
+.a3 .portal{background:var(--card);border-radius:18px;padding:16px 18px;cursor:pointer;
+  position:relative;transition:transform .18s ease}
+.a3 .portal::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3.5px;border-radius:99px}
+.a3 .portal:hover{transform:translateY(-3px)}
+.a3 .portal.zhot::before{background:var(--st-hot);box-shadow:0 0 18px 2px rgba(255,90,77,.5)}
+.a3 .portal.zok::before{background:var(--st-booked);box-shadow:0 0 18px 2px rgba(67,223,174,.5)}
+.a3 .portal.zwarm::before{background:var(--st-warm);box-shadow:0 0 18px 2px rgba(255,169,77,.5)}
+.a3 .portal.zcold::before{background:var(--st-uncon);box-shadow:0 0 18px 2px rgba(127,178,229,.5)}
+.a3 .portal .pt b{color:var(--ink)}
+.a3 .portal.zhot .pt b{color:var(--st-hot)}
+.a3 .portal.zok .pt b{color:var(--st-booked)}
+.a3 .portal.zwarm .pt b{color:var(--st-warm)}
+.a3 .portal.zcold .pt b{color:var(--st-uncon)}
+.a3 .portals2{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding-top:14px}
+
+/* ═════ A4 · HERO — spotlight inside the anchor ═════ */
+.a4 .hero{background:var(--st-hot);color:var(--hot-text);border-radius:20px;
+  padding:24px 30px;display:flex;align-items:center;gap:26px;cursor:pointer;
+  box-shadow:0 0 44px 4px rgba(255,90,77,.25);margin-bottom:14px;transition:transform .18s ease}
+.a4 .hero:hover{transform:scale(1.005)}
+.a4 .hero .k{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.75;padding-bottom:6px}
+.a4 .hero .t{font-family:'Archivo Black',sans-serif;font-size:27px;line-height:1.1;letter-spacing:-.02em}
+.a4 .hero .sub{font-size:12.5px;opacity:.8;padding-top:6px}
+.a4 .hero .doit{margin-left:auto;flex-shrink:0;background:var(--hot-text);color:var(--st-hot);
+  border-radius:99px;padding:13px 26px;font-family:'Archivo Black',sans-serif;font-size:14px}
+.a4 .portals{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px}
+.a4 .portal{background:var(--card);border-radius:18px;padding:16px 18px;cursor:pointer;
+  transition:transform .18s ease,background .18s ease}
+.a4 .portal:hover{transform:translateY(-3px);background:var(--card2)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">Anchor Noir — R4's bones · true black · zero grey-on-grey</span>
+    <div class="grow"></div>
+    <div class="optswitch" id="viewas">
+      <button class="on" id="vEli" onclick="setView('eli')">Eli</button>
+      <button id="vFer" onclick="setView('fernando')">Fernando</button>
+      <button id="vAar" onclick="setView('aaron')">Aaron</button>
+    </div>
+    <div class="optswitch">
+      <button class="on" id="oA1" onclick="setOpt('A1')">A1 Noir</button>
+      <button id="oA2" onclick="setOpt('A2')">A2 Ink</button>
+      <button id="oA3" onclick="setOpt('A3')">A3 Neon</button>
+      <button id="oA4" onclick="setOpt('A4')">A4 Hero</button>
+    </div>
+  </div>
+
+  <!-- THE STATEMENT — identical in all four; it's the keeper. -->
+  <div class="statement">
+    <div class="fhead">
+      <svg class="ribbon" width="26" height="26" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Sunday, Sep 6</span>
+    </div>
+    <span class="ln red">Aaron is 8 days behind on COD invoicing.<span class="go">Billing →</span></span>
+    <span class="ln">We landed <span class="grad">Kestrel, Gamma&nbsp;Media and 10&nbsp;Summers</span> today.<span class="go">Calendar →</span></span>
+    <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.<span class="go">Review →</span></span>
+  </div>
+
+  <!-- ════════ A1 · NOIR ════════ -->
+  <section class="a1" id="secA1">
+    <div class="portals">
+      <div class="portal">
+        <div class="pt"><b>Tonight</b><span class="label" style="letter-spacing:.06em">7 lit · 1 flagged</span><span class="arrow">→</span></div>
+        <div class="rgridL">
+          <div class="rcL on"><span class="rn">PRS·A</span><div class="a">Jalen Haris</div><div class="c">Kestrel Music</div><div class="tm">11A–6P</div><span class="eng">1ST-TW</span></div>
+          <div class="rcL on"><span class="rn">PRS·B</span><div class="a">Zach Tuchman</div><div class="c">COD</div><div class="tm">2P–6P</div></div>
+          <div class="rcL on"><span class="rn">PRS·C</span><div class="a">Sam Lorimore</div><div class="c">COD</div><div class="tm">12P–6P</div><span class="eng">2ND-IS</span></div>
+          <div class="rcL"><span class="rn">PRS·E</span></div>
+          <div class="rcL hot"><span class="rn">PRS·X</span><div class="a">Honestav</div><div class="c">Gamma Media</div><div class="tm">7P–3A</div><span class="eng">1ST-SR</span></div>
+          <div class="rcL"><span class="rn">Nadine's</span></div>
+          <div class="rcL"><span class="rn">ARS·A</span></div>
+          <div class="rcL on"><span class="rn">ARS·B</span><div class="a">Jason Mater</div><div class="c">COD</div><div class="tm">12P–6P</div><span class="eng">1ST-TW</span></div>
+          <div class="rcL"><span class="rn">ERS·A</span></div>
+          <div class="rcL on"><span class="rn">ERS·B</span><div class="a">Mustard</div><div class="c">10 Summers</div><div class="tm">2P–9:30P</div></div>
+          <div class="rcL on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div><div class="c">COD</div><div class="tm">2P–10P</div></div>
+          <div class="rcL"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+      <div class="portal">
+        <div class="pt"><b>Your list</b>
+          <span class="qtabs" id="qtabs">
+            <button class="on" id="qtM" onclick="setTab('mine')">Mine</button>
+            <button id="qtF" onclick="setTab('fernando')">Fernando</button>
+            <button id="qtA" onclick="setTab('aaron')">Aaron</button>
+          </span>
+          <span class="label" id="qprog" style="letter-spacing:.06em;margin-left:auto">1 of 5</span>
+          <span class="arrow">→</span>
+        </div>
+        <div class="qscroll" id="qlist"></div>
+      </div>
+      <div class="portal">
+        <div class="pt"><b>Landed & in the air</b><span class="arrow">→</span></div>
+        <div class="landhead">Landed today</div>
+        <div class="landed">
+          <span class="land">Kestrel Music</span><span class="land">Gamma Media</span><span class="land">10 Summers</span>
+        </div>
+        <div class="landhead">Holds to check</div>
+        <div class="holdrow"><span class="d">Mon</span><b>Harbor · Nova Beats</b><span class="chipx w">ERS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Jalen Haris</b><span class="chipx w">PRS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Zach Tuchman</b><span class="chipx w">PRS·B</span></div>
+        <div class="holdrow"><span class="d">Wed</span><b>Slauson · Rico B</b><span class="chipx w">PRS·C</span></div>
+        <div class="holdrow"><span class="d">Fri</span><b>Gamma · Honestav</b><span class="chipx w">PRS·X</span></div>
+      </div>
+    </div>
+    <div class="portals2">
+      <div class="portal">
+        <div class="pt"><b>CRM — pipeline</b><span class="arrow">→</span></div>
+        <div class="pbody">
+          <div class="pleft">
+            <div>
+              <div class="pipebig" style="font-size:52px">22</div>
+              <div class="pipesub" style="padding-bottom:0">active leads</div>
+            </div>
+            <div class="pstat" style="padding-bottom:0;flex-direction:column;align-items:flex-start;gap:5px">
+              <span class="chipx h">11 hot</span><span class="chipx w">4 warm</span><span class="chipx u">5 uncon</span>
+            </div>
+          </div>
+          <div class="inqblock" style="justify-content:center;gap:2px">
+            <div class="k"><span class="pulse" style="width:8px;height:8px"></span>2 new inquiries</div>
+            <div class="who">Marina Olszak <span class="src">· web form · 2h ago</span></div>
+            <div class="who">Pete Perez <span class="src">· web form · 5h ago</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="portal">
+        <div class="pt"><b>The money — where billing is at</b><span class="arrow">→</span></div>
+        <div class="stagegrid">
+          <div class="stile hotf">
+            <div class="bn">$16,627</div>
+            <div class="bk">COD out · worst 41d</div>
+          </div>
+          <div class="stile cold">
+            <div class="bn">6</div>
+            <div class="bk">WOs need review</div>
+          </div>
+          <div class="stile warm">
+            <div class="bn">4</div>
+            <div class="bk">Wait on approval · $6,025</div>
+          </div>
+          <div class="stile ok">
+            <div class="bn">3</div>
+            <div class="bk">Ready to go out</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ A2 · INK ════════ -->
+  <section class="a2" id="secA2" style="display:none">
+    <div class="zones">
+      <div class="zone">
+        <div class="zt">Tonight <small>7 lit · 1 flagged</small><span class="arrow">→</span></div>
+        <div class="rgrid">
+          <div class="rc on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rc on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rc on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rc"><span class="rn">PRS·E</span></div>
+          <div class="rc hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rc"><span class="rn">NAD</span></div>
+          <div class="rc"><span class="rn">ARS·A</span></div>
+          <div class="rc on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rc"><span class="rn">ERS·A</span></div>
+          <div class="rc on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rc on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rc"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+      <div class="zone">
+        <div class="zt">Your list <small>3 of 7</small><span class="arrow">→</span></div>
+        <div class="q red"><span class="bx"></span>COD invoicing + follow-up<span class="mn">8 DAYS</span></div>
+        <div class="q red"><span class="bx"></span>Round up SRS bookings<span class="mn">5D LATE</span></div>
+        <div class="q red"><span class="bx"></span>Tenant rent follow-up<span class="mn">YDAY</span></div>
+        <div class="q"><span class="bx"></span>Approve Ramp transactions</div>
+        <div class="q"><span class="bx"></span>Update invoices in QB</div>
+        <div class="q done"><span class="bx"></span>Collect yesterday's WOs</div>
+      </div>
+      <div class="zone">
+        <div class="zt">Landed & in the air<span class="arrow">→</span></div>
+        <div class="landed">
+          <span class="land">Kestrel Music</span><span class="land">Gamma Media</span><span class="land">10 Summers</span>
+        </div>
+        <div class="landhead">Holds to check</div>
+        <div class="holdrow"><span class="d">Mon</span><b>Nova Beats</b><span class="chipx w">ERS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Jalen Haris</b><span class="chipx w">PRS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Zach Tuchman</b><span class="chipx w">PRS·B</span></div>
+        <div class="holdrow"><span class="d">Wed</span><b>Rico B</b><span class="chipx w">PRS·C</span></div>
+        <div class="holdrow"><span class="d">Fri</span><b>Honestav</b><span class="chipx w">PRS·X</span></div>
+      </div>
+    </div>
+    <div class="zones2">
+      <div class="zone">
+        <div class="zt">CRM — pipeline<span class="arrow">→</span></div>
+        <div style="display:flex;align-items:flex-end;gap:18px">
+          <div><div class="pipebig">22</div><div class="pipesub">active leads</div></div>
+          <div style="flex:1;max-width:340px">
+            <div class="pstat"><span class="chipx h">11 hot</span><span class="chipx w">4 warm</span><span class="chipx u">5 uncontacted</span></div>
+            <div class="inqbar"><span class="pulse"></span>2 new inquiries</div>
+          </div>
+        </div>
+      </div>
+      <div class="zone">
+        <div class="zt">The money<span class="arrow">→</span></div>
+        <div class="money">
+          <div class="mv hotv">$16,627<small>COD out · worst 41d</small></div>
+          <div class="mv">4<small>Approvals · $6,025</small></div>
+          <div class="mv">16<small>Flags open</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ A3 · NEON ════════ -->
+  <section class="a3" id="secA3" style="display:none">
+    <div class="portals">
+      <div class="portal zok">
+        <div class="pt"><b>Tonight</b><span class="label" style="letter-spacing:.06em">7 lit</span><span class="arrow">→</span></div>
+        <div class="rgrid">
+          <div class="rc on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rc on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rc on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rc"><span class="rn">PRS·E</span></div>
+          <div class="rc hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rc"><span class="rn">NAD</span></div>
+          <div class="rc"><span class="rn">ARS·A</span></div>
+          <div class="rc on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rc"><span class="rn">ERS·A</span></div>
+          <div class="rc on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rc on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rc"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+      <div class="portal zhot">
+        <div class="pt"><b>Your list</b><span class="label" style="letter-spacing:.06em">3 red</span><span class="arrow">→</span></div>
+        <div class="q red"><span class="bx"></span>COD invoicing + follow-up<span class="mn">8 DAYS</span></div>
+        <div class="q red"><span class="bx"></span>Round up SRS bookings<span class="mn">5D LATE</span></div>
+        <div class="q red"><span class="bx"></span>Tenant rent follow-up<span class="mn">YDAY</span></div>
+        <div class="q"><span class="bx"></span>Approve Ramp transactions</div>
+        <div class="q"><span class="bx"></span>Update invoices in QB</div>
+        <div class="q done"><span class="bx"></span>Collect yesterday's WOs</div>
+      </div>
+      <div class="portal zwarm">
+        <div class="pt"><b>Landed & in the air</b><span class="arrow">→</span></div>
+        <div class="landed">
+          <span class="land">Kestrel Music</span><span class="land">Gamma Media</span><span class="land">10 Summers</span>
+        </div>
+        <div class="landhead">Holds to check</div>
+        <div class="holdrow"><span class="d">Mon</span><b>Nova Beats</b><span class="chipx w">ERS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Jalen Haris</b><span class="chipx w">PRS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Zach Tuchman</b><span class="chipx w">PRS·B</span></div>
+        <div class="holdrow"><span class="d">Wed</span><b>Rico B</b><span class="chipx w">PRS·C</span></div>
+        <div class="holdrow"><span class="d">Fri</span><b>Honestav</b><span class="chipx w">PRS·X</span></div>
+      </div>
+    </div>
+    <div class="portals2">
+      <div class="portal zcold">
+        <div class="pt"><b>CRM — pipeline</b><span class="arrow">→</span></div>
+        <div style="display:flex;align-items:flex-end;gap:18px">
+          <div><div class="pipebig" style="color:var(--st-uncon)">22</div><div class="pipesub">active leads</div></div>
+          <div style="flex:1">
+            <div class="pstat"><span class="chipx h">11 hot</span><span class="chipx w">4 warm</span><span class="chipx u">5 uncontacted</span></div>
+            <div class="inqbar"><span class="pulse"></span>2 new inquiries</div>
+          </div>
+        </div>
+      </div>
+      <div class="portal zhot">
+        <div class="pt"><b>The money</b><span class="arrow">→</span></div>
+        <div class="money">
+          <div class="mv hotv">$16,627<small>COD out · worst 41d</small></div>
+          <div class="mv">4<small>Approvals · $6,025</small></div>
+          <div class="mv">16<small>Flags open</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ A4 · HERO ════════ -->
+  <section class="a4" id="secA4" style="display:none">
+    <div class="hero">
+      <div>
+        <div class="k">Do this now · 1 of 3 red</div>
+        <div class="t">COD invoicing + outstanding follow-up</div>
+        <div class="sub">Aaron · covering 8 days — the longest backlog on the board</div>
+      </div>
+      <span class="doit">Open it →</span>
+    </div>
+    <div class="portals">
+      <div class="portal">
+        <div class="pt"><b>Tonight</b><span class="label" style="letter-spacing:.06em">7 lit</span><span class="arrow">→</span></div>
+        <div class="rgrid">
+          <div class="rc on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rc on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rc on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rc"><span class="rn">PRS·E</span></div>
+          <div class="rc hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rc"><span class="rn">NAD</span></div>
+          <div class="rc"><span class="rn">ARS·A</span></div>
+          <div class="rc on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rc"><span class="rn">ERS·A</span></div>
+          <div class="rc on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rc on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rc"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+      <div class="portal">
+        <div class="pt"><b>Up next</b><span class="label" style="letter-spacing:.06em">2 red left</span><span class="arrow">→</span></div>
+        <div class="q red"><span class="bx"></span>Round up SRS bookings<span class="mn">5D LATE</span></div>
+        <div class="q red"><span class="bx"></span>Tenant rent follow-up<span class="mn">YDAY</span></div>
+        <div class="q"><span class="bx"></span>Sign 4 invoice packages<span class="mn">$6,025</span></div>
+        <div class="q"><span class="bx"></span>Approve Ramp transactions</div>
+        <div class="q done"><span class="bx"></span>Collect yesterday's WOs</div>
+      </div>
+      <div class="portal">
+        <div class="pt"><b>Landed & in the air</b><span class="arrow">→</span></div>
+        <div class="landed">
+          <span class="land">Kestrel Music</span><span class="land">Gamma Media</span><span class="land">10 Summers</span>
+        </div>
+        <div class="landhead">Holds to check</div>
+        <div class="holdrow"><span class="d">Mon</span><b>Nova Beats</b><span class="chipx w">ERS·A</span></div>
+        <div class="holdrow"><span class="d">Tue</span><b>Jalen Haris · Zach T.</b><span class="chipx w">PRS</span></div>
+        <div class="holdrow"><span class="d">Wed+</span><b>Rico B · Sam L. · Honestav</b><span class="chipx w">PRS</span></div>
+        <div class="landhead" style="padding-top:10px">Pipeline</div>
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span class="arch" style="font-family:'Archivo Black',sans-serif;font-size:26px">22</span>
+          <span class="chipx h">2 new</span>
+          <span style="font-size:11px;color:var(--st-hot);margin-left:auto">$16.6k out</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+function setOpt(o){
+  ['A1','A2','A3','A4'].forEach(function(x){
+    document.getElementById('sec'+x).style.display = x===o ? '' : 'none';
+    document.getElementById('o'+x).classList.toggle('on', x===o);
+  });
+}
+/* THE ROLE LENS — same money box, three seats: everyone shares COD out; the
+   second figure is the viewer's own billing-pipeline stage. */
+/* (Role-lens experiment retired 2026-09-06 — the money box now shows the whole
+   billing pipeline to every seat: review → approval → send, in stage colours.) */
+
+/* ── THE REAL ROSTERS (20260810 seed + SRS) — geometry proof. Boxes never
+      resize; the ink changes, the frame doesn't. ── */
+var LISTS = {
+  mine: [
+    {t:'Approve — Mustard package', tag:'approve', mn:'$3,400'},
+    {t:'Approve — Kestrel package', tag:'approve', mn:'$1,250'},
+    {t:'Approve — Gamma Media package', tag:'approve', mn:'$875'},
+    {t:'Approve — Zach Tuchman package', tag:'approve', mn:'$500'},
+    {t:'Call SIR re: rental return', tag:'task'},
+  ],
+  fernando: [
+    {t:'Studio check-in — Paramount (PRS)', tag:'duty', done:1},
+    {t:'Studio check-in — Ameraycan (ARS)', tag:'duty', done:1},
+    {t:'Studio check-in — Encore (ERS)', tag:'duty', done:1},
+    {t:'Studio check-in — Track (TRK)', tag:'duty'},
+    {t:'ADP runner timecards', tag:'duty', done:1},
+    {t:'Deliverables / schedule', tag:'duty'},
+    {t:'Staff tasks review', tag:'duty'},
+    {t:'Office stock', tag:'duty', mn:'WED'},
+    {t:'Valley checks (ARS · ERS · TRK)', tag:'duty', mn:'TUE·FRI'},
+  ],
+  aaron: [
+    {t:'COD invoicing + outstanding follow-up', tag:'duty', red:1, mn:'8 DAYS'},
+    {t:'Round up SRS bookings for payment', tag:'duty', red:1, mn:'5D LATE'},
+    {t:'Tenant rent follow-up', tag:'duty', red:1, mn:'YDAY'},
+    {t:'Approve Ramp transactions + chase receipts', tag:'duty'},
+    {t:'Update last night’s invoices in QB', tag:'duty'},
+    {t:'Collect + check yesterday’s WOs', tag:'duty', done:1},
+    {t:'Ramp weekly report', tag:'duty', mn:'MON'},
+    {t:'Open / sent-invoice follow-up list', tag:'duty', mn:'MON'},
+    {t:'Create tenant rent invoices', tag:'duty', mn:'MONTHLY'},
+  ],
+};
+var STATEMENTS = {
+  eli: [
+    {cls:'red', t:'Aaron is 8 days behind on COD invoicing.', go:'Billing →'},
+    {cls:'', t:'We landed <span class="grad">Kestrel, Gamma&nbsp;Media and 10&nbsp;Summers</span> today.', go:'Calendar →'},
+    {cls:'dim', t:'Four invoices wait on your sign-off · six holds need checking · Fernando is clear.', go:'Review →'},
+  ],
+  fernando: [
+    {cls:'', t:'All studios staffed for tonight — <span class="grad">seven rooms lit.</span>', go:'Calendar →'},
+    {cls:'', t:'Six holds need dates confirmed this week.', go:'Holds →'},
+    {cls:'dim', t:'One duty left on your card: the Track check-in.', go:'Your list →'},
+  ],
+  aaron: [
+    {cls:'red', t:'COD invoicing is 8 days behind — start there.', go:'Open →'},
+    {cls:'red', t:'The SRS round-up was due Tuesday.', go:'Open →'},
+    {cls:'dim', t:'Tomorrow: Ramp weekly report · invoice follow-up list.', go:'Your list →'},
+  ],
+};
+var curViewN='eli', curTab='mine';
+function renderList(){
+  var rows = LISTS[curTab];
+  document.getElementById('qlist').innerHTML = rows.map(function(d){
+    return '<div class="q'+(d.done?' done':'')+(d.red?' red':'')+'" onclick="this.classList.toggle(\'done\');this.classList.remove(\'red\')">'
+      +'<span class="bx"></span>'
+      +'<span class="tag'+(d.tag==='approve'?' ap':'')+'">'+d.tag+'</span>'
+      +d.t
+      +(d.mn?'<span class="mn">'+d.mn+'</span>':'')
+      +'</div>';
+  }).join('')
+  + (rows.length<7 ? '<div class="quiet">Quiet — nothing else on you today.</div>' : '');
+  var done=rows.filter(function(d){return d.done}).length;
+  document.getElementById('qprog').textContent = done+' of '+rows.length;
+}
+function setTab(t){
+  curTab=t;
+  ['qtM','qtF','qtA'].forEach(function(id){document.getElementById(id).classList.remove('on')});
+  document.getElementById(t==='mine'?'qtM':t==='fernando'?'qtF':'qtA').classList.add('on');
+  renderList();
+}
+function setView(v){
+  curViewN=v;
+  ['vEli','vFer','vAar'].forEach(function(id){document.getElementById(id).classList.remove('on')});
+  document.getElementById(v==='eli'?'vEli':v==='fernando'?'vFer':'vAar').classList.add('on');
+  document.getElementById('qtabs').style.display = v==='eli' ? '' : 'none';
+  curTab = v==='eli' ? 'mine' : v;
+  if(v==='eli') setTab('mine'); else renderList();
+  var st = STATEMENTS[v];
+  var lines = document.querySelectorAll('.statement .ln');
+  lines.forEach(function(ln,i){
+    if(!st[i]) return;
+    ln.className = 'ln '+st[i].cls;
+    ln.innerHTML = st[i].t + '<span class="go">'+st[i].go+'</span>';
+  });
+}
+renderList();
+</script>
+</body>
+</html>

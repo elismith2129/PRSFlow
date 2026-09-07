@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Marquee Evolutions: M1–M5</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  MARQUEE EVOLUTIONS (2026-09-06) — five takes between "my dashboard has too
+  much" and "the marquee has too little", built on TWO new rulings-in-waiting:
+
+  ★ HIGH CONTRAST IS THE NEW GROUND. The app's grey-on-grey "dim room" reads
+    stale and muddy (Eli). These mocks run a near-black STAGE (#100f0d) with
+    bright ivory ink (#efece4) and true white for emphasis — the marquee's
+    contrast, everywhere. If blessed, this is a site-wide re-skin ruling.
+  ★ THE BIGGEST THING ON SCREEN MUST BE AN ACTION. The calendar is state, not
+    action — it never gets the hero slot again. Every mock leads with
+    "do this now" and demotes state to glanceable strips.
+
+  Kept from earlier rounds: Flo as a read-it statement · the real ribbon ·
+  landed/holds carry NAMES, never money · fixed geometry · portals (all zones
+  click through). Rule-breaks are the point this round; flagged per mock.
+
+  M1 · SPOTLIGHT — one giant NEXT ACTION card, teleprompter-style; up-next
+       stack under it; state dimmed to the edge.
+  M2 · SPLIT STAGE — screen hard-split: NOW (black, act) | STATE (lifted,
+       observe). The contrast boundary IS the layout.
+  M3 · TICKET RAIL — actions as physical tickets on a runway you clear left
+       to right; rooms as a thin marquee above; progress bar celebrates.
+  M4 · THE DESK — ops-terminal HUD: mono readouts, FLO> feed, blinking
+       cursor, phosphor accents. The studio's mission control at 2AM.
+  M5 · THE CURRENT — today as a flowing left-to-right time river: NOW marker,
+       actions docked before/after the sessions they precede.
+
+  Mock is dark-first on purpose; a light "stage" variant is a later question.
+-->
+<style>
+:root{
+  --stage:#100f0d; --stage2:#181613; --panel:#1f1d19;
+  --ink:#efece4; --ink2:rgba(239,236,228,.62); --ink3:rgba(239,236,228,.38);
+  --wash:rgba(239,236,228,.06); --wash2:rgba(239,236,228,.12);
+  --chip-ink:#12100e;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5;
+  --flo-ink:239,236,228;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--ink);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 70px}
+.topbar{display:flex;align-items:center;gap:12px;padding:4px 0 20px}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--panel);border-radius:99px;padding:4px;gap:2px}
+.optswitch button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.optswitch button.on{color:var(--chip-ink);background:var(--ink)}
+.chipx{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;
+  font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--chip-ink);flex-shrink:0}
+.chipx.b{background:var(--st-booked)}
+.chipx.w{background:var(--st-warm)}
+.chipx.h{background:var(--st-hot);color:var(--hot-text)}
+.chipx.u{background:var(--st-uncon)}
+.ribbon{display:inline-block;vertical-align:-2px;flex-shrink:0}
+.fhead{display:flex;align-items:center;gap:9px}
+.fhead .fname{font-family:'Archivo Black',sans-serif;font-size:14px}
+.grad{background:linear-gradient(100deg,var(--st-booked),var(--st-cold) 60%,var(--st-uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.roomstrip{display:grid;grid-template-columns:repeat(12,1fr);gap:5px}
+.rst{border-radius:8px;height:44px;padding:5px 7px;background:var(--wash);overflow:hidden}
+.rst .rn{font-size:6.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.rst.on{background:var(--st-booked);color:var(--chip-ink)}
+.rst.on .rn{color:rgba(18,16,14,.6)}
+.rst.hot{background:var(--st-hot);color:var(--hot-text)}
+.rst.hot .rn{color:rgba(255,244,242,.7)}
+.rst .a{font-family:'Archivo Black',sans-serif;font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ═════ M1 · SPOTLIGHT ═════ */
+.m1 .flosay{max-width:860px;padding-bottom:26px}
+.m1 .flosay .ln{display:block;font-family:'Archivo Black',sans-serif;font-size:21px;
+  line-height:1.35;letter-spacing:-.015em;padding-top:6px}
+.m1 .flosay .ln .hot{color:var(--st-hot)}
+.m1 .hero{background:var(--st-hot);color:var(--hot-text);border-radius:22px;
+  padding:30px 34px;display:flex;align-items:center;gap:26px;cursor:pointer;
+  box-shadow:0 0 44px 6px rgba(255,90,77,.28);position:relative;overflow:hidden;
+  transition:transform .18s ease}
+.m1 .hero:hover{transform:scale(1.006)}
+.m1 .hero .k{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.75;padding-bottom:8px}
+.m1 .hero .t{font-family:'Archivo Black',sans-serif;font-size:34px;line-height:1.1;letter-spacing:-.02em}
+.m1 .hero .sub{font-size:13px;opacity:.8;padding-top:8px}
+.m1 .hero .doit{margin-left:auto;flex-shrink:0;background:var(--hot-text);color:var(--st-hot);
+  border-radius:99px;padding:15px 30px;font-family:'Archivo Black',sans-serif;font-size:15px;
+  box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.m1 .upnext{padding:20px 0 26px}
+.m1 .un{display:flex;align-items:center;gap:13px;padding:10px 16px;border-radius:13px;
+  font-size:14.5px;cursor:pointer;background:var(--stage2)}
+.m1 .un + .un{margin-top:6px}
+.m1 .un:hover{background:var(--panel)}
+.m1 .un .idx{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--ink3);width:20px}
+.m1 .un .mn{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--ink3)}
+.m1 .un.red{color:var(--st-hot);font-weight:600}
+.m1 .floor{display:flex;gap:26px;align-items:flex-start;color:var(--ink2)}
+.m1 .floor .col{flex:1;min-width:0}
+.m1 .floor h4{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);padding-bottom:8px}
+.m1 .floor .names{font-family:'Archivo Black',sans-serif;font-size:12.5px;color:var(--ink);line-height:1.5}
+.m1 .floor .sep{color:var(--ink3);font-family:system-ui;font-weight:400}
+
+/* ═════ M2 · SPLIT STAGE ═════ */
+.m2 .split{display:grid;grid-template-columns:1.1fr 1fr;border-radius:22px;overflow:hidden;min-height:640px}
+.m2 .now{background:#0b0a09;padding:28px 30px;display:flex;flex-direction:column}
+.m2 .state{background:var(--panel);padding:28px 30px}
+.m2 .now .bigk{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--st-hot);padding-bottom:16px}
+.m2 .act{padding:13px 0;cursor:pointer;display:flex;align-items:baseline;gap:14px}
+.m2 .act .t{font-family:'Archivo Black',sans-serif;font-size:24px;line-height:1.15;letter-spacing:-.02em}
+.m2 .act.red .t{color:var(--st-hot)}
+.m2 .act .mn{font-family:ui-monospace,Menlo,monospace;font-size:10px;color:var(--ink3);flex-shrink:0}
+.m2 .act:hover .t{text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:6px}
+.m2 .act.small .t{font-size:16px;color:var(--ink2)}
+.m2 .now .flofoot{margin-top:auto;padding-top:22px;display:flex;gap:10px;align-items:flex-start}
+.m2 .now .flofoot p{font-size:13px;color:var(--ink2);line-height:1.6;max-width:420px}
+.m2 .state h4{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);padding:18px 0 9px}
+.m2 .state h4:first-child{padding-top:0}
+.m2 .staterow{display:flex;align-items:baseline;gap:10px;font-size:13px;color:var(--ink2);padding:3.5px 0}
+.m2 .staterow .names{font-family:'Archivo Black',sans-serif;color:var(--ink);font-size:13px}
+.m2 .statbig{font-family:'Archivo Black',sans-serif;font-size:30px;color:var(--ink)}
+
+/* ═════ M3 · TICKET RAIL ═════ */
+.m3 .progress{display:flex;align-items:center;gap:14px;padding:4px 0 18px}
+.m3 .pbar{flex:1;height:7px;border-radius:99px;background:var(--wash);overflow:hidden}
+.m3 .pbar i{display:block;height:100%;width:43%;border-radius:99px;background:var(--st-booked)}
+.m3 .ptx{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink2)}
+.m3 .rail{display:flex;gap:14px;overflow-x:auto;padding:6px 2px 18px;scroll-snap-type:x mandatory}
+.m3 .ticket{scroll-snap-align:start;flex:0 0 300px;border-radius:18px;padding:20px 22px;
+  background:var(--panel);position:relative;cursor:pointer;transition:transform .18s ease}
+.m3 .ticket:hover{transform:translateY(-4px) rotate(-.4deg)}
+.m3 .ticket.red{background:var(--st-hot);color:var(--hot-text)}
+.m3 .ticket.warm{background:var(--st-warm);color:var(--chip-ink)}
+.m3 .ticket .k{font-size:8.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  opacity:.7;padding-bottom:10px}
+.m3 .ticket .t{font-family:'Archivo Black',sans-serif;font-size:19px;line-height:1.2;letter-spacing:-.015em}
+.m3 .ticket .sub{font-size:11.5px;opacity:.75;padding-top:8px}
+.m3 .ticket .stub{position:absolute;right:16px;bottom:14px;font-family:'Archivo Black',sans-serif;
+  font-size:12px;border-radius:99px;padding:8px 16px;background:rgba(0,0,0,.25)}
+.m3 .ticket.red .stub{background:var(--hot-text);color:var(--st-hot)}
+.m3 .ticket.warm .stub{background:var(--chip-ink);color:var(--st-warm)}
+.m3 .ticket.doneT{opacity:.35}
+.m3 .ticket.doneT .t{text-decoration:line-through}
+.m3 .below{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:26px;padding-top:22px;color:var(--ink2)}
+.m3 .below h4{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);padding-bottom:9px}
+.m3 .names{font-family:'Archivo Black',sans-serif;font-size:13px;color:var(--ink);line-height:1.55}
+.m3 .sep{color:var(--ink3);font-family:system-ui;font-weight:400}
+
+/* ═════ M4 · THE DESK ═════ */
+.m4 .desk{background:#0a0908;border-radius:22px;padding:26px 30px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;position:relative;overflow:hidden}
+.m4 .desk::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.14) 2px 3px)}
+.m4 .row{display:flex;gap:20px}
+.m4 .feed{flex:1.3;min-width:0}
+.m4 .side{flex:1;min-width:0}
+.m4 .fl{font-size:13px;line-height:2.05;color:var(--ink2)}
+.m4 .fl b{color:var(--ink);font-weight:700}
+.m4 .fl .p{color:var(--st-booked)}
+.m4 .fl .hotln{color:var(--st-hot)}
+.m4 .fl .act{cursor:pointer;text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(239,236,228,.25)}
+.m4 .fl .act:hover{text-decoration-color:var(--st-booked)}
+.m4 .prompt{display:flex;align-items:center;gap:8px;padding-top:16px;font-size:13px}
+.m4 .prompt .p{color:var(--st-booked)}
+.m4 .cursor{display:inline-block;width:8px;height:15px;background:var(--st-booked);
+  animation:blink 1.1s steps(1) infinite;vertical-align:-2px}
+@keyframes blink{50%{opacity:0}}
+.m4 .readout{border:1px solid rgba(239,236,228,.14);border-radius:12px;padding:13px 15px;margin-bottom:12px}
+.m4 .readout .k{font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);padding-bottom:7px}
+.m4 .readout .v{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.m4 .readout .v.hotv{color:var(--st-hot)}
+.m4 .readout .v.okv{color:var(--st-booked)}
+.m4 .readout .s{font-size:10.5px;color:var(--ink3);padding-top:3px}
+.m4 .lights{display:flex;gap:4px;padding-top:6px;flex-wrap:wrap}
+.m4 .lt{width:22px;height:22px;border-radius:5px;background:var(--wash);display:flex;
+  align-items:center;justify-content:center;font-size:6px;letter-spacing:.03em;color:var(--ink3)}
+.m4 .lt.on{background:var(--st-booked);color:var(--chip-ink)}
+.m4 .lt.hot{background:var(--st-hot);color:var(--hot-text)}
+
+/* ═════ M5 · THE CURRENT ═════ */
+.m5 .flosay{max-width:860px;padding-bottom:20px}
+.m5 .flosay .ln{display:block;font-family:'Archivo Black',sans-serif;font-size:21px;
+  line-height:1.35;letter-spacing:-.015em;padding-top:6px}
+.m5 .flosay .ln .hot{color:var(--st-hot)}
+.m5 .river{position:relative;padding:26px 0 10px}
+.m5 .axis{position:absolute;left:0;right:0;top:50px;height:2px;background:var(--wash2)}
+.m5 .nowline{position:absolute;top:26px;bottom:6px;left:38%;width:2.5px;background:var(--st-booked);
+  box-shadow:0 0 16px 2px rgba(67,223,174,.4)}
+.m5 .nowtag{position:absolute;top:2px;left:38%;transform:translateX(-50%);
+  font-family:'Archivo Black',sans-serif;font-size:10px;letter-spacing:.14em;color:var(--st-booked)}
+.m5 .hours{display:flex;justify-content:space-between;padding-bottom:34px;
+  font-family:ui-monospace,Menlo,monospace;font-size:9px;color:var(--ink3)}
+.m5 .lane{display:flex;gap:10px;align-items:stretch;padding-bottom:12px;overflow-x:auto}
+.m5 .ev{border-radius:12px;padding:9px 13px;flex-shrink:0;min-width:130px}
+.m5 .ev .k{font-size:7px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.6}
+.m5 .ev .t{font-family:'Archivo Black',sans-serif;font-size:12.5px;padding-top:2px;white-space:nowrap}
+.m5 .ev.past{background:var(--wash);color:var(--ink3)}
+.m5 .ev.sesh{background:var(--st-booked);color:var(--chip-ink)}
+.m5 .ev.sesh.hot{background:var(--st-hot);color:var(--hot-text)}
+.m5 .ev.todo{background:var(--panel);outline:2.5px dashed rgba(255,90,77,.6);outline-offset:-2.5px;cursor:pointer}
+.m5 .ev.todo .t{color:var(--st-hot)}
+.m5 .ev.todo:hover{outline-style:solid}
+.m5 .foot{display:flex;gap:26px;padding-top:22px;color:var(--ink2)}
+.m5 .foot h4{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);padding-bottom:8px}
+.m5 .names{font-family:'Archivo Black',sans-serif;font-size:13px;color:var(--ink);line-height:1.5}
+.m5 .sep{color:var(--ink3);font-family:system-ui;font-weight:400}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">Marquee evolutions — high contrast · action is the hero</span>
+    <div class="grow"></div>
+    <div class="optswitch">
+      <button class="on" id="oM1" onclick="setOpt('M1')">M1 Spotlight</button>
+      <button id="oM2" onclick="setOpt('M2')">M2 Split</button>
+      <button id="oM3" onclick="setOpt('M3')">M3 Tickets</button>
+      <button id="oM4" onclick="setOpt('M4')">M4 Desk</button>
+      <button id="oM5" onclick="setOpt('M5')">M5 Current</button>
+    </div>
+  </div>
+
+  <!-- ════════ M1 · SPOTLIGHT ════════ -->
+  <section class="m1" id="secM1">
+    <div class="flosay">
+      <div class="fhead" style="padding-bottom:6px">
+        <svg class="ribbon" width="24" height="24" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Sunday, Sep 6</span>
+      </div>
+      <span class="ln">We landed <span class="grad">Kestrel, Gamma Media & 10 Summers</span> today. Seven rooms lit tonight. <span class="hot">Three things are red — here's the first:</span></span>
+    </div>
+
+    <div class="hero">
+      <div>
+        <div class="k">Do this now · 1 of 3</div>
+        <div class="t">COD invoicing +<br>outstanding follow-up</div>
+        <div class="sub">Aaron · covering 8 days — the longest backlog on the board</div>
+      </div>
+      <span class="doit">Open it →</span>
+    </div>
+
+    <div class="upnext">
+      <div class="un red"><span class="idx">2</span>Round up SRS bookings for payment<span class="mn">5d late</span></div>
+      <div class="un red"><span class="idx">3</span>Tenant rent follow-up<span class="mn">missed yday</span></div>
+      <div class="un"><span class="idx">4</span>Approve 4 invoice packages<span class="mn">$6,025</span></div>
+      <div class="un"><span class="idx">5</span>Approve Ramp transactions + 3 more routine<span class="mn">show all →</span></div>
+    </div>
+
+    <div class="floor">
+      <div class="col" style="flex:1.6">
+        <h4>Tonight · 7 lit</h4>
+        <div class="roomstrip">
+          <div class="rst on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rst on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rst on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rst"><span class="rn">PRS·E</span></div>
+          <div class="rst hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rst"><span class="rn">NAD</span></div>
+          <div class="rst"><span class="rn">ARS·A</span></div>
+          <div class="rst on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rst"><span class="rn">ERS·A</span></div>
+          <div class="rst on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rst on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rst"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <h4>Landed today</h4>
+        <div class="names">Kestrel Music<span class="sep"> · </span>Gamma Media<span class="sep"> · </span>10 Summers</div>
+        <h4 style="padding-top:14px">Holds to check</h4>
+        <div class="names" style="font-size:12px">Nova Beats<span class="sep"> Mon · </span>Jalen H.<span class="sep"> Tue · </span>Zach T.<span class="sep"> Tue · </span>+3</div>
+      </div>
+      <div class="col">
+        <h4>Pipeline</h4>
+        <div class="names" style="font-size:22px">22 <span class="chipx h" style="vertical-align:4px">2 new</span></div>
+        <h4 style="padding-top:14px">COD out</h4>
+        <div class="names" style="font-size:16px;color:var(--st-hot)">$16,627 · worst 41d</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ M2 · SPLIT STAGE ════════ -->
+  <section class="m2" id="secM2" style="display:none">
+    <div class="split">
+      <div class="now">
+        <div class="bigk">Now — act</div>
+        <div class="act red"><span class="t">Clear Aaron's COD backlog</span><span class="mn">8 DAYS</span></div>
+        <div class="act red"><span class="t">Round up SRS bookings</span><span class="mn">5D LATE</span></div>
+        <div class="act red"><span class="t">Chase tenant rent</span><span class="mn">MISSED YDAY</span></div>
+        <div class="act"><span class="t">Sign 4 invoice packages</span><span class="mn">$6,025</span></div>
+        <div class="act small"><span class="t">Approve Ramp transactions</span></div>
+        <div class="act small"><span class="t">Update last night's invoices in QB</span></div>
+        <div class="act small"><span class="t">Call SIR re: rental return</span></div>
+        <div class="flofoot">
+          <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+          <p><b style="color:var(--ink)">Flo:</b> everything red is Aaron's column — Fernando is clear.
+          Knock out the COD backlog first and the rest of the day is signatures.</p>
+        </div>
+      </div>
+      <div class="state">
+        <h4>Tonight · 7 lit</h4>
+        <div class="roomstrip" style="grid-template-columns:repeat(6,1fr)">
+          <div class="rst on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rst on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rst on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rst hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rst on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rst on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rst on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rst"><span class="rn">PRS·E</span></div>
+          <div class="rst"><span class="rn">NAD</span></div>
+          <div class="rst"><span class="rn">ARS·A</span></div>
+          <div class="rst"><span class="rn">ERS·A</span></div>
+          <div class="rst"><span class="rn">TRK·S</span></div>
+        </div>
+        <h4>Landed today</h4>
+        <div class="staterow"><span class="names">Kestrel Music · Gamma Media · 10 Summers</span></div>
+        <h4>Holds to check</h4>
+        <div class="staterow"><span class="mono" style="font-size:9.5px;color:var(--ink3);width:52px">Mon</span><span class="names" style="font-size:12.5px">Nova Beats</span><span class="chipx w" style="margin-left:auto">ERS·A</span></div>
+        <div class="staterow"><span class="mono" style="font-size:9.5px;color:var(--ink3);width:52px">Tue</span><span class="names" style="font-size:12.5px">Jalen Haris · Zach T.</span><span class="chipx w" style="margin-left:auto">PRS·A/B</span></div>
+        <div class="staterow"><span class="mono" style="font-size:9.5px;color:var(--ink3);width:52px">Wed+</span><span class="names" style="font-size:12.5px">Rico B · Sam L. · Honestav</span><span class="chipx w" style="margin-left:auto">PRS</span></div>
+        <h4>Pipeline & money</h4>
+        <div style="display:flex;gap:22px;align-items:baseline">
+          <span class="statbig">22</span>
+          <span class="chipx h">2 new</span>
+          <span class="statbig" style="color:var(--st-hot);font-size:20px">$16.6k out</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ M3 · TICKET RAIL ════════ -->
+  <section class="m3" id="secM3" style="display:none">
+    <div class="fhead" style="padding-bottom:12px">
+      <svg class="ribbon" width="24" height="24" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span>
+      <span style="font-size:13.5px;color:var(--ink2)">— clear the rail and the day is yours. Three reds, then signatures.</span>
+    </div>
+    <div class="progress">
+      <div class="pbar"><i></i></div>
+      <span class="ptx">3 of 7 cleared</span>
+    </div>
+    <div class="rail">
+      <div class="ticket red">
+        <div class="k">Duty · Aaron · 8 days</div>
+        <div class="t">COD invoicing + outstanding follow-up</div>
+        <div class="sub">The longest backlog on the board</div>
+        <div class="stub">Do it →</div>
+      </div>
+      <div class="ticket red">
+        <div class="k">Monthly · 5 days late</div>
+        <div class="t">Round up SRS bookings for payment</div>
+        <div class="sub">Was due Tue 9/1</div>
+        <div class="stub">Do it →</div>
+      </div>
+      <div class="ticket red">
+        <div class="k">Duty · missed yesterday</div>
+        <div class="t">Tenant rent follow-up</div>
+        <div class="stub">Do it →</div>
+      </div>
+      <div class="ticket warm">
+        <div class="k">Owner · 4 packages</div>
+        <div class="t">Sign $6,025 of invoices</div>
+        <div class="sub">Mustard · Kestrel · Gamma · Zach T.</div>
+        <div class="stub">Review →</div>
+      </div>
+      <div class="ticket">
+        <div class="k">Duty</div>
+        <div class="t">Approve Ramp transactions</div>
+        <div class="stub" style="background:var(--wash2);color:var(--ink)">Do it →</div>
+      </div>
+      <div class="ticket doneT">
+        <div class="k">Duty · done 11:20A</div>
+        <div class="t">Collect yesterday's WOs</div>
+      </div>
+    </div>
+    <div class="below">
+      <div>
+        <h4>Tonight · 7 lit</h4>
+        <div class="roomstrip">
+          <div class="rst on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rst on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rst on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rst"><span class="rn">PRS·E</span></div>
+          <div class="rst hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rst"><span class="rn">NAD</span></div>
+          <div class="rst"><span class="rn">ARS·A</span></div>
+          <div class="rst on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rst"><span class="rn">ERS·A</span></div>
+          <div class="rst on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rst on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rst"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+      <div>
+        <h4>Landed / in the air</h4>
+        <div class="names">Kestrel · Gamma Media · 10 Summers</div>
+        <div style="font-size:11.5px;color:var(--ink3);padding-top:6px">6 holds to check — Nova Beats leads Monday</div>
+      </div>
+      <div>
+        <h4>Pipeline</h4>
+        <div class="names" style="font-size:20px">22 <span class="chipx h" style="vertical-align:3px">2 new</span></div>
+        <div style="font-size:11.5px;color:var(--st-hot);padding-top:6px">$16.6k COD out · worst 41d</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ M4 · THE DESK ════════ -->
+  <section class="m4" id="secM4" style="display:none">
+    <div class="desk">
+      <div class="fhead" style="padding-bottom:14px">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span style="font-size:12px;letter-spacing:.14em;color:var(--ink3)">PRSFLO OPS DESK — SUN 09.06 · 16:26 PT</span>
+      </div>
+      <div class="row">
+        <div class="feed">
+          <div class="fl"><span class="p">FLO></span> good afternoon, eli. board status follows.</div>
+          <div class="fl hotln">▲ RED&nbsp;&nbsp;<span class="act"><b>cod invoicing</b> — aaron, 8 days behind</span></div>
+          <div class="fl hotln">▲ RED&nbsp;&nbsp;<span class="act"><b>srs round-up</b> — 5 days late</span></div>
+          <div class="fl hotln">▲ RED&nbsp;&nbsp;<span class="act"><b>tenant rent follow-up</b> — missed yday</span></div>
+          <div class="fl">● OWNER&nbsp;<span class="act"><b>4 packages</b> await signature — $6,025</span></div>
+          <div class="fl">● NEW&nbsp;&nbsp;&nbsp;<span class="act"><b>2 inquiries</b> uncontacted in the pipeline</span></div>
+          <div class="fl"><span class="p">✓</span> landed today: <b>kestrel music · gamma media · 10 summers</b></div>
+          <div class="fl"><span class="p">✓</span> fernando: all duties clear</div>
+          <div class="fl">○ holds to check: <span class="act">nova beats (mon) · jalen h. (tue) · zach t. (tue) · +3</span></div>
+          <div class="prompt"><span class="p">FLO></span> <span style="color:var(--ink3)">ask anything…</span><span class="cursor"></span></div>
+        </div>
+        <div class="side">
+          <div class="readout">
+            <div class="k">Rooms tonight</div>
+            <div class="v okv">7 LIT</div>
+            <div class="lights">
+              <span class="lt on">PA</span><span class="lt on">PB</span><span class="lt on">PC</span>
+              <span class="lt">PE</span><span class="lt hot">PX</span><span class="lt">ND</span>
+              <span class="lt">AA</span><span class="lt on">AB</span><span class="lt">EA</span>
+              <span class="lt on">EB</span><span class="lt on">TN</span><span class="lt">TS</span>
+            </div>
+            <div class="s">honestav runs to 03:00</div>
+          </div>
+          <div class="readout">
+            <div class="k">Red on the board</div>
+            <div class="v hotv">3</div>
+            <div class="s">all aaron · longest 8d</div>
+          </div>
+          <div class="readout">
+            <div class="k">Pipeline</div>
+            <div class="v">22</div>
+            <div class="s">11 hot · 2 new inquiries</div>
+          </div>
+          <div class="readout">
+            <div class="k">COD outstanding</div>
+            <div class="v hotv">$16,627</div>
+            <div class="s">5 balances · worst 41d</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ M5 · THE CURRENT ════════ -->
+  <section class="m5" id="secM5" style="display:none">
+    <div class="flosay">
+      <div class="fhead" style="padding-bottom:6px">
+        <svg class="ribbon" width="24" height="24" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your day as a river — NOW is the green line</span>
+      </div>
+      <span class="ln">Morning work is behind you. <span class="hot">Three reds sit on the line ahead</span> — clear them before the 7P wave hits.</span>
+    </div>
+
+    <div class="river">
+      <div class="hours"><span>9A</span><span>11A</span><span>1P</span><span>3P</span><span>5P</span><span>7P</span><span>9P</span><span>11P</span><span>1A</span><span>3A</span></div>
+      <div class="axis"></div>
+      <div class="nowline"></div><div class="nowtag">NOW</div>
+      <div class="lane" style="padding-top:16px">
+        <div class="ev past"><span class="k">done 11:20A</span><div class="t">WOs collected ✓</div></div>
+        <div class="ev sesh"><span class="k">11A–6P · PRS·A</span><div class="t">Jalen Haris</div></div>
+        <div class="ev sesh"><span class="k">12P–6P · PRS·C</span><div class="t">Sam Lorimore</div></div>
+        <div class="ev todo"><span class="k">red · 8 days</span><div class="t">COD invoicing →</div></div>
+        <div class="ev todo"><span class="k">red · 5d late</span><div class="t">SRS round-up →</div></div>
+        <div class="ev todo"><span class="k">red · yday</span><div class="t">Tenant rent →</div></div>
+        <div class="ev sesh hot"><span class="k">7P–3A · PRS·X</span><div class="t">Honestav</div></div>
+        <div class="ev sesh"><span class="k">2P–9:30P · ERS·B</span><div class="t">Mustard</div></div>
+        <div class="ev sesh"><span class="k">2P–10P · TRK·N</span><div class="t">DJ Camper</div></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <div style="flex:1.4">
+        <h4>Also tonight</h4>
+        <div class="names" style="font-size:12px">Zach T. (PRS·B) · Jason M. (ARS·B) — 5 rooms dark</div>
+      </div>
+      <div style="flex:1">
+        <h4>Landed today</h4>
+        <div class="names">Kestrel · Gamma Media · 10 Summers</div>
+      </div>
+      <div style="flex:1">
+        <h4>This week's air</h4>
+        <div class="names" style="font-size:12px">6 holds — Nova Beats leads Mon</div>
+      </div>
+      <div style="flex:.7">
+        <h4>Pipeline</h4>
+        <div class="names" style="font-size:20px">22 <span class="chipx h" style="vertical-align:3px">2 new</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+function setOpt(o){
+  ['M1','M2','M3','M4','M5'].forEach(function(x){
+    document.getElementById('sec'+x).style.display = x===o ? '' : 'none';
+    document.getElementById('o'+x).classList.toggle('on', x===o);
+  });
+}
+</script>
+</body>
+</html>

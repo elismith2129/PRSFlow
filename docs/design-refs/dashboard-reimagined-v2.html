@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Dashboard Reimagined v2: R4 · R5 · R6</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
+<!--
+  DASHBOARD REIMAGINED v2 (2026-09-06) — Eli's notes applied, heat added.
+
+  From the R1–R3 round:
+  · BOOKED TODAY carries NO money — the story is "what clients did we land?"
+    (matters for judging where open sessions stand). Holds likewise: who's in
+    the air and needs checking, not dollars.
+  · FLO IS A STATEMENT, not another list box — top of page, sized to be read.
+    Sentences are the buttons (R3's move, kept everywhere here).
+  · EVERY ZONE IS A PORTAL — click a section, land on its page (R2's move).
+  · THE REAL RIBBON — the actual PRSFloIcon path, sea green #43dfae, both themes.
+
+  DELIBERATE RULE-BREAKS (each flagged inline — small, reversible sins):
+  · BREAK #1 (R5): LIVE rooms breathe with a soft sea-green glow. Violates
+    "glow = AI only" — a second glow meaning: the building is alive.
+  · BREAK #2 (R5/R6): gradient ink on the Flo statement's key phrases.
+    Violates "no gradients" — AI speech gets iridescence.
+  · BREAK #3 (R4): portals lift + scale on hover. Violates flat-press motion.
+
+  R4 · THE ANCHOR — Flo statement anchors the top; below, four clickable
+       portal zones (Tonight / Your list / Landed & In-the-air / Pipeline).
+       The practical one: v8c's content in statement-first clothing.
+  R5 · NIGHT MARQUEE — cinematic. TONIGHT is the hero: big room cells on a
+       dark stage, live ones breathing. Flo speaks above the marquee. The
+       one you leave on the office TV.
+  R6 · THE WIRE — the whole dashboard is headlines. Every section is one
+       giant Archivo line that IS the link, with its data inline. Text fully
+       outside boxes; the broadsheet gone loud.
+
+  Fixed geometry everywhere. Mock polarity; app polarity inverts.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --srf:#ffffff; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626;
+  --st-hot:#ff5a4d; --hot-text:#fff4f2;
+  --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --ivory:#d5d0c2;
+  --softsh:0 1px 5px rgba(42,39,34,.10);
+  --ctlsh:0 1px 3px rgba(42,39,34,.14);
+  --flo-ink:42,39,34;
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --srf:#242320; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --softsh:0 2px 8px rgba(0,0,0,.35);
+  --ctlsh:0 1px 4px rgba(0,0,0,.4);
+  --flo-ink:213,208,194;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);
+  font:400 14px/1.5 system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;
+  transition:background .2s,color .2s}
+button,input{font:inherit;color:var(--fg);background:none;border:none}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 70px}
+.topbar{display:flex;align-items:center;gap:12px;padding:4px 0 18px}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--srf);border-radius:99px;padding:4px;gap:2px;
+  box-shadow:var(--softsh)}
+.optswitch button{border-radius:99px;padding:5px 13px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.5}
+.optswitch button.on{opacity:1;background:var(--fg);color:var(--bg)}
+[data-theme="dark"] .optswitch button.on{background:var(--ivory);color:#1b1a17}
+.themebtn{position:fixed;right:16px;bottom:14px;z-index:50;background:var(--fg);color:var(--bg);
+  border-radius:99px;padding:8px 15px;font-size:9.5px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;cursor:pointer;box-shadow:var(--ctlsh)}
+[data-theme="dark"] .themebtn{background:var(--ivory);color:#1b1a17}
+.chipx{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;
+  font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--chip-ink);flex-shrink:0}
+.chipx.b{background:var(--st-booked)}
+.chipx.w{background:var(--st-warm)}
+.chipx.h{background:var(--st-hot);color:var(--hot-text)}
+.chipx.u{background:var(--st-uncon)}
+.ribbon{display:inline-block;vertical-align:-2px}
+
+/* ═════ shared: THE STATEMENT — Flo speaks first, big ═════ */
+.statement{padding:8px 0 4px;max-width:900px}
+.statement .fhead{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.statement .fhead .fname{font-family:'Archivo Black',sans-serif;font-size:14px}
+.statement .lines .ln{display:block;font-family:'Archivo Black',sans-serif;
+  font-size:24px;line-height:1.32;letter-spacing:-.015em;cursor:pointer;
+  padding:2px 0;width:fit-content}
+.statement .lines .ln .go{font-family:system-ui;font-size:9.5px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;opacity:0;margin-left:12px;
+  vertical-align:6px;transition:opacity .15s}
+.statement .lines .ln:hover .go{opacity:.55}
+.statement .lines .ln.red{color:var(--st-hot)}
+.statement .lines .ln.dim{opacity:.55;font-size:19px}
+/* BREAK #2 — gradient ink on Flo's key phrase. AI speech gets iridescence. */
+.grad{background:linear-gradient(100deg,var(--st-booked),var(--st-cold) 60%,var(--st-uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ═════ R4 · THE ANCHOR ═════ */
+.r4 .portals{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px;padding-top:26px}
+.r4 .portal{background:var(--srf);border-radius:18px;box-shadow:var(--softsh);
+  padding:16px 18px;cursor:pointer;position:relative;
+  transition:transform .18s ease, box-shadow .18s ease}
+/* BREAK #3 — portals lift on hover. A door should feel like a door. */
+.r4 .portal:hover{transform:translateY(-3px) scale(1.008);box-shadow:0 10px 26px rgba(0,0,0,.28)}
+[data-theme="light"] .r4 .portal:hover{box-shadow:0 10px 24px rgba(42,39,34,.16)}
+.r4 .portal .pt{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+.r4 .portal .pt b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;opacity:.55}
+.r4 .portal .pt .arrow{margin-left:auto;font-size:13px;opacity:.35;transition:opacity .15s,transform .15s}
+.r4 .portal:hover .pt .arrow{opacity:.9;transform:translateX(3px)}
+.r4 .rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.r4 .rc{border-radius:9px;min-height:52px;padding:6px 8px;background:var(--wash);overflow:hidden}
+.r4 .rc .rn{font-size:6.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;white-space:nowrap}
+.r4 .rc.on{background:var(--st-booked);color:var(--chip-ink)}
+.r4 .rc.hot{background:var(--st-hot);color:var(--hot-text)}
+.r4 .rc .a{font-family:'Archivo Black',sans-serif;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r4 .q{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+.r4 .q .bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--wash2)}
+.r4 .q.done{opacity:.4;text-decoration:line-through}
+.r4 .q.done .bx{background:var(--st-booked)}
+.r4 .q.red{color:var(--st-hot);font-weight:600}
+.r4 .q .mn{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:9px;opacity:.5;flex-shrink:0}
+.r4 .landhead{font-size:8.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;opacity:.45;padding:2px 0 8px}
+.r4 .landed{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:16px}
+.r4 .land{border-radius:99px;padding:6px 13px;background:var(--st-booked);color:var(--chip-ink);
+  font-family:'Archivo Black',sans-serif;font-size:11.5px}
+.r4 .holdrow{display:flex;align-items:baseline;gap:9px;padding:4.5px 0;font-size:12.5px}
+.r4 .holdrow .d{font-family:ui-monospace,Menlo,monospace;font-size:9px;opacity:.5;width:54px;flex-shrink:0}
+.r4 .holdrow .chipx{margin-left:auto}
+.r4 .pipebig{font-family:'Archivo Black',sans-serif;font-size:46px;line-height:1;letter-spacing:-.02em}
+.r4 .pipesub{font-size:11px;opacity:.55;padding:4px 0 12px}
+.r4 .pstat{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:12px}
+.r4 .inqbar{background:var(--st-hot);color:var(--hot-text);border-radius:10px;padding:8px 13px;
+  font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  display:flex;align-items:center;gap:9px}
+.r4 .pulse{width:7px;height:7px;border-radius:50%;background:#fff;animation:np 1.6s ease-in-out infinite}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+.r4 .money{display:flex;gap:26px;padding-top:4px}
+.r4 .money .mv{font-family:'Archivo Black',sans-serif;font-size:22px}
+.r4 .money .mv.hotv{color:var(--st-hot)}
+.r4 .money small{display:block;font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-top:3px}
+
+/* ═════ R5 · NIGHT MARQUEE ═════ */
+.r5 .stage{background:#141311;border-radius:22px;padding:26px 26px 22px;position:relative;overflow:hidden}
+[data-theme="light"] .r5 .stage{background:#211f1b;color:#d9d6cd}
+.r5 .statement .lines .ln{font-size:26px}
+.r5 .marq{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding-top:22px}
+.r5 .mc{border-radius:13px;min-height:92px;padding:10px 12px;background:rgba(217,214,205,.06);
+  display:flex;flex-direction:column;overflow:hidden;cursor:pointer;position:relative;
+  transition:transform .18s ease}
+.r5 .mc:hover{transform:translateY(-2px)}
+.r5 .mc .rn{font-size:7.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.5;white-space:nowrap}
+.r5 .mc .a{font-family:'Archivo Black',sans-serif;font-size:13.5px;margin-top:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r5 .mc .m{font-size:9.5px;opacity:.7;margin-top:1px}
+/* BREAK #1 — live rooms BREATHE. A second glow meaning: the building is on. */
+.r5 .mc.on{background:var(--st-booked);color:var(--chip-ink);
+  animation:breathe 4.5s ease-in-out infinite}
+@keyframes breathe{
+  0%,100%{box-shadow:0 0 14px 1px rgba(67,223,174,.25)}
+  50%{box-shadow:0 0 26px 6px rgba(67,223,174,.5)}}
+.r5 .mc.hot{background:var(--st-hot);color:var(--hot-text);
+  animation:breatheHot 3.2s ease-in-out infinite}
+@keyframes breatheHot{
+  0%,100%{box-shadow:0 0 14px 1px rgba(255,90,77,.25)}
+  50%{box-shadow:0 0 26px 6px rgba(255,90,77,.5)}}
+@media (prefers-reduced-motion: reduce){.r5 .mc.on,.r5 .mc.hot{animation:none}}
+.r5 .mc.off{opacity:.45}
+.r5 .underrail{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding-top:16px}
+.r5 .rail{background:var(--srf);border-radius:16px;box-shadow:var(--softsh);padding:13px 16px;
+  cursor:pointer;transition:transform .18s ease}
+.r5 .rail:hover{transform:translateY(-2px)}
+.r5 .rail b{display:flex;align-items:center;font-size:9.5px;font-weight:800;letter-spacing:.12em;
+  text-transform:uppercase;opacity:.5;padding-bottom:8px}
+.r5 .rail b .arrow{margin-left:auto;opacity:.6}
+.r5 .rail .big{font-family:'Archivo Black',sans-serif;font-size:24px;line-height:1.1}
+.r5 .rail .big.hotv{color:var(--st-hot)}
+.r5 .rail .sub{font-size:11px;opacity:.6;padding-top:3px}
+.r5 .rail .names{font-family:'Archivo Black',sans-serif;font-size:13px;line-height:1.45}
+.r5 .rail .names .sep{opacity:.3;font-family:system-ui;font-weight:400}
+
+/* ═════ R6 · THE WIRE ═════ */
+.r6 .wire{padding-top:6px}
+.r6 .story{display:block;padding:26px 0;cursor:pointer;position:relative}
+.r6 .story + .story{border-top:1px solid var(--wash2)} /* the wire's one hairline — call it BREAK #4 */
+.r6 .kicker{font-size:9.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  opacity:.4;padding-bottom:8px;display:flex;gap:10px;align-items:center}
+.r6 .kicker .arrow{margin-left:auto;font-size:13px;opacity:0;transition:opacity .15s,transform .15s}
+.r6 .story:hover .kicker .arrow{opacity:.8;transform:translateX(4px)}
+.r6 .head{font-family:'Archivo Black',sans-serif;font-size:36px;line-height:1.14;
+  letter-spacing:-.02em;max-width:980px}
+.r6 .head .hot{color:var(--st-hot)}
+.r6 .head .ok{color:var(--st-booked)}
+.r6 .head .warm{color:var(--st-warm)}
+.r6 .deck{padding-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px}
+.r6 .deck .mut{opacity:.55}
+.r6 .roomband{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;padding-top:14px}
+.r6 .bc{border-radius:8px;height:46px;padding:5px 7px;background:var(--wash);overflow:hidden}
+.r6 .bc .rn{font-size:6.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.5;white-space:nowrap}
+.r6 .bc.on{background:var(--st-booked);color:var(--chip-ink)}
+.r6 .bc.hot{background:var(--st-hot);color:var(--hot-text)}
+.r6 .bc .a{font-family:'Archivo Black',sans-serif;font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+
+<button class="themebtn" id="themeBtn" onclick="flip()">View light</button>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">Reimagined v2 — statements, portals, no money on landed/holds</span>
+    <div class="grow"></div>
+    <div class="optswitch">
+      <button class="on" id="oR4" onclick="setOpt('R4')">R4 · Anchor</button>
+      <button id="oR5" onclick="setOpt('R5')">R5 · Marquee</button>
+      <button id="oR6" onclick="setOpt('R6')">R6 · Wire</button>
+    </div>
+  </div>
+
+  <!-- ════════ R4 · THE ANCHOR ════════ -->
+  <section class="r4" id="secR4">
+    <div class="statement">
+      <div class="fhead">
+        <svg class="ribbon" width="26" height="26" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Sunday, Sep 6</span>
+      </div>
+      <div class="lines">
+        <span class="ln red">Aaron is 8 days behind on COD invoicing.<span class="go">Billing →</span></span>
+        <span class="ln">We landed <span class="grad">Kestrel, Gamma&nbsp;Media and 10&nbsp;Summers</span> today.<span class="go">Calendar →</span></span>
+        <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.<span class="go">Review →</span></span>
+      </div>
+    </div>
+
+    <div class="portals">
+      <div class="portal">
+        <div class="pt"><b>Tonight</b><span class="label" style="letter-spacing:.06em">7 sessions · 1 flagged</span><span class="arrow">→</span></div>
+        <div class="rgrid">
+          <div class="rc on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="rc on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="rc on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="rc"><span class="rn">PRS·E</span></div>
+          <div class="rc hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="rc"><span class="rn">NAD</span></div>
+          <div class="rc"><span class="rn">ARS·A</span></div>
+          <div class="rc on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="rc"><span class="rn">ERS·A</span></div>
+          <div class="rc on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="rc on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="rc"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+
+      <div class="portal">
+        <div class="pt"><b>Your list</b><span class="label" style="letter-spacing:.06em">3 of 7</span><span class="arrow">→</span></div>
+        <div class="q red"><span class="bx"></span>COD invoicing + follow-up<span class="mn">8 days</span></div>
+        <div class="q red"><span class="bx"></span>Round up SRS bookings<span class="mn">5d late</span></div>
+        <div class="q red"><span class="bx"></span>Tenant rent follow-up<span class="mn">yday</span></div>
+        <div class="q"><span class="bx"></span>Approve Ramp transactions</div>
+        <div class="q"><span class="bx"></span>Update invoices in QB</div>
+        <div class="q done"><span class="bx"></span>Collect yesterday's WOs</div>
+        <div class="q"><span class="bx"></span>Call SIR re: rental return</div>
+      </div>
+
+      <div class="portal">
+        <div class="pt"><b>Landed & in the air</b><span class="arrow">→</span></div>
+        <div class="landhead">Landed today</div>
+        <div class="landed">
+          <span class="land">Kestrel Music</span>
+          <span class="land">Gamma Media</span>
+          <span class="land">10 Summers</span>
+        </div>
+        <div class="landhead">Holds to check — this week</div>
+        <div class="holdrow"><span class="d">Mon 9/7</span>Harbor · Nova Beats<span class="chipx w">ERS·A</span></div>
+        <div class="holdrow"><span class="d">Tue 9/8</span>Kestrel · Jalen Haris<span class="chipx w">PRS·A</span></div>
+        <div class="holdrow"><span class="d">Tue 9/8</span>Zach Tuchman<span class="chipx w">PRS·B</span></div>
+        <div class="holdrow"><span class="d">Wed 9/9</span>Slauson Ave · Rico B<span class="chipx w">PRS·C</span></div>
+        <div class="holdrow"><span class="d">Fri 9/11</span>Gamma · Honestav<span class="chipx w">PRS·X</span></div>
+      </div>
+    </div>
+
+    <div class="portals" style="grid-template-columns:1fr 1fr;padding-top:14px">
+      <div class="portal">
+        <div class="pt"><b>CRM — pipeline</b><span class="arrow">→</span></div>
+        <div style="display:flex;align-items:flex-end;gap:18px">
+          <div><div class="pipebig">22</div><div class="pipesub">active leads</div></div>
+          <div style="flex:1">
+            <div class="pstat">
+              <span class="chipx h">11 hot</span><span class="chipx w">4 warm</span>
+              <span class="chipx u">5 uncontacted</span>
+            </div>
+            <div class="inqbar"><span class="pulse"></span>2 new inquiries</div>
+          </div>
+        </div>
+      </div>
+      <div class="portal">
+        <div class="pt"><b>The money</b><span class="arrow">→</span></div>
+        <div class="money">
+          <div class="mv hotv">$16,627<small>COD out · worst 41d</small></div>
+          <div class="mv">4<small>Approvals · $6,025</small></div>
+          <div class="mv">16<small>Flags open</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ R5 · NIGHT MARQUEE ════════ -->
+  <section class="r5" id="secR5" style="display:none">
+    <div class="stage">
+      <div class="statement">
+        <div class="fhead">
+          <svg class="ribbon" width="26" height="26" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+          <span class="fname">Flo</span><span class="label">· Sunday night</span>
+        </div>
+        <div class="lines">
+          <span class="ln"><span class="grad">Seven rooms lit tonight.</span> Honestav runs till 3A.<span class="go">Calendar →</span></span>
+          <span class="ln red">Aaron's COD invoicing is 8 days behind.<span class="go">Billing →</span></span>
+        </div>
+      </div>
+
+      <div class="marq">
+        <div class="mc on"><span class="rn">PRS · A</span><div class="a">Jalen Haris</div><div class="m">11A–6P</div></div>
+        <div class="mc on"><span class="rn">PRS · B</span><div class="a">Zach Tuchman</div><div class="m">2P–6P</div></div>
+        <div class="mc on"><span class="rn">PRS · C</span><div class="a">Sam Lorimore</div><div class="m">12P–6P</div></div>
+        <div class="mc hot"><span class="rn">PRS · X</span><div class="a">Honestav</div><div class="m">7P–3A · COD</div></div>
+        <div class="mc on"><span class="rn">ARS · B</span><div class="a">Jason Mater</div><div class="m">12P–6P</div></div>
+        <div class="mc on"><span class="rn">ERS · B</span><div class="a">Mustard</div><div class="m">2P–9:30P</div></div>
+        <div class="mc on"><span class="rn">TRK · N</span><div class="a">DJ Camper</div><div class="m">2P–10P</div></div>
+        <div class="mc off"><span class="rn">PRS · E</span><div class="m" style="margin-top:8px">dark</div></div>
+        <div class="mc off"><span class="rn">Nadine's</span><div class="m" style="margin-top:8px">dark</div></div>
+        <div class="mc off"><span class="rn">ARS · A</span><div class="m" style="margin-top:8px">dark</div></div>
+        <div class="mc off"><span class="rn">ERS · A</span><div class="m" style="margin-top:8px">dark</div></div>
+        <div class="mc off"><span class="rn">TRK · S</span><div class="m" style="margin-top:8px">dark</div></div>
+      </div>
+    </div>
+
+    <div class="underrail">
+      <div class="rail">
+        <b>Your list<span class="arrow">→</span></b>
+        <div class="big hotv">3 red</div>
+        <div class="sub">of 7 · start with COD invoicing</div>
+      </div>
+      <div class="rail">
+        <b>Landed today<span class="arrow">→</span></b>
+        <div class="names">Kestrel Music<span class="sep"> · </span>Gamma Media<span class="sep"> · </span>10 Summers</div>
+      </div>
+      <div class="rail">
+        <b>Holds to check<span class="arrow">→</span></b>
+        <div class="names" style="font-size:12px">Nova Beats<span class="sep"> · </span>Jalen Haris<span class="sep"> · </span>Zach T.<span class="sep"> · </span>Rico B<span class="sep"> · </span>Sam L.<span class="sep"> +1</span></div>
+      </div>
+      <div class="rail">
+        <b>Pipeline<span class="arrow">→</span></b>
+        <div class="big">22</div>
+        <div class="sub">11 hot · 2 new inquiries pulsing</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ R6 · THE WIRE ════════ -->
+  <section class="r6" id="secR6" style="display:none">
+    <div class="statement" style="padding-bottom:0">
+      <div class="fhead">
+        <svg class="ribbon" width="26" height="26" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· The wire · Sunday, Sep 6</span>
+      </div>
+    </div>
+
+    <div class="wire">
+      <div class="story">
+        <div class="kicker">Needs you<span class="arrow">→</span></div>
+        <div class="head"><span class="hot">Three things are red,</span> and they're all in Aaron's column — COD invoicing leads at 8 days.</div>
+        <div class="deck">
+          <span class="chipx h">COD invoicing · 8d</span>
+          <span class="chipx h">SRS round-up · 5d late</span>
+          <span class="chipx h">tenant rent · yday</span>
+          <span class="mut">4 more, routine · Fernando is clear</span>
+        </div>
+      </div>
+
+      <div class="story">
+        <div class="kicker">Landed<span class="arrow">→</span></div>
+        <div class="head">We signed <span class="ok">Kestrel Music, Gamma Media</span> and <span class="ok">10 Summers</span> today.</div>
+        <div class="deck"><span class="mut">Three sessions onto the books — all staffed except Honestav's second date.</span></div>
+      </div>
+
+      <div class="story">
+        <div class="kicker">Tonight<span class="arrow">→</span></div>
+        <div class="head"><span class="grad">Seven rooms lit</span> across the building — Honestav till 3A in X.</div>
+        <div class="roomband">
+          <div class="bc on"><span class="rn">PRS·A</span><div class="a">Jalen H.</div></div>
+          <div class="bc on"><span class="rn">PRS·B</span><div class="a">Zach T.</div></div>
+          <div class="bc on"><span class="rn">PRS·C</span><div class="a">Sam L.</div></div>
+          <div class="bc"><span class="rn">PRS·E</span></div>
+          <div class="bc hot"><span class="rn">PRS·X</span><div class="a">Honestav</div></div>
+          <div class="bc"><span class="rn">NAD</span></div>
+          <div class="bc"><span class="rn">ARS·A</span></div>
+          <div class="bc on"><span class="rn">ARS·B</span><div class="a">Jason M.</div></div>
+          <div class="bc"><span class="rn">ERS·A</span></div>
+          <div class="bc on"><span class="rn">ERS·B</span><div class="a">Mustard</div></div>
+          <div class="bc on"><span class="rn">TRK·N</span><div class="a">DJ Camper</div></div>
+          <div class="bc"><span class="rn">TRK·S</span></div>
+        </div>
+      </div>
+
+      <div class="story">
+        <div class="kicker">In the air<span class="arrow">→</span></div>
+        <div class="head"><span class="warm">Six holds</span> need checking this week — Nova Beats leads Monday.</div>
+        <div class="deck">
+          <span class="chipx w">Mon · Nova Beats · ERS·A</span>
+          <span class="chipx w">Tue · Jalen Haris · PRS·A</span>
+          <span class="chipx w">Tue · Zach T. · PRS·B</span>
+          <span class="chipx w">Wed · Rico B · PRS·C</span>
+          <span class="chipx w">Thu · Sam L. · PRS·C</span>
+          <span class="chipx w">Fri · Honestav · PRS·X</span>
+        </div>
+      </div>
+
+      <div class="story">
+        <div class="kicker">Pipeline & money<span class="arrow">→</span></div>
+        <div class="head">22 in the pipeline, <span class="hot">two new inquiries</span> waiting — and $16.6k of COD is still out.</div>
+        <div class="deck">
+          <span class="chipx h">11 hot</span><span class="chipx w">4 warm</span><span class="chipx u">5 uncontacted</span>
+          <span class="mut">· 4 approvals on your desk · 16 flags open</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+function flip(){
+  var h=document.documentElement;
+  var next=h.getAttribute('data-theme')==='light'?'dark':'light';
+  h.setAttribute('data-theme',next);
+  document.getElementById('themeBtn').textContent = next==='light'?'View dark':'View light';
+}
+function setOpt(o){
+  ['R4','R5','R6'].forEach(function(x){
+    document.getElementById('sec'+x).style.display = x===o ? '' : 'none';
+    document.getElementById('o'+x).classList.toggle('on', x===o);
+  });
+}
+</script>
+</body>
+</html>
