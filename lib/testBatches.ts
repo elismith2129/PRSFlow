@@ -55,6 +55,56 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-6-2026-noir-dashboard',
+    title: 'The Noir dashboard + Shift Notes page',
+    version: 'v1.24.0',
+    date: 'Sep 6–7, 2026',
+    intro:
+      'The Dashboard and My Day merged into one dark, high-contrast page, and Shift Notes moved to its own menu item. Test on the preview URL until the branch merges, then on the live site. Desktop unless noted. The big thing to feel for: nothing on the dashboard should ever overlap, shift size, or leave a hollow box.',
+    items: [
+      {
+        id: 'v124-geometry', area: 'Dashboard', device: 'desktop',
+        what: 'The dashboard boxes never move or resize — no overlaps, no hollow gaps',
+        how: 'Open the dashboard. Resize the browser window, switch the view-as toggle through all three people, and revisit at different times of day. The five boxes keep exactly the same size and position every time; empty lists say something like "no holds" instead of leaving blank space.',
+      },
+      {
+        id: 'v124-statement', area: 'Dashboard', device: 'desktop',
+        what: 'Flo reads real numbers — reds first, landed names when we landed someone',
+        how: 'Compare Flo\'s lines to reality: any red line should match an actual overdue duty; on a day a booking was created, the green line should name the client. The dim line at the end is the summary.',
+      },
+      {
+        id: 'v124-yourlist', area: 'Dashboard', device: 'desktop',
+        what: 'Your List merges duties, tasks and approvals — ticking a duty works, tasks/approvals click through',
+        how: 'Tick a duty row: it strikes through and the progress count updates (and the change survives a reload). Click a task row: you land on /tasks. Click an approve row (owners): you land on Billing. On Eli\'s view, the Mine/Fernando/Aaron tabs swap the list without the box changing size.',
+      },
+      {
+        id: 'v124-money', area: 'Dashboard', device: 'desktop',
+        what: 'The money box agrees with the Billing page',
+        how: 'Note the four numbers (COD out, need review, wait on approval, ready to go out), then open Billing and check each against its tab/strip. They must match exactly — same data, same math.',
+      },
+      {
+        id: 'v124-shiftnotes', area: 'Shift Notes', device: 'desktop',
+        what: 'Shift Notes works from its new menu item — posting, editing, drafts, and the Runner tab',
+        how: 'Open Shift Notes from the menu. Type into the composer, leave the page, come back: your draft is still there. Post it: it appears in the log signed with your name. Switch to the Runner notes tab: pick a studio, see the runners\' channel, post an office note. Check the log\'s "Load more days" button appears once there are more than 7 days of notes.',
+      },
+      {
+        id: 'v124-myday-redirect', area: 'Navigation', device: 'desktop',
+        what: 'Old /my-day bookmarks land on the dashboard',
+        how: 'Type /my-day into the address bar. You should arrive at the dashboard with no error. My Day is gone from the menu; Shift Notes is there instead.',
+      },
+      {
+        id: 'v124-noir-walk', area: 'Whole app', device: 'desktop',
+        what: 'The dark high-contrast look holds up on every page — nothing unreadable, nothing still old-grey',
+        how: 'Walk every page in the menu (CRM, Calendar, Billing, a work order popup, Daily Ops, Mic Inventory, Tasks, Flags, Punches). Everything should sit on the near-black ground with bright text. Flag anything that looks washed out, unreadable, or like it kept the old grey look.',
+      },
+      {
+        id: 'v124-runner-phone', area: 'Runner', device: 'phone',
+        what: 'Runner pages still work and read well in the new dark look',
+        how: 'On the phone, open the runner hub, a checklist, and the stock page. Everything readable, nothing broken by the color change. The runner notes tile still opens the channel.',
+      },
+    ],
+  },
+  {
     id: 'sep-5-2026-activity-notes',
     title: 'CRM activity notes — the log gets a pen',
     version: 'v1.23.0',

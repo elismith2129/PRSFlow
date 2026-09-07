@@ -19,6 +19,92 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.24.0 — THE NOIR DASHBOARD (UNRELEASED — lives on `feature/dashboard-noir`) — Sep 6–7, 2026
+
+**⚠ NOT ON MAIN YET.** This entry ships with the branch merge. Remaining
+before merge: wire the Flo glow + Bebas stone header + rail treatment (no
+grey ground; hover lighten+grow; NO ivory fill on the selected item — Eli's
+ruling), then Eli's full preview walk. Design law:
+`docs/design-refs/dashboard-flo-ribbon-final.html` (final) and
+`dashboard-anchor-noir.html` A1 (layout); session narrative in PROJECT_LOG.
+
+**No migrations.**
+
+**The dashboard absorbs /my-day and goes noir.** `app/(main)/page.tsx`
+rebuilt: statement Flo (composeBriefing's real bullets, reds first, landed
+line from real names), five fixed-geometry portals — Tonight (356px, full
+card anatomy: artist/client/times/initials), Your List (merged duties +
+tasks + approvals with kind tags; Fernando/Aaron peek tabs for Eli), Landed
+& In The Air (names, never money), CRM (big count + breathing inquiry block
+with lead names), The Money (billing pipeline: COD out + review/approval/
+send in ladder colours via `lib/home.ts fetchBillingPulse` — same
+derivations as the billing page). Retired from the dashboard: studio
+squares, flags panel, staff grid, approvals banner, task/flag modals
+(~1,300 lines).
+
+**`lib/home.ts`** — landed-today (created-today, confirmed, native, deduped
+by work_order_id), new-inquiry names (WebInquiryProvider's exact predicate),
+billing pulse, holds-week. Null-on-failure throughout.
+
+**NOIR SITE-WIDE (dark register only):** `--c-bg` #1b1a17→#0b0a09, `--c-fg`
+#d9d6cd→#f2efe7, `--c-srf` #242320→#151412, washes/fg-tiers/flo-ink/zebra
+re-tuned. Light mode untouched. Supersedes §7c's dim-room values.
+**RADIUS STEP-DOWN site-wide:** containers 40→16, inner 26/20→12, big
+modals 18→14; pills stay 99.
+
+**Shift Notes** is its own page (`/shift-notes`, rail item under Operations,
+same audience gate as old /my-day): Manager|Runner tabs — the runner
+channel's admin view MOVED here off Daily Ops; manager log paginates by
+7 day-groups. All draft machinery moved verbatim. **/my-day → redirect
+stub** to `/` (the /clients precedent). **CRM:** page height reclaims the
+52px the retired top nav still subtracted; Log Activity composer moved
+above static Notes.
+
+**WATCH-OUTS:**
+1. The noir dashboard is theme-FIXED dark (`html.n-page` + `.n-home`
+   scoped tokens) — light-theme users get a noir home page. Deliberate.
+2. `html.n-page .c-frame` override exists because `.c-frame` paints
+   `--c-bg` over the body — remove both together if ever refactored.
+3. Fixed geometry is hardcoded px (row 1 = 356, row 2 = 196). Change them
+   in ONE place (`globals.css` NOIR block) or masonry returns.
+4. Daily Ops no longer hosts the runner-notes channel — its page channel
+   still subscribes to `runner_note_posts` for the sweep cards; don't
+   "clean up" that subscription.
+
+**Files:** `app/(main)/page.tsx`, `lib/home.ts`,
+`app/(main)/shift-notes/page.tsx`, `app/(main)/my-day/page.tsx`,
+`app/(main)/daily-ops/page.tsx`, `app/(main)/crm/page.tsx`,
+`components/layout/Rail.tsx`, `styles/globals.css`, ~20 design-ref mocks.
+
+---
+
+## v1.23.1 — Weekends off, COD-only money, and the masonry bugs — Sep 6, 2026
+
+**No migrations.** Shipped straight to main between releases.
+
+**ROLE_WORKDAYS (`lib/myday.ts`):** daily duties are due only on days the
+role is IN — manager AND billing = Mon–Fri. Weekends never go red on the
+grid or in Flo; Monday covers Sat/Sun because every backlog scan walks due
+days only. **DAILY cadence only** — weekly/monthly judge off due_days
+exactly as before (a sticky monthly landing on a weekend must still
+escalate). **WATCH-OUT:** if a role's schedule changes, edit ROLE_WORKDAYS —
+don't touch the duty seeds.
+
+**Flo's money went COD-only at the source:** `fetchBalancesQueue` filters
+`payment_status='COD'` (same predicate as lib/billing) — label balances are
+mid-pipeline, not "outstanding". Every consumer (briefing line, dashboard
+stat, My Day queue) inherited the fix.
+
+**Two masonry bugs, one disease:** bare `fr` grid tracks let a long nowrap
+flag note's min-content blow its track — page-wide first (Today's Sessions
+shoved off-screen), then the staff-grid/flags sub-grid (flags row painted
+over the calendar). Both pinned with `minmax(0,…)`. **WATCH-OUT:** any new
+dashboard grid track must be `minmax(0, Xfr)` — never bare `Xfr`.
+
+**Files:** `lib/myday.ts`, `app/(main)/page.tsx` (pre-rebuild).
+
+---
+
 ## v1.23.0 — The activity log gets a pen: typed notes with a stamp — Sep 5, 2026
 
 **Migration `20260905130000_lead_activity_notes_realtime.sql`** (run by Eli

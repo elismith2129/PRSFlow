@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Dashboard Top Sections: T1–T4</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  DASHBOARD TOP SECTIONS (2026-09-06) — iterating the header + Flo statement on
+  the shipped Noir dashboard. Eli's notes:
+    · Flo lines slightly too big, and they share Archivo with the page title —
+      no hierarchy between the building's name and Flo's voice.
+    · Make the top cooler: a different display font for PARAMOUNT, and a
+      DYNAMIC top-bar background — "think audio oscilloscope."
+
+  THE SCOPE IS HONEST: the waveform's energy is data — amplitude and trace
+  count follow how many rooms are LIT tonight (demo slider, bottom right).
+  A dead building flatlines; a full one dances. Sea-green trace = the ribbon's
+  colour; it reads as Flo's pulse and the building's, one and the same.
+
+  T1 · TRACE — full-width oscilloscope band behind the header; PARAMOUNT in
+       Bebas Neue (the Paramount brand's own condensed voice); Flo speaks in
+       Inter 600 at 17px with Archivo reserved for the hot phrases only.
+  T2 · SERIF HOUSE — DM Serif Display italic title (the A24 energy); scope as
+       a thin quiet strip under the header; Flo statement in serif italic
+       with colour doing the emphasis.
+  T3 · CONSOLE — the top is a console strip: wordmark + scope + meters
+       (rooms/leads/red count as LED digits) in one dark bar; Flo speaks
+       below it on the stage, compact.
+  T4 · QUIET — no waveform (control option): pure type contrast. Syne 800
+       title, Flo in Inter, hot phrases in Archivo. For judging whether the
+       scope earns its motion.
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412; --card2:#1b1917;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --chip-ink:#12100e;
+  --hot:#ff5a4d; --warm:#ffa94d; --cold:#5fc9e8; --ok:#43dfae; --uncon:#7fb2e5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--ink);background:none;border:none}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 60px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.topbar{display:flex;align-items:center;gap:12px;padding:4px 0 20px}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px}
+.optswitch button{border-radius:99px;padding:5px 13px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.optswitch button.on{color:var(--chip-ink);background:var(--ink)}
+.ribbon{display:inline-block;vertical-align:-2px;flex-shrink:0}
+.grad{background:linear-gradient(100deg,var(--ok),var(--cold) 60%,var(--uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.datechip{background:var(--ink);color:var(--stage);border-radius:13px;padding:8px 15px;
+  font-family:'Archivo Black',sans-serif;font-size:13px;text-align:center;flex-shrink:0}
+.datechip small{display:block;font-size:9px;opacity:.6;font-family:Inter;font-weight:800;letter-spacing:.1em}
+.seg{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px;flex-shrink:0}
+.seg button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.seg button.on{color:var(--chip-ink);background:var(--ink)}
+
+/* ghost portals for context */
+.ghost{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:14px;opacity:.28;pointer-events:none}
+.gp{background:var(--card);border-radius:18px;height:170px;padding:14px 16px}
+.gp b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2)}
+
+/* scope canvas */
+.scopewrap{position:relative;overflow:hidden}
+.scopewrap canvas{position:absolute;inset:0;width:100%;height:100%}
+.scopewrap > .content{position:relative;z-index:1}
+
+/* ══ T1 · TRACE ══ */
+.t1 .head{border-radius:18px;margin-bottom:18px}
+.t1 .head .content{padding:22px 26px 18px}
+.t1 .hrow{display:flex;align-items:center;gap:16px}
+.t1 h1{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:44px;line-height:.95;
+  letter-spacing:.02em}
+.t1 .sub{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink3);margin-top:2px}
+.t1 .flosay{padding:16px 2px 0;max-width:880px}
+.t1 .fhead{display:flex;align-items:center;gap:9px;padding-bottom:6px}
+.t1 .fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.t1 .ln{display:block;font-size:17px;font-weight:600;line-height:1.5;padding:1.5px 0;color:var(--ink2)}
+.t1 .ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.t1 .ln.red b,.t1 .ln.red{color:var(--hot)}
+.t1 .ln.dim{font-size:14px;color:var(--ink3);font-weight:500}
+
+/* ══ T2 · SERIF HOUSE ══ */
+.t2 .hrow{display:flex;align-items:center;gap:16px;padding-bottom:10px}
+.t2 h1{font-family:'DM Serif Display',serif;font-style:italic;font-weight:400;font-size:38px;
+  line-height:1.05;letter-spacing:-.01em}
+.t2 .scopestrip{height:44px;border-radius:12px;margin:4px 0 16px}
+.t2 .flosay{max-width:880px;padding-bottom:18px}
+.t2 .fhead{display:flex;align-items:center;gap:9px;padding-bottom:6px}
+.t2 .fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.t2 .ln{display:block;font-family:'DM Serif Display',serif;font-size:21px;line-height:1.45;
+  padding:1px 0;color:var(--ink2)}
+.t2 .ln em{font-style:italic;color:var(--ink)}
+.t2 .ln.red,.t2 .ln.red em{color:var(--hot)}
+.t2 .ln.dim{font-family:Inter;font-size:13px;color:var(--ink3)}
+
+/* ══ T3 · CONSOLE ══ */
+.t3 .console{border-radius:16px;margin-bottom:18px;background:#080706}
+.t3 .console .content{display:flex;align-items:center;gap:22px;padding:14px 22px;height:78px}
+.t3 .wm{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.02em;flex-shrink:0}
+.t3 .wm .flo{opacity:.45}
+.t3 .meters{margin-left:auto;display:flex;gap:22px;flex-shrink:0}
+.t3 .meter{text-align:right}
+.t3 .meter .v{font-family:'DM Mono',monospace;font-size:19px;font-weight:500;line-height:1}
+.t3 .meter .v.okv{color:var(--ok)}
+.t3 .meter .v.hotv{color:var(--hot)}
+.t3 .meter .k{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-top:3px}
+.t3 .hrow{display:flex;align-items:baseline;gap:16px;padding-bottom:4px}
+.t3 h1{font-family:'Syne',sans-serif;font-weight:800;font-size:25px;letter-spacing:-.02em}
+.t3 .flosay{max-width:880px;padding:6px 0 18px}
+.t3 .ln{display:block;font-size:16px;font-weight:600;line-height:1.5;padding:1.5px 0;color:var(--ink2)}
+.t3 .ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.t3 .ln.red,.t3 .ln.red b{color:var(--hot)}
+.t3 .ln.dim{font-size:13px;color:var(--ink3);font-weight:500}
+
+/* ══ T4 · QUIET ══ */
+.t4 .hrow{display:flex;align-items:center;gap:16px;padding-bottom:16px}
+.t4 h1{font-family:'Syne',sans-serif;font-weight:800;font-size:30px;letter-spacing:-.03em}
+.t4 .flosay{max-width:880px;padding-bottom:20px}
+.t4 .fhead{display:flex;align-items:center;gap:9px;padding-bottom:6px}
+.t4 .fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.t4 .ln{display:block;font-size:17px;font-weight:600;line-height:1.55;padding:1.5px 0;color:var(--ink2)}
+.t4 .ln b{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:16px;color:var(--ink)}
+.t4 .ln.red,.t4 .ln.red b{color:var(--hot)}
+.t4 .ln.dim{font-size:13px;color:var(--ink3);font-weight:500}
+
+/* demo control */
+.demo{position:fixed;right:16px;bottom:14px;z-index:50;background:var(--card);border-radius:13px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px}
+.demo .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.demo input{accent-color:var(--ok)}
+.demo .v{font-family:'DM Mono',monospace;font-size:12px;color:var(--ok);width:14px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">Top sections — the scope's energy follows the rooms (slider ↘)</span>
+    <div class="grow"></div>
+    <div class="optswitch">
+      <button class="on" id="oT1" onclick="setOpt('T1')">T1 Trace</button>
+      <button id="oT2" onclick="setOpt('T2')">T2 Serif</button>
+      <button id="oT3" onclick="setOpt('T3')">T3 Console</button>
+      <button id="oT4" onclick="setOpt('T4')">T4 Quiet</button>
+    </div>
+  </div>
+
+  <!-- ══ T1 · TRACE ══ -->
+  <section class="t1" id="secT1">
+    <div class="head scopewrap">
+      <canvas data-scope data-mode="full"></canvas>
+      <div class="content">
+        <div class="hrow">
+          <div>
+            <h1>PARAMOUNT RECORDING STUDIOS</h1>
+            <div class="sub">Good afternoon Eli · Hollywood, CA</div>
+          </div>
+          <div class="grow" style="flex:1"></div>
+          <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+          <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+        </div>
+        <div class="flosay">
+          <div class="fhead">
+            <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+            <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+          </div>
+          <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+          <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+          <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+        </div>
+      </div>
+    </div>
+    <div class="ghost">
+      <div class="gp"><b>Today's sessions</b></div>
+      <div class="gp"><b>Your list</b></div>
+      <div class="gp"><b>Landed & in the air</b></div>
+    </div>
+  </section>
+
+  <!-- ══ T2 · SERIF HOUSE ══ -->
+  <section class="t2" id="secT2" style="display:none">
+    <div class="hrow">
+      <h1>Paramount Recording Studios</h1>
+      <div class="grow" style="flex:1"></div>
+      <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+      <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+    </div>
+    <div class="scopestrip scopewrap"><canvas data-scope data-mode="strip"></canvas></div>
+    <div class="flosay">
+      <div class="fhead">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red">Aaron is <em>eight days behind</em> on COD invoicing.</span>
+      <span class="ln">We landed <em class="grad">Kestrel, Gamma Media and 10 Summers</em> today — seven rooms lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+    </div>
+    <div class="ghost">
+      <div class="gp"><b>Today's sessions</b></div>
+      <div class="gp"><b>Your list</b></div>
+      <div class="gp"><b>Landed & in the air</b></div>
+    </div>
+  </section>
+
+  <!-- ══ T3 · CONSOLE ══ -->
+  <section class="t3" id="secT3" style="display:none">
+    <div class="console scopewrap">
+      <canvas data-scope data-mode="console"></canvas>
+      <div class="content">
+        <span class="wm">PRS<span class="flo">Flo</span></span>
+        <div class="meters">
+          <div class="meter"><div class="v okv" data-roomsv>7</div><div class="k">Rooms lit</div></div>
+          <div class="meter"><div class="v hotv">3</div><div class="k">Red on board</div></div>
+          <div class="meter"><div class="v">22</div><div class="k">Pipeline</div></div>
+          <div class="meter"><div class="v">16:26</div><div class="k">Sun Sep 6</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="hrow">
+      <h1>Paramount Recording Studios</h1>
+      <div class="grow" style="flex:1"></div>
+      <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+    </div>
+    <div class="flosay">
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">Landed <b class="grad">Kestrel · Gamma Media · 10 Summers</b> today.</span>
+      <span class="ln dim">Four approvals on your desk · six holds to check · Fernando is clear.</span>
+    </div>
+    <div class="ghost">
+      <div class="gp"><b>Today's sessions</b></div>
+      <div class="gp"><b>Your list</b></div>
+      <div class="gp"><b>Landed & in the air</b></div>
+    </div>
+  </section>
+
+  <!-- ══ T4 · QUIET ══ -->
+  <section class="t4" id="secT4" style="display:none">
+    <div class="hrow">
+      <div>
+        <span class="label" style="display:block;margin-bottom:4px">Good afternoon Eli</span>
+        <h1>Paramount Recording Studios</h1>
+      </div>
+      <div class="grow" style="flex:1"></div>
+      <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+      <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+    </div>
+    <div class="flosay">
+      <div class="fhead">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. Seven rooms lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+    </div>
+    <div class="ghost">
+      <div class="gp"><b>Today's sessions</b></div>
+      <div class="gp"><b>Your list</b></div>
+      <div class="gp"><b>Landed & in the air</b></div>
+    </div>
+  </section>
+</div>
+
+<div class="demo">
+  <span class="k">Rooms lit</span>
+  <input type="range" min="0" max="11" value="7" id="roomSlider" oninput="setRooms(+this.value)">
+  <span class="v" id="roomV">7</span>
+</div>
+
+<script>
+function setOpt(o){
+  ['T1','T2','T3','T4'].forEach(function(x){
+    document.getElementById('sec'+x).style.display = x===o ? '' : 'none';
+    document.getElementById('o'+x).classList.toggle('on', x===o);
+  });
+}
+
+/* ── THE SCOPE — amplitude + trace count follow rooms lit. A dead building
+   flatlines; a full one dances. prefers-reduced-motion → static frame. ── */
+var ROOMS_LIT = 7;
+function setRooms(n){
+  ROOMS_LIT = n;
+  document.getElementById('roomV').textContent = n;
+  document.querySelectorAll('[data-roomsv]').forEach(function(el){ el.textContent = n; });
+}
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function initScopes(){
+  document.querySelectorAll('canvas[data-scope]').forEach(function(cv){
+    var mode = cv.dataset.mode;
+    function size(){
+      var r = cv.parentElement.getBoundingClientRect();
+      cv.width = r.width * devicePixelRatio; cv.height = r.height * devicePixelRatio;
+    }
+    size(); window.addEventListener('resize', size);
+    var ctx = cv.getContext('2d');
+    var t = Math.random()*100;
+    function draw(){
+      var W = cv.width, H = cv.height, dpr = devicePixelRatio;
+      ctx.clearRect(0,0,W,H);
+      var energy = ROOMS_LIT / 11;                 // 0..1 — the building's pulse
+      var traces = mode==='strip' ? 2 : (energy > .5 ? 3 : energy > 0 ? 2 : 1);
+      for (var i=0;i<traces;i++){
+        var isMain = i===0;
+        var amp = H * (mode==='console' ? .30 : .22) * (0.25 + energy*.75) * (isMain?1:.55/(i));
+        var speed = (0.9 + energy*1.4) * (isMain?1:.6);
+        var freq = (mode==='strip'? 2.2 : 1.6) + i*0.9 + energy*1.2;
+        ctx.beginPath();
+        for (var x=0;x<=W;x+=3*dpr){
+          var p = x/W;
+          // envelope keeps the trace quiet at the edges, alive in the middle
+          var env = Math.sin(p*Math.PI);
+          var y = H/2
+            + Math.sin(p*Math.PI*2*freq + t*speed + i*2.1) * amp * env
+            + Math.sin(p*Math.PI*2*freq*2.7 + t*speed*1.7 + i) * amp*.28 * env * energy;
+          if (x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.strokeStyle = isMain
+          ? 'rgba(67,223,174,'+(0.16 + energy*.30)+')'
+          : 'rgba(242,239,231,'+(0.05 + energy*.07)+')';
+        ctx.lineWidth = (isMain?1.6:1) * dpr;
+        ctx.stroke();
+      }
+      t += 0.016;
+      if(!reduced) requestAnimationFrame(draw);
+    }
+    draw();
+  });
+}
+initScopes();
+</script>
+</body>
+</html>

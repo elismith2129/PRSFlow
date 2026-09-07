@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Flo Glow: G1–G5</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono&display=swap" rel="stylesheet">
+<!--
+  FLO GLOW (2026-09-07) — the exploration lands where it started: just a
+  little glow behind the Flo text. Five takes, pure CSS gradients, nothing
+  else. Glow = AI (§14c) — this is that law at its quietest.
+
+  G1 · WASH      one soft radial pool behind the whole statement, static
+  G2 · LAMP      a tighter pool behind the mark + name only — Flo lit,
+                 words on the dark
+  G3 · BREATHE   G1 with the slow 9s breathe — the only moving one
+  G4 · UNDERLIGHT a low shelf of light beneath the text block, like glow
+                 spilling from under a console
+  G5 · LAYERED   the lamp behind the name + a fainter wide wash behind the
+                 lines — two lights, one scene
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --hot:#ff5a4d; --ok:#43dfae;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 28px 60px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+h1{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:20px;letter-spacing:-.02em;padding:4px 0 18px}
+.tile{position:relative;overflow:hidden;border-radius:16px;background:#0d0c0a;
+  padding:24px 26px 20px;margin-bottom:16px}
+.tile .tag{position:absolute;top:12px;right:14px;z-index:2;font-family:'DM Mono',monospace;
+  font-size:10px;color:var(--ink3)}
+.tile .desc{position:absolute;bottom:10px;right:14px;z-index:2;font-size:9px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.glow{position:absolute;pointer-events:none}
+.content{position:relative;z-index:1;max-width:760px}
+.fhead{display:flex;align-items:center;gap:9px;padding-bottom:6px}
+.fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.ln{display:block;font-size:16.5px;font-weight:600;line-height:1.5;padding:1.5px 0;color:var(--ink2)}
+.ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.ln.red,.ln.red b{color:var(--hot)}
+.ln.dim{font-size:13.5px;color:var(--ink3);font-weight:500}
+.askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.grad{background:linear-gradient(100deg,var(--ok),#7fb2e5);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* G1 · WASH */
+.g1{left:-10%;top:-40%;width:80%;height:180%;
+  background:radial-gradient(ellipse at 35% 50%, rgba(67,223,174,.09), rgba(67,223,174,.035) 45%, transparent 70%)}
+
+/* G2 · LAMP */
+.g2{left:-40px;top:-50px;width:340px;height:180px;
+  background:radial-gradient(ellipse at 40% 45%, rgba(67,223,174,.16), rgba(67,223,174,.05) 50%, transparent 75%)}
+
+/* G3 · BREATHE = G1 + slow breathe */
+.g3{left:-10%;top:-40%;width:80%;height:180%;
+  background:radial-gradient(ellipse at 35% 50%, rgba(67,223,174,.10), rgba(67,223,174,.04) 45%, transparent 70%);
+  animation:gbreathe 9s ease-in-out infinite}
+@keyframes gbreathe{0%,100%{opacity:.65}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.g3{animation:none}}
+
+/* G4 · UNDERLIGHT */
+.g4{left:-4%;bottom:-55%;width:75%;height:110%;
+  background:radial-gradient(ellipse at 38% 0%, rgba(67,223,174,.10), rgba(67,223,174,.03) 50%, transparent 75%)}
+
+/* G5 · LAYERED — lamp + wash */
+.g5a{left:-40px;top:-46px;width:300px;height:160px;
+  background:radial-gradient(ellipse at 42% 48%, rgba(67,223,174,.15), transparent 72%)}
+.g5b{left:-6%;top:-30%;width:85%;height:170%;
+  background:radial-gradient(ellipse at 32% 55%, rgba(67,223,174,.05), transparent 65%)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="label">A little glow behind the Flo text · pure CSS · glow = AI at its quietest</span>
+  <h1>Flo glow · G1–G5</h1>
+
+  <div class="tile"><div class="glow g1"></div><span class="tag">G1</span><span class="desc">Wash · one soft pool</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="tile"><div class="glow g2"></div><span class="tag">G2</span><span class="desc">Lamp · the mark lit, words on the dark</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="tile"><div class="glow g3"></div><span class="tag">G3</span><span class="desc">Breathe · the wash, alive on a 9s swell</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="tile"><div class="glow g4"></div><span class="tag">G4</span><span class="desc">Underlight · glow spilling from beneath</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="tile"><div class="glow g5b"></div><div class="glow g5a"></div><span class="tag">G5</span><span class="desc">Layered · lamp + faint wash</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

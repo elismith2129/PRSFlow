@@ -645,6 +645,26 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.24.0', date:'Sep 2026',
+    headline:'PRSFlo went dark — and your whole day now lives on one page.',
+    desc:'The biggest visual change since launch. The app has a new high-contrast look (near-black with bright text), and the Dashboard and My Day pages became ONE page. Everything you used to check in two places is now in one.',
+    changes:[
+      'The Dashboard is your whole day now: Flo\'s briefing up top (bigger — read it, it knows things), then Today\'s Sessions, Your List (your duties, tasks and approvals in one list), who we landed today and what\'s on hold, the CRM pipeline, and where billing is at.',
+      'My Day is gone as a separate page — everything it held moved to the Dashboard. Old bookmarks just take you home.',
+      'Shift Notes got its own page in the menu (under Operations). Same composer, same log, more room — plus a Runner Notes tab so all the building\'s notes are in one place.',
+      'The whole app is darker and higher-contrast — easier to read, especially at night. Corners are less rounded everywhere too.',
+      'Nothing about how you DO things changed: duties tick the same, notes post the same, everything saves the same.',
+    ],
+    affects:'One page to start your day instead of two. Open PRSFlo, read Flo\'s briefing, and everything red is what needs you. If something looks unfamiliar the first morning, it\'s the same information wearing new clothes — and if something looks WRONG, use the DEV feedback board.',
+    dev:[
+      'Dashboard rebuilt to the Anchor Noir A1 design: statement Flo (composeBriefing bullets + landed-names line) over five fixed-geometry portals (row 1 = 356px, row 2 = 196px; data-emptiness legal, structural emptiness banned).',
+      'New <code>lib/home.ts</code>: landed-today (deduped by work_order_id), inquiry names, billing pulse via <code>billingStage</code>/<code>approvalQueue</code>, holds-week — all null-on-failure.',
+      'Noir tokens site-wide (dark register only): bg #0b0a09 · ink #f2efe7 · surfaces #151412; radius step-down 16/12; light mode untouched.',
+      '<code>/shift-notes</code> page with Manager|Runner tabs (runner channel moved off Daily Ops); manager log paginates by 7 day-groups; <code>/my-day</code> is a redirect stub.',
+      'Retired from the dashboard: studio squares, flags panel, staff grid, approvals banner, task/flag modals.',
+    ],
+  },
+  {
     ver:'v1.23.0', date:'Sep 5, 2026',
     headline:'Lead pages get a "Log Activity" box — notes that stamp themselves with your initials and the time.',
     desc:'Until now the only way to get something into a lead\'s activity history was the Contact button, so updates ended up in the Notes box with no date and no name on them. Now there\'s a proper place for them.',

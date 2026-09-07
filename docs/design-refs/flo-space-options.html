@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Flo's Space: F1–F5</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  FLO'S SPACE (2026-09-06) — the ruling clarified: MOTION MEANS AI, like glow
+  does (§14c extended). The header (Bebas title, controls) is STONE — fully
+  static on the stage. Flo's zone below it is the ONLY living thing on the
+  page, which is exactly the phase-2 story: when Ask Flo wakes up, the thing
+  that's been breathing all along starts talking.
+
+  Five treatments — no spectrum bars, no blurry aurora (Eli's cuts):
+
+  F1 · RING     the shipped aurora ring, statement-scale: a slow conic light
+                running the border of Flo's panel. Flat inside. The classic.
+  F2 · LIVE EDGE one animated ribbon-wave line under the statement — a living
+                underline, the ribbon mark's wave extended. An edge, not a bg.
+  F3 · RIBBON   the mark ITSELF is alive: it undulates and casts a soft halo;
+                everything else is still.
+  F4 · PRESENCE motion through BEHAVIOUR: lines type in on load, a caret
+                blinks after the last line, a listening dot pulses by the
+                name. Zero decoration — pure "someone is here."
+  F5 · SIGNAL   a dot-matrix field behind Flo only — tiny LED dots at whisper
+                alpha with one slow traveling brightness wave. Geometric,
+                crisp, no blur.
+
+  Energy still follows ROOMS LIT (slider ↘) where motion exists.
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --chip-ink:#12100e;
+  --hot:#ff5a4d; --ok:#43dfae; --uncon:#7fb2e5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--ink);background:none;border:none}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 60px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.topbar{display:flex;align-items:center;gap:10px;padding:4px 0 16px}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px}
+.optswitch button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.optswitch button.on{color:var(--chip-ink);background:var(--ink)}
+.ribbon{display:inline-block;vertical-align:-2px;flex-shrink:0}
+.grad{background:linear-gradient(100deg,var(--ok),var(--uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.datechip{background:var(--ink);color:var(--stage);border-radius:13px;padding:8px 15px;
+  font-family:'Archivo Black',sans-serif;font-size:13px;text-align:center;flex-shrink:0}
+.datechip small{display:block;font-size:9px;opacity:.6;font-family:Inter;font-weight:800;letter-spacing:.1em}
+.seg{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px;flex-shrink:0}
+.seg button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.seg button.on{color:var(--chip-ink);background:var(--ink)}
+
+/* THE HEADER — STONE. No canvas, no motion, nothing. */
+.hrow{display:flex;align-items:center;gap:16px;padding:6px 2px 18px}
+h1{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:42px;line-height:.95;letter-spacing:.02em}
+.sub{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink3);margin-top:2px}
+
+/* FLO'S SPACE — shared bones */
+.flozone{position:relative;margin-bottom:18px;max-width:940px}
+.fhead{display:flex;align-items:center;gap:9px;padding-bottom:7px}
+.fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.ln{display:block;font-size:16.5px;font-weight:600;line-height:1.55;padding:1.5px 0;color:var(--ink2)}
+.ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.ln.red,.ln.red b{color:var(--hot)}
+.ln.dim{font-size:13.5px;color:var(--ink3);font-weight:500}
+.askflo{margin-top:8px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);cursor:pointer}
+
+/* F1 · RING */
+.f1 .ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px;
+  box-shadow:0 0 18px 3px rgba(67,223,174,.06)}
+.f1 .ringwrap::before{content:"";position:absolute;inset:-150%;
+  background:conic-gradient(rgba(67,223,174,.05) 0deg, rgba(67,223,174,.4) 90deg,
+    rgba(242,239,231,.06) 200deg, rgba(67,223,174,.05) 360deg);
+  animation:flospin 9s linear infinite}
+@keyframes flospin{to{transform:rotate(360deg)}}
+.f1 .inner{position:relative;border-radius:13.5px;background:var(--card);padding:15px 18px}
+@media (prefers-reduced-motion: reduce){.f1 .ringwrap::before{animation:none}}
+
+/* F2 · LIVE EDGE */
+.f2 .inner{padding:4px 2px 0}
+.f2 .edge{display:block;width:100%;height:26px;margin-top:8px}
+
+/* F3 · RIBBON ALIVE */
+.f3 .inner{padding:4px 2px 0}
+.f3 .bigribbon{width:44px;height:44px;flex-shrink:0;
+  filter:drop-shadow(0 0 14px rgba(67,223,174,.45));
+  animation:ribbonbreathe 4.2s ease-in-out infinite}
+@keyframes ribbonbreathe{
+  0%,100%{transform:scaleY(1) rotate(0deg)}
+  30%{transform:scaleY(1.12) rotate(-2deg)}
+  65%{transform:scaleY(.92) rotate(1.5deg)}}
+@media (prefers-reduced-motion: reduce){.f3 .bigribbon{animation:none}}
+
+/* F4 · PRESENCE */
+.f4 .inner{padding:4px 2px 0}
+.f4 .listen{width:8px;height:8px;border-radius:50%;background:var(--ok);
+  animation:listen 2.2s ease-in-out infinite}
+@keyframes listen{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.25)}}
+.f4 .caret{display:inline-block;width:9px;height:17px;background:var(--ok);
+  vertical-align:-2px;margin-left:6px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.f4 .ln{opacity:0;transform:translateY(5px);transition:opacity .5s ease,transform .5s ease}
+.f4 .ln.shown{opacity:1;transform:none}
+.f4 .ln.red.shown{opacity:1}
+.f4 .ln.dim.shown{opacity:1}
+
+/* F5 · SIGNAL FIELD */
+.f5 .inner{position:relative;border-radius:15px;background:var(--card);padding:15px 18px;overflow:hidden}
+.f5 canvas{position:absolute;inset:0;width:100%;height:100%}
+.f5 .content{position:relative;z-index:1}
+
+/* ghost portals */
+.ghost{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:14px;opacity:.28;pointer-events:none}
+.gp{background:var(--card);border-radius:18px;height:150px;padding:14px 16px}
+.gp b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2)}
+
+.demo{position:fixed;right:16px;bottom:14px;z-index:50;background:var(--card);border-radius:13px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px}
+.demo .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.demo input{accent-color:var(--ok)}
+.demo .v{font-family:'DM Mono',monospace;font-size:12px;color:var(--ok);width:14px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">Flo's space — motion means AI; the header is stone</span>
+    <div class="grow"></div>
+    <div class="optswitch">
+      <button class="on" id="oF1" onclick="setOpt('F1')">F1 Ring</button>
+      <button id="oF2" onclick="setOpt('F2')">F2 Edge</button>
+      <button id="oF3" onclick="setOpt('F3')">F3 Ribbon</button>
+      <button id="oF4" onclick="setOpt('F4')">F4 Presence</button>
+      <button id="oF5" onclick="setOpt('F5')">F5 Signal</button>
+      <button id="oF6" onclick="setOpt('F6')">F6 Signal open</button>
+    </div>
+  </div>
+
+  <!-- THE HEADER — STONE -->
+  <div class="hrow">
+    <div>
+      <h1>PARAMOUNT RECORDING STUDIOS</h1>
+      <div class="sub">Good afternoon Eli · Hollywood, CA</div>
+    </div>
+    <div style="flex:1"></div>
+    <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+    <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+  </div>
+
+  <!-- F1 · RING -->
+  <section class="flozone f1" id="secF1">
+    <div class="ringwrap"><div class="inner">
+      <div class="fhead">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div></div>
+  </section>
+
+  <!-- F2 · LIVE EDGE -->
+  <section class="flozone f2" id="secF2" style="display:none">
+    <div class="inner">
+      <div class="fhead">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+      <canvas class="edge" id="edgecv"></canvas>
+    </div>
+  </section>
+
+  <!-- F3 · RIBBON ALIVE -->
+  <section class="flozone f3" id="secF3" style="display:none">
+    <div class="inner" style="display:flex;gap:18px;align-items:flex-start">
+      <svg class="bigribbon" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <div>
+        <div class="fhead" style="padding-bottom:4px">
+          <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+        </div>
+        <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+        <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+        <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+        <div class="askflo">Ask Flo →</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- F4 · PRESENCE -->
+  <section class="flozone f4" id="secF4" style="display:none">
+    <div class="inner">
+      <div class="fhead">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span>
+        <span class="listen"></span>
+        <span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red" data-seq="0"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln" data-seq="1">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim" data-seq="2">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.<span class="caret"></span></span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </section>
+
+  <!-- F5 · SIGNAL FIELD -->
+  <section class="flozone f5" id="secF5" style="display:none">
+    <div class="inner">
+      <canvas id="dotcv"></canvas>
+      <div class="content">
+        <div class="fhead">
+          <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+          <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+        </div>
+        <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+        <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+        <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+        <div class="askflo">Ask Flo →</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- F6 · SIGNAL, OPEN — the dot field WITHOUT the box: dots live directly on
+       the stage around Flo's statement, fading out radially so there is no
+       edge at all. Flo's zone is defined by the field, not a container. -->
+  <section class="flozone f6" id="secF6" style="display:none;position:relative">
+    <canvas id="dotcv2" style="position:absolute;inset:-24px -30px;width:calc(100% + 60px);height:calc(100% + 48px);pointer-events:none"></canvas>
+    <div style="position:relative;z-index:1;padding:10px 2px 6px">
+      <div class="fhead">
+        <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </section>
+
+  <div class="ghost">
+    <div class="gp"><b>Today's sessions</b></div>
+    <div class="gp"><b>Your list</b></div>
+    <div class="gp"><b>Landed & in the air</b></div>
+  </div>
+</div>
+
+<div class="demo">
+  <span class="k">Rooms lit</span>
+  <input type="range" min="0" max="11" value="7" oninput="ROOMS=+this.value;document.getElementById('rv').textContent=this.value">
+  <span class="v" id="rv">7</span>
+</div>
+
+<script>
+var ROOMS=7;
+function E(){return ROOMS/11}
+var reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function setOpt(o){
+  ['F1','F2','F3','F4','F5','F6'].forEach(function(x){
+    document.getElementById('sec'+x).style.display=x===o?'':'none';
+    document.getElementById('o'+x).classList.toggle('on',x===o);
+  });
+  if(o==='F4') playPresence();
+}
+
+/* F2 — the living underline: one slow ribbon-wave */
+var ecv=document.getElementById('edgecv'), ectx=ecv.getContext('2d');
+function esize(){var r=ecv.getBoundingClientRect(); if(r.width){ecv.width=r.width*devicePixelRatio;ecv.height=r.height*devicePixelRatio}}
+var t=Math.random()*100;
+function edgeFrame(){
+  if(document.getElementById('secF2').style.display!=='none'){
+    esize();
+    var W=ecv.width,H=ecv.height,dpr=devicePixelRatio,e=E();
+    ectx.clearRect(0,0,W,H);
+    ectx.beginPath();
+    for(var x=0;x<=W;x+=3*dpr){
+      var p=x/W;
+      var y=H*.55+Math.sin(p*Math.PI*2*(1.8+e)+t*(.5+e*.8))*H*.3*Math.sin(p*Math.PI)*(0.3+e*.7);
+      x===0?ectx.moveTo(x,y):ectx.lineTo(x,y);
+    }
+    ectx.strokeStyle='rgba(67,223,174,'+(0.25+e*.3)+')';
+    ectx.lineWidth=1.8*dpr; ectx.lineCap='round';
+    ectx.shadowColor='rgba(67,223,174,.5)'; ectx.shadowBlur=8*dpr;
+    ectx.stroke(); ectx.shadowBlur=0;
+  }
+  t+=0.016;
+  if(!reduced) requestAnimationFrame(edgeFrame);
+}
+edgeFrame();
+
+/* F4 — lines arrive in sequence */
+function playPresence(){
+  var lines=document.querySelectorAll('#secF4 .ln');
+  lines.forEach(function(l){l.classList.remove('shown')});
+  lines.forEach(function(l,i){
+    setTimeout(function(){l.classList.add('shown')}, 350+i*650);
+  });
+}
+
+/* F5 — LED dot field with one traveling brightness wave */
+var dcv=document.getElementById('dotcv'), dctx=dcv.getContext('2d');
+function dotFrame(){
+  if(document.getElementById('secF5').style.display!=='none'){
+    var r=dcv.parentElement.getBoundingClientRect();
+    if(r.width){dcv.width=r.width*devicePixelRatio;dcv.height=r.height*devicePixelRatio}
+    var W=dcv.width,H=dcv.height,dpr=devicePixelRatio,e=E();
+    dctx.clearRect(0,0,W,H);
+    var gap=22*dpr;
+    for(var y=gap/2;y<H;y+=gap){
+      for(var x=gap/2;x<W;x+=gap){
+        var p=x/W;
+        // one slow brightness wave traveling left→right
+        var wavepos=(t*(.06+e*.06))%1.4-0.2;
+        var d=Math.abs(p-wavepos);
+        var lift=Math.max(0,1-d*4);
+        var a=0.028 + lift*(0.06+e*.10);
+        dctx.fillStyle='rgba(67,223,174,'+a+')';
+        dctx.beginPath(); dctx.arc(x,y,1.1*dpr+lift*0.8*dpr,0,7); dctx.fill();
+      }
+    }
+  }
+  t+=0.016;
+  if(!reduced) requestAnimationFrame(dotFrame);
+}
+dotFrame();
+
+/* F6 — the open field: same LED dots, no box; alpha fades radially from the
+   statement's heart so the field has no edge, just presence. */
+var d2=document.getElementById('dotcv2'), d2x=d2.getContext('2d');
+function dot2Frame(){
+  if(document.getElementById('secF6').style.display!=='none'){
+    var r=d2.getBoundingClientRect();
+    if(r.width){d2.width=r.width*devicePixelRatio;d2.height=r.height*devicePixelRatio}
+    var W=d2.width,H=d2.height,dpr=devicePixelRatio,e=E();
+    d2x.clearRect(0,0,W,H);
+    var gap=24*dpr;
+    for(var y=gap/2;y<H;y+=gap){
+      for(var x=gap/2;x<W;x+=gap){
+        var p=x/W, q=y/H;
+        // radial falloff from a point left-of-center (where Flo speaks from)
+        var dx=p-0.22, dy=q-0.45;
+        var fall=Math.max(0,1-Math.sqrt(dx*dx*1.4+dy*dy)*1.35);
+        if(fall<=0.02) continue;
+        var wavepos=(t*(.05+e*.05))%1.4-0.2;
+        var lift=Math.max(0,1-Math.abs(p-wavepos)*3.2);
+        var a=(0.06+lift*(0.10+e*.14))*fall;
+        d2x.fillStyle='rgba(67,223,174,'+a+')';
+        d2x.beginPath(); d2x.arc(x,y,(1.4+lift*1.1)*dpr,0,7); d2x.fill();
+      }
+    }
+  }
+  if(!reduced) requestAnimationFrame(dot2Frame);
+}
+dot2Frame();
+playPresence();
+</script>
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Flo Ambient: V1–V5 on the full dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  FLO AMBIENT, ROUND 2 (2026-09-06) — five STATIC fields that span the WHOLE
+  Flo zone (left flank included) so her area reads as significant territory,
+  not a corner effect. The law of legibility: the field is quietest directly
+  behind the words and strongest at the flanks — an embrace, not a backdrop.
+  All deterministic — identical every load, zero animation.
+
+  V1 · CONSTELLATION  dots joined by faint lines — a neural web arcing around
+                      the zone, sparse behind the text
+  V2 · CONTOURS       frozen topographic lines spanning the full width
+  V3 · HALO GROUND    no texture at all — one huge soft pool of stage light
+                      under the whole zone
+  V4 · ETCH           a frozen waveform etched across the zone with echo
+                      lines, like a record groove
+  V5 · GRAIN          fine film grain in a green vignette hugging the flanks,
+                      clean in the middle
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412; --card2:#1b1917;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --chip-ink:#12100e;
+  --hot:#ff5a4d; --hot-text:#fff4f2;
+  --warm:#ffa94d; --cold:#5fc9e8; --ok:#43dfae; --uncon:#7fb2e5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--ink);background:none;border:none}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 60px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.topbar{display:flex;align-items:center;gap:10px;padding:4px 0 16px}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px}
+.optswitch button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.optswitch button.on{color:var(--chip-ink);background:var(--ink)}
+.ribbon{display:inline-block;vertical-align:-2px;flex-shrink:0}
+.grad{background:linear-gradient(100deg,var(--ok),var(--uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.datechip{background:var(--ink);color:var(--stage);border-radius:13px;padding:8px 15px;
+  font-family:'Archivo Black',sans-serif;font-size:13px;text-align:center;flex-shrink:0}
+.datechip small{display:block;font-size:9px;opacity:.6;font-family:Inter;font-weight:800;letter-spacing:.1em}
+.seg{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px;flex-shrink:0}
+.seg button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.seg button.on{color:var(--chip-ink);background:var(--ink)}
+.chipx{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;
+  font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--chip-ink);flex-shrink:0}
+.chipx.b{background:var(--ok)}
+.chipx.w{background:var(--warm)}
+.chipx.h{background:var(--hot);color:var(--hot-text)}
+.chipx.u{background:var(--uncon)}
+
+.hrow{display:flex;align-items:center;gap:16px;padding:6px 2px 16px}
+h1{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:42px;line-height:.95;letter-spacing:.02em}
+.sub{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink3);margin-top:2px}
+
+/* FLO'S ZONE — the field spans the WHOLE zone, both flanks */
+.flozone{position:relative;margin-bottom:16px;padding:14px 0 10px}
+.flozone canvas{position:absolute;top:-10px;left:-28px;right:-28px;bottom:-6px;
+  width:calc(100% + 56px);height:calc(100% + 16px);pointer-events:none}
+.flozone .content{position:relative;z-index:1;max-width:840px;margin:0 auto;text-align:center}
+.fhead{display:flex;align-items:center;justify-content:center;gap:9px;padding-bottom:7px}
+.fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.ln{display:block;font-size:16.5px;font-weight:600;line-height:1.55;padding:1.5px 0;color:var(--ink2)}
+.ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.ln.red,.ln.red b{color:var(--hot)}
+.ln.dim{font-size:13.5px;color:var(--ink3);font-weight:500}
+.askflo{margin-top:8px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);cursor:pointer}
+
+/* PORTALS — shipped geometry */
+.row1{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:14px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-top:14px}
+.portal{background:var(--card);border-radius:18px;padding:16px 18px;cursor:pointer;
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .18s ease,background .18s ease;box-shadow:0 2px 12px rgba(0,0,0,.5)}
+.portal:hover{transform:translateY(-3px);background:var(--card2)}
+.row1 .portal{height:356px}
+.row2 .portal{height:196px}
+.pt{display:flex;align-items:baseline;gap:9px;margin-bottom:11px;flex-shrink:0}
+.pt b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2)}
+.pt .arrow{margin-left:auto;font-size:13px;color:var(--ink3)}
+.rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;flex:1;min-height:0;align-content:start}
+.rc{border-radius:10px;min-height:78px;padding:7px 9px;background:var(--wash);
+  overflow:hidden;position:relative;display:flex;flex-direction:column}
+.rc .rn{font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}
+.rc.on{background:var(--ok);color:var(--chip-ink)}
+.rc.on .rn{color:rgba(18,16,14,.6)}
+.rc.hotc{background:var(--hot);color:var(--hot-text)}
+.rc.hotc .rn{color:rgba(255,244,242,.7)}
+.rc .a{font-family:'Archivo Black',sans-serif;font-size:11px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc .c{font-size:8.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc .tm{font-size:8.5px;opacity:.85;margin-top:auto;font-weight:600}
+.rc .eng{position:absolute;right:7px;bottom:6px;font-family:'DM Mono',monospace;font-size:7px;opacity:.6}
+.loccount{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:2.5px 7px;background:var(--wash2);color:var(--ink2)}
+.loccount span.live{background:var(--ok);color:var(--chip-ink)}
+.q{display:flex;align-items:center;gap:9px;padding:6px 2px;font-size:12.5px;border-radius:8px}
+.q .bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--wash2)}
+.q.done{opacity:.35;text-decoration:line-through}
+.q.done .bx{background:var(--ok)}
+.q .tag{font-size:6.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:4px;padding:2px 6px;flex-shrink:0;background:var(--wash2);color:var(--ink2)}
+.q .tag.ap{background:var(--warm);color:var(--chip-ink)}
+.q .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q .mn{margin-left:auto;font-family:'DM Mono',monospace;font-size:9px;color:var(--ink3);flex-shrink:0}
+.landhead{font-size:8.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);padding:2px 0 8px}
+.landed{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px}
+.land{border-radius:99px;padding:6px 13px;background:var(--ok);color:var(--chip-ink);
+  font-family:'Archivo Black',sans-serif;font-size:11.5px}
+.holdrow{display:flex;align-items:baseline;gap:9px;padding:4.5px 0;font-size:12.5px;color:var(--ink2)}
+.holdrow b{color:var(--ink);font-weight:600}
+.holdrow .d{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink3);width:54px;flex-shrink:0}
+.holdrow .chipx{margin-left:auto}
+.pbody{display:flex;gap:16px;align-items:stretch;flex:1;min-height:0}
+.pleft{display:flex;flex-direction:column;justify-content:space-between;flex-shrink:0}
+.pipebig{font-family:'Archivo Black',sans-serif;font-size:52px;line-height:1;letter-spacing:-.02em}
+.pipesub{font-size:11px;color:var(--ink3);padding-top:2px}
+.pstat{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.inqblock{flex:1;background:rgba(255,90,77,.26);border-radius:14px;position:relative;
+  padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  animation:inqbreathe 3.6s ease-in-out infinite;min-width:0}
+@keyframes inqbreathe{
+  0%,100%{box-shadow:0 0 12px 1px rgba(255,90,77,.28)}
+  50%{box-shadow:0 0 30px 6px rgba(255,90,77,.55)}}
+.inqk{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--hot);display:flex;align-items:center;gap:8px;padding-bottom:5px}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--hot);animation:np 1.6s ease-in-out infinite}
+@keyframes np{0%,100%{opacity:.25}50%{opacity:1}}
+.who{font-family:'Archivo Black',sans-serif;font-size:14.5px;line-height:1.3;color:var(--ink)}
+.src{font-size:9.5px;color:var(--ink3);font-weight:600}
+.stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch}
+.stile{border-radius:14px;padding:13px 15px;color:var(--chip-ink);
+  display:flex;flex-direction:column;justify-content:space-between}
+.stile .bn{font-family:'Archivo Black',sans-serif;font-size:30px;line-height:1;white-space:nowrap}
+.stile .bk{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  opacity:.8;padding-top:10px;line-height:1.35}
+.stile.hotf{background:transparent;color:var(--ink);padding-left:2px}
+.stile.hotf .bn{color:var(--hot)}
+.stile.hotf .bk{color:var(--ink3);opacity:1}
+.stile.coldt{background:var(--uncon)}
+.stile.warmt{background:var(--warm)}
+.stile.okt{background:var(--ok)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">Flo ambient round 2 — the field is her territory, both flanks</span>
+    <div class="grow"></div>
+    <div class="optswitch">
+      <button class="on" id="oV1" onclick="setOpt(1)">V1 Constellation</button>
+      <button id="oV2" onclick="setOpt(2)">V2 Contours</button>
+      <button id="oV3" onclick="setOpt(3)">V3 Halo</button>
+      <button id="oV4" onclick="setOpt(4)">V4 Etch</button>
+      <button id="oV5" onclick="setOpt(5)">V5 Grain</button>
+    </div>
+  </div>
+
+  <div class="hrow">
+    <div>
+      <h1>PARAMOUNT RECORDING STUDIOS</h1>
+      <div class="sub">Good afternoon Eli · Hollywood, CA</div>
+    </div>
+    <div style="flex:1"></div>
+    <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+    <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+  </div>
+
+  <!-- FLO'S ZONE — centered statement, field spanning both flanks -->
+  <div class="flozone">
+    <canvas id="cv"></canvas>
+    <div class="content">
+      <div class="fhead">
+        <svg class="ribbon" width="24" height="24" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+        <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+      </div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <!-- ROW 1 -->
+  <div class="row1">
+    <div class="portal">
+      <div class="pt"><b>Today's sessions</b>
+        <span class="loccount" style="margin-left:auto">
+          <span class="live">PRS 4</span><span class="live">ARS 1</span><span>ERS 1</span><span class="live">TRS 1</span>
+        </span>
+        <span class="arrow">→</span>
+      </div>
+      <div class="rgrid">
+        <div class="rc on"><span class="rn">PRS·A</span><div class="a">Jalen Haris</div><div class="c">Kestrel Music</div><div class="tm">11A–6P</div><span class="eng">1ST-TW</span></div>
+        <div class="rc on"><span class="rn">PRS·B</span><div class="a">Zach Tuchman</div><div class="c">COD</div><div class="tm">2P–6P</div></div>
+        <div class="rc on"><span class="rn">PRS·C</span><div class="a">Sam Lorimore</div><div class="c">COD</div><div class="tm">12P–6P</div><span class="eng">2ND-IS</span></div>
+        <div class="rc"><span class="rn">PRS·E</span></div>
+        <div class="rc hotc"><span class="rn">PRS·X</span><div class="a">Honestav</div><div class="c">Gamma Media</div><div class="tm">7P–3A</div><span class="eng">1ST-SR</span></div>
+        <div class="rc"><span class="rn">Nadine's</span></div>
+        <div class="rc"><span class="rn">ARS·A</span></div>
+        <div class="rc on"><span class="rn">ARS·B</span><div class="a">Jason Mater</div><div class="c">COD</div><div class="tm">12P–6P</div><span class="eng">1ST-TW</span></div>
+        <div class="rc"><span class="rn">ERS·A</span></div>
+        <div class="rc on"><span class="rn">ERS·B</span><div class="a">Mustard</div><div class="c">10 Summers</div><div class="tm">2P–9:30P</div></div>
+        <div class="rc on"><span class="rn">TRS·N</span><div class="a">DJ Camper</div><div class="c">COD</div><div class="tm">2P–10P</div></div>
+        <div class="rc"><span class="rn">TRS·S</span></div>
+      </div>
+    </div>
+
+    <div class="portal">
+      <div class="pt"><b>Your list</b><span class="label" style="letter-spacing:.06em">1 of 5</span><span class="arrow">→</span></div>
+      <div style="flex:1;min-height:0;overflow-y:auto">
+        <div class="q"><span class="bx"></span><span class="tag ap">approve</span><span class="tx">Approve — Mustard</span><span class="mn">$3,400</span></div>
+        <div class="q"><span class="bx"></span><span class="tag ap">approve</span><span class="tx">Approve — Kestrel Music</span><span class="mn">$1,250</span></div>
+        <div class="q"><span class="bx"></span><span class="tag ap">approve</span><span class="tx">Approve — Gamma Media</span><span class="mn">$875</span></div>
+        <div class="q"><span class="bx"></span><span class="tag ap">approve</span><span class="tx">Approve — Zach Tuchman</span><span class="mn">$500</span></div>
+        <div class="q done"><span class="bx"></span><span class="tag">task</span><span class="tx">Call SIR re: rental return</span></div>
+      </div>
+    </div>
+
+    <div class="portal">
+      <div class="pt"><b>Landed & in the air</b><span class="arrow">→</span></div>
+      <div class="landhead">Landed today</div>
+      <div class="landed">
+        <span class="land">Kestrel Music</span><span class="land">Gamma Media</span><span class="land">10 Summers</span>
+      </div>
+      <div class="landhead">Holds to check — next 7 days</div>
+      <div style="flex:1;min-height:0;overflow-y:auto">
+        <div class="holdrow"><span class="d">Mon 9/7</span><b>Harbor · Nova Beats</b><span class="chipx w">ERS·A</span></div>
+        <div class="holdrow"><span class="d">Tue 9/8</span><b>Jalen Haris</b><span class="chipx w">PRS·A</span></div>
+        <div class="holdrow"><span class="d">Tue 9/8</span><b>Zach Tuchman</b><span class="chipx w">PRS·B</span></div>
+        <div class="holdrow"><span class="d">Wed 9/9</span><b>Slauson · Rico B</b><span class="chipx w">PRS·C</span></div>
+        <div class="holdrow"><span class="d">Fri 9/11</span><b>Gamma · Honestav</b><span class="chipx w">PRS·X</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2 -->
+  <div class="row2">
+    <div class="portal">
+      <div class="pt"><b>CRM — pipeline</b><span class="arrow">→</span></div>
+      <div class="pbody">
+        <div class="pleft">
+          <div><div class="pipebig">22</div><div class="pipesub">active leads</div></div>
+          <div class="pstat">
+            <span class="chipx h">11 hot</span><span class="chipx w">4 warm</span><span class="chipx u">5 uncon</span>
+          </div>
+        </div>
+        <div class="inqblock">
+          <div class="inqk"><span class="pulse"></span>2 new inquiries</div>
+          <div class="who">Marina Olszak <span class="src">· web form · 2h ago</span></div>
+          <div class="who">Pete Perez <span class="src">· web form · 5h ago</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="portal">
+      <div class="pt"><b>The money — where billing is at</b><span class="arrow">→</span></div>
+      <div class="stagegrid">
+        <div class="stile hotf"><div class="bn">$16,627</div><div class="bk">COD out · worst 41d</div></div>
+        <div class="stile coldt"><div class="bn">6</div><div class="bk">WOs need review</div></div>
+        <div class="stile warmt"><div class="bn">4</div><div class="bk">Wait on approval · $6,025</div></div>
+        <div class="stile okt"><div class="bn">3</div><div class="bk">Ready to go out</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+var GREEN='67,223,174';
+var mode=1;
+function setOpt(m){
+  mode=m;
+  for(var i=1;i<=5;i++) document.getElementById('oV'+i).classList.toggle('on',i===m);
+  draw();
+}
+function size(){var r=cv.getBoundingClientRect();
+  cv.width=r.width*devicePixelRatio; cv.height=r.height*devicePixelRatio;}
+window.addEventListener('resize',function(){size();draw();});
+function rnd(i){var x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+/* the legibility mask: 1 at the flanks, ~0 behind the centered text */
+function flank(p){ var d=Math.abs(p-0.5); return Math.max(0, Math.min(1,(d-0.18)/0.26)); }
+
+function draw(){
+  size();
+  var W=cv.width,H=cv.height,dpr=devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+
+  if(mode===1){ /* V1 CONSTELLATION — dots + faint links, arcing both flanks */
+    var pts=[];
+    for(var i=0;i<120;i++){
+      var p=rnd(i*3+1), q=rnd(i*7+2);
+      var f=flank(p);
+      if(f<=0.05) continue;
+      if(rnd(i*11)>f) continue;
+      pts.push({x:p*W, y:q*H, f:f, i:i});
+    }
+    /* links between near neighbours */
+    for(var a=0;a<pts.length;a++){
+      for(var b=a+1;b<pts.length;b++){
+        var dx=pts[a].x-pts[b].x, dy=pts[a].y-pts[b].y;
+        var d=Math.sqrt(dx*dx+dy*dy);
+        if(d<W*0.07){
+          ctx.strokeStyle='rgba('+GREEN+','+(0.03+0.05*Math.min(pts[a].f,pts[b].f))+')';
+          ctx.lineWidth=0.7*dpr;
+          ctx.beginPath(); ctx.moveTo(pts[a].x,pts[a].y); ctx.lineTo(pts[b].x,pts[b].y); ctx.stroke();
+        }
+      }
+    }
+    pts.forEach(function(pt){
+      ctx.fillStyle='rgba('+GREEN+','+(0.08+pt.f*0.18)+')';
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,(0.9+rnd(pt.i)*1.4)*dpr,0,7); ctx.fill();
+    });
+  }
+
+  if(mode===2){ /* V2 CONTOURS — frozen topographic lines, full width */
+    var n=6;
+    for(var i=0;i<n;i++){
+      var off=(i-(n-1)/2)*H*.16;
+      ctx.beginPath();
+      for(var x=0;x<=W;x+=4*dpr){
+        var p=x/W;
+        var y=H/2+off
+          + Math.sin(p*Math.PI*2*1.4+i*0.9)*H*.18
+          + Math.sin(p*Math.PI*4.3+i*2.2)*H*.05;
+        x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      /* stroke with a horizontal alpha gradient: strong flanks, quiet middle */
+      var g=ctx.createLinearGradient(0,0,W,0);
+      var base=0.10-Math.abs(i-(n-1)/2)*0.012;
+      g.addColorStop(0,'rgba('+GREEN+','+base+')');
+      g.addColorStop(0.5,'rgba('+GREEN+','+(base*0.22)+')');
+      g.addColorStop(1,'rgba('+GREEN+','+base+')');
+      ctx.strokeStyle=g; ctx.lineWidth=1.2*dpr; ctx.stroke();
+    }
+  }
+
+  if(mode===3){ /* V3 HALO GROUND — one huge pool of stage light, no texture */
+    var g=ctx.createRadialGradient(W/2,H*0.55,0,W/2,H*0.55,W*0.55);
+    g.addColorStop(0,'rgba('+GREEN+',0.075)');
+    g.addColorStop(0.55,'rgba('+GREEN+',0.035)');
+    g.addColorStop(1,'rgba('+GREEN+',0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    /* faint flank echoes so the pool reads wide, not round */
+    [[0.08,0.5],[0.92,0.5]].forEach(function(c){
+      var g2=ctx.createRadialGradient(W*c[0],H*c[1],0,W*c[0],H*c[1],W*0.22);
+      g2.addColorStop(0,'rgba('+GREEN+',0.05)');
+      g2.addColorStop(1,'rgba('+GREEN+',0)');
+      ctx.fillStyle=g2; ctx.fillRect(0,0,W,H);
+    });
+  }
+
+  if(mode===4){ /* V4 ETCH — a frozen waveform + echoes, like a record groove */
+    for(var k=0;k<3;k++){
+      ctx.beginPath();
+      for(var x=0;x<=W;x+=3*dpr){
+        var p=x/W;
+        var y=H/2+(k-1)*H*0.14
+          + Math.sin(p*Math.PI*2*(2.2+k*.4)+k*1.7)*H*.16*Math.sin(p*Math.PI)
+          + Math.sin(p*Math.PI*9+k)*H*.03;
+        x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      var g=ctx.createLinearGradient(0,0,W,0);
+      var base=k===1?0.14:0.07;
+      g.addColorStop(0,'rgba('+GREEN+','+base+')');
+      g.addColorStop(0.5,'rgba('+GREEN+','+(base*0.3)+')');
+      g.addColorStop(1,'rgba('+GREEN+','+base+')');
+      ctx.strokeStyle=g; ctx.lineWidth=(k===1?1.6:1)*dpr; ctx.stroke();
+    }
+  }
+
+  if(mode===5){ /* V5 GRAIN — film grain in a green vignette hugging the flanks */
+    var n=2600;
+    for(var i=0;i<n;i++){
+      var p=rnd(i*3+4), q=rnd(i*13+9);
+      var f=flank(p);
+      if(f<=0.03) continue;
+      if(rnd(i*17)>f*0.9) continue;
+      var a=0.03+rnd(i*5)*0.13*f;
+      ctx.fillStyle='rgba('+GREEN+','+a+')';
+      var s=(0.5+rnd(i*7)*0.9)*dpr;
+      ctx.fillRect(p*W,q*H,s,s);
+    }
+  }
+}
+draw();
+</script>
+</body>
+</html>

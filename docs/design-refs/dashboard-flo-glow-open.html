@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Flo Glow, Open: GA1–GA5</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono&display=swap" rel="stylesheet">
+<!--
+  FLO GLOW, OPEN (2026-09-07) — G1's wash with NO container: no tile, no
+  border, no clipped edge. The glow sits on the bare stage and dissipates to
+  nothing well before any boundary — you can never see where it "ends".
+  Five spreads of the same idea. All static, pure CSS.
+
+  GA1 · TIGHT   hugs the text block, gone quickly
+  GA2 · WIDE    spans most of the section, still melts to nothing
+  GA3 · TAIL    centred on the mark, a long soft tail trailing right
+  GA4 · TALL    more vertical halo, above and below the lines
+  GA5 · CORE+HALO  brighter core inside an ultra-faint wide halo — the
+                smoothest dissipation of the five
+-->
+<style>
+:root{
+  --stage:#0b0a09;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --hot:#ff5a4d; --ok:#43dfae;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 28px 80px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+h1{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:20px;letter-spacing:-.02em;padding:4px 0 8px}
+
+/* NO TILES. Sections live on the bare stage, separated by air only. */
+.zone{position:relative;padding:44px 0 40px}
+.zone .tag{position:absolute;top:14px;right:0;z-index:2;font-family:'DM Mono',monospace;
+  font-size:10px;color:var(--ink3)}
+.zone .desc{position:absolute;bottom:8px;right:0;z-index:2;font-size:9px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.glow{position:absolute;pointer-events:none}
+.content{position:relative;z-index:1;max-width:780px}
+.fhead{display:flex;align-items:center;gap:9px;padding-bottom:6px}
+.fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.ln{display:block;font-size:16.5px;font-weight:600;line-height:1.5;padding:1.5px 0;color:var(--ink2)}
+.ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.ln.red,.ln.red b{color:var(--hot)}
+.ln.dim{font-size:13.5px;color:var(--ink3);font-weight:500}
+.askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.grad{background:linear-gradient(100deg,var(--ok),#7fb2e5);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* every gradient ends at TRANSPARENT well inside its own box — no edges,
+   ever. The stage swallows the falloff. */
+.ga1{left:-60px;top:-10px;width:620px;height:230px;
+  background:radial-gradient(ellipse at 42% 48%, rgba(67,223,174,.10), rgba(67,223,174,.03) 42%, transparent 66%)}
+.ga2{left:-120px;top:-70px;width:1100px;height:360px;
+  background:radial-gradient(ellipse at 38% 50%, rgba(67,223,174,.08), rgba(67,223,174,.025) 45%, transparent 68%)}
+.ga3{left:-90px;top:-60px;width:1000px;height:320px;
+  background:radial-gradient(ellipse 65% 42% at 22% 48%, rgba(67,223,174,.11), rgba(67,223,174,.03) 40%, transparent 64%)}
+.ga4{left:-70px;top:-110px;width:750px;height:460px;
+  background:radial-gradient(ellipse 45% 55% at 40% 50%, rgba(67,223,174,.08), rgba(67,223,174,.025) 45%, transparent 68%)}
+.ga5a{left:-160px;top:-120px;width:1150px;height:480px;
+  background:radial-gradient(ellipse at 36% 50%, rgba(67,223,174,.035), transparent 62%)}
+.ga5b{left:-30px;top:-6px;width:520px;height:210px;
+  background:radial-gradient(ellipse at 40% 48%, rgba(67,223,174,.10), transparent 60%)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="label">G1, unboxed — the glow melts into the stage; there is no edge to see</span>
+  <h1>Flo glow, open · GA1–GA5</h1>
+
+  <div class="zone"><div class="glow ga1"></div><span class="tag">GA1</span><span class="desc">Tight · hugs the text</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="zone"><div class="glow ga2"></div><span class="tag">GA2</span><span class="desc">Wide · fills the section, melts away</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="zone"><div class="glow ga3"></div><span class="tag">GA3</span><span class="desc">Tail · bright at the mark, trailing right</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="zone"><div class="glow ga4"></div><span class="tag">GA4</span><span class="desc">Tall · halo above and below</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+
+  <div class="zone"><div class="glow ga5a"></div><div class="glow ga5b"></div><span class="tag">GA5</span><span class="desc">Core + halo · the smoothest melt</span>
+    <div class="content">
+      <div class="fhead"><svg width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+      <span class="fname">Flo</span><span class="label">· Your briefing · Sep 7</span></div>
+      <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+      <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+      <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      <div class="askflo">Ask Flo →</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

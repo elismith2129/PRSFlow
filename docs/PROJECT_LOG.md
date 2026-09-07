@@ -5212,3 +5212,70 @@ additive, CRM-only). Same wrap-up ritual, same selftest gate.
 
 Shipped straight to main: `55cfe3b` (composer + migration) / `78ae389`
 (fold open by default). Docs + batch in the wrap-up commit that follows.
+
+### Sep 6–7, 2026 — The dashboard eats My Day, the site goes noir, and Flo gets her light (v1.23.1 shipped · v1.24.0 on `feature/dashboard-noir`)
+
+**The spark:** "I really want to combine the My Day and the dashboard into one
+thing... they're not seeing stuff, period." What followed was the longest
+design session of the project — six-plus mock rounds, two deliberate rule
+breaks, and a full rebuild — all conducted mock-first in `docs/design-refs/`
+before a line of page code moved.
+
+**Shipped to main first (v1.23.1):** ROLE_WORKDAYS — daily duties are due only
+on days the role is IN (manager AND billing = Mon–Fri; Eli: "Fernando is not
+in on Sat/Sun... Monday covers Sat/Sun"), gated on DAILY cadence only so a
+sticky monthly landing on a weekend still escalates. Flo's balances line went
+COD-only at the source (`fetchBalancesQueue` filters `payment_status='COD'` —
+label money is mid-pipeline, not "outstanding"). And two masonry bugs: the
+desktop dashboard grid and the staff-grid/flags sub-grid both ran bare `fr`
+tracks, so one long nowrap flag note blew its track and painted the flags row
+over Today's Sessions — `minmax(0,…)` pinned both. (The "whole page blown
+wide" report earlier the same day was the same disease one level up.)
+
+**The design session's arc, with rejections (that's what this log is for):**
+1. v1–v8 of the merge mock: absorb queues + notes into the dashboard, kill
+   the studio squares (loc chips carry counts), Week Ahead ribbon built and
+   KILLED ("I don't need the week ahead thing, period"). Masonry fought and
+   beaten twice the wrong way (stretching absorbers → "too much space in the
+   task box") before the right law emerged: **FIXED GEOMETRY** — every box
+   one designed height, forever; data-emptiness legal, structural emptiness
+   banned; shim boxes sized at design time (flags left, CRM middle, holds
+   right). Same page for every seat — the staff grid was CUT from the
+   dashboard entirely to keep the identical-bottoms guarantee (data lives on
+   in HR → Punches).
+2. The "destroy my ideas" round: strip-of-chips + one merged queue (Linear-
+   inbox pattern) — built, judged "no better than v3", REJECTED in favour of
+   evolving v3. Lesson recorded: the mocks were varying layout when the
+   variable that mattered was hierarchy.
+3. The reimagining rounds (R1–R6, M1–M5, A1–A4): Eli picked **Anchor Noir
+   A1** — statement Flo, portal cards, and the ruling that stuck:
+   **HIGH CONTRAST IS THE GROUND** (near-black stage, bright ivory ink; the
+   soft-skin "dim room" greys read stale) and **THE BIGGEST THING ON SCREEN
+   MUST BE AN ACTION** (the calendar is state; it never gets the hero slot).
+   Landed/holds carry NAMES, never money. The money box became the billing
+   pipeline itself (review → approval → send in ladder colours) after a
+   role-lens experiment was built and retired the same hour.
+4. The Flo-ornament odyssey (scope → marquee → signal dots → ribbon crops →
+   living ribbon → sweeps): a dozen treatments built and rejected — recorded
+   here so nobody re-walks that road. Where it landed: **a simple glow
+   emanating from the ribbon mark, rightward under the text only, at half
+   strength — two lines of CSS.** Also locked along the way: the header is
+   STONE (motion/glow = AI only — §14c extended), PARAMOUNT in Bebas Neue,
+   Flo's lines at 17px Inter with Archivo for hot phrases only.
+
+**Built on `feature/dashboard-noir` (v1.24.0, unmerged):** lib/home.ts data
+layer (landed-today deduped by WO, inquiry names on WebInquiryProvider's
+exact predicate, billing pulse via billingStage/approvalQueue — never
+re-derive); the Noir dashboard page (fixed-geometry portals, statement from
+composeBriefing's real bullets); noir tokens site-wide (dark register only —
+light mode untouched); the radius step-down (40/26/20/18 → 16/12, pills
+sacred); Shift Notes promoted to its own page (Manager|Runner tabs — the
+runner channel MOVED off Daily Ops; log paginates by 7 day-groups);
+/my-day → redirect stub; CRM reclaimed the 52px the dead top nav still ate
++ Log Activity moved above static Notes.
+
+**Tomorrow's wiring list (the session ended here):** the Flo glow (final CSS
+in dashboard-flo-ribbon-final.html — half-strength, emanating right-only);
+Bebas stone header + 17px Flo lines; rail treatment — NO grey ground, hover
+= lighten + grow ~4.5%, and **NO ivory fill on the selected item** (Eli's
+parting ruling); then Eli's full preview walk and the merge.

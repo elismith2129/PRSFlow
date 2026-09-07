@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Top Backgrounds: B1–B10</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  TOP BACKGROUNDS (2026-09-06) — T1 Trace layout LOCKED (Bebas title, 17px
+  Inter Flo with Archivo hot phrases). This file auditions TEN dynamic
+  background engines for the header band. Reference energy: the Arturia
+  Pure SUB artwork — thick blurred contour waves, electricity through jelly.
+
+  All ten are driven by the same live number: ROOMS LIT (slider ↘). A dead
+  building goes near-still; a full one crackles. Sea green is the primary
+  ink (the ribbon's colour); a few modes add the harbor blue/violet second
+  voice — flagged, since colour-means-status would take an exception.
+
+  B1  SCOPE        thin classic trace (the T1 original — the control)
+  B2  FAT GLOW     one thick blurred wave, deep glow (closest to Arturia)
+  B3  CONTOURS     stacked topographic wave lines drifting out of phase
+  B4  ELECTRIC     jittery arc with noise + occasional spark flicker
+  B5  AURORA       huge soft blobs drifting (no lines at all)
+  B6  TWIN CHEM    two fat interweaving waves, green + harbor blue
+  B7  SPECTRUM     analyzer bars breathing across the band
+  B8  PHOSPHOR     scope with persistence — trails burn in and fade
+  B9  PARTICLES    the wave drawn as drifting signal dots
+  B10 INTERFERENCE two near-identical high-freq lines beating (moiré)
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --chip-ink:#12100e;
+  --hot:#ff5a4d; --ok:#43dfae; --uncon:#7fb2e5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:var(--ink);background:none;border:none}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 28px 60px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.topbar{display:flex;align-items:center;gap:10px;padding:4px 0 18px;flex-wrap:wrap}
+.topbar .grow{flex:1}
+.optswitch{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px;flex-wrap:wrap}
+.optswitch button{border-radius:99px;padding:5px 11px;font-size:9px;font-weight:800;
+  letter-spacing:.05em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.optswitch button.on{color:var(--chip-ink);background:var(--ink)}
+.ribbon{display:inline-block;vertical-align:-2px;flex-shrink:0}
+.grad{background:linear-gradient(100deg,var(--ok),var(--uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.datechip{background:var(--ink);color:var(--stage);border-radius:13px;padding:8px 15px;
+  font-family:'Archivo Black',sans-serif;font-size:13px;text-align:center;flex-shrink:0}
+.datechip small{display:block;font-size:9px;opacity:.6;font-family:Inter;font-weight:800;letter-spacing:.1em}
+.seg{display:inline-flex;background:var(--card);border-radius:99px;padding:4px;gap:2px;flex-shrink:0}
+.seg button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--ink3)}
+.seg button.on{color:var(--chip-ink);background:var(--ink)}
+
+.head{position:relative;overflow:hidden;border-radius:18px;margin-bottom:18px;background:#0d0c0a}
+.head canvas{position:absolute;inset:0;width:100%;height:100%}
+.head .content{position:relative;z-index:1;padding:22px 26px 18px}
+.hrow{display:flex;align-items:center;gap:16px}
+h1{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:44px;line-height:.95;letter-spacing:.02em}
+.sub{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--ink3);margin-top:2px}
+.flosay{padding:16px 2px 0;max-width:880px}
+.fhead{display:flex;align-items:center;gap:9px;padding-bottom:6px}
+.fname{font-family:'Archivo Black',sans-serif;font-size:13px}
+.ln{display:block;font-size:17px;font-weight:600;line-height:1.5;padding:1.5px 0;color:var(--ink2)}
+.ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.ln.red,.ln.red b{color:var(--hot)}
+.ln.dim{font-size:14px;color:var(--ink3);font-weight:500}
+.ghost{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:14px;opacity:.28;pointer-events:none}
+.gp{background:var(--card);border-radius:18px;height:150px;padding:14px 16px}
+.gp b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--ink2)}
+.demo{position:fixed;right:16px;bottom:14px;z-index:50;background:var(--card);border-radius:13px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px}
+.demo .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.demo input{accent-color:var(--ok)}
+.demo .v{font-family:'DM Mono',monospace;font-size:12px;color:var(--ok);width:14px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="label">B1–B10 — background engines on the locked T1 top</span>
+    <div class="grow"></div>
+    <div class="optswitch" id="modes"></div>
+  </div>
+
+  <div class="head" id="head">
+    <canvas id="cv"></canvas>
+    <div class="content">
+      <div class="hrow">
+        <div>
+          <h1>PARAMOUNT RECORDING STUDIOS</h1>
+          <div class="sub">Good afternoon Eli · Hollywood, CA</div>
+        </div>
+        <div style="flex:1"></div>
+        <span class="seg"><button class="on">Eli</button><button>Fernando</button><button>Aaron</button></span>
+        <div class="datechip">SUN, SEP 6<small>4:26 PM</small></div>
+      </div>
+      <div class="flosay">
+        <div class="fhead">
+          <svg class="ribbon" width="22" height="22" viewBox="0 0 200 200"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>
+          <span class="fname">Flo</span><span class="label">· Your briefing · Sep 6</span>
+        </div>
+        <span class="ln red"><b>Aaron is 8 days behind on COD invoicing</b> — start there.</span>
+        <span class="ln">We landed <b class="grad">Kestrel, Gamma Media and 10 Summers</b> today. <b>Seven rooms</b> are lit tonight.</span>
+        <span class="ln dim">Four invoices wait on your sign-off · six holds need checking · Fernando is clear.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ghost">
+    <div class="gp"><b>Today's sessions</b></div>
+    <div class="gp"><b>Your list</b></div>
+    <div class="gp"><b>Landed & in the air</b></div>
+  </div>
+</div>
+
+<div class="demo">
+  <span class="k">Rooms lit</span>
+  <input type="range" min="0" max="11" value="7" oninput="ROOMS=+this.value;document.getElementById('rv').textContent=this.value">
+  <span class="v" id="rv">7</span>
+</div>
+
+<script>
+var ROOMS = 7;
+var MODES = ['B1 Scope','B2 Fat glow','B3 Contours','B4 Electric','B5 Aurora','B6 Twin chem','B7 Spectrum','B8 Phosphor','B9 Particles','B10 Interfere'];
+var mode = 1; // default to B2 — the Arturia one
+var mb = document.getElementById('modes');
+MODES.forEach(function(m,i){
+  var b=document.createElement('button');
+  b.textContent=m; if(i===mode) b.className='on';
+  b.onclick=function(){ mode=i; mb.querySelectorAll('button').forEach(function(x,j){x.className=j===i?'on':''}); clearAll(); };
+  mb.appendChild(b);
+});
+
+var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+function size(){ var r=cv.parentElement.getBoundingClientRect();
+  cv.width=r.width*devicePixelRatio; cv.height=r.height*devicePixelRatio; }
+size(); window.addEventListener('resize',function(){size();clearAll();});
+var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var t = Math.random()*100;
+function clearAll(){ ctx.clearRect(0,0,cv.width,cv.height); }
+function E(){ return ROOMS/11; } // the building's energy, 0..1
+var GREEN='67,223,174', BLUE='127,178,229', VIOLET='157,140,255';
+
+function wavePath(freq, amp, speed, phase, step){
+  var W=cv.width,H=cv.height;
+  ctx.beginPath();
+  for(var x=0;x<=W;x+=step*devicePixelRatio){
+    var p=x/W, env=Math.sin(p*Math.PI);
+    var y=H/2
+      + Math.sin(p*Math.PI*2*freq + t*speed + phase)*amp*env
+      + Math.sin(p*Math.PI*2*freq*2.7 + t*speed*1.7 + phase*2)*amp*.3*env*E();
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+}
+
+var draws = [
+/* B1 SCOPE — the thin control trace */
+function(){ clearAll(); var H=cv.height, e=E();
+  ctx.filter='none'; ctx.shadowBlur=0;
+  wavePath(1.6+e*1.2, H*.22*(0.25+e*.75), 0.9+e*1.4, 0, 3);
+  ctx.strokeStyle='rgba('+GREEN+','+(0.16+e*.3)+')'; ctx.lineWidth=1.6*devicePixelRatio; ctx.stroke();
+  wavePath(2.5+e, H*.12*(0.25+e*.75), 0.55+e, 2.1, 3);
+  ctx.strokeStyle='rgba(242,239,231,'+(0.05+e*.07)+')'; ctx.lineWidth=devicePixelRatio; ctx.stroke();
+},
+/* B2 FAT GLOW — one thick blurred wave, deep glow. The Arturia one. */
+function(){ clearAll(); var H=cv.height, e=E(), dpr=devicePixelRatio;
+  ctx.shadowColor='rgba('+GREEN+','+(0.5+e*.4)+')';
+  ctx.shadowBlur=34*dpr*(0.5+e);
+  wavePath(1.2+e*.8, H*.26*(0.2+e*.8), 0.5+e*.9, 0, 4);
+  ctx.strokeStyle='rgba('+GREEN+','+(0.14+e*.22)+')';
+  ctx.lineWidth=(9+e*13)*dpr; ctx.lineCap='round'; ctx.stroke();
+  ctx.shadowBlur=10*dpr;
+  wavePath(1.2+e*.8, H*.26*(0.2+e*.8), 0.5+e*.9, 0, 4);
+  ctx.strokeStyle='rgba('+GREEN+','+(0.28+e*.3)+')'; ctx.lineWidth=2.2*dpr; ctx.stroke();
+  ctx.shadowBlur=0;
+},
+/* B3 CONTOURS — stacked topographic lines drifting out of phase */
+function(){ clearAll(); var H=cv.height, e=E(), dpr=devicePixelRatio;
+  ctx.shadowBlur=0;
+  var n=7;
+  for(var i=0;i<n;i++){
+    var off=(i-(n-1)/2)*H*.09;
+    var W=cv.width;
+    ctx.beginPath();
+    for(var x=0;x<=W;x+=4*dpr){
+      var p=x/W, env=Math.sin(p*Math.PI);
+      var y=H/2+off
+        + Math.sin(p*Math.PI*2*(1.3+e)+t*(0.35+e*.5)+i*.7)*H*.16*(0.2+e*.8)*env
+        + Math.sin(p*Math.PI*4.1+t*.9+i)*H*.04*env*e;
+      x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    var a=(0.05+e*.12)*(1-Math.abs(i-(n-1)/2)/n);
+    ctx.strokeStyle='rgba('+GREEN+','+a+')';
+    ctx.lineWidth=1.3*dpr; ctx.stroke();
+  }
+},
+/* B4 ELECTRIC — jittery arc + spark flicker */
+function(){ clearAll(); var W=cv.width,H=cv.height,e=E(),dpr=devicePixelRatio;
+  ctx.shadowColor='rgba('+GREEN+',.8)'; ctx.shadowBlur=14*dpr;
+  ctx.beginPath();
+  for(var x=0;x<=W;x+=6*dpr){
+    var p=x/W, env=Math.sin(p*Math.PI);
+    var y=H/2
+      + Math.sin(p*Math.PI*2*(1.5+e)+t*(1.2+e*2))*H*.18*(0.2+e*.8)*env
+      + (Math.random()-.5)*H*.10*e*env;   // the jitter IS the electricity
+    x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle='rgba('+GREEN+','+(0.25+e*.35)+')'; ctx.lineWidth=1.8*dpr; ctx.stroke();
+  if(Math.random()<e*.15){ // spark
+    var sx=Math.random()*W;
+    ctx.beginPath(); ctx.moveTo(sx,H*.2+Math.random()*H*.2);
+    ctx.lineTo(sx+(Math.random()-.5)*40*dpr,H*.8-Math.random()*H*.2);
+    ctx.strokeStyle='rgba(242,239,231,.5)'; ctx.lineWidth=dpr; ctx.stroke();
+  }
+  ctx.shadowBlur=0;
+},
+/* B5 AURORA — soft drifting blobs, no lines */
+function(){ clearAll(); var W=cv.width,H=cv.height,e=E();
+  ctx.shadowBlur=0;
+  var blobs=[[GREEN,.16,.3,.25],[BLUE,.10,.7,.6],[GREEN,.12,.5,.85]];
+  blobs.forEach(function(b,i){
+    var cx=W*(b[3]+Math.sin(t*(.15+e*.2)+i*2)* .18);
+    var cy=H*(b[2]+Math.cos(t*(.12+e*.18)+i)* .25);
+    var r=Math.max(W,H)*(0.24+e*.14)*(1+.2*Math.sin(t*.3+i));
+    var g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0,'rgba('+b[0]+','+(b[1]*(0.4+e))+')');
+    g.addColorStop(1,'rgba('+b[0]+',0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  });
+},
+/* B6 TWIN CHEM — green + harbor blue fat waves interweaving.
+   ⚠ second colour — status-law exception if adopted. */
+function(){ clearAll(); var H=cv.height,e=E(),dpr=devicePixelRatio;
+  [[GREEN,0],[BLUE,2.4]].forEach(function(cfg,i){
+    ctx.shadowColor='rgba('+cfg[0]+',.6)'; ctx.shadowBlur=26*dpr*(0.5+e);
+    wavePath(1.1+e*.7+i*.25, H*.22*(0.2+e*.8), (0.45+e*.8)*(i?0.8:1), cfg[1], 4);
+    ctx.strokeStyle='rgba('+cfg[0]+','+(0.12+e*.2)+')';
+    ctx.lineWidth=(7+e*10)*dpr; ctx.lineCap='round'; ctx.stroke();
+  });
+  ctx.shadowBlur=0;
+},
+/* B7 SPECTRUM — analyzer bars breathing */
+function(){ clearAll(); var W=cv.width,H=cv.height,e=E(),dpr=devicePixelRatio;
+  ctx.shadowBlur=0;
+  var n=48, bw=W/n;
+  for(var i=0;i<n;i++){
+    var f=Math.abs(Math.sin(i*.35+t*(0.8+e*1.6)))*Math.sin((i/n)*Math.PI);
+    var h=H*(0.06+f*(0.18+e*.5));
+    ctx.fillStyle='rgba('+GREEN+','+(0.05+e*.13*f)+')';
+    ctx.fillRect(i*bw+bw*.2, H-h, bw*.6, h);
+  }
+},
+/* B8 PHOSPHOR — persistence trails burn in and fade */
+function(){ var W=cv.width,H=cv.height,e=E(),dpr=devicePixelRatio;
+  ctx.fillStyle='rgba(13,12,10,'+(0.10+ (1-e)*.1)+')'; // fade, don't clear
+  ctx.fillRect(0,0,W,H);
+  ctx.shadowBlur=0;
+  wavePath(1.6+e*1.4, H*.24*(0.2+e*.8), 1.1+e*1.8, 0, 3);
+  ctx.strokeStyle='rgba('+GREEN+','+(0.2+e*.3)+')'; ctx.lineWidth=1.5*dpr; ctx.stroke();
+},
+/* B9 PARTICLES — the wave as drifting signal dots */
+function(){ clearAll(); var W=cv.width,H=cv.height,e=E(),dpr=devicePixelRatio;
+  ctx.shadowBlur=0;
+  var n=90;
+  for(var i=0;i<n;i++){
+    var p=(i/n + t*(0.02+e*.05))%1;
+    var env=Math.sin(p*Math.PI);
+    var y=H/2
+      + Math.sin(p*Math.PI*2*(1.4+e)+t*(0.8+e))*H*.2*(0.25+e*.75)*env
+      + Math.sin(i*7.3)*H*.05*env;
+    var r=(1+Math.sin(i*3.1+t*2)*.6+e)*dpr;
+    ctx.fillStyle='rgba('+GREEN+','+(0.1+e*.3*env)+')';
+    ctx.beginPath(); ctx.arc(p*W,y,Math.max(r,0.5),0,7); ctx.fill();
+  }
+},
+/* B10 INTERFERENCE — two near-identical lines beating (moiré) */
+function(){ clearAll(); var H=cv.height,e=E(),dpr=devicePixelRatio;
+  ctx.shadowBlur=0;
+  [[0,0],[0.045,1.3]].forEach(function(cfg){
+    wavePath(6+e*3+cfg[0], H*.2*(0.2+e*.8), 0.4+e*.6, cfg[1], 2);
+    ctx.strokeStyle='rgba('+GREEN+','+(0.1+e*.16)+')';
+    ctx.lineWidth=devicePixelRatio; ctx.stroke();
+  });
+},
+];
+
+function frame(){
+  draws[mode]();
+  t+=0.016;
+  if(!reduced) requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

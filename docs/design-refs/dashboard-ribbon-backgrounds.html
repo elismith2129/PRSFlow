@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Ribbon Backgrounds: RB1–RB10</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono&display=swap" rel="stylesheet">
+<!--
+  RIBBON BACKGROUNDS (2026-09-06) — the brand mark reimagined as Flo's field.
+  The ribbon IS a sine wave (spec §20: the fill between the mark's tallest and
+  flattest wave), so these treatments stretch, echo, unroll, dot and scatter
+  THE MARK ITSELF. Ten tiles, judged like the logo round: scan the grid, name
+  the keepers. Sample text in every tile = the legibility test.
+  Sea green only. RB6 carries the one whisper of motion (dash crawl).
+-->
+<style>
+:root{
+  --stage:#0b0a09; --card:#151412;
+  --ink:#f2efe7; --ink2:rgba(242,239,231,.6); --ink3:rgba(242,239,231,.34);
+  --hot:#ff5a4d; --ok:#43dfae;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);
+  font:400 14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+.label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+h1{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:20px;letter-spacing:-.02em;padding:4px 0 18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tile{position:relative;overflow:hidden;border-radius:16px;background:#0d0c0a;height:190px}
+.tile svg.bg,.tile canvas{position:absolute;inset:0;width:100%;height:100%}
+.tile .tag{position:absolute;top:10px;right:12px;z-index:2;font-family:'DM Mono',monospace;
+  font-size:10px;color:var(--ink3)}
+.tile .content{position:relative;z-index:1;padding:18px 20px}
+.fhead{display:flex;align-items:center;gap:8px;padding-bottom:5px}
+.fname{font-family:'Archivo Black',sans-serif;font-size:12px}
+.ln{display:block;font-size:14.5px;font-weight:600;line-height:1.45;color:var(--ink2);max-width:70%}
+.ln b{font-family:'Archivo Black',sans-serif;font-weight:400;color:var(--ink)}
+.ln.red,.ln.red b{color:var(--hot)}
+.desc{position:absolute;bottom:9px;left:20px;z-index:2;font-size:9px;font-weight:800;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+@keyframes crawl{to{stroke-dashoffset:-600}}
+.crawlpath{animation:crawl 26s linear infinite}
+@media (prefers-reduced-motion: reduce){.crawlpath{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="label">The mark as the field — ribbon path: M 14 100 Q 70 -10 113 100 Q 156 210 186 100 …</span>
+  <h1>Ribbon backgrounds · RB1–RB10</h1>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+var RIB='M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z';
+var G='#43dfae';
+
+/* sample content block, reused in every tile */
+function content(){
+  return '<div class="content">'
+    +'<div class="fhead"><svg width="18" height="18" viewBox="0 0 200 200"><path d="'+RIB+'" fill="'+G+'"/></svg>'
+    +'<span class="fname">Flo</span><span class="label">· Sep 6</span></div>'
+    +'<span class="ln red"><b>Aaron is 8 days behind on COD invoicing.</b></span>'
+    +'<span class="ln">We landed <b>Kestrel, Gamma Media & 10 Summers</b> today.</span>'
+    +'</div>';
+}
+function tile(id, desc, bg){
+  return '<div class="tile">'+bg+content()
+    +'<span class="tag">'+id+'</span><span class="desc">'+desc+'</span></div>';
+}
+/* helper: big ribbon svg positioned; vb 200. */
+function ribsvg(attrs, inner){
+  return '<svg class="bg" '+attrs+' preserveAspectRatio="xMidYMid slice">'+inner+'</svg>';
+}
+/* unrolled sine ribbon band path across width 1000, two phased waves closed */
+function unrolled(y0, a1, a2, freq, w){
+  w=w||1000;
+  var top='M0 '+y0, bot='';
+  var N=60;
+  for(var i=0;i<=N;i++){
+    var x=i/N*w;
+    top+=' L'+x.toFixed(1)+' '+(y0+Math.sin(i/N*Math.PI*2*freq)*a1).toFixed(1);
+  }
+  for(var i=N;i>=0;i--){
+    var x=i/N*w;
+    bot+=' L'+x.toFixed(1)+' '+(y0+Math.sin(i/N*Math.PI*2*freq+0.9)*a2).toFixed(1);
+  }
+  return top+bot+' Z';
+}
+
+var tiles=[];
+
+/* RB1 · GIANT OUTLINE — the mark stroked huge, right side */
+tiles.push(tile('RB1','Giant outline · right',
+  ribsvg('viewBox="0 0 200 200"',
+    '<g transform="translate(78,0) scale(1.1)"><path d="'+RIB+'" fill="none" stroke="'+G+'" stroke-opacity=".14" stroke-width="1.6"/></g>')));
+
+/* RB2 · GHOST FILL — the solid mark at 5%, oversized, bleeding off right */
+tiles.push(tile('RB2','Ghost fill · bleeding off',
+  ribsvg('viewBox="0 0 200 200"',
+    '<g transform="translate(95,-10) scale(1.35)"><path d="'+RIB+'" fill="'+G+'" fill-opacity=".055"/></g>')));
+
+/* RB3 · UNROLLED — the ribbon unrolled into a band across the zone */
+tiles.push(tile('RB3','The ribbon unrolled',
+  ribsvg('viewBox="0 0 1000 200"',
+    '<path d="'+unrolled(150,26,14,1.4)+'" fill="'+G+'" fill-opacity=".06"/>'
+   +'<path d="'+unrolled(150,26,14,1.4)+'" fill="none" stroke="'+G+'" stroke-opacity=".10" stroke-width="1"/>')));
+
+/* RB4 · ECHO STACK — concentric offset outlines, onion layers */
+tiles.push(tile('RB4','Echo stack',
+  ribsvg('viewBox="0 0 200 200"',
+    [0,1,2,3].map(function(i){
+      var s=1.05+i*.16, o=.16-i*.04;
+      return '<g transform="translate('+(85-i*8)+','+(100-100*s+0)+') scale('+s+')" ><path d="'+RIB+'" fill="none" stroke="'+G+'" stroke-opacity="'+o+'" stroke-width="1.2" transform="translate(0,'+(100-100/s)*0+')"/></g>';
+    }).join(''))));
+
+/* RB5 · HALFTONE MARK — the mark as dots (canvas) */
+tiles.push(tile('RB5','Halftone mark','<canvas data-draw="halftone"></canvas>'));
+
+/* RB6 · DASH CRAWL — the outline with a slow light crawling its path */
+tiles.push(tile('RB6','Dash crawl · the one with motion',
+  ribsvg('viewBox="0 0 200 200"',
+    '<g transform="translate(80,0) scale(1.1)">'
+   +'<path d="'+RIB+'" fill="none" stroke="'+G+'" stroke-opacity=".08" stroke-width="1.4"/>'
+   +'<path class="crawlpath" d="'+RIB+'" fill="none" stroke="'+G+'" stroke-opacity=".4" stroke-width="1.6" stroke-dasharray="40 560" stroke-linecap="round"/>'
+   +'</g>')));
+
+/* RB7 · TWIN CROSS — the mark's two lobes stretched across the full width */
+tiles.push(tile('RB7','Twin waves crossing · full width',
+  ribsvg('viewBox="0 0 1000 200"',
+    '<path d="M0 130 C 200 20, 380 220, 560 110 S 880 30, 1000 120" fill="none" stroke="'+G+'" stroke-opacity=".12" stroke-width="2"/>'
+   +'<path d="M0 90 C 220 190, 400 10, 600 120 S 860 200, 1000 80" fill="none" stroke="'+G+'" stroke-opacity=".07" stroke-width="1.2"/>')));
+
+/* RB8 · END-CAP — the solid mark anchoring the right edge, gradient fade */
+tiles.push(tile('RB8','End-cap · anchored right',
+  ribsvg('viewBox="0 0 200 200"',
+    '<defs><linearGradient id="fade8" x1="0" x2="1"><stop offset="0" stop-color="'+G+'" stop-opacity="0"/><stop offset="1" stop-color="'+G+'" stop-opacity=".11"/></linearGradient></defs>'
+   +'<g transform="translate(105,10) scale(1.15)"><path d="'+RIB+'" fill="url(#fade8)"/></g>')));
+
+/* RB9 · PARTICLE OUTLINE — the path as a constellation (canvas) */
+tiles.push(tile('RB9','Particle outline','<canvas data-draw="particles"></canvas>'));
+
+/* RB10 · WATERMARK FIELD — small marks scattered, rotated, whisper alpha */
+(function(){
+  var inner='';
+  for(var i=0;i<9;i++){
+    function rnd(k){var x=Math.sin(i*57.1+k*13.7)*43758.5;return x-Math.floor(x)}
+    var x=40+rnd(1)*150, y=10+rnd(2)*170, s=.09+rnd(3)*.16, r=(rnd(4)-.5)*50;
+    var o=.05+rnd(5)*.07;
+    inner+='<g transform="translate('+x.toFixed(0)+','+y.toFixed(0)+') scale('+s.toFixed(2)+') rotate('+r.toFixed(0)+')"><path d="'+RIB+'" fill="'+G+'" fill-opacity="'+o.toFixed(2)+'"/></g>';
+  }
+  tiles.push(tile('RB10','Watermark field', ribsvg('viewBox="0 0 200 200"', inner)));
+})();
+
+document.getElementById('grid').innerHTML=tiles.join('');
+
+/* canvas tiles */
+function rnd(i){var x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+/* sample the ribbon curves parametrically (the two quadratic lobes) */
+function ribbonPoints(n){
+  var pts=[];
+  function Q(p0,p1,p2,t){return [
+    (1-t)*(1-t)*p0[0]+2*(1-t)*t*p1[0]+t*t*p2[0],
+    (1-t)*(1-t)*p0[1]+2*(1-t)*t*p1[1]+t*t*p2[1]];}
+  var segs=[
+    [[14,100],[70,-10],[113,100]],
+    [[113,100],[156,210],[186,100]],
+    [[186,100],[156,130],[113,100]],
+    [[113,100],[70,70],[14,100]],
+  ];
+  for(var s=0;s<segs.length;s++)
+    for(var i=0;i<n;i++) pts.push(Q(segs[s][0],segs[s][1],segs[s][2],i/n));
+  return pts;
+}
+document.querySelectorAll('canvas[data-draw]').forEach(function(cv){
+  var mode=cv.dataset.draw;
+  var r=cv.parentElement.getBoundingClientRect();
+  cv.width=r.width*devicePixelRatio; cv.height=r.height*devicePixelRatio;
+  var ctx=cv.getContext('2d'), W=cv.width, H=cv.height, dpr=devicePixelRatio;
+  /* map 200-space to a big right-side placement */
+  function map(p){ return [ W*.55 + (p[0]/200)*W*.5, (p[1]/200)*H*1.05 - H*.02 ]; }
+  var pts=ribbonPoints(60);
+  if(mode==='halftone'){
+    /* fill region sampling: draw the mark to an offscreen path test */
+    var path=new Path2D('M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z');
+    var gap=7*dpr;
+    for(var y=0;y<H;y+=gap){
+      for(var x=W*.5;x<W;x+=gap){
+        /* invert map */
+        var mx=((x-W*.55)/(W*.5))*200, my=((y+H*.02)/(H*1.05))*200;
+        ctx.save(); ctx.setTransform(1,0,0,1,0,0);
+        var inside=ctx.isPointInPath(path,mx,my);
+        ctx.restore();
+        if(!inside) continue;
+        var a=.05+rnd(x+y*3)*.13;
+        ctx.fillStyle='rgba(67,223,174,'+a+')';
+        ctx.beginPath(); ctx.arc(x+(rnd(x)-.5)*3*dpr,y+(rnd(y)-.5)*3*dpr,(0.8+rnd(x*y)*1.1)*dpr,0,7); ctx.fill();
+      }
+    }
+  }
+  if(mode==='particles'){
+    pts.forEach(function(p,i){
+      var m=map(p);
+      var jx=(rnd(i*3)-.5)*9*dpr, jy=(rnd(i*7)-.5)*9*dpr;
+      var a=.06+rnd(i*11)*.18;
+      ctx.fillStyle='rgba(67,223,174,'+a+')';
+      ctx.beginPath(); ctx.arc(m[0]+jx,m[1]+jy,(0.7+rnd(i)*1.5)*dpr,0,7); ctx.fill();
+    });
+  }
+});
+</script>
+</body>
+</html>
