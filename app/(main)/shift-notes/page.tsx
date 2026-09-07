@@ -34,7 +34,9 @@ import {
 import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
 import { OPS_STUDIOS } from '@/lib/dailyOps'
 
-const BILLING_CARD_LABEL = 'Billing Ops'
+// 'Billing Ops' → 'Billing' (Eli, 2026-09-07): the seat reads as the plain
+// role name everywhere now that Aaron's name is retired site-wide.
+const BILLING_CARD_LABEL = 'Billing'
 /** Notes-log pagination: day-groups shown before "Load more" (Eli 2026-09-06 —
     the log must never be a mile long). */
 const DAYS_PER_PAGE = 7

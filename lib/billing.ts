@@ -473,6 +473,10 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this onto several lines with concatenation.
     .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note')
     .order('session_date', { ascending: false })
+    // Secondary order = id: without it Postgres returns equal-date rows in
+    // ARBITRARY order that can differ per refetch (the page-2 churn bug —
+    // sortBucket/sortByColumn carry the same tiebreaker client-side).
+    .order('id', { ascending: true })
   if (!dbResult('Loading invoices', error)) return []
   if (!wos || wos.length === 0) return []
 
@@ -738,24 +742,28 @@ export function rowsInBucket(
  *   Everything else → most recent session first.
  */
 export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] {
+  // See sortByColumn: every comparator ends on the workOrderId tiebreaker so
+  // equal-ranked rows can't permute between refetches (the page-2 churn bug).
+  const stable = (a: InvoiceRow, b: InvoiceRow) => a.workOrderId.localeCompare(b.workOrderId)
   return [...rows].sort((a, b) => {
     if (bucket === 'awaiting') {
-      return (b.ageDays ?? 0) - (a.ageDays ?? 0)
+      return (b.ageDays ?? 0) - (a.ageDays ?? 0) || stable(a, b)
     }
     if (bucket === 'notstarted') {
       // Soonest first — the old Upcoming order: the next session to happen
       // leads the parked list.
-      return (a.sessionDate ?? '9999').localeCompare(b.sessionDate ?? '9999')
+      return (a.sessionDate ?? '9999').localeCompare(b.sessionDate ?? '9999') || stable(a, b)
     }
     if (bucket === 'progress') {
       const fa = a.notStarted ? 1 : 0
       const fb = b.notStarted ? 1 : 0
       if (fa !== fb) return fa - fb // started work above not-yet-started
-      return fa
+      return (fa
         ? (a.sessionDate ?? '').localeCompare(b.sessionDate ?? '')  // future: soonest first
         : (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')  // started: most recent first
+      ) || stable(a, b)
     }
-    return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
+    return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '') || stable(a, b)
   })
 }
 
@@ -783,7 +791,18 @@ export function sortByColumn(rows: InvoiceRow[], col: SortCol, dir: 'asc' | 'des
       default:        return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
     }
   }
-  return [...rows].sort((a, b) => flip * cmp(a, b) || (b.sessionDate ?? '').localeCompare(a.sessionDate ?? ''))
+  // FINAL TIEBREAKER = workOrderId (2026-09-07, the page-2 churn bug). The
+  // fetch orders by session_date alone and sessions cluster on the same days,
+  // so Postgres returned equal-date rows in ARBITRARY order — and every
+  // realtime refetch (each action causes one) could permute them. With 16+
+  // rows in a bucket, the row occupying slot 16 changed on every refetch:
+  // page 2 looked like it dealt one WO at a time. A total order makes page
+  // membership stable across refetches; without it Array.sort has nothing to
+  // hold equal rows in place with.
+  return [...rows].sort((a, b) =>
+    flip * cmp(a, b)
+    || (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
+    || a.workOrderId.localeCompare(b.workOrderId))
 }
 
 export function bucketCounts(rows: InvoiceRow[], pipeline: Pipeline): Record<string, number> {

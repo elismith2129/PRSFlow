@@ -2484,7 +2484,9 @@ html.n-page .c-frame { background: #0b0a09; }
 
 /* PORTALS — fixed geometry. Row 1 = 356px, row 2 = 200px (desktop). */
 .n-home .n-row1{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) minmax(0,1fr);gap:14px}
-.n-home .n-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-bottom:14px}
+/* Third track is the flag SQUARE — 140px wide to match the row's 140px
+   portal height (Eli, 2026-09-07: "can be small. like a square"). */
+.n-home .n-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 140px;gap:14px;padding-bottom:14px}
 .n-home .n-portal{background:var(--n-card);border-radius:18px;padding:16px 18px;cursor:pointer;
   display:flex;flex-direction:column;overflow:hidden;
   transition:transform .18s ease,background .18s ease;box-shadow:0 2px 12px rgba(0,0,0,.5)}
@@ -2565,22 +2567,34 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-pipebig{font-family:'Archivo Black',sans-serif;font-size:36px;line-height:1;letter-spacing:-.02em}
 .n-home .n-pipesub{font-size:11px;color:var(--n-ink3);padding-top:2px}
 .n-home .n-pstat{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:5px}
-.n-home .n-inqblock{flex:1;background:rgba(255,90,77,.26);border-radius:14px;position:relative;
+/* BLUE, not red (Eli, 2026-09-07): a new inquiry is uncontacted-blue — the
+   CRM's own colour for it. Red now belongs to the flag square alone. */
+.n-home .n-inqblock{flex:1;background:rgba(127,178,229,.24);border-radius:14px;position:relative;
   padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:2px;
   animation:n-inqbreathe 3.6s ease-in-out infinite;min-width:0}
 @keyframes n-inqbreathe{
-  0%,100%{box-shadow:0 0 12px 1px rgba(255,90,77,.28)}
-  50%{box-shadow:0 0 30px 6px rgba(255,90,77,.55)}}
+  0%,100%{box-shadow:0 0 12px 1px rgba(127,178,229,.26)}
+  50%{box-shadow:0 0 30px 6px rgba(127,178,229,.5)}}
 @media (prefers-reduced-motion: reduce){.n-home .n-inqblock{animation:none}}
 .n-home .n-inqblock.n-quietblock{background:var(--n-wash);animation:none}
 .n-home .n-inqk{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--n-hot);display:flex;align-items:center;gap:8px;padding-bottom:5px}
+  color:var(--n-uncon);display:flex;align-items:center;gap:8px;padding-bottom:5px}
 .n-home .n-inqblock.n-quietblock .n-inqk{color:var(--n-ink3)}
-.n-home .n-pulse{width:8px;height:8px;border-radius:50%;background:var(--n-hot);animation:n-np 1.6s ease-in-out infinite}
+.n-home .n-pulse{width:8px;height:8px;border-radius:50%;background:var(--n-uncon);animation:n-np 1.6s ease-in-out infinite}
 @keyframes n-np{0%,100%{opacity:.25}50%{opacity:1}}
 .n-home .n-who{font-family:'Archivo Black',sans-serif;font-size:12.5px;line-height:1.3;color:var(--n-ink);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .n-home .n-src{font-size:9.5px;color:var(--n-ink3);font-family:Inter,system-ui;font-weight:600}
+
+/* the flag square — one number, red when anything is pending */
+.n-home .n-flagbox{display:flex;flex-direction:column}
+.n-home .n-flagbody{flex:1;display:flex;flex-direction:column;justify-content:flex-end;min-height:0}
+.n-home .n-flagnum{font-family:'Archivo Black',sans-serif;font-size:36px;line-height:1;letter-spacing:-.02em;color:var(--n-ink3)}
+.n-home .n-flagk{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--n-ink3);padding-top:4px}
+.n-home .n-flagbox.n-flagged{background:rgba(255,90,77,.26)}
+.n-home .n-flagbox.n-flagged:hover{background:rgba(255,90,77,.34)}
+.n-home .n-flagbox.n-flagged .n-flagnum{color:var(--n-hot)}
+.n-home .n-flagbox.n-flagged .n-flagk{color:var(--n-hot)}
 
 /* the money — stage tiles in billing-ladder colours */
 .n-home .n-stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch;min-height:0}

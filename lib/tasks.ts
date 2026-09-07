@@ -8,15 +8,19 @@ export const TAB_DEFS: TabDef[] = [
   { key: 'eli',       label: 'Eli',       names: ['Eli'] },
   { key: 'adam_mike', label: 'Adam-Mike', names: ['Adam-Mike'] },
   { key: 'fernando',  label: 'Fernando',  names: ['Fernando'] },
-  { key: 'aaron',     label: 'Aaron',     names: ['Aaron'] },
+  // Aaron left (v1.19.1) — the seat is the ROLE now (Eli, 2026-09-07: "remove
+  // Aaron's name from everywhere. just change it to Billing"). The profile
+  // row's display_name is renamed to 'Billing' in the same pass; 'Aaron' stays
+  // in `names` so the tab keeps matching if the SQL hasn't run yet.
+  { key: 'aaron',     label: 'Billing',   names: ['Billing', 'Aaron'] },
   // Sam replaced Quinn 2026-09-01 (display_name must be exactly 'Sam' in
   // user_profiles — these tabs match on it).
   { key: 'asst',      label: 'Asst Mgr',  names: ['Sam', 'Isaac'] },
   { key: 'tech',      label: 'Tech',      names: ['Sierra', 'Tom'] },
 ]
 
-// Flat "Assign to" dropdown options, in exact display order. Individual people
-// (Adam-Mike / Eli / Fernando / Aaron) map to their own profile; the Asst Mgr and
+// Flat "Assign to" dropdown options, in exact display order. Individual seats
+// (Adam-Mike / Eli / Fernando / Billing) map to their own profile; the Asst Mgr and
 // Tech options represent a PAIR and assign to the primary member's id (Sam /
 // Sierra), which lands the task in the corresponding member-based tab. The option
 // keys intentionally match the TAB_DEFS keys so the dropdown can default to the
@@ -34,7 +38,7 @@ export const ASSIGN_OPTIONS: { key: string; label: string; primaryName: string }
   { key: 'adam_mike', label: 'Adam-Mike', primaryName: 'Adam-Mike' },
   { key: 'eli',       label: 'Eli',       primaryName: 'Eli' },
   { key: 'fernando',  label: 'Fernando',  primaryName: 'Fernando' },
-  { key: 'aaron',     label: 'Aaron',     primaryName: 'Aaron' },
+  { key: 'aaron',     label: 'Billing',   primaryName: 'Billing' },
   { key: 'asst',      label: 'Asst Mgr',  primaryName: 'Sam' },
   { key: 'tech',      label: 'Tech',      primaryName: 'Sierra' },
 ]
