@@ -396,7 +396,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
                    : `color:${FG};opacity:${inMonth ? '.6' : '.28'}`)
         + `">${cell.getDate()}</div>`
 
-      for (const b of todays) inner += b.start_date === b.end_date ? card(b) : spanBar(b, ds)
+      // Multi-day rendering (revised — Eli, 2026-09-07: "a lot are skinny…
+      // just the daily rooms; the lockouts are ok"). The compact spanBar was
+      // written for month-long lockout bars but was catching every ordinary
+      // 2–3 day session, which render as full cards in the app. Now only
+      // BLOCK-ish statuses (lockout/tour/tech/open_hours) keep the skinny
+      // strip; a real multi-day session gets the FULL card on every day it
+      // covers, same as the app's calendar communicates it.
+      for (const b of todays) {
+        const isBlockish = BLOCKS.includes(b.status ?? '')
+        inner += (b.start_date === b.end_date || !isBlockish) ? card(b) : spanBar(b, ds)
+      }
 
       rows += `<td style="height:${MIN_ROW_H}px;padding:5px 6px;`
         + `border-right:1px solid ${WASH};border-bottom:1px solid ${WASH};`
