@@ -2430,3 +2430,167 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 }
 .c-richnote p, .c-richnote div { margin: 0; }
 .c-richnote:focus { outline: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NOIR DASHBOARD (2026-09-06 — docs/design-refs/dashboard-anchor-noir.html A1,
+   LOCKED). Scoped to the home page only (`html.n-page` + `.n-home`); the rest
+   of the app keeps the soft skin until the site-wide contrast project.
+   DELIBERATELY THEME-FIXED: the noir stage is near-black in BOTH app themes —
+   high contrast IS the design (Eli's ruling). Fixed geometry: every box has a
+   designed height that never changes; underfill reads as quiet, overflow
+   scrolls inside.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html.n-page, html.n-page body { background: #0b0a09 !important; }
+.n-home{
+  --n-stage:#0b0a09; --n-card:#151412; --n-card2:#1b1917;
+  --n-ink:#f2efe7; --n-ink2:rgba(242,239,231,.6); --n-ink3:rgba(242,239,231,.34);
+  --n-wash:rgba(242,239,231,.06); --n-wash2:rgba(242,239,231,.12);
+  --n-chip-ink:#12100e;
+  --n-hot:#ff5a4d; --n-hot-text:#fff4f2;
+  --n-warm:#ffa94d; --n-cold:#5fc9e8; --n-ok:#43dfae; --n-uncon:#7fb2e5;
+  color:var(--n-ink);
+}
+.n-home .n-label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--n-ink3)}
+.n-home .n-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.n-home .n-mono{font-family:'DM Mono',ui-monospace,monospace}
+
+/* view-as + datechip */
+.n-home .n-seg{display:inline-flex;background:var(--n-card);border-radius:99px;padding:4px;gap:2px}
+.n-home .n-seg button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--n-ink3);background:none}
+.n-home .n-seg button.n-on{color:var(--n-chip-ink);background:var(--n-ink)}
+.n-home .n-datechip{background:var(--n-ink);color:var(--n-stage);border-radius:13px;padding:8px 15px;
+  font-family:'Archivo Black',sans-serif;font-size:13px;text-align:center}
+.n-home .n-datechip small{display:block;font-size:9px;opacity:.6;font-family:Inter,system-ui;font-weight:800;letter-spacing:.1em}
+
+/* THE STATEMENT — Flo speaks first, big. Glow stays Flo's alone (§14c). */
+.n-home .n-statement{padding:8px 0 24px;max-width:920px}
+.n-home .n-fhead{display:flex;align-items:center;gap:9px;padding-bottom:8px}
+.n-home .n-fname{font-family:'Archivo Black',sans-serif;font-size:14px}
+.n-home .n-ln{display:block;font-family:'Archivo Black',sans-serif;font-size:22px;
+  line-height:1.32;letter-spacing:-.015em;padding:2px 0;width:fit-content}
+.n-home .n-ln.n-red{color:var(--n-hot)}
+.n-home .n-ln.n-dim{color:var(--n-ink2);font-size:17px}
+.n-home .n-grad{background:linear-gradient(100deg,var(--n-ok),var(--n-cold) 60%,var(--n-uncon));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.n-home .n-askflo{margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--n-ink3)}
+
+/* PORTALS — fixed geometry. Row 1 = 356px, row 2 = 200px (desktop). */
+.n-home .n-row1{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:14px}
+.n-home .n-row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-top:14px}
+.n-home .n-portal{background:var(--n-card);border-radius:18px;padding:15px 17px;cursor:pointer;
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:transform .18s ease,background .18s ease;box-shadow:0 2px 12px rgba(0,0,0,.5)}
+.n-home .n-portal:hover{transform:translateY(-3px);background:var(--n-card2)}
+.n-home .n-row1 .n-portal{height:356px}
+.n-home .n-row2 .n-portal{height:200px}
+.n-home.n-mobile .n-row1,.n-home.n-mobile .n-row2{grid-template-columns:minmax(0,1fr)}
+.n-home.n-mobile .n-row1 .n-portal,.n-home.n-mobile .n-row2 .n-portal{height:auto;min-height:0}
+.n-home .n-pt{display:flex;align-items:baseline;gap:9px;margin-bottom:11px;flex-shrink:0}
+.n-home .n-pt b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--n-ink2)}
+.n-home .n-pt .n-arrow{margin-left:auto;font-size:13px;color:var(--n-ink3);transition:opacity .15s,transform .15s,color .15s}
+.n-home .n-portal:hover .n-pt .n-arrow{color:var(--n-ink);transform:translateX(3px)}
+
+/* rooms — solid status fills, chip ink, full standard card info */
+.n-home .n-rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;flex:1;min-height:0;align-content:start}
+.n-home.n-mobile .n-rgrid{grid-template-columns:repeat(2,1fr)}
+.n-home .n-rc{border-radius:10px;min-height:82px;padding:7px 9px;background:var(--n-wash);
+  overflow:hidden;position:relative;display:flex;flex-direction:column}
+.n-home .n-rc .n-rn{font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--n-ink3);white-space:nowrap}
+.n-home .n-rc.n-on{background:var(--n-ok);color:var(--n-chip-ink)}
+.n-home .n-rc.n-on .n-rn{color:rgba(18,16,14,.6)}
+.n-home .n-rc.n-warmc{background:var(--n-warm);color:var(--n-chip-ink)}
+.n-home .n-rc.n-warmc .n-rn{color:rgba(18,16,14,.6)}
+.n-home .n-rc.n-hotc{background:var(--n-hot);color:var(--n-hot-text)}
+.n-home .n-rc.n-hotc .n-rn{color:rgba(255,244,242,.7)}
+.n-home .n-rc .n-a{font-family:'Archivo Black',sans-serif;font-size:11px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-rc .n-c{font-size:8.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-rc .n-tm{font-size:8.5px;opacity:.85;margin-top:auto;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-rc .n-eng{position:absolute;right:7px;bottom:6px;font-family:'DM Mono',ui-monospace,monospace;font-size:7px;opacity:.6}
+.n-home .n-loccount{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.n-home .n-loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:99px;padding:2.5px 7px;background:var(--n-wash2);color:var(--n-ink2)}
+.n-home .n-loccount span.n-live{background:var(--n-ok);color:var(--n-chip-ink)}
+
+/* the queue — merged duties/tasks/approvals */
+.n-home .n-qtabs{display:inline-flex;gap:2px;background:var(--n-wash);border-radius:99px;padding:3px}
+.n-home .n-qtabs button{border-radius:99px;padding:2px 9px;font-size:7.5px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--n-ink3);background:none}
+.n-home .n-qtabs button.n-on{background:var(--n-ink);color:var(--n-chip-ink)}
+.n-home .n-qscroll{flex:1;min-height:0;overflow-y:auto}
+.n-home .n-q{display:flex;align-items:center;gap:9px;padding:6px 2px;font-size:12.5px;cursor:pointer;border-radius:8px}
+.n-home .n-q:hover{background:var(--n-wash)}
+.n-home .n-q .n-bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--n-wash2);position:relative}
+.n-home .n-q.n-done{opacity:.35;text-decoration:line-through}
+.n-home .n-q.n-done .n-bx{background:var(--n-ok)}
+.n-home .n-q.n-done .n-bx::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:800;color:var(--n-chip-ink)}
+.n-home .n-q.n-redq{color:var(--n-hot);font-weight:600}
+.n-home .n-q .n-tag{font-size:6.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:4px;padding:2px 6px;flex-shrink:0;background:var(--n-wash2);color:var(--n-ink2)}
+.n-home .n-q .n-tag.n-ap{background:var(--n-warm);color:var(--n-chip-ink)}
+.n-home .n-q .n-tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-q .n-mn{margin-left:auto;font-family:'DM Mono',ui-monospace,monospace;font-size:9px;color:var(--n-ink3);flex-shrink:0}
+.n-home .n-q.n-redq .n-mn{color:var(--n-hot)}
+.n-home .n-quiet{font-size:11.5px;color:var(--n-ink3);font-style:italic;padding:8px 2px}
+.n-home .n-prog{font-family:'DM Mono',ui-monospace,monospace;font-size:9px;color:var(--n-ink3);margin-left:auto}
+
+/* landed + holds */
+.n-home .n-landhead{font-size:8.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--n-ink3);padding:2px 0 8px}
+.n-home .n-landed{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px}
+.n-home .n-land{border-radius:99px;padding:6px 13px;background:var(--n-ok);color:var(--n-chip-ink);
+  font-family:'Archivo Black',sans-serif;font-size:11.5px}
+.n-home .n-holdrow{display:flex;align-items:baseline;gap:9px;padding:4.5px 0;font-size:12.5px;color:var(--n-ink2)}
+.n-home .n-holdrow b{color:var(--n-ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.n-home .n-holdrow .n-d{font-family:'DM Mono',ui-monospace,monospace;font-size:9px;color:var(--n-ink3);width:56px;flex-shrink:0}
+.n-home .n-chip{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;
+  font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--n-chip-ink);flex-shrink:0;margin-left:auto}
+.n-home .n-chip.n-w{background:var(--n-warm)}
+.n-home .n-chip.n-h{background:var(--n-hot);color:var(--n-hot-text);margin-left:0}
+.n-home .n-chip.n-u{background:var(--n-uncon);margin-left:0}
+.n-home .n-chip.n-wchip{background:var(--n-warm);margin-left:0}
+
+/* CRM portal */
+.n-home .n-pbody{display:flex;gap:16px;align-items:stretch;flex:1;min-height:0}
+.n-home .n-pleft{display:flex;flex-direction:column;justify-content:space-between;flex-shrink:0}
+.n-home .n-pipebig{font-family:'Archivo Black',sans-serif;font-size:50px;line-height:1;letter-spacing:-.02em}
+.n-home .n-pipesub{font-size:11px;color:var(--n-ink3);padding-top:2px}
+.n-home .n-pstat{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.n-home .n-inqblock{flex:1;background:rgba(255,90,77,.16);border-radius:14px;position:relative;
+  padding:12px 15px 12px 19px;display:flex;flex-direction:column;justify-content:center;gap:2px;
+  animation:n-inqbreathe 3.6s ease-in-out infinite;min-width:0}
+@keyframes n-inqbreathe{
+  0%,100%{box-shadow:0 0 10px 0 rgba(255,90,77,.18)}
+  50%{box-shadow:0 0 26px 4px rgba(255,90,77,.42)}}
+@media (prefers-reduced-motion: reduce){.n-home .n-inqblock{animation:none}}
+.n-home .n-inqblock::before{content:"";position:absolute;left:0;top:13px;bottom:13px;width:3.5px;
+  border-radius:99px;background:var(--n-hot);box-shadow:0 0 14px 2px rgba(255,90,77,.6)}
+.n-home .n-inqblock.n-quietblock{background:var(--n-wash);animation:none}
+.n-home .n-inqblock.n-quietblock::before{background:var(--n-wash2);box-shadow:none}
+.n-home .n-inqk{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--n-hot);display:flex;align-items:center;gap:8px;padding-bottom:5px}
+.n-home .n-inqblock.n-quietblock .n-inqk{color:var(--n-ink3)}
+.n-home .n-pulse{width:8px;height:8px;border-radius:50%;background:var(--n-hot);animation:n-np 1.6s ease-in-out infinite}
+@keyframes n-np{0%,100%{opacity:.25}50%{opacity:1}}
+.n-home .n-who{font-family:'Archivo Black',sans-serif;font-size:14.5px;line-height:1.3;color:var(--n-ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.n-home .n-src{font-size:9.5px;color:var(--n-ink3);font-family:Inter,system-ui;font-weight:600}
+
+/* the money — stage tiles in billing-ladder colours */
+.n-home .n-stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch;min-height:0}
+.n-home.n-mobile .n-stagegrid{grid-template-columns:1fr 1fr}
+.n-home .n-stile{border-radius:14px;padding:13px 15px;color:var(--n-chip-ink);cursor:pointer;
+  display:flex;flex-direction:column;justify-content:space-between;transition:transform .15s ease;min-width:0}
+.n-home .n-stile:hover{transform:translateY(-2px)}
+.n-home .n-stile .n-bn{font-family:'Archivo Black',sans-serif;font-size:28px;line-height:1;white-space:nowrap}
+.n-home .n-stile .n-bk{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
+  opacity:.8;padding-top:10px;line-height:1.35}
+.n-home .n-stile.n-hotf{background:transparent;color:var(--n-ink);padding-left:2px}
+.n-home .n-stile.n-hotf .n-bn{color:var(--n-hot);font-size:30px}
+.n-home .n-stile.n-hotf .n-bk{color:var(--n-ink3);opacity:1}
+.n-home .n-stile.n-coldt{background:var(--n-uncon)}
+.n-home .n-stile.n-warmt{background:var(--n-warm)}
+.n-home .n-stile.n-okt{background:var(--n-ok)}
