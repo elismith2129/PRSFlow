@@ -1274,11 +1274,23 @@ function CalendarPageInner() {
 
   // (Step 8: the old cal_form_draft restore died with BookingForm.)
 
+  // FIRE ONCE PER NAVIGATION (the Lonzo triple, 2026-09-07): router.replace
+  // strips the ?newBooking params ASYNCHRONOUSLY, so the two effects below
+  // could re-run with the params still present — and each run CREATED another
+  // session + WO (three Lonzo Ball work orders, seconds apart). The ref holds
+  // the param string already consumed; it resets once the URL is actually
+  // clean, so a genuinely new Start Booking navigation fires again (and the
+  // duplicate-session confirm in createBookingAndOpenWO catches THAT case).
+  const paramCreateFired = useRef<string | null>(null)
+
   // Auto-open booking form when navigated from Start Booking
   useEffect(() => {
     const clientId = searchParams.get('clientId')
     const leadId = searchParams.get('leadId')
-    if (!searchParams.get('newBooking') || !clientId) return
+    if (!searchParams.get('newBooking')) { paramCreateFired.current = null; return }
+    if (!clientId) return
+    if (paramCreateFired.current === searchParams.toString()) return
+    paramCreateFired.current = searchParams.toString()
     router.replace('/calendar')
     const clientQ = supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists').eq('id', clientId).single()
     const leadQ = leadId
@@ -1358,6 +1370,9 @@ function CalendarPageInner() {
     const studio = searchParams.get('studio') || undefined
     const date = searchParams.get('date') || undefined
     if (!location && !studio) return
+    // Same once-per-navigation guard as the Start Booking effect above.
+    if (paramCreateFired.current === searchParams.toString()) return
+    paramCreateFired.current = searchParams.toString()
     router.replace('/calendar')
     openNew(location, studio, date)
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1432,9 +1447,56 @@ function CalendarPageInner() {
 
   // Step 6: create a booking from prefilled form data (lead Start Booking, etc.),
   // create its WO, then open the WO directly — no BookingForm in the middle.
+  const creatingBooking = useRef(false)
   async function createBookingAndOpenWO(seed: Partial<FormData>) {
+    // In-flight latch: a second call while the first is mid-create is always
+    // a double-fire, never intent (the Lonzo triple, 2026-09-07).
+    if (creatingBooking.current) return
+    creatingBooking.current = true
+    try {
+      await createBookingAndOpenWOInner(seed)
+    } finally {
+      creatingBooking.current = false
+    }
+  }
+  async function createBookingAndOpenWOInner(seed: Partial<FormData>) {
     const data = emptyForm(seed)
     const payload = buildBookingPayload(data)
+
+    // THE DUPLICATE GUARD (Eli, 2026-09-07 — three Lonzo Ball WOs for one
+    // session): before creating, look for a live session for the SAME client
+    // overlapping the SAME dates. Someone converting a lead doesn't see the
+    // calendar behind the flow, so the check speaks up for it. Cancel opens
+    // the existing session's WO instead of creating a twin.
+    if (payload.start_date && (payload.client_name || payload.label || payload.artist)) {
+      const { data: overlapping } = await supabase
+        .from('bookings')
+        .select('*')
+        .in('status', ['confirmed', 'tentative'])
+        .lte('start_date', payload.end_date || payload.start_date)
+        .gte('end_date', payload.start_date)
+        .is('imported_at', null)
+      const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase()
+      const twin = (overlapping ?? []).find(b =>
+        (payload.client_id && b.client_id === payload.client_id)
+        || (norm(payload.client_name) && norm(b.client_name) === norm(payload.client_name))
+        || (norm(payload.label) && norm(b.label) === norm(payload.label))
+        || (norm(payload.artist) && norm(b.artist) === norm(payload.artist)),
+      )
+      if (twin) {
+        const who = twin.artist || twin.client_name || twin.label || 'This client'
+        const where = [twin.location, twin.studio].filter(Boolean).join(' · ')
+        const ok = window.confirm(
+          `${who} already has a ${twin.status} session on ${twin.start_date}${where ? ` (${where})` : ''} — this may be the same booking.\n\n` +
+          `OK creates a SECOND session anyway.\nCancel opens the existing one instead.`,
+        )
+        if (!ok) {
+          setWoBooking(twin as Booking)
+          return
+        }
+      }
+    }
+
     const { data: inserted, error } = await supabase.from('bookings').insert(payload).select('*').single()
     if (error || !inserted) {
       console.error('[CalendarPage] createBookingAndOpenWO insert error:', error)
