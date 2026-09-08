@@ -85,29 +85,26 @@ const SLOT: Record<string, string> = {
 const BLOCKS = ['tour', 'tech', 'open_hours', 'lockout']
 
 // ROLLING WINDOW, NOT A MONTH (Eli, 2026-09-07: "it's often more important to
-// see what's happened than a lot of blank rows"). The grid anchors on TODAY —
-// two weeks behind, the current week, two weeks ahead — so today's row is the
-// MIDDLE of five and can never drift off the panel.
+// see what's happened than a lot of blank rows"). The grid anchors on TODAY.
 //
-// ⚠ A ROW IS NOT MIN_ROW_H TALL. It is as tall as its busiest day. The first
-// version of this window used PAST_WEEKS = 5 on the theory that "8 rows fill
-// 1080p", and on the wall (2026-09-07 photo) Studio C rendered FIVE rows before
-// running out of panel — its August weeks carry 2–3 cards a day and each row
-// came out ~200px, not 124. Today was row 6. It was not on the screen at all.
+// ⚠ DO NOT TRY TO LAND TODAY ON A ROW NUMBER. Two attempts did and both were
+// wrong on the wall, because A ROW IS AS TALL AS ITS BUSIEST DAY and the server
+// cannot know that. PAST_WEEKS = 5 assumed "8 rows fill 1080p"; Studio C fits
+// five (its August weeks run 2–3 cards a day, ~200px a row) and today rendered
+// off the bottom edge — see the 2026-09-07 photo.
 //
-// So the count is budgeted against the WORST case, not the average: five rows
-// is what the busiest room can show, and today sits at row 3 of 5. Do not add
-// past weeks back — every one you add pushes today toward the bottom edge on
-// exactly the rooms that are busy enough to matter. If the future ever needs
-// more runway, take it from PAST_WEEKS and keep the total at five.
-const PAST_WEEKS = 2
-const FUTURE_WEEKS = 2
+// Today is centred by MEASUREMENT instead (`centerToday` below): the browser is
+// the only thing that knows the real row heights, so it measures today's row
+// after paint and slides the grid under a fixed header. That makes these two
+// numbers cheap — they only decide how much history is available to scroll
+// into, not whether today is visible. Grow either one freely.
+const PAST_WEEKS = 3
+const FUTURE_WEEKS = 3
 const WEEKS = PAST_WEEKS + 1 + FUTURE_WEEKS
 
-// Sized so five EMPTY rows still fill 1080p rather than leaving black at the
-// bottom (5 × 190 + ~90px of header/weekday chrome ≈ 1040). Busy rows grow past
-// it, which is what eats the panel — see the warning above.
-const MIN_ROW_H = 190
+// Floor only — keeps a quiet week from collapsing to a thin band. Busy rows
+// grow past it and the centring absorbs the difference.
+const MIN_ROW_H = 150
 
 type B = Record<string, any>
 
@@ -290,6 +287,37 @@ function poller(hash: string, _probeUrl: string): string {
     + `setInterval(c,${POLL_MS});})();</script>`
 }
 
+/** Put TODAY in the middle of the panel, by measuring (Eli, 2026-09-07: "just
+ *  scroll down to make today always in the middle"). Every server-side attempt
+ *  to predict this failed, because row height is decided by the busiest day in
+ *  the row and only the browser knows it once painted.
+ *
+ *  Mechanics, all ES3 / Chromium 30-safe: the weekday strip is its own table so
+ *  it stays put, and the grid table slides up inside an overflow:hidden viewport
+ *  via a negative margin-top. `getBoundingClientRect` has existed since IE5;
+ *  there is no smooth scrolling, no requestAnimationFrame, no listeners.
+ *
+ *  Clamped at both ends: never past the last row (which would open black space
+ *  at the bottom) and never below zero (which would strand the grid mid-panel
+ *  when a light room's rows all fit). If anything here throws, the grid simply
+ *  sits at its natural position and the wall is still readable — this may only
+ *  ever be an improvement on the unscrolled page, never a prerequisite for it. */
+function centerToday(): string {
+  return `<script>(function(){try{`
+    + `var v=document.getElementById('vp'),g=document.getElementById('grid'),t=document.getElementById('trtoday');`
+    + `if(!v||!g)return;`
+    // Fill the panel from wherever the header ended, rather than trusting vh
+    // units on a 2013 browser.
+    + `var h=window.innerHeight-v.getBoundingClientRect().top;`
+    + `if(h>0){v.style.height=h+'px';}`
+    + `if(!t)return;`
+    + `var d=t.getBoundingClientRect().top-v.getBoundingClientRect().top-(v.clientHeight-t.offsetHeight)/2;`
+    + `var m=g.offsetHeight-v.clientHeight;`
+    + `if(d>m){d=m;}if(d<0){d=0;}`
+    + `g.style.marginTop=(-d)+'px';`
+    + `}catch(e){}})();</script>`
+}
+
 function page(title: string, body: string, tail = ''): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8">`
     // Back to 900 (2026-09-07, IPs whitelisted at the WordPress host). This
@@ -404,7 +432,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
 
   let rows = ''
   for (let w = 0; w < WEEKS; w++) {
-    rows += '<tr>'
+    // The week holding today is tagged so centerToday() can find it after paint.
+    const wStart = new Date(gridStart)
+    wStart.setDate(wStart.getDate() + w * 7)
+    const wEnd = new Date(wStart)
+    wEnd.setDate(wEnd.getDate() + 6)
+    const weekHasToday = fmtDate(wStart) <= todayStr && todayStr <= fmtDate(wEnd)
+
+    rows += weekHasToday ? '<tr id="trtoday">' : '<tr>'
     for (let d = 0; d < 7; d++) {
       const cell = new Date(gridStart)
       cell.setDate(cell.getDate() + w * 7 + d)
@@ -470,7 +505,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
     + `<span style="font-size:26px;font-weight:800;color:${FG};opacity:.7;margin-left:14px">${esc(range)}</span>`
     + `<span style="float:right;font-family:${MONO};font-size:18px;font-weight:700;color:${FG};opacity:.6;margin-top:12px">${esc(stamp)}</span>`
     + `</div>`
-    + `<table><tr>${head}</tr>${rows}</table>`
+    // Two tables, deliberately. The weekday strip must stay pinned while the
+    // grid slides under it, and both are `table-layout:fixed; width:100%` with
+    // seven cells, so their columns line up without a shared colgroup.
+    + `<table><tr>${head}</tr></table>`
+    + `<div id="vp" style="overflow:hidden"><table id="grid">${rows}</table></div>`
 
-  return html(page(room.label, body, poller(hash, probeUrl)))
+  return html(page(room.label, body, poller(hash, probeUrl) + centerToday()))
 }
