@@ -84,8 +84,21 @@ const SLOT: Record<string, string> = {
 // strip on it would tell a runner to collect money nobody collects at a desk.
 const BLOCKS = ['tour', 'tech', 'open_hours', 'lockout']
 
-const MIN_ROW_H = 116   // ~8 rows fill 1080p; content grows a row past this
-const WEEKS = 10        // render past the month end and let the panel clip
+const MIN_ROW_H = 124   // 8 rows + chrome ≈ 1080p; content grows a row past this
+
+// ROLLING WINDOW, NOT A MONTH (Eli, 2026-09-07: "it's often more important to
+// see what's happened than a lot of blank rows"). The grid used to anchor on
+// the week containing the 1st and run ten weeks forward, so on the 3rd of a
+// month the wall was mostly empty future. Now it anchors on TODAY: five weeks
+// behind, the current week, two weeks ahead. Today's row lands 6th of 8 — a
+// little past halfway down the panel — with history above it and just enough
+// runway below to see what's coming.
+//
+// Keep PAST + 1 + FUTURE at 8. The panel shows ~8 rows at MIN_ROW_H; adding a
+// row doesn't reveal more, it pushes the future weeks off the bottom edge.
+const PAST_WEEKS = 5
+const FUTURE_WEEKS = 2
+const WEEKS = PAST_WEEKS + 1 + FUTURE_WEEKS
 
 type B = Record<string, any>
 
@@ -332,11 +345,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   }
 
   const now = new Date()
-  // Anchor on the week containing the 1st, then keep rendering past the month
-  // end — the wall should use every row the panel can show, not stop at the 31st.
-  const first = new Date(now.getFullYear(), now.getMonth(), 1)
-  const gridStart = new Date(first)
-  gridStart.setDate(gridStart.getDate() - gridStart.getDay())
+  // Anchor on TODAY's week (see PAST_WEEKS/FUTURE_WEEKS), not on the 1st.
+  const gridStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay() - PAST_WEEKS * 7)
   const gridEnd = new Date(gridStart)
   gridEnd.setDate(gridEnd.getDate() + WEEKS * 7 - 1)
 
@@ -398,10 +409,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
 
       // No accent exists (§12), so "today" is a monochrome inversion: ivory
       // disc, background-coloured numeral.
+      // A rolling window ALWAYS spans two or three months, so out-of-month is a
+      // month-boundary cue here, not "filler you can ignore" — it stays legible
+      // (.55, was .32 when those cells really were padding around one month).
       let inner = `<div style="width:26px;height:26px;border-radius:50%;margin-bottom:3px;`
         + `text-align:center;line-height:26px;font-size:17px;font-weight:900;`
         + (isToday ? `background:${FG};color:${BG}`
-                   : `color:${FG};opacity:${inMonth ? '.75' : '.32'}`)
+                   : `color:${FG};opacity:${inMonth ? '.75' : '.55'}`)
         + `">${cell.getDate()}</div>`
 
       // Multi-day rendering (revised — Eli, 2026-09-07: "a lot are skinny…
@@ -432,10 +446,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   // The clock is load-bearing: a frozen page is only obvious if it shows a time.
   const stamp = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
 
+  // The window is rolling, so a single month name would be a lie two weeks out
+  // of three. Label what is actually on screen.
+  const mo = (d: Date, withYear: boolean) =>
+    d.toLocaleDateString('en-US', withYear ? { month: 'long', year: 'numeric' } : { month: 'long' })
+  const sameYear = gridStart.getFullYear() === gridEnd.getFullYear()
+  const range = gridStart.getMonth() === gridEnd.getMonth() && sameYear
+    ? mo(gridStart, true)
+    : `${mo(gridStart, !sameYear)} – ${mo(gridEnd, true)}`
+
   const body =
     `<div style="padding:12px 18px 8px;border-bottom:1px solid ${WASH};overflow:hidden">`
     + `<span style="font-family:${ARCHIVO};font-weight:900;font-size:30px;color:${FG};text-transform:uppercase">${esc(room.location)} ${esc(room.studio)}</span>`
-    + `<span style="font-size:26px;font-weight:800;color:${FG};opacity:.7;margin-left:14px">${esc(now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }))}</span>`
+    + `<span style="font-size:26px;font-weight:800;color:${FG};opacity:.7;margin-left:14px">${esc(range)}</span>`
     + `<span style="float:right;font-family:${MONO};font-size:18px;font-weight:700;color:${FG};opacity:.6;margin-top:12px">${esc(stamp)}</span>`
     + `</div>`
     + `<table><tr>${head}</tr>${rows}</table>`
