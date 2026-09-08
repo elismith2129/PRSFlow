@@ -50,9 +50,18 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf
  * receipt caption THROWS inside drawText and the whole package 500s. Keep
  * Latin-1 plus the common typographic extras WinAnsi actually has; drop the
  * rest — a stripped emoji on a black-and-white invoice loses nothing.
+ *
+ * AMENDED 2026-09-07 (the WO-1064 "cannot encode 0x000a" crash): the Latin-1
+ * range above KEPT control characters, so a newline pasted into any text
+ * field still threw. Whitespace controls (\n \r \t) collapse to a single
+ * space — this is a one-line-per-cell document, the row grid IS the layout —
+ * and every other control character is dropped.
  */
 function winAnsiSafe(s: string): string {
-  return s.replace(/[^\x00-\xFFŒœŠšŸŽžƒˆ˜–—‘’‚“”„†‡•…‰‹›€™]/g, '')
+  return s
+    .replace(/\s+/g, ' ')                 // every whitespace flavour → one plain space
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+    .replace(/[^\x20-\xFFŒœŠšŸŽžƒˆ˜–—‘’‚“”„†‡•…‰‹›€™]/g, '')
 }
 import { calcHours } from '@/lib/time'
 import { engChargeForRow } from '@/lib/woTotals'
