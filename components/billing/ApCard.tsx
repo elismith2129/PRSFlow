@@ -7,12 +7,18 @@
 // Ported from docs/design-refs/ap-card-mock.html.
 //
 // ⚠ THIS PANEL IS REFERENCE, NOT PROCESS (Eli, 2026-09-08: "no logic or stops,
-// just a ref and checklist to help while learning"). It gates nothing. The
-// ticks are cosmetic — see work_orders.ap_ticks, migration 20260908140000.
+// just a ref and checklist to help while learning"). It gates nothing.
 // If a future session is tempted to make Mark-sent depend on a tick, or to warn
 // when the package is unticked, that is a different feature and needs Eli's
 // say-so: the value here is that a new coordinator can read it without the app
 // arguing with them.
+//
+// BUT THE TICKS ARE A HANDOFF, NOT DECORATION (Eli, same day: "so if we stop
+// midway everyone knows where it's at"). They live in work_orders.ap_ticks —
+// server-side, shared by every login, never browser storage — and they are
+// written one key at a time through the `ap_tick_set` RPC so two people working
+// the same package cannot clobber each other. Each tick carries who and when.
+// See migration 20260908150000 for why the whole-object write was wrong.
 //
 // WHERE IT OPENS FROM: the `AP` chip beside the client name on a Billing Hub
 // row, the ⋯ menu, and the client profile. Deliberately NOT the row's action
@@ -25,6 +31,11 @@ import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 
 export type ApStep = { title: string; detail?: string | null }
+
+/** A tick records WHO and WHEN — "everyone knows where it's at" needs a name on
+ *  it, not a boolean. Absent key = not ticked. */
+export type ApTick = { by?: string | null; at?: string | null }
+export type ApTicks = Record<string, ApTick>
 
 export type ApProfile = {
   id: string
@@ -58,8 +69,20 @@ const PACKAGE_ITEMS = [
 
 const isPortal = (m: string) => m === 'portal' || m === 'form' || m === 'mixed'
 
+/** Compact stamp for a tick. Same day → time; otherwise the date. A handoff
+ *  cares about "this morning" vs "last Tuesday", not seconds. */
+function fmtWhen(iso: string): string {
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  const now = new Date()
+  const sameDay = d.toDateString() === now.toDateString()
+  return sameDay
+    ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export function ApCard({
-  profile, clientName, clientNotes, woNumber, workOrderId, ticks, onClose,
+  profile, clientName, clientNotes, woNumber, workOrderId, ticks, actorName, onClose,
 }: {
   profile: ApProfile | null
   /** The client whose invoice this is — may differ from the profile name when
@@ -70,12 +93,14 @@ export function ApCard({
   woNumber?: string | null
   /** Omit on the client profile: with no invoice there is nothing to tick. */
   workOrderId?: string | null
-  ticks?: Record<string, boolean>
+  ticks?: ApTicks
+  /** Display name stamped onto a tick, so a handoff says who stopped where. */
+  actorName?: string | null
   onClose: () => void
 }) {
   const [global, setGlobal] = useState<ApProfile | null>(null)
   const [open, setOpen] = useState<Record<number, boolean>>({})
-  const [local, setLocal] = useState<Record<string, boolean>>(ticks ?? {})
+  const [local, setLocal] = useState<ApTicks>(ticks ?? {})
   useEffect(() => { setLocal(ticks ?? {}) }, [ticks])
 
   // The one global reference row, appended to every card. Fetched here rather
@@ -99,17 +124,27 @@ export function ApCard({
   const steps = useMemo<ApStep[]>(
     () => (Array.isArray(profile?.steps) ? profile!.steps : []), [profile])
 
-  // Optimistic: the tick paints immediately and the write follows. A failed
-  // write reverts and toasts via dbResult — cosmetic state still shouldn't lie.
+  // Optimistic paint, then an ATOMIC single-key write. Never send the whole
+  // object: a colleague ticking a different item at the same moment would be
+  // overwritten, and a tick that silently disappears is worse than no tick.
+  // The RPC returns the merged truth, which we adopt — so a concurrent tick
+  // appears here the moment we write ours.
   const toggle = useCallback(async (key: string) => {
     if (!workOrderId) return
-    const next = { ...local }
-    if (next[key]) delete next[key]; else next[key] = true
-    setLocal(next)
-    const { error } = await supabase
-      .from('work_orders').update({ ap_ticks: next }).eq('id', workOrderId)
-    if (!dbResult('Saving checklist', error)) setLocal(local)
-  }, [local, workOrderId])
+    const on = !local[key]
+    const before = local
+    setLocal(prev => {
+      const next = { ...prev }
+      if (on) next[key] = { by: actorName || 'Staff', at: new Date().toISOString() }
+      else delete next[key]
+      return next
+    })
+    const { data, error } = await supabase.rpc('ap_tick_set', {
+      p_work_order_id: workOrderId, p_key: key, p_on: on, p_by: actorName || null,
+    })
+    if (!dbResult('Saving checklist', error)) { setLocal(before); return }
+    if (data && typeof data === 'object') setLocal(data as ApTicks)
+  }, [local, workOrderId, actorName])
 
   if (!profile) return null
 
@@ -129,7 +164,14 @@ export function ApCard({
         color: 'var(--c-chip-ink)', fontSize: 11, fontWeight: 900,
         display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
       }}>{local[k] ? '✓' : ''}</div>
-      <div style={{ opacity: local[k] ? 0.55 : 1 }}>{children}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ opacity: local[k] ? 0.55 : 1 }}>{children}</div>
+        {local[k]?.by && (
+          <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginTop: 1 }}>
+            {local[k].by}{local[k].at ? ` · ${fmtWhen(local[k].at!)}` : ''}
+          </div>
+        )}
+      </div>
     </div>
   )
 
@@ -220,11 +262,25 @@ export function ApCard({
                 }}>
                   <div style={{
                     flex: '0 0 21px', height: 21, borderRadius: '50%',
-                    background: 'var(--c-fg)', color: 'var(--c-bg)', fontSize: 11, fontWeight: 900,
+                    background: local[`step:${i}`] ? 'var(--c-st-booked)' : 'var(--c-fg)',
+                    color: 'var(--c-chip-ink)', fontSize: 11, fontWeight: 900,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1,
-                  }}>{i + 1}</div>
+                  }}>{local[`step:${i}`] ? '✓' : i + 1}</div>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.35 }}>{s.title}</div>
+                    <div
+                      onClick={tickable ? () => toggle(`step:${i}`) : undefined}
+                      style={{
+                        fontSize: 13.5, fontWeight: 700, lineHeight: 1.35,
+                        cursor: tickable ? 'pointer' : 'default',
+                        opacity: local[`step:${i}`] ? 0.5 : 1,
+                        textDecoration: local[`step:${i}`] ? 'line-through' : 'none',
+                      }}
+                    >{s.title}</div>
+                    {local[`step:${i}`]?.by && (
+                      <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginTop: 1 }}>
+                        {local[`step:${i}`].by}{local[`step:${i}`].at ? ` · ${fmtWhen(local[`step:${i}`].at!)}` : ''}
+                      </div>
+                    )}
                     {s.detail && (
                       <>
                         <button
