@@ -88,7 +88,7 @@ export async function createWorkOrderForBooking(
   // work_order_id yet — the RPC injects it after the WO insert. Only used by
   // the RPC when the WO is freshly created (adopt path seeds nothing).
   const stPayloads = buildSeedRowPayloads({
-    studio: studioLetter || booking.studio || '',
+    studio: studioLetter || toStudioLetter(booking.studio ?? ''),
     dates,
     fromTime: booking.from_time ?? '',
     toTime: booking.to_time ?? '',

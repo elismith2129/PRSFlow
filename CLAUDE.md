@@ -17,6 +17,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### The Work Order IS the booking (July 2026 rebuild — read docs/WO-SPEC.md first)
 The two-form model is gone. The calendar opens the **Work Order directly** for all sessions; a lead converts straight into a WO; the Studio Time table is the ONLY home for per-day schedule data (studios/dates/times/rates/engineers — never re-add them to the WO top). `bookings` rows are **projection cards** written by the WO on save (`projectBookingCards` — one card per consecutive-same-room run, all sharing `work_order_id`); never treat a booking row as user-editable source of truth. Tour/Tech/Open-Hours are simple "block" events inside the WO (title + times, no WO body). **`BookingForm.tsx` is DELETED (Step 8, July 28, 2026)** — the WO view is the only session/block editor; legacy WO-less blocks open the WO's block editor directly, and flipping one to a session status promotes it (creates its WO on save). The old form-data shape lives on in `components/calendar/sessionFormData.ts` (`FormData`/`emptyForm`/`bookingToForm`, used by the calendar's create path). `work_orders.booking_id` is still load-bearing (create idempotency + runner hub) — do not drop it without the planned Step 9 migration (fully scoped in PROJECT_LOG; note `create_work_order_atomic` conflicts on it). **Staffing lives ONLY in the Studio Time table, fully custom:** `+ Add Studio Time` / `+ Add Engineer` / `+ Add Assistant` are always available — any mix per day. Each row's staff sub-row has a 1ST/2ND toggle (`studio_time_rows.eng_name` + `eng_role 'engineer'|'assistant'`); standalone staff rows (`studio=''`) carry a role too. **`eng_role` DEFAULTS TO `assistant` everywhere (migration `20260728210000`)** — an engineer is the exception. The ONLY thing that decides the seeded role is **`bookings.staff_mode`** (`engineer|assistant|none`, NOT NULL default `assistant`, migration `20260728220000`), which carries `leads.staff_role` + `leads.staff_name` through the calendar's lead→session conversion. **`leads.engineer_needed` is vestigial** (backfilled, unread). Staffing is chosen on the LEAD via `components/shared/StaffPicker.tsx` (Eng/Asst/No Staff + optional person from the `engineers` roster, free text allowed; `role='Both'` appears in either pool) and seeds every studio-time row so nobody types staff onto each line. **A name is optional — "engineer, TBD" is valid**, so `buildRowPayload` writes `eng_role` independently of whether a name or rate exists (it used to write the role only inside the name/rate branch, silently dropping it). `staff_mode='none'` seeds rows with `eng_visible: false`. Keep every default in step (`seedStudioTimeRows`, `normalizeStRow`, `addStRow`, `addEngRow`, `clearEngRow`, the Seed panel toggle, and the `buildBookingProjection` fallbacks) — they were split across seven places and must not drift. The projection folds all of a segment's staff (studio-row sub-rows + standalone rows by date) into the card — `bookings.engineer_name` (1ST) and `assistant_name` (2ND) can coexist; both keys are omitted when no staff is known (never blanks initials), and written explicitly (name or null) when at least one is, so removals propagate. Never re-add engineer/assistant fields to the WO top. **WO create and WO save+projection are atomic Postgres RPCs** (`create_work_order_atomic` / `save_work_order_atomic`, migration `20260728180000`): all values are computed in TS (single source — `buildSeedRowPayloads`, `buildBookingProjection`) and the RPCs are dumb all-or-nothing jsonb appliers — never put business logic in them, and never bypass them with direct multi-step writes on these paths.
 
+### Studio names: ONE vocabulary, never typed (WO-1140, Sep 8 2026)
+A room name has exactly two legal forms and a single converter between them.
+Anything else creates a booking card that saves fine and appears in **no**
+calendar column — silent, and only findable by staring at a wall display.
+
+- **`studio_time_rows.studio` stores the LETTER** (`A`, `X`) or Track's room name
+  (`North`/`South`). Never a label, never a venue code.
+- **`bookings.studio` stores the LABEL** the calendar grid matches on (`Studio A`,
+  `North`). The grid compares it to `STUDIO_LOCATIONS[venue].rooms` **exactly**.
+- **`toStudioLetter()` (lib/time.ts) is the only way into the letter form**, and
+  **`roomLabelForVenue()` (WorkOrderPopup) the only way into the label form.**
+  Every write path goes through one of them — including fallbacks. `studioLetter
+  || booking.studio` was a real hole in four places; it wrote a raw label into a
+  letter column.
+- **A room is NEVER a text input.** It is a `<select>` over that venue's rooms —
+  Seed panel, row cell, batch editor. A free-text Seed box let someone type
+  `PRS-A` on WO-1140; three booking cards were created correctly and 12 of 14
+  days were invisible on the calendar. Dropdown option **values** are letters
+  (`toStudioLetter(room)`), labels are what's displayed — compare in one
+  vocabulary or nothing preselects.
+- **`roomCode()` mints `"PRS A"` for the PDF.** That string is display-only and
+  must never be written back to a row; `toStudioLetter` strips venue codes
+  precisely because it does find its way back.
+- `normalizeStRow` normalizes `studio` on load, so legacy rows repair themselves
+  on the next save. Don't remove that — it's the migration.
+- `scripts/diagnose-wo.mjs <wo#>` flags any card whose studio isn't a real room.
+
 ### PIN login — three places move together (launch-night outage, Aug 20 2026)
 Per-person **six-digit** PINs are the primary login (`scripts/set-pins.mjs` deals them, unique per run, and **rotates every auth password** — running it removes the email fallback until people use Forgot password).
 - **PIN LENGTH LIVES IN THREE FILES. Change one, change all three:** the `/^\d{6}$/` guard in `app/api/auth/pin/route.ts`, `PIN_LENGTH` in `app/(auth)/login/page.tsx`, and the digit count in `scripts/set-pins.mjs`. The route rejects a mismatched length **before the lookup**, so the symptom is "every correct PIN is wrong".

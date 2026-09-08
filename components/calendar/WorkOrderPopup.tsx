@@ -1268,7 +1268,7 @@ export function WorkOrderPopup({
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
             await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
               work_order_id: existing.id,
-              studio: studioLetter || booking.studio || '',
+              studio: studioLetter || toStudioLetter(booking.studio ?? ''),
               date: d, session_info: '',
               from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
               total_hours: null as number | null,
@@ -1304,7 +1304,7 @@ export function WorkOrderPopup({
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
             return {
               work_order_id: existing.id,
-              studio: studioLetter || booking.studio || '',
+              studio: studioLetter || toStudioLetter(booking.studio ?? ''),
               date: d, session_info: '',
               from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
               total_hours: null as number | null,
@@ -1320,7 +1320,7 @@ export function WorkOrderPopup({
           const hrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
           return {
             work_order_id: existing.id,
-            studio: studioLetter || booking.studio || '',
+            studio: studioLetter || toStudioLetter(booking.studio ?? ''),
             date: d, session_info: '',
             from_time: booking.from_time ?? '', to_time: booking.to_time ?? '',
             total_hours: hrs,
