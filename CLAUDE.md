@@ -119,6 +119,12 @@ Batch rules:
 
 ## Commands
 
+- **`./scripts/push.sh "message"` — how a Cowork session's work gets pushed.**
+  A sandboxed session commits through a FUSE mount, which leaves `.git/*.lock`
+  files it cannot unlink (so the next git command dies with "cannot lock ref
+  'HEAD'"), and it holds no GitHub credentials, so it can never push. **Don't
+  hand Eli a bare `rm -f .git/*.lock && git push` every turn — that's this
+  script.** See docs/working-conventions.md for the underlying limitation.
 - `node scripts/selftest.mjs` — **run before every hand-off line** (added
   2026-08-17): tsc + security/landmine checks (service-role key in client
   code, tracked env files, SOP VERSIONS parse, `.maybeSingle()` / dead-column
