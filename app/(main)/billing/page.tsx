@@ -53,6 +53,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, type Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
+import { ApCard, type ApProfile } from '@/components/billing/ApCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
@@ -127,6 +128,22 @@ export default function BillingPage() {
   const [poFile, setPoFile] = useState<File | null>(null)
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
+  // AP submission card (2026-09-08). Reference only — it gates nothing.
+  // The row carries apProfileId so the chip can render without a lookup; the
+  // profile body is fetched on open, because 20 rows do not need 20 procedures
+  // loaded to show one.
+  const [apFor, setApFor] = useState<InvoiceRow | null>(null)
+  const [apProfile, setApProfile] = useState<ApProfile | null>(null)
+  useEffect(() => {
+    if (!apFor?.apProfileId) { setApProfile(null); return }
+    let alive = true
+    ;(async () => {
+      const { data } = await supabase
+        .from('ap_profiles').select('*').eq('id', apFor.apProfileId).limit(1)
+      if (alive) setApProfile((data?.[0] as ApProfile) ?? null)
+    })()
+    return () => { alive = false }
+  }, [apFor?.apProfileId])
   const [openBooking, setOpenBooking] = useState<Booking | null>(null)
   // THE PACKAGE: the work order and the invoice in one window, opened by
   // double-clicking the row once an invoice exists.
@@ -729,6 +746,7 @@ export default function BillingPage() {
               onAttach={() => attachFor(r)}
               onMore={() => setMoreFor(r)}
               onOpen={() => openRow(r)}
+              onAp={() => setApFor(r)}
               dragOver={dragOver === r.workOrderId}
               onDragOver={e => { e.preventDefault(); setDragOver(r.workOrderId) }}
               onDragLeave={() => setDragOver(null)}
@@ -812,11 +830,27 @@ export default function BillingPage() {
         />
       )}
 
+      {/* AP submission card — a sibling of the other overlays, not nested in
+          one. Reference only; it never blocks a send. */}
+      {apFor && apProfile && (
+        <ApCard
+          profile={apProfile}
+          clientName={apFor.client}
+          clientNotes={apFor.apNotes}
+          woNumber={apFor.woNumber || apFor.invoiceNumber}
+          workOrderId={apFor.workOrderId}
+          ticks={apFor.apTicks}
+          actorName={profile?.display_name ?? null}
+          onClose={() => setApFor(null)}
+        />
+      )}
+
       {moreFor && (
         <MoreModal
           row={moreFor}
           onCancel={() => setMoreFor(null)}
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
+          onAp={() => { const r = moreFor; setMoreFor(null); setApFor(r) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
           onRedownload={() => { downloadPackage(moreFor.workOrderId); setMoreFor(null) }}
           onNoPo={() => {
@@ -985,7 +1019,7 @@ function SortHd({ col, label, right, searching, sortCol, sortDir, clickSort }: {
 
 function Row({
   row, searching, isOwner, busy, dragOver, showAge, badge, stage,
-  onAct, onAttach, onMore, onOpen, onDragOver, onDragLeave, onDrop,
+  onAct, onAttach, onMore, onOpen, onAp, onDragOver, onDragLeave, onDrop,
 }: {
   row: InvoiceRow
   searching: boolean
@@ -1002,6 +1036,8 @@ function Row({
   onAttach: () => void
   onMore: () => void
   onOpen: () => void
+  /** Open the AP submission card for this row's client. */
+  onAp: () => void
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDrop: (e: React.DragEvent) => void
@@ -1065,6 +1101,24 @@ function Row({
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
       <span className="c-bwho">
         <b>{row.client}</b>
+        {/* AP CHIP — the label's submission procedure. Beside the CLIENT, never
+            in the action column: that column is "only ever the next real act"
+            (header ruling) and opening a reference is navigation, not an act.
+            Renders only when the client has a procedure linked, so COD rows and
+            unlinked labels stay clean. stopPropagation because the row itself
+            opens the work order. */}
+        {row.apProfileId && (
+          <button
+            onClick={e => { e.stopPropagation(); onAp() }}
+            title={`How to send this invoice to ${row.client}`}
+            style={{
+              marginLeft: 7, padding: '1px 6px', borderRadius: 99,
+              border: '1px solid var(--c-fg-3)', background: 'none', color: 'var(--c-fg-2)',
+              font: 'inherit', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em',
+              lineHeight: 1.5, cursor: 'pointer', verticalAlign: 'middle',
+            }}
+          >AP</button>
+        )}
         {row.artist ? <span> · {row.artist}</span> : null}
         {/* The real span and the real rooms. A raw 2026-08-05 on a four-day
             session read as a one-nighter, and nobody scans ISO dates. */}
@@ -1186,10 +1240,11 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo, onAddPo }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo, onAddPo, onAp }: {
   row: InvoiceRow
   onCancel: () => void
   onOpenDoc: () => void
+  onAp: () => void
   onClose: () => void
   onPullBack: () => void
   onRedownload: () => void
@@ -1206,6 +1261,13 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
         <div style={{ fontSize: 12.5, marginBottom: 12 }}>{row.client}</div>
         {row.hasInvoiceDoc && (
           <button className="c-bact c-bblock" onClick={onOpenDoc}>Open the attached invoice PDF</button>
+        )}
+        {/* The AP procedure. Duplicated from the row's chip on purpose: the chip
+            is the shortcut at the moment of need, this is the findable home. */}
+        {row.apProfileId && (
+          <button className="c-bact c-bblock" onClick={onAp}>
+            How to send this to {row.client}
+          </button>
         )}
         {/* The rare sibling of Add PO — this job goes out without one. Same
             work_orders.no_po_needed field the WO screen writes; here because

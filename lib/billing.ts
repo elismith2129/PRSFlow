@@ -229,6 +229,17 @@ export type InvoiceRow = {
   /** Set on the WORK ORDER — this package can go out without a PO. */
   noPoNeeded: boolean
   /**
+   * The client's AP submission procedure, when one is linked. Drives the `AP`
+   * chip on the row — resolved HERE rather than per-row on click so the chip
+   * can render conditionally without 20 lookups a page. Null for COD and for
+   * any label nobody has linked yet.
+   */
+  apProfileId: string | null
+  /** clients.ap_notes — the per-client addendum shown under the procedure. */
+  apNotes: string | null
+  /** work_orders.ap_ticks — the shared checklist state (who ticked what). */
+  apTicks: Record<string, { by?: string | null; at?: string | null }>
+  /**
    * Approved, but it cannot be sent: the client wants a PO number on it and
    * none has been recorded. DERIVED, never stored (it was a state in v1) —
    * typing the PO on the work order clears it with no second act.
@@ -471,7 +482,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note')
+    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks')
     .order('session_date', { ascending: false })
     // Secondary order = id: without it Postgres returns equal-date rows in
     // ARBITRARY order that can differ per refetch (the page-2 churn bug —
@@ -529,6 +540,20 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
   ])
   if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error)) return []
+
+  // AP procedure per client — one query for the whole page, not one per row.
+  // Silent: a missing AP link costs a chip, never the invoice list, and this
+  // list is the billing team's morning queue.
+  const clientIds = Array.from(new Set(relevant.map(w => w.client_id).filter(Boolean))) as string[]
+  const apByClient = new Map<string, { profileId: string | null; notes: string | null }>()
+  if (clientIds.length > 0) {
+    const { data: cl, error: clErr } = await supabase
+      .from('clients').select('id, ap_profile_id, ap_notes').in('id', clientIds)
+    dbResult('Loading AP procedures', clErr, { silent: true })
+    for (const c of cl ?? []) {
+      apByClient.set(c.id, { profileId: c.ap_profile_id ?? null, notes: c.ap_notes ?? null })
+    }
+  }
 
   const group = <T extends { work_order_id: string }>(rows: T[] | null) => {
     const m = new Map<string, T[]>()
@@ -652,6 +677,9 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       paidAt: w.invoice_paid_at ?? null,
       poNumber,
       noPoNeeded,
+      apProfileId: apByClient.get((w as any).client_id ?? '')?.profileId ?? null,
+      apNotes: apByClient.get((w as any).client_id ?? '')?.notes ?? null,
+      apTicks: ((w as any).ap_ticks ?? {}) as InvoiceRow['apTicks'],
       // AWAITING PO, entirely from the work order (ruling 2026-08-11). Only
       // billing, only once approved — before that the PO is not what is holding
       // anything up, and flagging it early would make it noise on every row.
