@@ -241,7 +241,15 @@ type PayRow = {
   fee_amount: string
 }
 
-/** Payment types that carry the 3% COD card surcharge. */
+/** Every way a payment row can be recorded. `payment_rows.type` is free text
+ *  (no CHECK constraint), so this list is the only thing defining the set —
+ *  add here, not at the call site. Wire + ACH added 2026-09-08. */
+const PAY_TYPES = ['Cash', 'Zelle', 'Wire', 'ACH', 'Credit Card', 'Debit Card', 'Check', 'Other']
+
+/** Payment types that carry the 3% COD card surcharge. Bank transfers (Wire,
+ *  ACH) are deliberately NOT here — the surcharge covers card processing, and
+ *  a wire costs us nothing per dollar. Adding one here would silently start
+ *  billing 3% on transfers. */
 const CARD_PAY_TYPES = ['Credit Card', 'Debit Card']
 
 /** Food-budget expense report row (wo_expenses, 2026-08-24) — the paper
@@ -5868,7 +5876,7 @@ export function WorkOrderPopup({
                         <div style={cellS}>
                           <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, payment_type: e.target.value, last_four: '' }) : x))} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
                             <option value="">— type —</option>
-                            {['Cash', 'Zelle', 'Credit Card', 'Debit Card', 'Check', 'Other'].map(t => <option key={t} value={t}>{t}</option>)}
+                            {PAY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                           </select>
                         </div>
                         <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, amount: formatCurrency(e.target.value) }) : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
