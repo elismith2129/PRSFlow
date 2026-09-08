@@ -31,14 +31,48 @@ import { woAuditView, diffWoForSave, buildWoSnapshot, logWoActivity } from '@/li
 // into the full room label the calendar filters on ('Studio X', 'North'), within
 // a given venue. Falls back to the raw value if no match. (The table stores bare
 // letters; the calendar grid matches full room labels — see docs/WO-SPEC.md §4.)
+// ⚠ A VALUE THAT DOESN'T RESOLVE BECOMES AN INVISIBLE BOOKING CARD. The calendar
+// grid matches `bookings.studio` against the venue's room labels exactly; a card
+// whose studio is anything else is written, saved and returned by every query,
+// but paints in NO room column. WO-1140 (2026-09-08) lost 12 of 14 days that
+// way: someone typed "PRS-A" into the Seed panel's studio box, three perfectly
+// good cards were created, and only the "Studio C" one appeared on the wall.
+//
+// So this resolver is deliberately generous about input and strict about output.
+// It accepts the room letter ('A'), the full label ('Studio A'), a venue-prefixed
+// code in any separator ('PRS-A', 'PRS A', 'PRSA'), and any casing.
 function roomLabelForVenue(venue: string, rawStudio: string): string {
   const raw = (rawStudio ?? '').trim()
   if (!raw) return raw
   const loc = STUDIO_LOCATIONS.find(l => l.name === venue)
   if (!loc) return raw
-  if (loc.rooms.includes(raw)) return raw
-  const full = `Studio ${raw}`
-  if (loc.rooms.includes(full)) return full
+
+  const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+  const hit = (cand: string) => loc.rooms.find(r => eq(r, cand))
+
+  // Exact label, or the bare room with 'Studio ' prefixed.
+  const direct = hit(raw) || hit(`Studio ${raw}`)
+  if (direct) return direct
+
+  // Strip a venue short code ('PRS-A' / 'PRS A' / 'PRSA' → 'A'), then retry.
+  // Every venue's code is tried, not just this venue's: a row mislabelled with
+  // another venue's prefix should still resolve to a real room here rather than
+  // silently becoming an unmatchable string.
+  for (const short of Object.values(STUDIO_SHORT)) {
+    const m = new RegExp(`^${short}[\\s\\-_]*`, 'i').exec(raw)
+    if (!m) continue
+    const rest = raw.slice(m[0].length).trim()
+    if (!rest) continue
+    const viaCode = hit(rest) || hit(`Studio ${rest}`)
+    if (viaCode) return viaCode
+  }
+
+  // Unresolvable: hand back the raw value (never invent a room) — but say so,
+  // because this is the shape that produces a card nobody can see.
+  console.warn(
+    `[WO] Room "${raw}" is not a room at ${venue}. Its booking card will not ` +
+    `appear on the calendar. Valid rooms: ${loc.rooms.join(', ')}`
+  )
   return raw
 }
 
@@ -4414,7 +4448,27 @@ export function WorkOrderPopup({
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(126px, 1fr))', gap: 10 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <span style={metaLabel}>Studio</span>
-                          <input value={seed.studio} onChange={e => patchSeed(seed.id, { studio: e.target.value })} className="c-input c-inset2" />
+                          {/* A PICKER, NOT A TEXT BOX (2026-09-08). This was a free
+                              input, and "PRS-A" typed here on WO-1140 produced three
+                              booking cards that existed in the database but appeared
+                              in no room on the calendar — the grid matches room
+                              labels exactly. A room is a closed set; let people pick
+                              from it. Any unrecognised value already on the row is
+                              kept as an option so opening an old WO can't silently
+                              rewrite its room. */}
+                          <select
+                            value={seed.studio}
+                            onChange={e => patchSeed(seed.id, { studio: e.target.value })}
+                            className="c-input c-inset2"
+                          >
+                            <option value="">—</option>
+                            {(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? []).map(r => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                            {seed.studio
+                              && !(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? []).includes(seed.studio)
+                              && <option value={seed.studio}>{seed.studio} (not a room here)</option>}
+                          </select>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <span style={metaLabel}>Start date</span>

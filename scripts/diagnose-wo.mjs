@@ -25,6 +25,14 @@
 import fs from 'fs'
 import path from 'path'
 
+// Mirrors lib/studios.ts (a plain .mjs script can't import the TS module).
+const STUDIO_LOCATIONS = [
+  { name: 'Paramount', rooms: ['Studio A', 'Studio B', 'Studio C', 'Studio E', 'Studio X'] },
+  { name: 'Ameraycan', rooms: ['Studio A', 'Studio B'] },
+  { name: 'Encore', rooms: ['Studio A', 'Studio B'] },
+  { name: 'Track', rooms: ['North', 'South'] },
+]
+
 const root = path.resolve(new URL('.', import.meta.url).pathname, '..')
 const envPath = path.join(root, '.env.local')
 if (!fs.existsSync(envPath)) {
@@ -110,9 +118,25 @@ const run = async () => {
     const bk = await get(`bookings?work_order_id=eq.${wo.id}` +
       `&select=id,location,studio,start_date,end_date,from_time,to_time,status&order=start_date`)
     console.log(`\n─ booking cards that EXIST (${bk.length}) ` + '─'.repeat(30))
+    // A card whose studio is not one of the venue's room labels is written and
+    // stored but paints in NO column — the WO-1140 failure. Flag it loudly.
+    const invisible = []
     for (const b of bk) {
+      const rooms = STUDIO_LOCATIONS.find(l => l.name === b.location)?.rooms
+      const bad = b.studio && rooms && !rooms.includes(b.studio)
+      if (bad) invisible.push(b)
       console.log(`   ${(b.location || '—').padEnd(12)} ${(b.studio || '—').padEnd(12)} ` +
-        `${b.start_date} → ${b.end_date}  ${b.status}` + (b.id === wo.booking_id ? '   [PRIMARY]' : ''))
+        `${b.start_date} → ${b.end_date}  ${b.status}` +
+        (b.id === wo.booking_id ? '   [PRIMARY]' : '') +
+        (bad ? '   ⚠ INVISIBLE — not a room at this venue' : ''))
+    }
+    if (invisible.length) {
+      const rooms = STUDIO_LOCATIONS.find(l => l.name === invisible[0].location)?.rooms || []
+      console.log(`\n   ⚠ ${invisible.length} card(s) will never show on the calendar.`)
+      console.log(`     Rooms at ${invisible[0].location}: ${rooms.join(', ')}`)
+      console.log('     Fix: open the WO and re-save. roomLabelForVenue now resolves')
+      console.log('     codes like "PRS-A" to "Studio A", and the save replaces the')
+      console.log('     stale cards with correct ones.')
     }
 
     // ── Replay the projection over the live rows ──────────────────────────────
