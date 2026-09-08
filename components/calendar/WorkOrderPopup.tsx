@@ -435,7 +435,14 @@ function normalizeStRow(d: any): StRow {
     engCharge = !isNaN(erNum) && erNum > 0 ? parseFloat((engHours * erNum).toFixed(2)) : null
   }
   return {
-    id: d.id, studio: d.studio ?? '', location: d.location ?? '', eng_name: d.eng_name ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
+    // studio is normalized ON LOAD (2026-09-08): rows written before the Seed
+    // field became a picker can hold a venue-coded room like 'PRS-A', which
+    // renders as "Studio PRS-A" and matches no option in the row dropdown.
+    // toStudioLetter reduces it to 'A' here, so the sheet reads correctly and
+    // the clean value is written back on the next save — legacy rows repair
+    // themselves by being opened. Staff rows keep studio '' (toStudioLetter
+    // returns '' unchanged), which is the encoding that marks them.
+    id: d.id, studio: toStudioLetter(d.studio ?? ''), location: d.location ?? '', eng_name: d.eng_name ?? '', date: d.date ?? '', session_info: d.session_info ?? '',
     from_time: d.from_time ?? '', to_time: d.to_time ?? '',
     total_hours: totalHours,
     rate, rate_daily: rateDailyRaw, row_rate_type: rowRateType,
@@ -4456,18 +4463,28 @@ export function WorkOrderPopup({
                               from it. Any unrecognised value already on the row is
                               kept as an option so opening an old WO can't silently
                               rewrite its room. */}
+                          {/* Option VALUES are room letters, not labels. The seed
+                              state holds a letter ('C', from the booking's room)
+                              and seedStudioTimeRows consumes a letter, so making
+                              the options full labels left nothing selected and
+                              showed a spurious "C (not a room here)" row. Compare
+                              in one vocabulary: toStudioLetter on both sides. */}
                           <select
-                            value={seed.studio}
+                            value={toStudioLetter(seed.studio)}
                             onChange={e => patchSeed(seed.id, { studio: e.target.value })}
                             className="c-input c-inset2"
                           >
                             <option value="">—</option>
                             {(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? []).map(r => (
-                              <option key={r} value={r}>{r}</option>
+                              <option key={r} value={toStudioLetter(r)}>{r}</option>
                             ))}
+                            {/* Only for a value no room matches — keeps an odd
+                                legacy row visible instead of silently rewriting
+                                it. Normal rooms never reach this. */}
                             {seed.studio
-                              && !(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? []).includes(seed.studio)
-                              && <option value={seed.studio}>{seed.studio} (not a room here)</option>}
+                              && !(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? [])
+                                   .some(r => toStudioLetter(r) === toStudioLetter(seed.studio))
+                              && <option value={toStudioLetter(seed.studio)}>{seed.studio} (not a room here)</option>}
                           </select>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
