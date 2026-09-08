@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — The Owner's Page</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+<!--
+  THE OWNER'S PAGE (Eli, 2026-09-07): one big-print page that teaches the
+  owner's whole day — dashboard, CRM, billing hub. "Think big text and easy
+  to follow." Deliberately NOT the chaptered SOP shape: one straight scroll,
+  three stops, nothing to navigate. He approves WOs and watches COD, but
+  wants to understand EVERYTHING he's looking at — so this explains every
+  color on the two pages he lives in and bolds the two that are his.
+
+  Design: light paper only (fixed — big-print readability beats theme
+  matching), soft skin family (flat white panes + soft shadow, no borders,
+  Law 1), Archivo Black display, status colours as FILLS only (§5).
+  Served at /sop/owner (iframe route), linked from Training.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --chip-ink:#1c2626; --hot-text:#fff4f2;
+  --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
+  --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
+  --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+  font-family:Inter,-apple-system,sans-serif;font-size:19px;line-height:1.7}
+.wrap{max-width:880px;margin:0 auto;padding:48px 26px 90px}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400;letter-spacing:-0.02em}
+h1{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:46px;
+  letter-spacing:-0.03em;line-height:1.15;margin:0 0 10px}
+.kicker{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.55;margin-bottom:14px}
+.lede{font-size:22px;line-height:1.6;margin:0 0 14px}
+.pane{background:var(--srf);border-radius:16px;box-shadow:var(--softsh);
+  padding:30px 32px;margin:26px 0}
+.stopnum{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.1em;
+  text-transform:uppercase;opacity:.45;margin-bottom:4px}
+h2{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:34px;
+  letter-spacing:-0.02em;margin:0 0 16px;line-height:1.2}
+p{margin:0 0 16px}
+b{font-weight:800}
+.bigline{font-size:23px;line-height:1.55;font-weight:700;margin:20px 0 6px}
+.chip{display:inline-block;padding:5px 16px;border-radius:99px;font-weight:800;
+  font-size:16px;color:var(--chip-ink);white-space:nowrap;margin:2px 2px}
+.chip.hot{background:var(--st-hot);color:var(--hot-text)}
+.chip.warm{background:var(--st-warm)}
+.chip.cold{background:var(--st-cold)}
+.chip.booked{background:var(--st-booked)}
+.chip.uncon{background:var(--st-uncon)}
+.chip.dead{background:var(--st-dead)}
+.chip.grey{background:var(--wash2);color:var(--fg)}
+.row{display:flex;align-items:flex-start;gap:18px;padding:14px 0}
+.row + .row{margin-top:2px}
+.row .chipcol{flex-shrink:0;width:210px;padding-top:2px}
+.row .what{flex:1;min-width:0}
+.yours{background:var(--wash);border-radius:12px;padding:18px 20px;margin:18px 0 4px}
+.yours .tag{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.55;margin-bottom:6px}
+.yours .line{font-size:23px;font-weight:800;line-height:1.45}
+.arrowflow{font-size:21px;font-weight:700;line-height:2.2;margin:10px 0 16px}
+.arrowflow .a{opacity:.35;padding:0 8px}
+.summary{background:var(--fg);color:var(--bg);border-radius:16px;padding:34px 32px;margin:36px 0 0}
+.summary .arch{font-size:30px;line-height:1.35}
+.gloss{margin-top:30px;font-size:17px;line-height:1.9}
+.gloss b{display:inline-block;min-width:64px}
+@media (max-width:640px){
+  .row{flex-direction:column;gap:6px}
+  .row .chipcol{width:auto}
+  h1{font-size:36px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">PRSFlo · The Owner's Page</div>
+  <h1>Your whole day,<br>in three stops.</h1>
+  <p class="lede">The app is big, but <b>your part of it is small and always the same</b>:
+  read Flo in the morning, keep an eye on the pipeline, and approve what's waiting for you.
+  This page walks the three screens you'll live on. Everything else in the app can wait for
+  someone else.</p>
+
+  <!-- ── STOP 1 ─────────────────────────────────────────────────────────── -->
+  <div class="pane">
+    <div class="stopnum">Stop 1 · Every morning</div>
+    <h2>The Dashboard</h2>
+    <p>Open the app. You're already here — the dashboard is the front page.</p>
+    <p><b>Flo's briefing pops up by itself each morning.</b> Flo is the app's assistant —
+    she reads the night's notes, the open problems, and the money pipeline, and gives you
+    a few short lines. Read them. Some lines have a little word next to them like
+    <b>CRM&nbsp;→</b> — press it and the app takes you straight to that thing.</p>
+    <p>Then look at <b>THE MONEY</b> box. Four tiles, four colors:</p>
+
+    <div class="row"><div class="chipcol"><span class="chip hot">COD OUT</span></div>
+      <div class="what"><b>Red — cash owed at the desk.</b> Sessions that were supposed to pay
+      at the studio and haven't. This is your number to watch.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip warm">NEEDS REVIEW</span></div>
+      <div class="what"><b>Amber — billing's homework.</b> Work orders waiting for the billing
+      desk to check the numbers. Not your job, but you can see the pile.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip cold">NEEDS APPROVAL</span></div>
+      <div class="what"><b>Blue — waiting on YOU.</b> Invoices that are checked and just need
+      an owner's OK. Blue means you, everywhere in this app.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip booked">READY TO SEND</span></div>
+      <div class="what"><b>Green — done and moving.</b> Approved, on their way out the door.</div></div>
+
+    <div class="yours">
+      <div class="tag">Remember one thing</div>
+      <div class="line">Red is money waiting. Blue is you.</div>
+    </div>
+  </div>
+
+  <!-- ── STOP 2 ─────────────────────────────────────────────────────────── -->
+  <div class="pane">
+    <div class="stopnum">Stop 2 · The pipeline</div>
+    <h2>The CRM</h2>
+    <p>Press <b>CRM</b> in the left-hand menu. This is every person who wants to book the
+    studio — the pipeline. Each lead has a temperature:</p>
+
+    <div class="row"><div class="chipcol"><span class="chip uncon">UNCONTACTED</span></div>
+      <div class="what">Brand new — nobody has talked to them yet. These get called <b>fast</b>.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip hot">HOT</span></div>
+      <div class="what">Ready to book — asking about dates, prices, rooms. Don't let these sit.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip warm">WARM</span></div>
+      <div class="what">Interested but thinking. We check in every few days.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip cold">COLD</span></div>
+      <div class="what">Went quiet. The app re-invites these automatically — nothing to do.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip booked">BOOKED</span></div>
+      <div class="what"><b>The win.</b> They're a client now, on the calendar.</div></div>
+
+    <p style="margin-top:18px"><b>Needs Action</b> is the tab that matters — it's the short
+    list of leads that need a call <b>today</b>. The staff works that list; the timers
+    behind it never forget a lead. When anyone talks to a lead, they press
+    <b>CONTACT</b> on it and log what happened — that's the whole discipline, and it's how
+    Flo knows who's been called and who's rotting.</p>
+
+    <div class="yours">
+      <div class="tag">Your part here</div>
+      <div class="line">Watch the big number. If Needs Action grows and stays grown, the
+      floor isn't making its calls — and Flo will name names in your morning briefing.</div>
+    </div>
+  </div>
+
+  <!-- ── STOP 3 ─────────────────────────────────────────────────────────── -->
+  <div class="pane">
+    <div class="stopnum">Stop 3 · Your approvals & the money</div>
+    <h2>The Billing Hub</h2>
+    <p>Press <b>Billing</b> in the left-hand menu. When invoices are waiting for your OK,
+    a little <b>counter</b> sits right on that menu item — that's your signal to come here.</p>
+    <p>The page title shows <b>two words: BILLING and COD</b>. They are two pipelines —
+    press either word to switch. <b>Billing</b> = clients we invoice (labels, companies).
+    <b>COD</b> = pay at the desk, day of session.</p>
+    <p>Every invoice on this page wears a colored badge. The life of an invoice, in order:</p>
+
+    <div class="arrowflow">
+      <span class="chip grey">IN PROGRESS</span><span class="a">→</span>
+      <span class="chip warm">NEEDS REVIEW</span><span class="a">→</span>
+      <span class="chip cold">NEEDS APPROVAL</span><span class="a">→</span>
+      <span class="chip booked">APPROVED</span><span class="a">→</span>
+      <span class="chip booked">PAID</span>
+    </div>
+
+    <div class="row"><div class="chipcol"><span class="chip grey">GREY</span></div>
+      <div class="what">Still being worked — the session is running or hasn't been touched.
+      Nothing for anyone yet.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip warm">AMBER</span></div>
+      <div class="what"><b>Needs review</b> — the billing desk checks the runner's numbers.
+      Their job, not yours.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip cold">BLUE</span></div>
+      <div class="what"><b>Needs approval — this one is YOURS.</b> Open it, glance at the
+      numbers, press <b>Approve</b>. If something looks wrong, press <b>Not approved</b>
+      and it goes back to billing with your note.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip booked">GREEN</span></div>
+      <div class="what">Approved, sent, or paid. Moving on its own.</div></div>
+    <div class="row"><div class="chipcol"><span class="chip hot">RED</span></div>
+      <div class="what"><b>A problem.</b> <b>Balance due</b> on a COD means the session
+      happened and the money didn't — chase it the same day. <b>Not approved</b> means an
+      owner bounced it back.</div></div>
+
+    <div class="yours">
+      <div class="tag">Your two jobs on this page</div>
+      <div class="line">1&nbsp;·&nbsp;Open the blue ones and press Approve.<br>
+      2&nbsp;·&nbsp;When the COD word turns red, someone owes us cash — ask about it today.</div>
+    </div>
+  </div>
+
+  <!-- ── SUMMARY ────────────────────────────────────────────────────────── -->
+  <div class="summary">
+    <div class="arch">That's the whole job:<br>
+    read Flo in the morning ·&nbsp;clear the blue ·&nbsp;watch the red.</div>
+  </div>
+
+  <div class="gloss">
+    <b>WO</b> — "work order": the invoice worksheet a session lives on.<br>
+    <b>COD</b> — pay at the desk, the day of the session.<br>
+    <b>Hold</b> — a date penciled in but not confirmed yet.<br>
+    <b>Flo</b> — the app's assistant. The wave icon. She never invents numbers.
+  </div>
+
+</div>
+</body>
+</html>

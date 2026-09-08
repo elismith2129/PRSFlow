@@ -70,6 +70,21 @@ export default function TrainingPage() {
         </div>
       </Link>
 
+      {/* The Owner's Page — big-print one-pager */}
+      <Link href="/sop/owner" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+        <div className="c-panel" style={{ padding: '18px 20px', marginBottom: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 20 }}>◉</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>The Owner&apos;s Page</div>
+            <div style={{ fontSize: 11.5, opacity: 0.6, marginTop: 2 }}>
+              Big-print one-pager: your day in three stops — the dashboard, the CRM, and
+              the billing hub. Approvals and COD, plain and large.
+            </div>
+          </div>
+          <span style={{ fontSize: 13, opacity: 0.4 }}>→</span>
+        </div>
+      </Link>
+
       {/* Helpful hints toggle */}
       <div className="c-panel" style={{ padding: '18px 20px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14 }}>
         <span style={{ fontSize: 20 }}>💡</span>
