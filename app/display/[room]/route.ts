@@ -152,15 +152,21 @@ function payload(b: B, ink: string, big: boolean) {
     : b.session_type === 'event_playback' ? 'EVENT' : ''
   const strike = b.status === 'cancelled' ? 'text-decoration:line-through;' : ''
 
+  // EVERY string on this page carries an EXPLICIT font-weight (Eli, 2026-09-07:
+  // "hard to see"). Nothing here may rely on a default weight: the ARCHIVO stack
+  // leads with Arial Black, but when a panel falls back to Helvetica/Arial an
+  // unweighted name renders REGULAR — thin from across a live room. Same for the
+  // Courier mono times, the date numerals and the header. If you add text to
+  // this route, give it a weight.
   let out = `<div style="padding:4px 10px 3px;overflow:hidden">`
-    + `<div style="font-family:${ARCHIVO};font-size:${big ? 22 : 17}px;line-height:1.3;color:${ink};`
+    + `<div style="font-family:${ARCHIVO};font-weight:900;font-size:${big ? 22 : 17}px;line-height:1.3;color:${ink};`
     + `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${strike}">${esc(name)}</div>`
   if (labelLine) {
-    out += `<div style="font-size:15px;font-weight:700;opacity:.85;line-height:1.2;color:${ink};`
+    out += `<div style="font-size:15px;font-weight:800;opacity:.9;line-height:1.2;color:${ink};`
       + `white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(labelLine)}</div>`
   }
   if (time) {
-    out += `<div style="font-family:${MONO};font-size:15px;font-weight:500;opacity:.85;line-height:1.25;`
+    out += `<div style="font-family:${MONO};font-size:15px;font-weight:700;opacity:.95;line-height:1.25;`
       + `color:${ink};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">`
       + `${esc(time)}${tag ? '  ' + esc(tag) : ''}</div>`
   }
@@ -216,7 +222,7 @@ function spanBar(b: B, day: string): string {
   const tail = b.end_date > day ? ' ›' : ''
   const strike = cancelled ? 'text-decoration:line-through;' : ''
   return `<div style="background:${FILL[slot]};border-radius:14px;padding:3px 10px;margin-bottom:4px;`
-    + `font-family:${ARCHIVO};font-size:15px;line-height:1.3;color:${ink};`
+    + `font-family:${ARCHIVO};font-weight:900;font-size:15px;line-height:1.3;color:${ink};`
     + `white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${strike}">`
     + `${esc(lead + name + tail)}</div>`
 }
@@ -273,7 +279,9 @@ function page(title: string, body: string, tail = ''): string {
     + `<meta http-equiv="refresh" content="900">`
     + `<title>${esc(title)}</title>`
     + `<style>`
-    + `html,body{margin:0;padding:0;background:${BG};color:${FG};`
+    // font-weight:700 on the body is a FLOOR, not decoration: anything on this
+    // route that forgets an explicit weight still lands bold instead of thin.
+    + `html,body{margin:0;padding:0;background:${BG};color:${FG};font-weight:700;`
     + `font-family:Helvetica,Arial,sans-serif;overflow:hidden;cursor:none}`
     + `table{border-collapse:collapse;width:100%;table-layout:fixed}`
     + `td{vertical-align:top;overflow:hidden}`
@@ -391,9 +399,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
       // No accent exists (§12), so "today" is a monochrome inversion: ivory
       // disc, background-coloured numeral.
       let inner = `<div style="width:26px;height:26px;border-radius:50%;margin-bottom:3px;`
-        + `text-align:center;line-height:26px;font-size:17px;`
-        + (isToday ? `background:${FG};color:${BG};font-weight:700`
-                   : `color:${FG};opacity:${inMonth ? '.6' : '.28'}`)
+        + `text-align:center;line-height:26px;font-size:17px;font-weight:900;`
+        + (isToday ? `background:${FG};color:${BG}`
+                   : `color:${FG};opacity:${inMonth ? '.75' : '.32'}`)
         + `">${cell.getDate()}</div>`
 
       // Multi-day rendering (revised — Eli, 2026-09-07: "a lot are skinny…
@@ -417,7 +425,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   }
 
   const head = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d =>
-    `<td style="text-align:center;padding:5px 0;font-size:16px;color:${FG};opacity:.45;`
+    `<td style="text-align:center;padding:5px 0;font-size:16px;font-weight:800;color:${FG};opacity:.6;`
     + `letter-spacing:0.05em;text-transform:uppercase">${d}</td>`
   ).join('')
 
@@ -426,9 +434,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
 
   const body =
     `<div style="padding:12px 18px 8px;border-bottom:1px solid ${WASH};overflow:hidden">`
-    + `<span style="font-family:${ARCHIVO};font-size:30px;color:${FG};text-transform:uppercase">${esc(room.location)} ${esc(room.studio)}</span>`
-    + `<span style="font-size:26px;color:${FG};opacity:.6;margin-left:14px">${esc(now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }))}</span>`
-    + `<span style="float:right;font-family:${MONO};font-size:18px;color:${FG};opacity:.45;margin-top:12px">${esc(stamp)}</span>`
+    + `<span style="font-family:${ARCHIVO};font-weight:900;font-size:30px;color:${FG};text-transform:uppercase">${esc(room.location)} ${esc(room.studio)}</span>`
+    + `<span style="font-size:26px;font-weight:800;color:${FG};opacity:.7;margin-left:14px">${esc(now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }))}</span>`
+    + `<span style="float:right;font-family:${MONO};font-size:18px;font-weight:700;color:${FG};opacity:.6;margin-top:12px">${esc(stamp)}</span>`
     + `</div>`
     + `<table><tr>${head}</tr>${rows}</table>`
 
