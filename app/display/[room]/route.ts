@@ -84,21 +84,30 @@ const SLOT: Record<string, string> = {
 // strip on it would tell a runner to collect money nobody collects at a desk.
 const BLOCKS = ['tour', 'tech', 'open_hours', 'lockout']
 
-const MIN_ROW_H = 124   // 8 rows + chrome ≈ 1080p; content grows a row past this
-
 // ROLLING WINDOW, NOT A MONTH (Eli, 2026-09-07: "it's often more important to
-// see what's happened than a lot of blank rows"). The grid used to anchor on
-// the week containing the 1st and run ten weeks forward, so on the 3rd of a
-// month the wall was mostly empty future. Now it anchors on TODAY: five weeks
-// behind, the current week, two weeks ahead. Today's row lands 6th of 8 — a
-// little past halfway down the panel — with history above it and just enough
-// runway below to see what's coming.
+// see what's happened than a lot of blank rows"). The grid anchors on TODAY —
+// two weeks behind, the current week, two weeks ahead — so today's row is the
+// MIDDLE of five and can never drift off the panel.
 //
-// Keep PAST + 1 + FUTURE at 8. The panel shows ~8 rows at MIN_ROW_H; adding a
-// row doesn't reveal more, it pushes the future weeks off the bottom edge.
-const PAST_WEEKS = 5
+// ⚠ A ROW IS NOT MIN_ROW_H TALL. It is as tall as its busiest day. The first
+// version of this window used PAST_WEEKS = 5 on the theory that "8 rows fill
+// 1080p", and on the wall (2026-09-07 photo) Studio C rendered FIVE rows before
+// running out of panel — its August weeks carry 2–3 cards a day and each row
+// came out ~200px, not 124. Today was row 6. It was not on the screen at all.
+//
+// So the count is budgeted against the WORST case, not the average: five rows
+// is what the busiest room can show, and today sits at row 3 of 5. Do not add
+// past weeks back — every one you add pushes today toward the bottom edge on
+// exactly the rooms that are busy enough to matter. If the future ever needs
+// more runway, take it from PAST_WEEKS and keep the total at five.
+const PAST_WEEKS = 2
 const FUTURE_WEEKS = 2
 const WEEKS = PAST_WEEKS + 1 + FUTURE_WEEKS
+
+// Sized so five EMPTY rows still fill 1080p rather than leaving black at the
+// bottom (5 × 190 + ~90px of header/weekday chrome ≈ 1040). Busy rows grow past
+// it, which is what eats the panel — see the warning above.
+const MIN_ROW_H = 190
 
 type B = Record<string, any>
 
