@@ -13,7 +13,7 @@ import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
-import { formatCurrency, stripCurrency, longDate } from '@/lib/format'
+import { formatCurrency, stripCurrency, longDate, oneLine } from '@/lib/format'
 import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail, confirmStartProblem,
@@ -1682,7 +1682,7 @@ export function WorkOrderPopup({
     }
     if (batchOn.ot_hours) patch.ot_hours = batchVals.ot_hours
     if (batchOn.ot_rate) patch.ot_rate = batchVals.ot_rate
-    if (batchOn.notes) patch.session_info = batchVals.session_info
+    if (batchOn.notes) patch.session_info = oneLine(batchVals.session_info)
     if (batchOn.staff) {
       // One row carries ONE staffer + role, so this SETS that line (overwriting
       // whatever role/person it held) rather than adding a second person. Both an
@@ -2663,9 +2663,11 @@ export function WorkOrderPopup({
     }
 
     // Studio time rows — upserts (RPC conflicts on id; uniform key set required).
+    // oneLine() on session_info: single-line semantics, and a persisted line
+    // break crashed the WinAnsi PDF build (WO-1064, 2026-09-07).
     const stPayloads = stRows.map(r => ({
       id: r.id,
-      studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: r.session_info,
+      studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
       from_time: r.from_time, to_time: r.to_time,
       total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
       row_rate_type: r.row_rate_type,
@@ -2689,10 +2691,10 @@ export function WorkOrderPopup({
 
     // Rental + payment rows that have content — upserts.
     const rentPayloads = rentRows.filter(r => r.item || r.charge).map(r => ({
-      id: r.id, qty: parseInt(r.qty) || null, item: r.item || null, supplier: r.supplier || null, dates_used: r.dates_used || null, rate: r.rate || null, charge: parseFloat(r.charge) || null,
+      id: r.id, qty: parseInt(r.qty) || null, item: oneLine(r.item) || null, supplier: oneLine(r.supplier) || null, dates_used: oneLine(r.dates_used) || null, rate: r.rate || null, charge: parseFloat(r.charge) || null,
     }))
     const payPayloads = payRows.filter(p => p.payment_type || p.amount).map(p => ({
-      id: p.id, payment_type: p.payment_type || null, amount: stripCurrency(p.amount), memo: p.memo || null, last_four: p.last_four || null,
+      id: p.id, payment_type: p.payment_type || null, amount: stripCurrency(p.amount), memo: oneLine(p.memo) || null, last_four: p.last_four || null,
       fee_amount: stripCurrency(p.fee_amount),
     }))
 
@@ -2817,7 +2819,7 @@ export function WorkOrderPopup({
         supabase.from('studio_time_rows').insert({
           id: r.id,
           work_order_id: woIdRef.current!,
-          studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: r.session_info,
+          studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
           from_time: r.from_time, to_time: r.to_time,
           total_hours: r.total_hours, rate: r.rate,
           rate_daily: r.rate_daily || null,
@@ -4771,7 +4773,7 @@ export function WorkOrderPopup({
                   {/* Session notes */}
                   <div style={rowS}>
                     {check('notes', 'Session info')}
-                    <textarea value={batchVals.session_info} disabled={!batchOn.notes} onChange={e => setBatchVals(v => ({ ...v, session_info: e.target.value }))} rows={2} placeholder="Applies the same note to every day in scope" className="c-area" style={{ minHeight: 64, opacity: batchOn.notes ? 1 : 0.45 }} />
+                    <textarea value={batchVals.session_info} disabled={!batchOn.notes} onChange={e => setBatchVals(v => ({ ...v, session_info: e.target.value.replace(/[\r\n]+/g, ' ') }))} rows={2} placeholder="Applies the same note to every day in scope" className="c-area" style={{ minHeight: 64, opacity: batchOn.notes ? 1 : 0.45 }} />
                   </div>
 
                   <div style={{ height: 1, background: 'var(--c-wash2)' }} />
@@ -4980,16 +4982,20 @@ export function WorkOrderPopup({
                                 panel's own background it let the table read
                                 straight through the notes. Surface + shadow. */}
                             <div style={{ position: 'fixed', top: siPopoverPos.top, left: siPopoverPos.left, width: 280, zIndex: 200, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 8, padding: 12 }} onClick={e => e.stopPropagation()}>
+                              {/* Session info is ONE LINE of data (it prints in a
+                                  one-line PDF cell) — the textarea is only for
+                                  comfortable soft-wrap editing, so line breaks are
+                                  stripped as they're typed or pasted. */}
                               <textarea
                                 value={siPopoverText}
-                                onChange={e => setSiPopoverText(e.target.value)}
+                                onChange={e => setSiPopoverText(e.target.value.replace(/[\r\n]+/g, ' '))}
                                 autoFocus
                                 rows={4}
                                 style={{ width: '100%', background: 'transparent', outline: 'none', resize: 'vertical', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5, marginBottom: 8, boxSizing: 'border-box' }}
                                 placeholder="Session notes…"
                               />
                               <div style={{ display: 'flex', gap: 6 }}>
-                                <button onClick={() => { updateStRow(r.id, { session_info: siPopoverText }); setSiPopoverRowId(null) }} style={{ flex: 1, background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: 'pointer' }}>Save</button>
+                                <button onClick={() => { updateStRow(r.id, { session_info: oneLine(siPopoverText) }); setSiPopoverRowId(null) }} style={{ flex: 1, background: 'var(--c-fg)', color: 'var(--c-bg)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 11, cursor: 'pointer' }}>Save</button>
                                 <button onClick={() => setSiPopoverRowId(null)} style={{ flex: 1, background: 'var(--c-wash2)', color: 'var(--c-fg-2)', borderRadius: 5, padding: '5px 0', fontFamily: "'Archivo Black', sans-serif", fontSize: 11, cursor: 'pointer' }}>Close</button>
                               </div>
                             </div>

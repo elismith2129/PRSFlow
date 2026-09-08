@@ -6,6 +6,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // "1234.5" / "$1,234.50" → "$1,234.50". Unparseable → ''.
+/** Single-line field discipline (Eli 2026-09-07, the WO-1064 PDF crash):
+ *  fields with one-line semantics (session info, memos, rental items) must
+ *  never PERSIST a line break — collapse all whitespace runs to one space.
+ *  Apply at the write site, not just display; the PDF layer has its own
+ *  armour but data should be clean at the source. */
+export function oneLine(s: string | null | undefined): string {
+  return (s ?? '').replace(/\s+/g, ' ').trim()
+}
+
 export function formatCurrency(val: string): string {
   const num = parseFloat(String(val).replace(/[$,]/g, ''))
   if (isNaN(num)) return ''
