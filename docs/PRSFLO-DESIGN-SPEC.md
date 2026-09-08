@@ -109,11 +109,17 @@ entire new system. Legacy tokens keep their names and die individually with thei
 consumer. There will be **no end-of-project rename sweep** to reclaim clean names.
 
 ```css
-:root{                                /* LIGHT — warm paper, soft charcoal ink */
-  --c-bg:      #f5f3ee;
-  --c-fg:      #2a2722;
-  --c-wash:    rgba(42,39,34,.05);    /* grouping fill, level 1 */
-  --c-wash2:   rgba(42,39,34,.095);   /* grouping fill, level 2 */
+:root{                                /* LIGHT — NOIR'S MIRROR (v1.25.x, Sep 2026:
+                                         "white background, grey off-white boxes,
+                                         increase contrast like the dashboard").
+                                         Superseded warm-paper #f5f3ee / white
+                                         boxes. Boxes now sit DARKER than the
+                                         ground (--c-srf #f1efe9 on #fdfcf9) —
+                                         the carve-IN law restored in light. */
+  --c-bg:      #fdfcf9;
+  --c-fg:      #1a1712;
+  --c-wash:    rgba(26,23,18,.055);   /* grouping fill, level 1 */
+  --c-wash2:   rgba(26,23,18,.105);   /* grouping fill, level 2 */
   --c-chip-ink:#1c2626;               /* text ON status fills */
   /* status — Lagoon (bright register) */
   --c-st-hot:    #ff5a4d;             /* signal red — pale text #fff4f2 on hot fills */
