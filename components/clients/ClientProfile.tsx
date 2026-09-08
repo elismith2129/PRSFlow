@@ -8,6 +8,7 @@ import { RegViewModal } from '@/components/shared/RegViewModal'
 import { STARTER_TAGS } from '@/lib/tags'
 import { dbResult } from '@/lib/db'
 import { propagateClientRename, propagateContactRename } from '@/lib/propagateClientRename'
+import { ApCard, type ApProfile } from '@/components/billing/ApCard'
 
 interface BookingLead {
   id: number
@@ -453,6 +454,26 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [lnameVal, setLnameVal] = useState('')
   const [editingName, setEditingName] = useState(false)
   const isLabelClient = client?.type === 'label'
+
+  // ── AP submission procedure (2026-09-08) ──────────────────────────────────
+  // The picker here is how a label client gets linked to its procedure, and the
+  // only place that link is made. Deliberately NOT auto-matched by name: the
+  // source sheet's own notes ("10kProjects (TenThousandProjects in QB)",
+  // "Guitar Center — 'The Guitar Center Company' in QB") say the spreadsheet
+  // names and the QuickBooks names disagree, so guessing would silently attach
+  // the wrong AP instructions to a real invoice.
+  const [apProfiles, setApProfiles] = useState<ApProfile[]>([])
+  const [apOpen, setApOpen] = useState(false)
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const { data } = await supabase
+        .from('ap_profiles').select('*').eq('is_global', false).order('family').order('name')
+      if (alive) setApProfiles((data ?? []) as ApProfile[])
+    })()
+    return () => { alive = false }
+  }, [])
+  const apProfile = apProfiles.find(p => p.id === client?.ap_profile_id) ?? null
   const [clientTags, setClientTags] = useState<string[]>(client?.tags || [])
   const [clientTagInput, setClientTagInput] = useState('')
   const [clientTagDDOpen, setClientTagDDOpen] = useState(false)
@@ -912,6 +933,46 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
 
         {/* ── SHARED SECTIONS ── */}
 
+        {/* ── AP SUBMISSION ─────────────────────────────────────────────────
+            Billing clients only: a COD client pays at the desk and has no AP
+            department to submit to. */}
+        {isLabel && (
+          <>
+            <SectionHeader
+              label="AP submission"
+              action={apProfile ? (
+                <button
+                  onClick={() => setApOpen(true)}
+                  style={{ background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg-2)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em' }}
+                >How to send →</button>
+              ) : undefined}
+            />
+            <div className="c-well" style={{ marginBottom: 6 }}>
+              <span className="c-pfx">Procedure</span>
+              <select
+                value={client.ap_profile_id ?? ''}
+                onChange={e => saveClient({ ap_profile_id: e.target.value || null })}
+                style={{ cursor: 'pointer', appearance: 'none' }}
+              >
+                <option value="">Not set — no AP card on this client's invoices</option>
+                {apProfiles.map(p => (
+                  <option key={p.id} value={p.id}>{p.family} · {p.name}</option>
+                ))}
+              </select>
+              <span className="c-ico" aria-hidden>▾</span>
+            </div>
+            {/* The per-client addendum: one detail that differs from the shared
+                procedure, without cloning a whole profile for it. */}
+            <InlineField
+              label=""
+              value={client.ap_notes}
+              onSave={v => saveClient({ ap_notes: v })}
+              multiline
+              placeholder="Anything specific to this client (e.g. Interscope: over $5,000 the invoice must be dated after the PO)…"
+            />
+          </>
+        )}
+
         <SectionHeader label="Booking History" />
         <BookingHistory leads={bookings} />
 
@@ -994,6 +1055,17 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
       )}
       {regViewOpen && client && (
         <RegViewModal clientId={client.id} onClose={() => setRegViewOpen(false)} />
+      )}
+      {/* The same panel the Billing Hub opens. No workOrderId here — with no
+          invoice in hand there is nothing to tick, so the checklist renders as
+          plain reference. */}
+      {apOpen && apProfile && client && (
+        <ApCard
+          profile={apProfile}
+          clientName={client.name}
+          clientNotes={client.ap_notes}
+          onClose={() => setApOpen(false)}
+        />
       )}
     </div>
   )

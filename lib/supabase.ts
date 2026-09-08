@@ -92,6 +92,11 @@ export interface Client {
   notes: string | null
   artist_name?: string | null
   tags: string[]
+  /** The label's AP submission procedure (ap_profiles.id). Null = not linked,
+      which is why no AP card shows on that client's invoices. */
+  ap_profile_id?: string | null
+  /** Per-client addendum shown under the shared procedure. */
+  ap_notes?: string | null
   email_opt_out: boolean
   srs_client: boolean
   created_at: string
