@@ -119,14 +119,19 @@
 }
 
 [data-theme="light"] {
-  /* LIGHT — warm paper, soft charcoal ink */
-  --c-bg:    #f5f3ee;
-  --c-fg:    #2a2722;
-  --c-wash:  rgba(42, 39, 34, .05);
-  --c-wash2: rgba(42, 39, 34, .095);
-  --c-fg-2:  rgba(42, 39, 34, .72);
-  --c-fg-3:  rgba(42, 39, 34, .45);
-  --c-flo-ink: 42, 39, 34;            /* dark ink in light mode */
+  /* LIGHT — NOIR'S MIRROR (Eli, 2026-09-07: "white background, grey/off-white
+     boxes, and again increase contrast like we did with the dashboard").
+     Supersedes the warm-paper values (#f5f3ee ground / white boxes): the
+     ground is now near-white and the boxes sit DARKER than it — which is the
+     original carve-IN law returning — with near-black ink for the same high
+     contrast the dark register got in v1.24.0. */
+  --c-bg:    #fdfcf9;
+  --c-fg:    #1a1712;
+  --c-wash:  rgba(26, 23, 18, .055);
+  --c-wash2: rgba(26, 23, 18, .105);
+  --c-fg-2:  rgba(26, 23, 18, .72);
+  --c-fg-3:  rgba(26, 23, 18, .46);
+  --c-flo-ink: 26, 23, 18;            /* dark ink in light mode */
   /* --c-chip-ink, the status palette and the aliases are theme-independent. */
 }
 
@@ -2158,9 +2163,13 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
   --c-ctlsh:  0 1px 4px rgba(0, 0, 0, .3);
 }
 [data-theme="light"] {
-  --c-srf:    #ffffff;
-  --c-softsh: 0 1px 3px rgba(42, 39, 34, .08), 0 5px 16px rgba(42, 39, 34, .07);
-  --c-ctlsh:  0 1px 3px rgba(42, 39, 34, .15);
+  /* NOIR'S MIRROR (2026-09-07): boxes go OFF-WHITE GREY on the near-white
+     ground — darker than the page, not lighter (was #ffffff white boxes on a
+     grey ground). Shadows soften: a darker-than-ground surface doesn't need
+     lift to read as a container. */
+  --c-srf:    #f1efe9;
+  --c-softsh: 0 1px 2px rgba(26, 23, 18, .05), 0 4px 12px rgba(26, 23, 18, .05);
+  --c-ctlsh:  0 1px 3px rgba(26, 23, 18, .14);
 }
 
 /* Containers: flat raised surfaces. */
