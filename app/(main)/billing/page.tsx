@@ -1363,7 +1363,10 @@ function PackageModal({ row, booking, onClose, isOwner, approverId, approverName
             )}
             {row.hasPackage && (
               <button className={view === 'sent' ? 'c-on' : ''} onClick={() => setView('sent')}>
-                {row.sentAt ? 'As sent' : 'As built'}
+                {/* "Previously saved" (Eli 2026-09-07 — "As built" read as jargon
+                    next to the live Package build). "As sent" stays: once sent,
+                    that label is the whole meaning. */}
+                {row.sentAt ? 'As sent' : 'Previously saved'}
               </button>
             )}
             <button className={view === 'wo' ? 'c-on' : ''} onClick={() => setView('wo')}>Work order</button>
