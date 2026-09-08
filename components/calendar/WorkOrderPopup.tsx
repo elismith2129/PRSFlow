@@ -5399,7 +5399,13 @@ export function WorkOrderPopup({
                     const anySubmitted = g.rows.some(r => r.status === 'submitted')
                     const dotColor = allApproved ? 'var(--c-st-booked)' : anySubmitted ? 'var(--c-st-warm)' : null
                     const first = studioRows[0] ?? g.rows[0]
-                    const studios = Array.from(new Set(studioRows.map(r => toStudioLetter(r.studio)).filter(Boolean)))
+                    // VENUE-QUALIFIED (Eli, 2026-09-08). "Studio A" alone is
+                    // ambiguous now that a WO can span buildings — every venue
+                    // has a Studio A. roomCode gives "PRS A", the same naming
+                    // the WO PDF prints, so paper and screen agree.
+                    const studios = Array.from(new Set(studioRows
+                      .map(r => roomCode(toStudioLetter(r.studio), r.location || booking.location))
+                      .filter(Boolean)))
                     const song = g.rows.map(r => r.session_info).find(Boolean) || ''
                     const otHrsTotal = g.rows.reduce((s, r) => s + (parseFloat(r.ot_hours || '0') || 0), 0)
                     const engChargeFor = (r: StRow) => {
@@ -5447,7 +5453,7 @@ export function WorkOrderPopup({
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               {studios.length > 0 && (
                                 <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
-                                  Studio {studios.join(' · ')}
+                                  {studios.join(' · ')}
                                 </span>
                               )}
                               <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
@@ -5661,7 +5667,7 @@ export function WorkOrderPopup({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
                           {studios.length > 0 && (
                             <span className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.01em', flexShrink: 0 }}>
-                              Studio {studios.join(' · ')}
+                              {studios.join(' · ')}
                             </span>
                           )}
                           <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1, fontSize: 11.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -6132,7 +6138,7 @@ export function WorkOrderPopup({
                     {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
                   </span>
                   <span style={fldK}>
-                    {Array.from(new Set(sheetStudioRows.map(r => toStudioLetter(r.studio)).filter(Boolean))).map(s3 => `Studio ${s3}`).join(' · ')}
+                    {Array.from(new Set(sheetStudioRows.map(r => roomCode(toStudioLetter(r.studio), r.location || booking.location)).filter(Boolean))).join(' · ')}
                   </span>
                 </div>
                 <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', margin: '2px 0 10px', flexShrink: 0 }}>
