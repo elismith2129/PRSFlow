@@ -7,6 +7,10 @@
 // from here, never re-define locally.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Venue short codes, for toStudioLetter's code-stripping. lib/studios.ts imports
+// nothing, so this cannot cycle.
+import { STUDIO_SHORT } from '@/lib/studios'
+
 // "8:30 PM" / "14:30" → minutes since midnight. Unparseable → NaN (callers must
 // guard). The old admin copies returned 0 here, which let a garbage time string
 // produce phantom billable hours — the runner copy's stricter NaN behavior is
@@ -66,10 +70,34 @@ export function isNextDay(a: string, b: string): boolean {
   return Math.round((db.getTime() - da.getTime()) / 86400000) === 1
 }
 
-// "Studio A" → "A", "Studio X" → "X", "North" → "North"
+// "Studio A" → "A", "Studio X" → "X", "North" → "North",
+// and venue-coded forms: "PRS-A" / "PRS A" / "PRSA" → "A", "TRS North" → "North".
+//
+// The venue-code stripping was added 2026-09-08 after WO-1140. The Seed panel
+// let a room be TYPED, someone entered "PRS-A", and this function — the one
+// normalizer that value passed through — didn't match its regex, so it fell
+// through to `s.trim()` and handed "PRS-A" onward untouched. That reached
+// `bookings.studio`, which the calendar grid matches against real room labels,
+// so three saved booking cards rendered in no room at all.
+//
+// The Seed field is a dropdown now, but this stays hardened on purpose: it is
+// the choke point every path uses (seed, row dropdown, WO init), it repairs the
+// rows already carrying codes, and `roomCode()` in lib/studios.ts MINTS these
+// same "PRS A" strings for the PDF — so they will keep finding their way back in.
 export function toStudioLetter(s: string): string {
-  const m = s.match(/Studio\s+([A-Z])/i)
-  return m ? m[1].toUpperCase() : s.trim()
+  let v = (s ?? '').trim()
+  if (!v) return v
+  // 'TRK' is a retired Track code that predates STUDIO_SHORT (see lib/studios.ts).
+  for (const code of [...Object.values(STUDIO_SHORT), 'TRK']) {
+    // Requires something after the code, so a bare "ERS" is left alone.
+    const m = new RegExp(`^${code}[\\s\\-_]*(?=.)`, 'i').exec(v)
+    if (m) { v = v.slice(m[0].length).trim(); break }
+  }
+  const m = v.match(/Studio\s+([A-Z])/i)
+  if (m) return m[1].toUpperCase()
+  // A bare room letter is always upper case ('prs-a' → 'a' → 'A'). Multi-word
+  // rooms (Track's North/South) keep their own casing.
+  return /^[A-Za-z]$/.test(v) ? v.toUpperCase() : v
 }
 
 // Today as a LOCAL calendar date (YYYY-MM-DD), matching how dates are stored.
