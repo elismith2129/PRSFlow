@@ -56,6 +56,9 @@ import { daysSince, isParked, isDue } from '@/lib/crm'
  *  disruptive and no guarantee anyone reads). Stores the briefing DATE seen. */
 const BRIEF_SEEN_KEY = 'prsflo-brief-seen'
 
+/** Per-device "the owner saw the Owner's Page offer" marker (one-time popup). */
+const GUIDE_SEEN_KEY = 'prsflo-owner-guide-seen'
+
 /** '2026-09-07' → 'Mon, Sep 7' — the briefing modal's date chip. */
 function fmtBriefDate(d: string): string {
   return new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', {
@@ -252,6 +255,21 @@ export default function DashboardPage() {
       try { localStorage.setItem(BRIEF_SEEN_KEY, briefing.date) } catch { /* private mode — popup just re-offers next visit */ }
     }
   }, [briefOpen, briefing])
+  // ONE-TIME OWNER'S PAGE POPUP (Eli 2026-09-07): the first time the other
+  // owner (not Eli) lands on the dashboard, offer the big-print guide. Seen
+  // is per device (localStorage); reading it or dismissing it both count.
+  // Sits ABOVE the briefing modal (z) — close it and the briefing is behind.
+  const [guidePop, setGuidePop] = useState(false)
+  useEffect(() => {
+    if (!profile || profile.role !== 'owner' || isEli) return
+    try { if (localStorage.getItem(GUIDE_SEEN_KEY)) return } catch { return }
+    setGuidePop(true)
+  }, [profile, isEli])
+  function dismissGuide(read: boolean) {
+    try { localStorage.setItem(GUIDE_SEEN_KEY, '1') } catch {}
+    setGuidePop(false)
+    if (read) router.push('/sop/owner')
+  }
   // One briefing line: headline + optional jump chip (Eli 2026-09-07 — "a
   // bullet, and a button to the page they need"). The go→route map lives in
   // lib/floLines with the line shape itself.
@@ -594,6 +612,35 @@ export default function DashboardPage() {
           {briefErr && <div className="n-askflo" style={{ color: 'var(--n-hot)' }}>{briefErr}</div>}
         </div>
       </div>
+
+      {guidePop && (
+        <div className="n-bmwrap" style={{ zIndex: 10006 }} onClick={() => dismissGuide(false)}>
+          <div className="n-bmodal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="n-bmhead">
+              <PRSFloIcon size={22} />
+              <b>The Owner&apos;s Page</b>
+              <span className="n-bmx" onClick={() => dismissGuide(false)}>✕</span>
+            </div>
+            <p className="n-bmln" style={{ fontSize: 16, lineHeight: 1.6 }}>
+              A one-page map of your day — the dashboard, the CRM, and the billing hub.
+              What every color means, and where approvals and COD live. Two minutes,
+              big print, always in Training if you want it later.
+            </p>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              {/* Ink-fill primary (the noir small-element convention) — status
+                  colours stay status (§5), so no green CTA. */}
+              <button
+                onClick={() => dismissGuide(true)}
+                style={{ flex: 1, minHeight: 46, borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--n-ink)', color: 'var(--n-stage)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: '0.03em' }}
+              >Read it now →</button>
+              <button
+                onClick={() => dismissGuide(false)}
+                style={{ minHeight: 46, padding: '0 18px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--n-wash)', color: 'var(--n-ink2)', fontSize: 13, fontWeight: 700 }}
+              >Later</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {briefOpen && briefing && (
         <div className="n-bmwrap" onClick={() => setBriefOpen(false)}>
