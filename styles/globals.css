@@ -2459,6 +2459,20 @@ html.n-page .c-frame { background: #0b0a09; }
   --n-warm:#ffa94d; --n-cold:#5fc9e8; --n-ok:#43dfae; --n-uncon:#7fb2e5;
   color:var(--n-ink);
 }
+/* THE LIGHT REGISTER (Eli, 2026-09-07 — supersedes the theme-FIXED ruling
+   from v1.24.0: the dashboard now follows the Sun toggle like every page).
+   Noir's mirror, same as the site-wide flip: near-white stage, boxes DARKER
+   than the ground (carve IN), near-black ink. Status colours identical in
+   both registers (§6 — one palette, dimming is a rule). Everything below
+   this block is token-driven, so this is the whole theme. */
+html[data-theme="light"].n-page, html[data-theme="light"].n-page body { background: #fdfcf9 !important; }
+html[data-theme="light"].n-page .c-frame { background: #fdfcf9; }
+[data-theme="light"] .n-home{
+  --n-stage:#fdfcf9; --n-card:#f1efe9; --n-card2:#eae7de;
+  --n-ink:#1a1712; --n-ink2:rgba(26,23,18,.66); --n-ink3:rgba(26,23,18,.42);
+  --n-wash:rgba(26,23,18,.06); --n-wash2:rgba(26,23,18,.12);
+  /* --n-chip-ink + the status palette stay — theme-independent. */
+}
 .n-home .n-label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--n-ink3)}
 .n-home .n-title{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:42px;
   line-height:.95;letter-spacing:.02em;text-transform:uppercase}
@@ -2471,7 +2485,10 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-seg{display:inline-flex;background:var(--n-card);border-radius:99px;padding:4px;gap:2px}
 .n-home .n-seg button{border-radius:99px;padding:5px 12px;font-size:9.5px;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--n-ink3);background:none}
-.n-home .n-seg button.n-on{color:var(--n-chip-ink);background:var(--n-ink)}
+/* Text on an ink-filled pill = the stage colour, NOT chip-ink: chip-ink is
+   dark in both themes (it sits on bright STATUS fills), but ink is dark in
+   the light register — chip-ink on ink would be black-on-black there. */
+.n-home .n-seg button.n-on{color:var(--n-stage);background:var(--n-ink)}
 .n-home .n-datechip{background:var(--n-ink);color:var(--n-stage);border-radius:13px;padding:8px 15px;
   font-family:'Archivo Black',sans-serif;font-size:13px;text-align:center}
 .n-home .n-datechip small{display:block;font-size:9px;opacity:.6;font-family:Inter,system-ui;font-weight:800;letter-spacing:.1em}
@@ -2538,7 +2555,7 @@ html.n-page .c-frame { background: #0b0a09; }
 .n-home .n-qtabs{display:inline-flex;gap:2px;background:var(--n-wash);border-radius:99px;padding:3px}
 .n-home .n-qtabs button{border-radius:99px;padding:2px 9px;font-size:7.5px;font-weight:800;
   letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:var(--n-ink3);background:none}
-.n-home .n-qtabs button.n-on{background:var(--n-ink);color:var(--n-chip-ink)}
+.n-home .n-qtabs button.n-on{background:var(--n-ink);color:var(--n-stage)}
 .n-home .n-qscroll{flex:1;min-height:0;overflow-y:auto}
 .n-home .n-q{display:flex;align-items:center;gap:9px;padding:6px 2px;font-size:12.5px;cursor:pointer;border-radius:8px}
 .n-home .n-q:hover{background:var(--n-wash)}
