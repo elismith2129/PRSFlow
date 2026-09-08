@@ -5,6 +5,7 @@ import type { Client, ClientContact } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientProfile } from '@/components/clients/ClientProfile'
+import { PAYMENT_METHODS } from '@/lib/payments'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ClientPanel — the unified client identity + contact block.
@@ -42,7 +43,9 @@ export function emptyClientValue(overrides: Partial<ClientPanelValue> = {}): Cli
   }
 }
 
-const COD_METHODS = ['Cash', 'Credit Card', 'Zelle', 'Check', 'Venmo']
+// Every payment method, same list the WO's payment rows use (Eli,
+// 2026-09-08: "need all payment types for all clients").
+const COD_METHODS = PAYMENT_METHODS
 
 const fL: React.CSSProperties = {
   fontSize: 9, color: 'var(--c-fg-3)', letterSpacing: '0.08em',

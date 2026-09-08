@@ -24,6 +24,7 @@ import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
+import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
 import { WoHistoryModal } from '@/components/calendar/WoHistoryModal'
 import { woAuditView, diffWoForSave, buildWoSnapshot, logWoActivity } from '@/lib/woActivity'
 
@@ -241,16 +242,11 @@ type PayRow = {
   fee_amount: string
 }
 
-/** Every way a payment row can be recorded. `payment_rows.type` is free text
- *  (no CHECK constraint), so this list is the only thing defining the set —
- *  add here, not at the call site. Wire + ACH added 2026-09-08. */
-const PAY_TYPES = ['Cash', 'Zelle', 'Wire', 'ACH', 'Credit Card', 'Debit Card', 'Check', 'Other']
-
-/** Payment types that carry the 3% COD card surcharge. Bank transfers (Wire,
- *  ACH) are deliberately NOT here — the surcharge covers card processing, and
- *  a wire costs us nothing per dollar. Adding one here would silently start
- *  billing 3% on transfers. */
-const CARD_PAY_TYPES = ['Credit Card', 'Debit Card']
+/* Payment methods live in lib/payments.ts — one list for the WO's payment rows
+   AND the client's COD method (they used to disagree). Aliased to the existing
+   local names so every call site below is untouched. */
+const PAY_TYPES = PAYMENT_METHODS
+const CARD_PAY_TYPES = CARD_PAYMENT_METHODS
 
 /** Food-budget expense report row (wo_expenses, 2026-08-24) — the paper
     sheet's Date · Place of Business · Amount (incl. tip) + receipt photo. */
