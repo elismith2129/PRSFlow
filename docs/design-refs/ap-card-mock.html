@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AP Submission Card — mock</title>
+<style>
+  /* Carved dark tokens, copied from styles/globals.css (spec §3). This is a
+     static mock — no data, no React. Real content from the ap_profiles seed. */
+  :root{
+    --c-bg:#0b0a09; --c-fg:#f2efe7;
+    --c-wash:rgba(242,239,231,.06); --c-wash2:rgba(242,239,231,.12);
+    --c-fg-2:rgba(242,239,231,.72); --c-fg-3:rgba(242,239,231,.45);
+    --c-chip-ink:#1c2626;
+    --c-st-hot:#ff5a4d; --c-st-warm:#ffa94d; --c-st-booked:#43dfae;
+    --c-st-uncon:#7fb2e5; --c-st-dead:#cfd6d4;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:28px 20px 60px; background:var(--c-bg); color:var(--c-fg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    font-size:14px; line-height:1.45;
+  }
+  .arch{font-family:'Archivo Black','Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:900;letter-spacing:-.01em}
+  .wrap{max-width:560px;margin:0 auto}
+  .mocknote{font-size:11px;color:var(--c-fg-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+
+  /* Label switcher — stands in for "whichever client's invoice you opened" */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+  .tab{
+    padding:7px 12px;border-radius:99px;border:none;cursor:pointer;
+    background:var(--c-wash);color:var(--c-fg-2);
+    font-family:inherit;font-size:11.5px;font-weight:700;letter-spacing:.02em;
+  }
+  .tab.on{background:var(--c-fg);color:var(--c-bg)}
+
+  .card{background:var(--c-wash);border-radius:16px;overflow:hidden}
+  .head{padding:16px 18px 14px;border-bottom:1px solid var(--c-wash2)}
+  .eyebrow{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:5px}
+  .title{font-size:21px;margin:0}
+  .sub{font-size:12.5px;color:var(--c-fg-3);margin-top:3px}
+
+  /* At-a-glance strip — the three things you need before reading anything */
+  .glance{display:flex;gap:8px;flex-wrap:wrap;padding:13px 18px;border-bottom:1px solid var(--c-wash2)}
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;
+    font-size:11.5px;font-weight:800;letter-spacing:.02em;
+    background:var(--c-wash2);color:var(--c-fg-2);
+  }
+  .pill.po{background:var(--c-st-warm);color:var(--c-chip-ink)}
+  .pill.nopo{background:rgba(207,214,212,.22);color:var(--c-fg-2)}
+  .pill.pay{background:var(--c-st-booked);color:var(--c-chip-ink)}
+  .pill.check{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+
+  .sec{padding:15px 18px;border-bottom:1px solid var(--c-wash2)}
+  .sec:last-child{border-bottom:none}
+  .seclabel{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:10px}
+
+  /* Steps — title always visible, detail collapses */
+  ol.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+  ol.steps>li{counter-increment:s;display:flex;gap:11px;padding:8px 0;border-top:1px solid var(--c-wash2)}
+  ol.steps>li:first-child{border-top:none;padding-top:0}
+  .num{
+    flex:0 0 21px;height:21px;border-radius:50%;background:var(--c-fg);color:var(--c-bg);
+    font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .stepbody{min-width:0;flex:1}
+  .steptitle{font-size:13.5px;font-weight:700;line-height:1.35}
+  details>summary{
+    list-style:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--c-fg-3);
+    margin-top:3px;letter-spacing:.02em;
+  }
+  details>summary::-webkit-details-marker{display:none}
+  details>summary:hover{color:var(--c-fg-2)}
+  details[open]>summary{margin-bottom:5px}
+  .detail{font-size:12.5px;color:var(--c-fg-2);line-height:1.5}
+
+  /* Field rows */
+  .row{display:flex;gap:12px;padding:6px 0;font-size:12.5px}
+  .k{flex:0 0 92px;color:var(--c-fg-3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+  .v{flex:1;min-width:0;color:var(--c-fg);word-break:break-word}
+  .v a{color:var(--c-st-cold,#5fc9e8)}
+  .hint{color:var(--c-fg-3);font-size:11.5px;font-style:italic}
+
+  /* Package checklist — the thing that stops a bounced invoice */
+  .chk{display:flex;align-items:flex-start;gap:9px;padding:6px 0;font-size:12.5px}
+  .box{flex:0 0 15px;height:15px;border-radius:4px;border:1.5px solid var(--c-fg-3);margin-top:2px}
+
+  .tip{
+    display:flex;gap:9px;padding:11px 12px;border-radius:10px;
+    background:rgba(255,169,77,.14);font-size:12.5px;color:var(--c-fg);line-height:1.5;
+  }
+  .tip b{color:var(--c-st-warm)}
+  .verify{background:rgba(255,90,77,.15)}
+  .verify b{color:var(--c-st-hot)}
+
+  /* ── Entry-point mock: a Billing Hub row + the ⋯ menu ─────────────────── */
+  .entry{background:rgba(242,239,231,.03);border-radius:14px;padding:16px 16px 18px;margin-bottom:8px}
+  .entrylabel{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:9px}
+  .entrywhy{font-size:11.5px;color:var(--c-fg-3);line-height:1.5;margin-top:9px}
+  .entrywhy b{color:var(--c-fg-2)}
+  .hubrow{display:flex;align-items:center;gap:11px;background:var(--c-wash);border-radius:11px;padding:11px 13px}
+  .hubwo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:var(--c-fg-3);flex:0 0 62px}
+  .hubclient{flex:1;min-width:0}
+  .hubname{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+  .hubsub{font-size:11px;color:var(--c-fg-3);margin-top:1px}
+  .apchip{
+    border:1px solid var(--c-fg-3);background:none;color:var(--c-fg-2);cursor:pointer;
+    font-family:inherit;font-size:9.5px;font-weight:800;letter-spacing:.08em;
+    padding:1px 6px;border-radius:99px;line-height:1.5;
+  }
+  .apchip:hover{border-color:var(--c-fg);color:var(--c-fg)}
+  .hubamt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;flex:0 0 78px;text-align:right}
+  .hubact{
+    background:var(--c-fg);color:var(--c-bg);border:none;border-radius:99px;cursor:pointer;
+    font-family:inherit;font-size:11.5px;font-weight:800;padding:6px 13px;
+  }
+  .hubmore{background:none;border:none;color:var(--c-fg-3);cursor:pointer;font-size:15px;padding:0 3px}
+  .moremock{background:var(--c-wash);border-radius:12px;padding:15px}
+  .c-lozenge{font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--c-fg-3);margin-bottom:3px}
+  .bact{
+    display:block;width:100%;text-align:left;background:var(--c-wash2);border:none;border-radius:9px;
+    color:var(--c-fg);cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;
+    padding:10px 12px;margin-bottom:7px;
+  }
+  .bact:last-child{margin-bottom:0}
+  .bactap{box-shadow:inset 2px 0 0 var(--c-st-booked)}
+
+  .foot{padding:13px 18px;font-size:11.5px;color:var(--c-fg-3)}
+  .foot details summary{color:var(--c-fg-3);font-weight:700}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="mocknote">Mock · AP submission card · opens from a Billing Hub row or a client profile</div>
+
+  <!-- ══ WHERE THE BUTTON IS ═══════════════════════════════════════════════
+       The hub's own law: "the button column is only ever the next real act"
+       and "opening a record to read it is navigation, not an action". So the
+       AP card is NOT a second button in the action column. Two entry points
+       that respect that: -->
+  <div class="entry">
+    <div class="entrylabel">1 · A chip beside the client name, on the row</div>
+    <div class="hubrow">
+      <div class="hubwo">WO-1152</div>
+      <div class="hubclient">
+        <div class="hubname">Atlantic Records <button class="apchip" title="How to send to Warner Records">AP</button></div>
+        <div class="hubsub">Doechii · #34771</div>
+      </div>
+      <span class="pill" style="background:var(--c-st-booked);color:var(--c-chip-ink)">Ready to send</span>
+      <div class="hubamt">$4,850.00</div>
+      <button class="hubact">Mark sent</button>
+      <button class="hubmore">⋯</button>
+    </div>
+    <div class="entrywhy">
+      The chip sits with the <b>client</b>, not in the button column — the procedure belongs to the label,
+      and the action column stays "what comes next". Only renders when the client has a procedure linked.
+    </div>
+
+    <div class="entrylabel" style="margin-top:20px">2 · In the ⋯ menu</div>
+    <div class="moremock">
+      <div class="c-lozenge">WO-1152</div>
+      <div style="font-size:12.5px;margin-bottom:12px;color:var(--c-fg-2)">Atlantic Records</div>
+      <button class="bact">Open the attached invoice PDF</button>
+      <button class="bact bactap">How to send to Warner Records</button>
+      <button class="bact">Download the package again</button>
+      <button class="bact">Pull it back</button>
+    </div>
+    <div class="entrywhy">
+      The menu already holds the secondary things by design. This is the reliable home;
+      the chip is the shortcut at the moment of need.
+    </div>
+  </div>
+
+  <div class="mocknote" style="margin-top:34px">The card it opens ↓</div>
+
+  <div class="tabs">
+    <button class="tab on" data-t="wmg">Atlantic Records</button>
+    <button class="tab" data-t="umg">Def Jam</button>
+    <button class="tab" data-t="gc">Guitar Center</button>
+    <button class="tab" data-t="epic">Epic Records</button>
+  </div>
+
+  <!-- ══ WARNER / SAP ARIBA — the long one ══════════════════════════════ -->
+  <div class="card" id="wmg">
+    <div class="head">
+      <div class="eyebrow">How to send this invoice</div>
+      <h1 class="title arch">Warner Records (SAP Ariba)</h1>
+      <div class="sub">Atlantic Records · Invoice #34771 · $4,850.00</div>
+    </div>
+
+    <div class="glance">
+      <span class="pill">🔐 SAP Ariba portal</span>
+      <span class="pill po">PO required</span>
+      <span class="pill pay">Pays ACH</span>
+    </div>
+
+    <div class="sec">
+      <div class="seclabel">Steps</div>
+      <ol class="steps">
+        <li><div class="num">1</div><div class="stepbody">
+          <div class="steptitle">Log in to SAP Ariba and open Orders</div>
+          <details><summary>Show detail ▾</summary><div class="detail">The overview screen shows “Orders” as the second option in the middle. It lists POs issued in the last 90 days; the default view excludes POs already invoiced.</div></details>
+        </div></li>
+        <li><div class="num">2</div><div class="stepbody">
+          <div class="steptitle">Click the PO you are invoicing against</div>
+          <details><summary>Show detail ▾</summary><div class="detail">This starts a PO Flip — an Ariba invoice built from the PO. It is SEPARATE from our QuickBooks invoice, which gets attached to it.</div></details>
+        </div></li>
+        <li><div class="num">3</div><div class="stepbody">
+          <div class="steptitle">Fill in our invoice number, our invoice date, and the session description</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Session description is artist, room, and date or date range.</div></details>
+        </div></li>
+        <li><div class="num">4</div><div class="stepbody">
+          <div class="steptitle">Check the PO amount matches our invoice</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Scroll down and confirm the PO was created for the correct amount. If it does not match, stop and get the PO adjusted — do not submit a mismatch.</div></details>
+        </div></li>
+        <li><div class="num">5</div><div class="stepbody">
+          <div class="steptitle">Attach our invoice to the line item</div>
+          <details open><summary>Hide detail ▴</summary><div class="detail">Tick the line-item checkbox, use the “Line Item Action” dropdown just below it, choose “add attachment”, then <b>CLICK the “add attachment” button</b> after choosing the file. Skipping that second click silently drops the upload.</div></details>
+        </div></li>
+        <li><div class="num">6</div><div class="stepbody">
+          <div class="steptitle">Click Next, then Submit Invoice</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Confirmation emails arrive at info@ when the submission goes through. If they do not arrive, it did not submit.</div></details>
+        </div></li>
+        <li><div class="num">7</div><div class="stepbody">
+          <div class="steptitle">Download the remittance when it comes</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Remittance documents are checked and downloaded from Ariba too.</div></details>
+        </div></li>
+      </ol>
+    </div>
+
+    <div class="sec">
+      <div class="seclabel">Package</div>
+      <div class="chk"><div class="box"></div><div>Invoice PDF from QuickBooks — <i>Invoice #34771 - Atlantic/…</i></div></div>
+      <div class="chk"><div class="box"></div><div>Work order</div></div>
+      <div class="chk"><div class="box"></div><div>Receipts, if there were rentals or a food budget</div></div>
+      <div class="chk"><div class="box"></div><div>Session info filled in — <b>some labels will not remit payment without it</b></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="seclabel">Access</div>
+      <div class="row"><div class="k">Portal</div><div class="v">SAP Ariba</div></div>
+      <div class="row"><div class="k">Login</div><div class="v">info@paramountrecording.com</div></div>
+      <div class="row"><div class="k">Password</div><div class="v hint">In the locked note — ask Eli or Aaron.</div></div>
+      <div class="row"><div class="k">PO</div><div class="v">POs are received inside SAP Ariba. Any additional cost must be approved and the PO updated in SAP, or the invoice will not be paid accurately.</div></div>
+    </div>
+
+    <div class="foot">
+      <details><summary>General AP reference ▾</summary>
+        <div class="detail" style="margin-top:8px">
+          Every package is invoice PDF + work order + receipts, named <i>Invoice #XXXXX - Label/Artist</i>.<br>
+          Tipalti portals are all the same service on different links — using the wrong one submits to the wrong tenant.<br>
+          Any international branch of the big three: confirm who facilitates payment, put banking details on the invoice below the line items, ask for a remittance document.
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <!-- ══ UMG — email, PO, inherited by 13 divisions ═════════════════════ -->
+  <div class="card hidden" id="umg">
+    <div class="head">
+      <div class="eyebrow">How to send this invoice</div>
+      <h1 class="title arch">Universal Music Group</h1>
+      <div class="sub">Def Jam · Invoice #34772 · $2,200.00 · <span style="color:var(--c-fg-3)">shared by 13 UMG divisions</span></div>
+    </div>
+    <div class="glance">
+      <span class="pill">✉︎ Email submission</span>
+      <span class="pill po">PO required</span>
+      <span class="pill pay">Pays ACH</span>
+    </div>
+    <div class="sec">
+      <div class="seclabel">Steps</div>
+      <ol class="steps">
+        <li><div class="num">1</div><div class="stepbody">
+          <div class="steptitle">Wait for the PO</div>
+          <details open><summary>Hide detail ▴</summary><div class="detail">UMG issues a PO per session. Do not send the invoice before it arrives — an invoice without a PO is not payable and will sit.</div></details>
+        </div></li>
+        <li><div class="num">2</div><div class="stepbody">
+          <div class="steptitle">Apply the PO to the invoice in QuickBooks</div>
+          <details><summary>Show detail ▾</summary><div class="detail">The PO number must appear on the invoice itself, not only in the email.</div></details>
+        </div></li>
+        <li><div class="num">3</div><div class="stepbody">
+          <div class="steptitle">Email the package to umg.invoice.usa@umusic.com</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Invoice PDF + work order. Copy the admin and the admin coordinator from the booking thread.</div></details>
+        </div></li>
+        <li><div class="num">4</div><div class="stepbody">
+          <div class="steptitle">Uniport is available but NOT preferred</div>
+          <details><summary>Show detail ▾</summary><div class="detail">We have a Uniport login (info@paramountrecording.com) and invoices can be submitted there, but UMG has told us they prefer the submission email. Use email unless someone at UMG asks otherwise.</div></details>
+        </div></li>
+      </ol>
+    </div>
+    <div class="sec">
+      <div class="seclabel">Send to</div>
+      <div class="row"><div class="k">To</div><div class="v">umg.invoice.usa@umusic.com</div></div>
+      <div class="row"><div class="k">Copy</div><div class="v">The admin and the admin coordinator on the booking — both on copy.</div></div>
+    </div>
+    <div class="sec">
+      <div class="seclabel">This client</div>
+      <div class="tip"><div>⚠︎</div><div><b>Def Jam / Interscope note.</b> If the PO total is over $5,000, the invoice must be dated <b>after</b> the PO is issued. Any overtime or additional charge must be approved so the PO can be adjusted.</div></div>
+    </div>
+  </div>
+
+  <!-- ══ GUITAR CENTER — two-pass + the odd payment method ══════════════ -->
+  <div class="card hidden" id="gc">
+    <div class="head">
+      <div class="eyebrow">How to send this invoice</div>
+      <h1 class="title arch">Guitar Center</h1>
+      <div class="sub">The Guitar Center Company · Invoice #34773 · $1,375.00</div>
+    </div>
+    <div class="glance">
+      <span class="pill">✉︎ Email submission</span>
+      <span class="pill po">PO required</span>
+      <span class="pill check">Pays by CHECK</span>
+    </div>
+    <div class="sec">
+      <div class="seclabel">Steps</div>
+      <ol class="steps">
+        <li><div class="num">1</div><div class="stepbody">
+          <div class="steptitle">First send: email Gustavo and Kaleb</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Gustavo.Lopez@guitarcenter.com and Kaleb.Slack@guitarcenter.com.</div></details>
+        </div></li>
+        <li><div class="num">2</div><div class="stepbody">
+          <div class="steptitle">Wait for the PO — it comes separately</div>
+          <details><summary>Show detail ▾</summary><div class="detail">It does not arrive on the booking email.</div></details>
+        </div></li>
+        <li><div class="num">3</div><div class="stepbody">
+          <div class="steptitle">Apply the PO and RESEND to both</div>
+          <details open><summary>Hide detail ▴</summary><div class="detail">The second send is what gets paid. The first one alone will not.</div></details>
+        </div></li>
+      </ol>
+    </div>
+    <div class="sec">
+      <div class="tip"><div>⚠︎</div><div><b>Pays by check in the mail</b>, not ACH — the only client on the sheet that does. Do not chase an ACH that is never coming.</div></div>
+    </div>
+  </div>
+
+  <!-- ══ EPIC — short, and shows the ⚠ verify treatment ═════════════════ -->
+  <div class="card hidden" id="epic">
+    <div class="head">
+      <div class="eyebrow">How to send this invoice</div>
+      <h1 class="title arch">Sony — Epic Records</h1>
+      <div class="sub">Epic Records · Invoice #34774 · $6,100.00</div>
+    </div>
+    <div class="glance">
+      <span class="pill">✉︎ Email submission</span>
+      <span class="pill po">PO required</span>
+      <span class="pill pay">Pays ACH</span>
+    </div>
+    <div class="sec">
+      <div class="seclabel">Steps</div>
+      <ol class="steps">
+        <li><div class="num">1</div><div class="stepbody">
+          <div class="steptitle">Find the PO email — it is not the booking email</div>
+          <details open><summary>Hide detail ▴</summary><div class="detail">Epic sends the PO on its own thread. This is the step people miss.</div></details>
+        </div></li>
+        <li><div class="num">2</div><div class="stepbody">
+          <div class="steptitle">Apply the PO to the invoice before sending</div>
+          <details><summary>Show detail ▾</summary><div class="detail">Not after.</div></details>
+        </div></li>
+        <li><div class="num">3</div><div class="stepbody">
+          <div class="steptitle">Reply-all on the PO email</div>
+          <details><summary>Show detail ▾</summary><div class="detail">That thread already has the right admins on it.</div></details>
+        </div></li>
+      </ol>
+    </div>
+    <div class="sec">
+      <div class="seclabel">Send to</div>
+      <div class="row"><div class="k">To</div><div class="v">Reply-all to the issuer of the PO and any other admin copied on the PO email.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function (e) {
+      var id = e.currentTarget.getAttribute('data-t');
+      var all = document.querySelectorAll('.card');
+      for (var j = 0; j < all.length; j++) all[j].classList.add('hidden');
+      document.getElementById(id).classList.remove('hidden');
+      for (var k = 0; k < tabs.length; k++) tabs[k].classList.remove('on');
+      e.currentTarget.classList.add('on');
+    });
+  }
+</script>
+</body>
+</html>
