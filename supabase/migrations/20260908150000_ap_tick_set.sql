@@ -16,7 +16,7 @@
 --      on different items both survive.
 --
 --   2. WHO AND WHEN. "Everyone knows where it's at" needs a name on it. The
---      value is now {"by": "Aaron", "at": "2026-09-08T21:14:00Z"} rather than
+--      value is now {"by": "Sam", "at": "2026-09-08T21:14:00Z"} rather than
 --      `true`, so the panel can say who stopped and when.
 --
 -- Still no gating: nothing reads these to block anything, per the standing

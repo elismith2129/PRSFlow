@@ -105,13 +105,13 @@ values
 
 -- ── Miscellaneous billing clients ───────────────────────────────────────────
 ('Fox Broadcasting Company LLC', 'Other', 'portal', false,
- $$No PO.$$, 'Graphite', null, 'eli@paramountrecording.com, aaron@paramountrecording.com',
+ $$No PO.$$, 'Graphite', null, 'eli@paramountrecording.com, billing@paramountrecording.com',
  null, null, 'ACH',
- $$[{"title":"Submit through the Graphite portal","detail":"Eli and Aaron each have their own Graphite login."}]$$::jsonb,
+ $$[{"title":"Submit through the Graphite portal","detail":"Two Graphite logins exist — Eli's and the billing seat's. ⚠ The billing login was held by a person who has left; confirm it still works before relying on it."}]$$::jsonb,
  null, false),
 
 ('Concord Music Group', 'Other', 'portal', false,
- $$No PO.$$, 'Graphite', null, 'eli@paramountrecording.com, aaron@paramountrecording.com',
+ $$No PO.$$, 'Graphite', null, 'eli@paramountrecording.com, billing@paramountrecording.com',
  null, null, 'ACH',
  $$[{"title":"Submit through the Graphite portal","detail":"Same Graphite logins as Fox."}]$$::jsonb,
  null, false),
@@ -132,7 +132,7 @@ values
  $$No PO.$$, null, null, null,
  'srosenberg@grbizmgmt.com, ax@rehpic.xyz',
  'Simon Rosenberg and Alex Rechs.', 'ACH',
- $$[{"title":"Email Simon Rosenberg and Alex Rechs","detail":"⚠ VERIFY THESE ADDRESSES — the source spreadsheet cell ran the name and email together (\"Alex Reschsrosenberg@grbizmgmt.com\"), so the split between the two recipients is an interpretation. Confirm with Aaron before the first send."}]$$::jsonb,
+ $$[{"title":"Email Simon Rosenberg and Alex Rechs","detail":"⚠ VERIFY THESE ADDRESSES — the source spreadsheet cell ran the name and email together (\"Alex Reschsrosenberg@grbizmgmt.com\"), so the split between the two recipients is an interpretation. Confirm with billing before the first send."}]$$::jsonb,
  null, false),
 
 ('Broke Records', 'Other', 'form', false,

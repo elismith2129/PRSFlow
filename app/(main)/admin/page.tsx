@@ -5,6 +5,7 @@ import type { Engineer, EngineerRole, Booking } from '@/lib/supabase'
 import { DailyOpsLogSection } from '@/components/admin/DailyOpsLogSection'
 import { FlagsLogSection } from '@/components/admin/FlagsLogSection'
 import { MicInventorySection } from '@/components/admin/MicInventorySection'
+import { ApProfilesSection } from '@/components/admin/ApProfilesSection'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SectionHeader } from '@/components/ui/SectionHeader'
@@ -162,7 +163,7 @@ function EngModal({
   )
 }
 
-type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log' | 'mic_inventory'
+type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log' | 'mic_inventory' | 'ap_profiles'
 
 const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'engineers', label: 'Engineers' },
@@ -170,6 +171,7 @@ const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'daily_ops_log', label: 'Ops Log' },
   { key: 'flags_log', label: 'Flags' },
   { key: 'mic_inventory', label: 'Mic Inventory' },
+  { key: 'ap_profiles', label: 'AP Procedures' },
 ]
 
 type SrsEntry = {
@@ -740,6 +742,7 @@ export default function AdminPage() {
       {section === 'daily_ops_log' && <DailyOpsLogSection />}
       {section === 'flags_log' && <FlagsLogSection />}
       {section === 'mic_inventory' && <MicInventorySection />}
+      {section === 'ap_profiles' && <ApProfilesSection />}
 
       {/* Modal */}
       {modalOpen && (

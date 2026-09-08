@@ -58,7 +58,7 @@ export type ApProfile = {
 
 /** The package is the same four things for every label — the sheet and the
  *  coordinator procedures agree. Session info is last because it is the one
- *  that gets skipped and the one Aaron's doc names as a reason labels refuse
+ *  that gets skipped and the one the coordinator procedures name as a reason labels refuse
  *  to remit. */
 const PACKAGE_ITEMS = [
   'Invoice PDF from QuickBooks',

@@ -3,7 +3,7 @@
 --
 -- Every billing label has its own way of receiving an invoice: a portal, an AP
 -- email, a PO that must be applied first, a submission form. That knowledge
--- lived in one spreadsheet and in Aaron's head. This puts it next to the
+-- lived in one spreadsheet and in the billing coordinator's head. This puts it
 -- invoice, so a coordinator learning the job can read the steps at the moment
 -- they need them.
 --
@@ -59,7 +59,7 @@ create table if not exists public.ap_profiles (
 
   -- Login IDENTITY only — never the secret.
   login_email       text,
-  credential_hint   text default 'Password is in the locked note — ask Eli or Aaron.',
+  credential_hint   text default 'Password is in the locked note — ask Eli or billing.',
 
   -- Who the invoice goes to, and who rides along on the email.
   submit_to         text,
