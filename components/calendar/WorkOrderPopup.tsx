@@ -601,7 +601,9 @@ export function WorkOrderPopup({
    */
   type SeedGroup = {
     id: string
-    studio: string; start: string; end: string; from: string; to: string
+    // location: '' means the booking's own venue — same encoding as a row's
+    // location cell. A WO can span buildings, so the seed must reach any room.
+    studio: string; location: string; start: string; end: string; from: string; to: string
     rateType: 'day' | 'hour'; rate: string
     engOn: boolean; engName: string; engRate: string; engRole: 'engineer' | 'assistant'
   }
@@ -610,6 +612,7 @@ export function WorkOrderPopup({
     // A second group usually varies ONE thing (the room, or the dates), so it
     // inherits the previous group rather than starting blank.
     studio: from?.studio ?? (booking.studio ? toStudioLetter(booking.studio) : ''),
+    location: from?.location ?? '',
     start: '', end: '',
     from: from?.from ?? '', to: from?.to ?? '',
     rateType: from?.rateType ?? 'day', rate: from?.rate ?? '',
@@ -619,6 +622,7 @@ export function WorkOrderPopup({
   const [seedGroups, setSeedGroups] = useState<SeedGroup[]>(() => [{
     id: crypto.randomUUID(),
     studio: booking.studio ? toStudioLetter(booking.studio) : '',
+    location: '',
     start: '', end: '', from: '', to: '',
     rateType: 'day', rate: '',
     engOn: false, engName: '', engRate: '', engRole: 'assistant',
@@ -3131,6 +3135,7 @@ export function WorkOrderPopup({
         const res = await seedStudioTimeRows({
           workOrderId: woIdRef.current,
           studio: g.studio ? toStudioLetter(g.studio) : '',
+          location: g.location || '',
           dates,
           fromTime: g.from,
           toTime: g.to,
@@ -4463,28 +4468,40 @@ export function WorkOrderPopup({
                               from it. Any unrecognised value already on the row is
                               kept as an option so opening an old WO can't silently
                               rewrite its room. */}
-                          {/* Option VALUES are room letters, not labels. The seed
-                              state holds a letter ('C', from the booking's room)
-                              and seedStudioTimeRows consumes a letter, so making
-                              the options full labels left nothing selected and
-                              showed a spurious "C (not a room here)" row. Compare
-                              in one vocabulary: toStudioLetter on both sides. */}
+                          {/* EVERY room at EVERY venue — a WO can span buildings,
+                              so limiting this to the booking's venue made rooms
+                              unreachable (Eli, 2026-09-08). Same `venue|letter`
+                              encoding and the same "PRS A" labels as the row
+                              cell below, so the two controls can't disagree.
+                              Values are LETTERS: the seed state and
+                              seedStudioTimeRows both speak letters, and making
+                              the options full labels is what left nothing
+                              selected and printed "C (not a room here)". */}
                           <select
-                            value={toStudioLetter(seed.studio)}
-                            onChange={e => patchSeed(seed.id, { studio: e.target.value })}
+                            value={`${seed.location || booking.location || ''}|${toStudioLetter(seed.studio)}`}
+                            onChange={e => {
+                              const [loc, room] = e.target.value.split('|')
+                              // '' location = the booking's own venue, matching
+                              // how a row stores it.
+                              patchSeed(seed.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
+                            }}
                             className="c-input c-inset2"
                           >
-                            <option value="">—</option>
-                            {(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? []).map(r => (
-                              <option key={r} value={toStudioLetter(r)}>{r}</option>
-                            ))}
-                            {/* Only for a value no room matches — keeps an odd
-                                legacy row visible instead of silently rewriting
-                                it. Normal rooms never reach this. */}
-                            {seed.studio
-                              && !(STUDIO_LOCATIONS.find(l => l.name === booking.location)?.rooms ?? [])
-                                   .some(r => toStudioLetter(r) === toStudioLetter(seed.studio))
-                              && <option value={toStudioLetter(seed.studio)}>{seed.studio} (not a room here)</option>}
+                            <option value="|">—</option>
+                            {/* A value no room matches (a legacy hand-typed row)
+                                stays visible instead of being silently rewritten. */}
+                            {seed.studio && !STUDIO_LOCATIONS.some(l =>
+                              l.name === (seed.location || booking.location)
+                              && l.rooms.some(r => toStudioLetter(r) === toStudioLetter(seed.studio)))
+                              && (
+                                <option value={`${seed.location || booking.location || ''}|${toStudioLetter(seed.studio)}`}>
+                                  {roomCode(toStudioLetter(seed.studio), seed.location || booking.location) || toStudioLetter(seed.studio) || '—'}
+                                </option>
+                              )}
+                            {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
+                              const letter = toStudioLetter(room)
+                              return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
+                            }))}
                           </select>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

@@ -24,6 +24,10 @@ export type SeedRowParams = {
   // injects work_order_id after the WO insert (the id doesn't exist yet).
   workOrderId?: string
   studio: string // bare letter/name; already normalized by the caller or passed raw
+  // Venue for these rows. Omit/'' means "the booking's own venue" — the same
+  // encoding the row dropdown uses, so a seeded row and a hand-picked row agree.
+  // Set it to seed a room at ANOTHER venue (a WO can span buildings).
+  location?: string
   dates: string[] // explicit ISO dates to add
   fromTime?: string
   toTime?: string
@@ -46,6 +50,10 @@ export type SeedRowParams = {
 function buildRowPayload(p: SeedRowParams, date: string, sortOrder: number): Record<string, any> {
   const base: Record<string, any> = {
     studio: p.studio,
+    // '' → null: an empty string is NOT the same as "inherit the booking's
+    // venue" downstream (`r.location || venue`), and a blank venue on a dated
+    // row is what the save-time guard rejects.
+    location: p.location ? p.location : null,
     date,
     session_info: '',
     from_time: p.fromTime ?? '',

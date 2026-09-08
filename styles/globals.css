@@ -609,6 +609,18 @@ html.c-page body { background: var(--c-bg); background-color: var(--c-bg); }
 /* Focus is a depth change, not an outline (Law 1). */
 .c-input:focus { outline: none; background: var(--c-wash2); }
 
+/* A <select> wearing .c-input needs its own vertical metrics (2026-09-08). The
+   rule above sets an explicit height with no line-height: an <input> centres its
+   own text box, a <select> does not, and WebKit clipped the label — the Seed
+   panel's room showed as "Studio C" with the bottom sheared off. line-height
+   carries the text; the right padding leaves room for the native arrow so a long
+   room name ellipses instead of sliding under it. */
+select.c-input {
+  line-height: 30px;
+  padding: 0 26px 0 10px;
+  text-overflow: ellipsis;
+}
+
 /* ── Panel header lozenge / table head / section header ─────────────────── */
 /* SECTION HEADERS ARE TEXT (RULING 2026-08-13, spec §16c extended app-wide).
    This was a filled capsule bar — an ink fill in light, wash2 in dark. Eli, on
