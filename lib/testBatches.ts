@@ -55,6 +55,81 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-8-2026-ap-protocols',
+    title: 'Client AP Protocols, studio names, and the invoice package',
+    version: 'v1.26.0',
+    date: 'Sep 8, 2026',
+    intro:
+      'Every label now carries its own invoice-submission instructions, reachable from the Billing row. Plus a fix for booking cards that saved but appeared in no calendar column, and a work-order PDF crash. Test on the live site.',
+    items: [
+      {
+        id: 'v126-ap-chip', area: 'Billing', device: 'desktop',
+        what: 'The AP button appears on rows for labels that have a procedure linked',
+        how: 'Open Billing. Find an invoice for a label you have linked (Atlantic, Def Jam, or check Billing → Client AP Protocols for one showing clients). Next to the client name there should be a small AP button. COD rows and unlinked labels should show nothing there.',
+      },
+      {
+        id: 'v126-ap-panel', area: 'Billing', device: 'desktop',
+        what: 'The AP button opens the instructions panel on the right',
+        how: 'Press AP. A panel slides in from the right. Check it names the right label at the top, shows pills for how it is submitted / whether a PO is needed / how they pay, and lists numbered steps. Press "Show detail" on a step — it should expand. Escape or clicking outside should close it.',
+      },
+      {
+        id: 'v126-ap-ticks', area: 'Billing', device: 'desktop',
+        what: 'Checklist ticks save and are visible to everyone',
+        how: 'In the AP panel, tick two items. Your name and the time should appear under each. Refresh the page and reopen it — the ticks are still there. Have someone else open the same invoice: they see YOUR ticks with your name. Nothing should be blocked by leaving items unticked.',
+      },
+      {
+        id: 'v126-ap-menu', area: 'Billing', device: 'desktop',
+        what: 'The same instructions are in the ⋯ menu',
+        how: 'On the same row press ⋯. There should be a "How to send this to [client]" entry that opens the same panel.',
+      },
+      {
+        id: 'v126-ap-page', area: 'Billing', device: 'desktop',
+        what: 'Billing opens to reveal Billing Hub and Client AP Protocols',
+        how: 'In the left rail press Billing. It should EXPAND (not navigate) showing "Billing Hub" and "Client AP Protocols". Press it again to close. On an iPad, the same tap should work — nothing should require hovering.',
+      },
+      {
+        id: 'v126-ap-layout', area: 'Billing', device: 'desktop',
+        what: 'Client AP Protocols reads as majors, then independents',
+        how: 'Open Billing → Client AP Protocols. Universal, Warner and Sony should each be a card holding their procedures, with the clients on each listed underneath. Independents are a grid below. Universal should show ONE procedure; Sony should show four. Nothing should overlap.',
+      },
+      {
+        id: 'v126-ap-link', area: 'Billing', device: 'desktop',
+        what: 'You can link a client to a procedure without leaving the page',
+        how: 'On any procedure press "+ add client", search a label client, click it. It should appear as a chip immediately. Go to Billing and find one of that client\'s invoices — the AP button should now be there. Come back and press × on the chip to unlink.',
+      },
+      {
+        id: 'v126-ap-nopassword', area: 'Billing', device: 'desktop',
+        what: 'No procedure shows an actual password',
+        how: 'Open several procedures that use a portal (Gamma, MNRK, Redbull, Cecil Park). Each should show the portal and a login email, and where the password lives — never a password itself. If you see one, report it immediately.',
+      },
+      {
+        id: 'v126-studio-multi', area: 'Work Order', device: 'desktop',
+        what: 'A session in more than one room shows on the calendar in EVERY room',
+        how: 'Create a work order, use Seed to add days in Studio C, then add more days in a different room. Save. Open the calendar: the session should appear on every one of those days, in the correct room. This is the WO-1140 bug — three cards previously saved and appeared nowhere.',
+      },
+      {
+        id: 'v126-studio-picker', area: 'Work Order', device: 'desktop',
+        what: 'The room is always a dropdown, never typed',
+        how: 'In the Seed panel, the Studio field should be a dropdown listing every room at every venue (PRS A, ARS B, TRS North…). You should not be able to type into it. Same for the room cell on each studio-time row.',
+      },
+      {
+        id: 'v126-studio-venue', area: 'Work Order', device: 'desktop',
+        what: 'Work order cards name the venue with the room',
+        how: 'Open a work order with studio time. The day cards should read "PRS A" or "ARS B", not a bare "Studio A" — every building has a Studio A.',
+      },
+      {
+        id: 'v126-pdf-package', area: 'Billing', device: 'desktop',
+        what: 'The invoice package builds on older work orders',
+        how: 'Open WO-1081 and build the package preview. It should build. Then try two or three other older work orders. Any "WinAnsi cannot encode" error means a character got through — screenshot the exact message.',
+      },
+      {
+        id: 'v126-payments', area: 'Work Order', device: 'desktop',
+        what: 'Wire and ACH are available as payment types',
+        how: 'On a work order, add a payment row and open the type dropdown: Cash, Zelle, Venmo, Wire, ACH, Credit Card, Debit Card, Check, Other. Choose Wire — it should NOT add a 3% card fee. Choose Credit Card — it should.',
+      },
+    ],
+  },
+  {
     id: 'sep-7-2026-flo-briefing',
     title: "Flo's AI briefing + the duplicate-session guard",
     version: 'v1.25.0',

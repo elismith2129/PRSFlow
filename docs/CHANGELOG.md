@@ -19,6 +19,159 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.26.0 — CLIENT AP PROTOCOLS, and the invisible booking cards — Sep 8, 2026
+
+**Migrations (run by Eli, same day):**
+`20260908120000_ap_profiles.sql` — the `ap_profiles` table + `clients.ap_profile_id`
+/ `clients.ap_notes`, RLS (read: staff; write: billing/manager/owner; delete:
+owner), realtime publication + REPLICA IDENTITY FULL.
+`20260908130000_ap_profiles_seed.sql` — 25 label procedures + 1 global reference
+card, seeded from *Label_Billing Client AP Structure.xlsx*. Idempotent
+(`on conflict (name) do update`).
+`20260908140000_wo_ap_ticks.sql` — `work_orders.ap_ticks jsonb`.
+`20260908150000_ap_tick_set.sql` — the `ap_tick_set` RPC.
+
+### Studio names: one vocabulary (WO-1140)
+
+**The bug.** A multi-day work order showed on the calendar in Studio C only. The
+projection was innocent — it built all four segments and all four booking cards
+saved. But three carried `studio = 'PRS-A'`, and the calendar grid matches
+`bookings.studio` against `STUDIO_LOCATIONS[venue].rooms` **exactly**, so those
+cards existed in the database, returned from every query, and painted in no room
+at all. 12 of 14 days were invisible.
+
+**Root cause.** The Seed panel's studio field was a free-text `<input>`. Someone
+typed `PRS-A`. `toStudioLetter()` — the one normalizer it passed through — only
+matched `/Studio\s+([A-Z])/i`, so the value fell through to `s.trim()` untouched.
+
+**Fixed at four layers**, because one was not enough:
+- `toStudioLetter` strips venue codes (`PRS-A` / `PRS A` / `PRSA` → `A`,
+  `TRS North` → `North`) and upper-cases bare letters.
+- `roomLabelForVenue` resolves the same shapes on the way to a card, and now
+  `console.warn`s with the venue's valid rooms when it cannot.
+- The Seed field is a `<select>`; **no room is a text input anywhere** in the app.
+- Four `studioLetter || booking.studio` fallbacks were writing a raw label into a
+  letter column — all closed.
+- `normalizeStRow` normalizes on load, so legacy rows repair themselves on the
+  next save.
+
+⚠ **WATCH-OUT:** `roomCode()` MINTS `"PRS A"` for the WO PDF. That string is
+display-only and must never be written back to a row. It is precisely why
+`toStudioLetter` strips codes rather than trusting callers.
+
+`scripts/diagnose-wo.mjs <wo#>` was added to diagnose this class: it prints the
+studio time rows, the booking cards that exist, and what the projection *would*
+build, and flags any card whose studio is not a real room at its venue.
+
+### Payment methods
+
+Wire and ACH added. The WO payment-row list and the client COD list were two
+lists that disagreed in both directions (COD had Venmo, which no payment row
+could record; payment rows had Debit Card, which no client could be flagged
+for). Merged into `lib/payments.ts` — `PAYMENT_METHODS` + `CARD_PAYMENT_METHODS`.
+
+⚠ **WATCH-OUT:** `CARD_PAYMENT_METHODS` drives the 3% surcharge. Bank transfers
+are deliberately absent. Adding one starts billing clients 3% on wires.
+
+### Client AP Protocols (`/ap-protocols`)
+
+How each label wants its invoice submitted — portal or AP email, PO discipline,
+the steps. Reachable from the **AP** chip beside a client name on a Billing Hub
+row, the ⋯ menu, and the client profile. `components/billing/ApCard.tsx` is the
+right-side panel; `components/admin/ApProfilesSection.tsx` is the editor.
+
+Shape: many clients → one procedure, matching the source sheet (under UMG only
+Capitol carried a procedure; the other twelve inherit). `clients.ap_notes` is the
+per-client addendum. The page lays out majors → their procedures → the clients
+on each, with independents as a grid, and links clients inline.
+
+⚠ **WATCH-OUTS:**
+- **There is no password column and there must never be one.** The source sheet
+  had nine plaintext portal logins. These portals hold our remittance bank
+  details and let a vendor change them, and every table is copied to the Drive
+  backup nightly. `credential_hint` is a POINTER.
+- `ap_ticks` is a **handoff, not decoration** — written one key at a time through
+  `ap_tick_set` so two people cannot clobber each other, each tick stamping who
+  and when. It gates nothing.
+- The seed's `on conflict (name)` means renaming a procedure in the database
+  without editing the seed file will INSERT duplicates under the old names the
+  next time it runs. Procedure names are shortened for DISPLAY only.
+- The AP chip's only condition is `apProfileId`. **No client linked = no chip
+  anywhere**, which looks identical to the feature being broken.
+
+### WO PDF: sanitize before MEASURING (WO-1081)
+
+`cf3c85d` (v1.25.1) collapsed control characters in `winAnsiSafe`, called from
+`Sheet.text()` at draw time. Necessary but not sufficient:
+`font.widthOfTextAtSize()` ALSO encodes, and `wrapLines` / `paragraph` measure
+raw text before anything is drawn. A stored newline threw there — on a work
+order whose visible fields all looked clean.
+
+⚠ **WATCH-OUT:** `selftest` now **FAILS** (not warns) if any function in
+`lib/woPdf.ts` encodes text without sanitizing. The guard was wrong twice before
+it was right — v1 matched the word `winAnsiSafe` inside its own comment, v2
+tracked variable names file-wide so one function's clean `rest` vouched for
+another's. It is verified by reintroducing the bug in three places.
+
+**Files:** `lib/time.ts`, `lib/studios.ts`, `lib/payments.ts`, `lib/woPdf.ts`,
+`lib/billing.ts`, `lib/seedStudioTimeRows.ts`, `components/calendar/WorkOrderPopup.tsx`,
+`components/billing/ApCard.tsx`, `components/admin/ApProfilesSection.tsx`,
+`components/clients/ClientProfile.tsx`, `components/layout/Rail.tsx`,
+`app/(main)/billing/page.tsx`, `app/(main)/ap-protocols/page.tsx`,
+`scripts/selftest.mjs`, `scripts/push.sh`, `scripts/diagnose-wo.mjs`.
+
+---
+
+## v1.25.1 — Light goes noir's mirror, the wall displays, and the Owner's Page — Sep 7, 2026
+
+No migrations.
+
+**LIGHT MODE IS NOW NOIR'S MIRROR (site-wide token flip).** Near-white ground
+`#fdfcf9`, off-white grey boxes `#f1efe9` (darker than the ground, so boxes carve
+IN rather than out), near-black ink `#1a1712`; washes and shadows re-tuned. **The
+dashboard joined light mode, superseding the v1.24.0 "theme-FIXED dark" ruling** —
+ink-filled pills (view-as, queue tabs) switch their text to `var(--n-stage)` so
+they survive both registers. Status palette untouched.
+
+**Flo briefing polish.** Headline bullets with jump chips; the briefing
+auto-opens once per operational day.
+
+**Billing: the close-with-reason exit is on EVERY live row.** The `step >= 2` gate
+left duplicate step-0/1 rows (the "Lonzo twins") with no ⋯ menu and no way out of
+AR. Paid and closed rows still cannot close. Relaxed in `Row` + `MoreModal`;
+`closeInvoice` / `CloseModal` unchanged.
+
+**The Owner's Page.** A big-print one-pager for the owner's day (dashboard, CRM,
+billing hub), with an executive tone pass, theme-matched, and a one-time popup on
+the dashboard.
+
+**TV wall displays** (`/display/[room]`):
+- Polls back to 5s + a 15-minute watchdog — the WordPress host whitelisted the
+  four studio IPs, so Varnish no longer 429s the panels. ⚠ If 429s return, set
+  `POLL_MS` to 60000 and the watchdog to 3600 FIRST, then re-request the
+  whitelist.
+- Multi-day sessions render a FULL card per day; only lockouts and blocks keep
+  the compact strip.
+- **Explicit bold on every string.** The panels fall back to Helvetica when Arial
+  Black is missing, and an unweighted name rendered REGULAR — thin from across a
+  room. `html,body` carries a `font-weight:700` floor.
+- **A rolling window centred on today, by MEASUREMENT.** Two attempts to predict
+  which row today would land on both failed on the wall, because a row is as tall
+  as its busiest day and the server cannot know that. `centerToday()` measures
+  after paint and slides the grid under a fixed weekday strip. ⚠ Do not try to
+  land today on a row number again.
+
+**WO PDF (WO-1064)** — `winAnsiSafe` collapses newlines and control characters;
+`oneLine()` strips line breaks from session info, rentals and memos at input and
+save. ⚠ Rows written BEFORE this still hold newlines; see WO-1081 in v1.26.0.
+
+**Package modal:** "As built" tab renamed "Previously saved".
+
+**Standing docs** caught up to the noir UI (CLAUDE.md route map, design spec
+palette + radius ladder).
+
+---
+
 ## v1.25.0 — FLO SPEAKS: the AI briefing, and the Lonzo fix — Sep 7, 2026
 
 **Migration `20260907150000_flo_briefings.sql`** (run by Eli same day): the

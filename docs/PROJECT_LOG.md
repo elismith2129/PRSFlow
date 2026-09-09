@@ -380,6 +380,112 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### September 8, 2026 — Client AP Protocols, and the booking cards nobody could see
+
+**Sessions before this one are already logged through v1.25.0** (`b88dd6e`). This
+covers the 41 commits since — the Sep 7 afternoon/evening work and all of Sep 8.
+Written from the git history plus this session; where the Sep 7 items are
+summarised from commit subjects rather than first-hand, they are stated as what
+shipped, not why it was chosen.
+
+**WO-1140 — three booking cards that existed and appeared nowhere.**
+Eli: a multi-day session "only shows on studio C". The instinct was that the
+projection had failed to create the other cards. It had not. `diagnose-wo.mjs`
+(written for exactly this) showed four segments, four cards, all saved — but
+three carrying `studio = 'PRS-A'`. The calendar grid matches `bookings.studio`
+against the venue's room labels EXACTLY, so those rows were returned by every
+query and painted in no column. Twelve of fourteen days were invisible.
+
+The cause was a free-text Seed field and a normalizer that quietly passed the
+value through: `toStudioLetter` only matched `/Studio\s+([A-Z])/i`, so `PRS-A`
+fell to `s.trim()`. **The lesson is the shape of the failure, not the string** —
+a value that fails to resolve becomes a saved record that is invisible, which is
+strictly worse than an error. It is why `roomLabelForVenue` now warns rather
+than silently passing through, and why CLAUDE.md gained a standing rule.
+
+*Rejected:* migrating the stored `PRS-A` rows. `normalizeStRow` repairs them on
+load, and stripping historical data to satisfy a renderer is the wrong
+direction. *Rejected:* auto-matching clients to procedures by name — the source
+sheet itself records that the names disagree ("10kProjects (TenThousandProjects
+in QB)"), and a fuzzy match that attaches Sony's instructions to the wrong label
+is worse than a blank field.
+
+**WO-1081 — the same class, one layer deeper.** `cf3c85d` had already fixed
+"WinAnsi cannot encode" by sanitizing at DRAW time. It came back on a work order
+with no notes in it. `font.widthOfTextAtSize()` also encodes — it must, to
+measure — and two helpers measured raw text before anything was drawn. **A fix
+that addresses the visible call site and not the invariant is not a fix.** The
+invariant is now enforced by selftest, as a FAILURE.
+
+That guard was wrong twice before it was right: v1 was satisfied by the word
+`winAnsiSafe` inside its own explanatory comment; v2 tracked variable names
+file-wide, so `paragraph()`'s sanitized `rest` vouched for `wrapLines()`'
+unsanitized `rest`. Both passed a deliberately reintroduced bug. **A guard that
+cannot fail is worse than no guard** — it converts an unknown risk into
+confidence. Verify one by breaking the code on purpose.
+
+**Client AP Protocols.** Each label's AP department wants its invoice a
+different way; that knowledge lived in one spreadsheet and in the billing
+coordinator's head. It is now next to the invoice.
+
+*The security call:* the source sheet carried nine plaintext portal passwords.
+Eli's first read was "what's someone gonna sneak in and get us paid?" — fair, and
+the wrong threat model. Those portals (Tipalti, SAP Ariba, Bill.com, Taulia) hold
+our remittance bank details and let a vendor change them; the realistic attack is
+payment redirection. Separately the passwords shared a visible house pattern —
+gear names plus `6245`, which is also the runner PIN. And every table is copied
+to a Google Shared Drive nightly, so anything stored leaves the app's RLS by 8am.
+**Decision: login emails yes, passwords never.** The migration header records
+this so nobody "helpfully" adds the column back.
+
+*Rejected:* field-level inheritance between a parent procedure and its
+divisions. The data does not need it — where a division genuinely differs it is
+a separate procedure, and where it differs in one detail, `clients.ap_notes`
+carries the addendum.
+
+**The UI was rebuilt once, correctly.** The first version was a flat list of 26
+procedure names, which forced the hierarchy into the NAME ("Sony — Arista /
+Alamo") and hid the clients until you clicked. Eli: "not great UI. very
+confusing." Mocked first, then built: majors → their procedures → the clients on
+each. The rebuild made the useful fact visible without a click — UMG is ONE
+procedure everyone shares, Sony is FOUR different ones.
+
+*Also learned:* the editor shipped **unreachable**. It was built as a section of
+`/admin`, a page the Rail deliberately dropped. Worse, when Eli reported the
+missing nav I checked `Nav.tsx`, found `/admin` listed, and told him it should be
+there. `Nav.tsx` is RETIRED; `NavGate` renders `Rail`. **A file existing is not
+proof it is rendered.**
+
+**Process, two corrections from Eli.**
+
+1. *"things kept getting lost when you were giving me the little script commits
+   instead of bigger ones."* Correct. Subject-only commits meant `git log` and
+   `git blame` carried none of the reasoning, and twice something was "done" in
+   the session and unpushed on his machine. Worse, `scripts/push.sh` TOOK a
+   message and ran `git commit -m "$1"` — the tool enforced the habit. It no
+   longer commits at all; CLAUDE.md now requires a body via `git commit -F -`.
+2. *Opaque commands hide whether anything happened.* `./scripts/push.sh` is one
+   line and tells you nothing; the explicit `git status` / `git log
+   origin/main..HEAD` / `git push` sequence shows what is about to move. For a
+   non-developer owner who cannot verify by reading a diff, the visible sequence
+   is the safer default even though it is longer.
+
+**Sep 7 (summarised from commits).** Light mode became noir's mirror site-wide
+and the dashboard joined it, superseding the v1.24.0 theme-fixed ruling. The
+billing close-with-reason exit was opened to every live row after duplicate rows
+were found stranded in AR. The Owner's Page shipped with a one-time popup. The
+TV wall displays got explicit bold (the panels fall back to Helvetica and
+rendered names thin from across a room), full cards for multi-day sessions, 5s
+polling restored after the studio IPs were whitelisted, and a rolling window
+centred on today.
+
+That last one is worth recording: **two attempts to predict which row today
+would land on both failed on the wall**, because a row is as tall as its busiest
+day and the server cannot know that. Eli's own suggestion — "just scroll down to
+make today always in the middle" — was the correct answer, and measuring after
+paint is what shipped.
+
+
 ### May 22, 2026 — Calendar Polish
 Added: vertical zoom (fit-all + 6 fixed levels), individual room collapse, endless horizontal scroll with buffer weeks, today-centering with post-scroll snap, visual week/month breaks, nav always accessible over modals, draft/state persistence across tab navigation (calendar, CRM, clients), hydration error fixed (localStorage out of useState initializer).
 

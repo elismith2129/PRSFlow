@@ -645,6 +645,50 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.26.0', date:'Sep 8, 2026',
+    headline:'Every label\'s invoice instructions are now in the app, on the invoice.',
+    desc:'You approve an invoice for Atlantic. Now what — portal or email? Do they need a PO first? There\'s an AP button on the row that tells you, in steps, for that exact label. 26 label procedures are loaded, taken from the AP structure sheet.',
+    changes:[
+      'On a Billing row, next to the client name, there\'s a small AP button. Press it and a panel slides in from the right: the steps for sending that label\'s invoice, whether a PO is required, the portal or the AP email address, and how they pay. It\'s also in the ⋯ menu, and on the client\'s profile.',
+      'The steps are tickable and everyone sees the same ticks. If you get pulled away halfway through a Warner submission, the next person sees exactly where you stopped and who stopped there. Nothing is blocked by them — they\'re a place to keep count, not a gate.',
+      'Billing → Client AP Protocols is the new page holding all of them, grouped by major label with their sub-labels underneath, then the independents. Billing and managers can edit any procedure, and link a client to one right there.',
+      'Passwords are NOT in the app, on purpose. The card tells you which portal and which login email; the password stays in the locked note. Those portals can change where our money gets sent, so they don\'t belong in a database that gets backed up every night.',
+      'Wire and ACH added as payment types, everywhere payments are recorded.',
+      'Work orders that run in more than one room now say the venue with the room — "PRS A", "ARS B" — because every building has a Studio A.',
+    ],
+    affects:'When an invoice is ready to go out, press AP on the row before you send. If a label\'s instructions are wrong or out of date, fix them yourself in Billing → Client AP Protocols — no need to ask anyone.',
+    dev:[
+      'Migrations 20260908120000 (ap_profiles + clients.ap_profile_id/ap_notes + RLS), 130000 (26-row seed), 140000 (work_orders.ap_ticks), 150000 (ap_tick_set RPC).',
+      'NO PASSWORD COLUMN, ever — credential_hint is a pointer. These portals hold our remittance details and every table is copied to the Drive backup nightly.',
+      'ap_ticks is a handoff not decoration: written one key at a time via ap_tick_set so two people cannot clobber each other; each tick stamps who + when. Gates nothing.',
+      'WO-1140: a free-text Seed studio field let "PRS-A" through, producing booking cards that saved fine and painted in NO calendar column. toStudioLetter now strips venue codes, roomLabelForVenue resolves + warns, no room is a text input anywhere, and four raw-label fallbacks were closed. scripts/diagnose-wo.mjs flags invisible cards.',
+      'WO-1081: winAnsiSafe must run before MEASURING, not only before drawing — widthOfTextAtSize encodes too. selftest now FAILS if any woPdf function encodes unsanitized text.',
+      'lib/payments.ts is the single payment-method list; CARD_PAYMENT_METHODS drives the 3% surcharge and deliberately excludes transfers.',
+    ],
+  },
+  {
+    ver:'v1.25.1', date:'Sep 7, 2026',
+    headline:'Light mode grew up, and the wall calendars got readable from across the room.',
+    desc:'Light mode is now a proper mirror of the dark theme rather than a washed-out version of it — including the Dashboard, which used to stay dark no matter what. And the studio TVs finally read properly from the far side of a live room.',
+    changes:[
+      'Light mode redone site-wide: a near-white page with the grey boxes slightly darker than the background, so panels sit INTO the page instead of floating on it. The Dashboard follows your theme now.',
+      'The TV wall calendars: everything is bold. The panels don\'t all have our font, and without it the names were rendering thin — unreadable from across a room.',
+      'The TV calendars scroll so TODAY sits in the middle of the screen, with about three weeks behind it and three ahead. No more staring at a month of empty future.',
+      'A multi-day session now shows a full card on every day it runs, not a thin strip. Only lockouts keep the strip.',
+      'The wall calendars update within about five seconds of a booking change again.',
+      'Billing: any live invoice can now be closed with a reason. Some duplicate rows were stuck in AR with no way out.',
+      'The Owner\'s Page — a big-print one-pager of the day for the owner.',
+      'Flo\'s briefing opens itself once a day, and her headline points jump you to the right place.',
+    ],
+    affects:'If you use the studio TVs, they should now be readable standing at the door, and today should be in the middle of the screen. If a TV looks frozen, check the clock in its top-right corner.',
+    dev:[
+      'No migrations. Light tokens: stage #fdfcf9, boxes #f1efe9 (darker than ground = carve IN), ink #1a1712. Supersedes the v1.24.0 theme-FIXED-dark dashboard ruling.',
+      'Display route: centerToday() MEASURES after paint and slides the grid under a fixed weekday strip. Two attempts to predict today\'s row number both failed on the wall — a row is as tall as its busiest day. Do not try again.',
+      'POLL_MS back to 5000 + 15min watchdog after the studio IPs were whitelisted at the WordPress host. If 429s return, raise BOTH first, then re-request the whitelist.',
+      'WO-1064: winAnsiSafe collapses control chars; oneLine() strips line breaks at input and save. Rows written before this still hold newlines — see WO-1081.',
+    ],
+  },
+  {
     ver:'v1.25.0', date:'Sep 7, 2026',
     headline:'Flo is real now — she reads the notes and writes your morning briefing.',
     desc:'Every morning at 8:50, Flo reads last night\'s shift notes, the runner channel, the open flags, this week\'s holds, and what\'s still unticked — and writes the day\'s briefing herself. Not canned text: she actually reads what you all wrote.',
