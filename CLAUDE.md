@@ -119,12 +119,19 @@ Batch rules:
 
 ## Commands
 
-- **`./scripts/push.sh "message"` — how a Cowork session's work gets pushed.**
+- **`./scripts/push.sh` (no arguments) — how a Cowork session's work gets pushed.**
   A sandboxed session commits through a FUSE mount, which leaves `.git/*.lock`
   files it cannot unlink (so the next git command dies with "cannot lock ref
   'HEAD'"), and it holds no GitHub credentials, so it can never push. **Don't
   hand Eli a bare `rm -f .git/*.lock && git push` every turn — that's this
   script.** See docs/working-conventions.md for the underlying limitation.
+- **COMMIT MESSAGES CARRY A BODY, ALWAYS.** `git commit -m "one line"` is not
+  enough in this repo: the whole reason CLAUDE.md, PROJECT_LOG and the code
+  comments exist is that the *why* survives, and `git blame` is where the next
+  person looks first. Write the subject, a blank line, then what changed and —
+  more importantly — what was rejected and why. Use `git commit -F -` with a
+  heredoc. push.sh deliberately refuses a `-m` for this reason (2026-09-08: it
+  used to accept one, and quietly made every commit a single line).
 - `node scripts/selftest.mjs` — **run before every hand-off line** (added
   2026-08-17): tsc + security/landmine checks (service-role key in client
   code, tracked env files, SOP VERSIONS parse, `.maybeSingle()` / dead-column
