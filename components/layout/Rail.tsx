@@ -90,6 +90,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const router = useRouter()
   const isMobile = useIsMobile()
   const [menuOpen, setMenuOpen] = useState(false)
+  /** Which rail groups the user has toggled. Absent = fall back to "open if you
+   *  are inside it", so the rail reflects your location without being sticky. */
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
@@ -205,28 +208,58 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     )
   }
 
-  /** A parent plus its sub-pages. The parent keeps its own link and badge; the
-   *  children sit under it, indented, so both destinations are visible at once
-   *  rather than hidden behind a hover. */
+  /** A parent plus its sub-pages, as a CLICK disclosure — never hover.
+   *
+   *  Hover menus do not exist on a touchscreen, and the managers work off an
+   *  iPad; a hover-only destination is a destination they cannot reach. Tap the
+   *  parent to open, tap again to close.
+   *
+   *  The parent is a BUTTON, not a link. It used to navigate to /billing AND
+   *  the children were always visible, which cluttered the rail (Eli,
+   *  2026-09-08: "make it a hidden drop down but on click not hover"). Now the
+   *  destinations are only the children — "Billing Hub" is the old behaviour,
+   *  one tap further in, and nothing navigates by surprise while you are
+   *  looking for the other page.
+   *
+   *  It opens itself when you are already inside one of its pages, so the rail
+   *  always shows where you are rather than hiding it behind a closed group. */
   function renderGroup(item: RailItem) {
     if (!item.children?.length) return renderItem(item)
+    const childActive = item.children.some(c => isActive(c.href))
+    const open = openGroups[item.href] ?? childActive
+    const badge = item.href === '/crm' && unreviewedRegs > 0 ? unreviewedRegs : 0
+    const approvals = item.href === '/billing' && approvalsDue > 0 ? approvalsDue : 0
     return (
       <div key={item.href}>
-        {renderItem(item, true)}
-        <div style={{ marginLeft: 18 }}>
-          {item.children.map(child => (
-            <Link
-              key={child.href}
-              href={child.href}
-              className={`c-rail-link${isActive(child.href) ? ' c-on' : ''}`}
-              style={{ fontSize: 12 }}
-              onClick={() => setMenuOpen(false)}
-            >
-              <span className="c-rail-ic">{child.ic}</span>
-              {child.label}
-            </Link>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpenGroups(g => ({ ...g, [item.href]: !open }))}
+          className={`c-rail-link${childActive ? ' c-on' : ''}`}
+          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+          aria-expanded={open}
+        >
+          <span className="c-rail-ic">{item.ic}</span>
+          {item.label}
+          {badge > 0 && <span className="c-rail-badge c-dim">{badge > 99 ? '99+' : badge}</span>}
+          {approvals > 0 && <span className="c-rail-badge c-ok" title="Invoices ready for your approval">{approvals > 99 ? '99+' : approvals}</span>}
+          <span style={{ marginLeft: 'auto', fontSize: 9, opacity: 0.5 }}>{open ? '▾' : '▸'}</span>
+        </button>
+        {open && (
+          <div style={{ marginLeft: 18 }}>
+            {item.children.map(child => (
+              <Link
+                key={child.href}
+                href={child.href}
+                className={`c-rail-link${isActive(child.href) ? ' c-on' : ''}`}
+                style={{ fontSize: 12 }}
+                onClick={() => setMenuOpen(false)}
+              >
+                <span className="c-rail-ic">{child.ic}</span>
+                {child.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
