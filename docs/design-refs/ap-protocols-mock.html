@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client AP Protocols — structure mock</title>
+<style>
+  :root{
+    --c-bg:#0b0a09; --c-fg:#f2efe7;
+    --c-wash:rgba(242,239,231,.06); --c-wash2:rgba(242,239,231,.12);
+    --c-fg-2:rgba(242,239,231,.72); --c-fg-3:rgba(242,239,231,.45);
+    --c-chip-ink:#1c2626;
+    --c-st-hot:#ff5a4d; --c-st-warm:#ffa94d; --c-st-booked:#43dfae;
+    --c-st-uncon:#7fb2e5; --c-st-dead:#cfd6d4;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:26px 24px 70px;background:var(--c-bg);color:var(--c-fg);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    font-size:14px;line-height:1.45}
+  .arch{font-family:'Archivo Black','Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:900;letter-spacing:-.01em}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{font-size:23px;margin:0 0 4px}
+  .lede{font-size:12.5px;color:var(--c-fg-3);max-width:660px;margin-bottom:20px}
+  .note{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--c-fg-3);margin:26px 0 10px}
+
+  /* ── A major: one card, its procedures inside ─────────────────────────── */
+  .major{background:var(--c-wash);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .majhead{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+  .majname{font-size:16px}
+  .majmeta{font-size:11.5px;color:var(--c-fg-3)}
+  .chev{margin-left:auto;font-size:11px;color:var(--c-fg-3)}
+  .majbody{padding:0 16px 14px}
+
+  /* ── A procedure inside a major ────────────────────────────────────────── */
+  .proc{background:rgba(242,239,231,.04);border-radius:11px;padding:12px 14px;margin-bottom:8px}
+  .proc:last-child{margin-bottom:0}
+  .prochead{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .procname{font-size:13.5px;font-weight:800}
+  .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;
+    font-size:10.5px;font-weight:800;letter-spacing:.02em;background:var(--c-wash2);color:var(--c-fg-2)}
+  .pill.po{background:var(--c-st-warm);color:var(--c-chip-ink)}
+  .pill.nopo{background:rgba(207,214,212,.2)}
+  .pill.pay{background:var(--c-st-booked);color:var(--c-chip-ink)}
+  .pill.check{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+  .edit{margin-left:auto;background:none;border:none;color:var(--c-fg-3);cursor:pointer;
+    font:inherit;font-size:11px;font-weight:700}
+  .edit:hover{color:var(--c-fg)}
+  .subs{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+  .sub{font-size:11.5px;background:var(--c-wash2);border-radius:99px;padding:3px 10px;color:var(--c-fg-2)}
+  .sub.add{border:1px dashed var(--c-fg-3);background:none;color:var(--c-fg-3);cursor:pointer}
+  .empty{font-size:11.5px;color:var(--c-st-warm);margin-top:9px}
+
+  /* ── Independents: a grid of one-label cards ───────────────────────────── */
+  .indies{display:grid;grid-template-columns:repeat(auto-fill,minmax(228px,1fr));gap:8px}
+  .indie{background:var(--c-wash);border-radius:11px;padding:11px 13px}
+  .indiename{font-size:13px;font-weight:800;margin-bottom:5px}
+  .indiepills{display:flex;flex-wrap:wrap;gap:4px}
+  .unlinked{opacity:.55}
+
+  .cmp{border-left:2px solid var(--c-st-warm);padding-left:12px;margin:8px 0 22px;
+    font-size:12px;color:var(--c-fg-2);line-height:1.55}
+  .cmp b{color:var(--c-st-warm)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="arch">Client AP Protocols</h1>
+  <div class="lede">
+    How each label wants its invoice submitted. A major has one or more procedures its
+    divisions share; an independent has its own.
+  </div>
+
+  <div class="cmp">
+    <b>What changed.</b> The old screen was a flat 260px list of 26 procedure names, so
+    "Sony — Arista / Alamo" had to carry the hierarchy in its own text and the divisions
+    were invisible until you clicked. Here the shape is the layout: major → its
+    procedures → the divisions using each. You can see at a glance that UMG is one
+    procedure for everyone and Sony is four different ones.
+  </div>
+
+  <div class="note">Majors</div>
+
+  <!-- UMG — the simple case: one procedure, everyone on it -->
+  <div class="major">
+    <div class="majhead">
+      <span class="majname arch">Universal Music Group</span>
+      <span class="majmeta">1 procedure · 7 divisions linked</span>
+      <span class="chev">▾</span>
+    </div>
+    <div class="majbody">
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">Standard UMG submission</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill po">PO required</span>
+          <span class="pill pay">ACH</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="subs">
+          <span class="sub">Capitol Records</span>
+          <span class="sub">Interscope</span>
+          <span class="sub">Def Jam</span>
+          <span class="sub">Motown</span>
+          <span class="sub">Republic</span>
+          <span class="sub">Island Records</span>
+          <span class="sub">Verve</span>
+          <span class="sub add">+ add division</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WMG — one shared procedure plus two that break away -->
+  <div class="major">
+    <div class="majhead">
+      <span class="majname arch">Warner Music Group</span>
+      <span class="majmeta">3 procedures · 8 divisions linked</span>
+      <span class="chev">▾</span>
+    </div>
+    <div class="majbody">
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">SAP Ariba (PO Flip)</span>
+          <span class="pill">🔐 SAP Ariba</span>
+          <span class="pill po">PO required</span>
+          <span class="pill pay">ACH</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="subs">
+          <span class="sub">Warner Records</span>
+          <span class="sub">Atlantic Records</span>
+          <span class="sub">300 Entertainment</span>
+          <span class="sub">10K Projects</span>
+          <span class="sub add">+ add division</span>
+        </div>
+      </div>
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">Warner Chappell</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill nopo">No PO</span>
+          <span class="pill pay">ACH</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="subs">
+          <span class="sub">Warner Chappell</span>
+          <span class="sub add">+ add division</span>
+        </div>
+      </div>
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">Warner UK</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill po">PO required</span>
+          <span class="pill pay">ACH</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="empty">⚠︎ No divisions linked — invoices for this label show no AP button.</div>
+        <div class="subs"><span class="sub add">+ add division</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sony — four variants, which is the point -->
+  <div class="major">
+    <div class="majhead">
+      <span class="majname arch">Sony Music</span>
+      <span class="majmeta">4 procedures · 5 divisions linked</span>
+      <span class="chev">▾</span>
+    </div>
+    <div class="majbody">
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">RCA / Columbia</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill po">PO required</span>
+          <span class="pill pay">ACH</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="subs">
+          <span class="sub">RCA Records</span><span class="sub">Columbia Records</span>
+          <span class="sub add">+ add division</span>
+        </div>
+      </div>
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">Arista / Alamo</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill po">PO required</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="empty">⚠︎ No divisions linked.</div>
+        <div class="subs"><span class="sub add">+ add division</span></div>
+      </div>
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">Epic Records</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill po">PO required</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="subs">
+          <span class="sub">Epic Records</span><span class="sub">Epic/Freebandz</span>
+          <span class="sub add">+ add division</span>
+        </div>
+      </div>
+      <div class="proc">
+        <div class="prochead">
+          <span class="procname">Sony Music Publishing</span>
+          <span class="pill">✉︎ Email</span>
+          <span class="pill nopo">No PO</span>
+          <button class="edit">Edit ›</button>
+        </div>
+        <div class="subs">
+          <span class="sub">Sony Music Publishing</span>
+          <span class="sub add">+ add division</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">Independents — one label, one procedure</div>
+  <div class="indies">
+    <div class="indie"><div class="indiename">Roc Nation</div>
+      <div class="indiepills"><span class="pill">✉︎ Email</span><span class="pill nopo">No PO</span></div></div>
+    <div class="indie"><div class="indiename">Top Dawg (TDE)</div>
+      <div class="indiepills"><span class="pill">✉︎ Email</span><span class="pill nopo">No PO</span></div></div>
+    <div class="indie"><div class="indiename">Empire Records</div>
+      <div class="indiepills"><span class="pill">✉︎ Email</span><span class="pill">Bill.com</span></div></div>
+    <div class="indie"><div class="indiename">Gamma</div>
+      <div class="indiepills"><span class="pill">🔐 Tipalti</span><span class="pill nopo">No PO</span></div></div>
+    <div class="indie"><div class="indiename">MNRK</div>
+      <div class="indiepills"><span class="pill">🔐 Tipalti</span><span class="pill nopo">No PO</span></div></div>
+    <div class="indie"><div class="indiename">Redbull</div>
+      <div class="indiepills"><span class="pill">🔐 Taulia</span><span class="pill nopo">No PO</span></div></div>
+    <div class="indie"><div class="indiename">Guitar Center</div>
+      <div class="indiepills"><span class="pill">✉︎ Email</span><span class="pill check">CHECK</span></div></div>
+    <div class="indie unlinked"><div class="indiename">Neon Rated</div>
+      <div class="indiepills"><span class="pill">🔐 Stampli</span><span class="pill">not linked</span></div></div>
+    <div class="indie unlinked"><div class="indiename">Cecil Park Records</div>
+      <div class="indiepills"><span class="pill">🔐 Portal</span><span class="pill">not linked</span></div></div>
+    <div class="indie"><div class="indiename">OVO Sound</div>
+      <div class="indiepills"><span class="pill">✉︎ Email</span><span class="pill nopo">No PO</span></div></div>
+  </div>
+
+  <div class="cmp" style="margin-top:26px">
+    <b>Three things to decide.</b><br>
+    1 · Majors are collapsed or expanded by default? Expanded reads better with 3 majors;
+    collapsed if you expect more.<br>
+    2 · Independents with no client linked are dimmed and tagged <i>not linked</i> rather
+    than hidden — they are the ones needing attention, so hiding them is backwards.<br>
+    3 · "+ add division" opens the same client picker built earlier, scoped to that
+    procedure. Editing a procedure opens the full form.
+  </div>
+</div>
+</body>
+</html>
