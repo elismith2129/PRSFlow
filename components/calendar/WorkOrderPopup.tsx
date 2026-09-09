@@ -704,7 +704,20 @@ export function WorkOrderPopup({
     const start = monthlyStart
     const end = monthlyEnd || monthlyStart
     if (!(total > 0) || !start) return
-    const dates = dateRange(start, end)
+    // The OTHER place a typed date reaches dateRange, which now throws on an
+    // absurd span (see MAX_DATE_RANGE_DAYS). Caught here so a mistyped year says
+    // so instead of taking the popup down with it. The remaining callers read
+    // dates already stored on the booking — those cannot be absurd, or they
+    // would have hung long before this.
+    let dates: string[]
+    try {
+      dates = dateRange(start, end)
+    } catch (e: any) {
+      // setTimeErrorMsg is this file's existing channel for a user-facing
+      // validation message — no toast is imported here.
+      setTimeErrorMsg(e?.message || 'That date range is not valid.')
+      return
+    }
     if (dates.length === 0) return
     const dateSet = new Set(dates)
 
@@ -3173,6 +3186,13 @@ export function WorkOrderPopup({
         setSeedMsg(null)
         setSeedOpen(false)
       }
+    } catch (e: any) {
+      // THERE WAS NO CATCH HERE (2026-09-09). dateRange and seedStudioTimeRows
+      // both throw, and an uncaught throw out of an async handler surfaces as
+      // nothing at all — the panel just sits there having done nothing. The
+      // range guard is useless if its message never reaches the person who
+      // mistyped the date, so it lands in the panel where they are looking.
+      setSeedMsg(e?.message || 'Could not add those days — nothing was saved.')
     } finally {
       setSeedBusy(false)
     }

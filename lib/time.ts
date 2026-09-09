@@ -50,10 +50,32 @@ export function calcCharge(hours: number | null, rate: string): number | null {
 }
 
 // Inclusive ISO date list start..end (noon-anchored to dodge TZ drift).
+/** A session cannot plausibly run longer than this. The cap exists because the
+ *  loop below was UNBOUNDED and its input comes from a native <input type="date">,
+ *  where a mistyped year (2226 for 2026) is one keystroke away — that produced
+ *  ~73,000 dates and a single insert of 73,000 rows, which locks the browser
+ *  tab solid ("Page Unresponsive", Eli 2026-09-09). Longer than 400 days is a
+ *  typo, not a booking; even a year-long lockout fits inside it. */
+export const MAX_DATE_RANGE_DAYS = 400
+
+/** Inclusive list of ISO dates from `start` to `end`.
+ *  THROWS on an absurd range rather than building it — a named error a caller
+ *  can show beats a frozen tab, and silently truncating would create a session
+ *  shorter than the one the user asked for without saying so. */
 export function dateRange(start: string, end: string): string[] {
   const dates: string[] = []
   const s = new Date(start + 'T12:00:00')
   const e = new Date((end || start) + 'T12:00:00')
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return dates
+
+  const span = Math.floor((e.getTime() - s.getTime()) / 86400000) + 1
+  if (span > MAX_DATE_RANGE_DAYS) {
+    throw new Error(
+      `That date range is ${span.toLocaleString()} days (${start} to ${end}). ` +
+      `Check the end date — the year is usually the typo.`
+    )
+  }
+
   const d = new Date(s)
   while (d <= e) {
     dates.push(d.toISOString().slice(0, 10))
