@@ -21,7 +21,14 @@ import { Sun, Moon } from 'lucide-react'
  * (Eli's ruling 2026-08-06 — hamburger over bottom tabs).
  */
 
-type RailItem = { href: string; label: string; ic: string; dim?: boolean }
+type RailItem = {
+  href: string; label: string; ic: string; dim?: boolean
+  /** Sub-pages that belong to this one, rendered indented beneath it.
+   *  Introduced 2026-09-08 for Billing → Hub / AP Protocols. Always visible
+   *  rather than a hover menu: hover is a lie on a touchscreen, and a nav
+   *  item nobody can find is how the AP editor shipped unreachable. */
+  children?: RailItem[]
+}
 
 // Rail grouping (RULING 2026-08-14, spec §19 two-worlds): the three personal /
 // scheduling surfaces sit ungrouped at the top; everything about running the
@@ -40,7 +47,13 @@ const BUSINESS: RailItem[] = [
   // orders — it is where invoices live, and it also replaces the Dropbox folder
   // system. /wo-hub still exists and still works; it is simply no longer in the
   // nav, so nothing breaks for anyone with it bookmarked.
-  { href: '/billing', label: 'Billing', ic: '▽' },
+  {
+    href: '/billing', label: 'Billing', ic: '▽',
+    children: [
+      { href: '/billing', label: 'Billing Hub', ic: '·' },
+      { href: '/ap-protocols', label: 'Client AP Protocols', ic: '·' },
+    ],
+  },
 ]
 const OPERATIONS: RailItem[] = [
   // The notes channel, promoted from /my-day to its own reading page
@@ -167,8 +180,11 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     return base === '/' ? pathname === '/' : pathname.startsWith(base)
   }
 
-  function renderItem(item: RailItem) {
-    const active = isActive(item.href)
+  /** `asParent` — a row that has children shows no active state of its own;
+   *  the child carries it. Otherwise /billing lights up twice, which reads as
+   *  two different places being open at once. */
+  function renderItem(item: RailItem, asParent = false) {
+    const active = !asParent && isActive(item.href)
     const badge = item.href === '/crm' && unreviewedRegs > 0 ? unreviewedRegs : 0
     // Teal marks the count that is YOURS to act on (approvals); the neutral
     // grey CRM badge is informational.
@@ -189,6 +205,32 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     )
   }
 
+  /** A parent plus its sub-pages. The parent keeps its own link and badge; the
+   *  children sit under it, indented, so both destinations are visible at once
+   *  rather than hidden behind a hover. */
+  function renderGroup(item: RailItem) {
+    if (!item.children?.length) return renderItem(item)
+    return (
+      <div key={item.href}>
+        {renderItem(item, true)}
+        <div style={{ marginLeft: 18 }}>
+          {item.children.map(child => (
+            <Link
+              key={child.href}
+              href={child.href}
+              className={`c-rail-link${isActive(child.href) ? ' c-on' : ''}`}
+              style={{ fontSize: 12 }}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span className="c-rail-ic">{child.ic}</span>
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const railBody = (
     <>
       <div className="c-rail-wm">
@@ -199,13 +241,13 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
       </div>
       {!isRunner && (
         <>
-          {filterItems(TOP).map(renderItem)}
+          {filterItems(TOP).map(i => renderItem(i))}
           <div className="c-rail-grp">Business</div>
-          {filterItems(BUSINESS).map(renderItem)}
+          {filterItems(BUSINESS).map(i => renderGroup(i))}
           <div className="c-rail-grp">Operations</div>
-          {filterItems(OPERATIONS).map(renderItem)}
+          {filterItems(OPERATIONS).map(i => renderItem(i))}
           <div className="c-rail-grp">HR</div>
-          {filterItems(HR).map(renderItem)}
+          {filterItems(HR).map(i => renderItem(i))}
         </>
       )}
       <div className="c-rail-foot">
@@ -214,7 +256,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
             purpose (it should never persist open). */}
         {settingsOpen && (
           <>
-            {!isRunner && filterItems(SETTINGS_LINKS).map(renderItem)}
+            {!isRunner && filterItems(SETTINGS_LINKS).map(i => renderItem(i))}
             <button onClick={toggleTheme} className="c-rail-link" aria-label="Toggle light/dark theme">
               <span className="c-rail-ic">{theme === 'dark' ? <Sun size={13} /> : <Moon size={13} />}</span>
               {theme === 'dark' ? 'Light mode' : 'Dark mode'}
