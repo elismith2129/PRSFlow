@@ -24,6 +24,7 @@ import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useClientsVersion } from '@/hooks/useClientsVersion'
 import type { ApProfile, ApStep } from '@/components/billing/ApCard'
 
 const FAMILIES = ['UMG', 'WMG', 'Sony', 'Other']
@@ -41,10 +42,19 @@ const blank = (): Partial<ApProfile> => ({
 
 export function ApProfilesSection() {
   const { profile: me } = useUserProfile()
+  // This panel reads `clients`, so it must react to client changes — via the
+  // SHARED version counter, never a second clients channel (CLAUDE.md).
+  const clientsVersion = useClientsVersion()
   const [rows, setRows] = useState<ApProfile[]>([])
   const [sel, setSel] = useState<string | null>(null)
   const [draft, setDraft] = useState<Partial<ApProfile> | null>(null)
   const [counts, setCounts] = useState<Record<string, number>>({})
+  /** Every label client, with its current link. The linking panel works off
+   *  this rather than a query per procedure — there are a few hundred clients
+   *  at most, and one fetch keeps the counts and the panel from disagreeing. */
+  const [labels, setLabels] = useState<{ id: string; name: string; ap_profile_id: string | null }[]>([])
+  const [clientQuery, setClientQuery] = useState('')
+  const [linking, setLinking] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -55,13 +65,23 @@ export function ApProfilesSection() {
     // How many clients use each procedure — editing a shared one touches every
     // division that inherits it, and the editor should say so before you type.
     const { data: cl } = await supabase
-      .from('clients').select('ap_profile_id').not('ap_profile_id', 'is', null)
+      .from('clients')
+      .select('id, name, ap_profile_id')
+      // NO deleted_at filter — `clients` has no such column (verified against
+      // the Client interface, 2026-09-08). PostgREST rejects the whole query on
+      // an unknown column, so this would have returned an empty list with no
+      // visible error: the linking panel would just look like you have no
+      // clients. Soft delete lives on leads and tasks, not here.
+      .eq('type', 'label')
+      .order('name')
+    const rows = (cl ?? []) as { id: string; name: string; ap_profile_id: string | null }[]
+    setLabels(rows)
     const c: Record<string, number> = {}
-    for (const r of cl ?? []) if (r.ap_profile_id) c[r.ap_profile_id] = (c[r.ap_profile_id] ?? 0) + 1
+    for (const r of rows) if (r.ap_profile_id) c[r.ap_profile_id] = (c[r.ap_profile_id] ?? 0) + 1
     setCounts(c)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, clientsVersion])
 
   // Standing rule: every fetch pairs with a realtime subscription.
   useEffect(() => {
@@ -127,6 +147,36 @@ export function ApProfilesSection() {
     toast('Procedure saved', 'success')
     setSel(null); setDraft(null); load()
   }, [draft, sel, me?.id, load])
+
+  /** Point a client at this procedure, or clear it. One row at a time and
+   *  optimistic, because the list is long and a save-button round trip per tick
+   *  is what makes people give up halfway and go back to the spreadsheet. */
+  const setClientLink = useCallback(async (clientId: string, profileId: string | null) => {
+    setLinking(clientId)
+    const before = labels
+    setLabels(ls => ls.map(l => (l.id === clientId ? { ...l, ap_profile_id: profileId } : l)))
+    setCounts(c => {
+      const next = { ...c }
+      const prev = before.find(l => l.id === clientId)?.ap_profile_id
+      if (prev) next[prev] = Math.max(0, (next[prev] ?? 1) - 1)
+      if (profileId) next[profileId] = (next[profileId] ?? 0) + 1
+      return next
+    })
+    const { error } = await supabase
+      .from('clients').update({ ap_profile_id: profileId }).eq('id', clientId)
+    setLinking(null)
+    if (!dbResult('Linking client', error)) { setLabels(before); load() }
+  }, [labels, load])
+
+  // Split the client list around the open procedure. `addable` deliberately
+  // INCLUDES clients linked elsewhere (flagged in the row) rather than hiding
+  // them — a division moving between procedures is a real edit, and hiding it
+  // would leave someone hunting for a client that is right there.
+  const linkedHere = labels.filter(l => l.ap_profile_id === sel)
+  const addable = labels
+    .filter(l => l.ap_profile_id !== sel)
+    .filter(l => !clientQuery || l.name.toLowerCase().includes(clientQuery.toLowerCase()))
+    .slice(0, 200)
 
   // ── styles (carved tokens, inline per house convention) ────────────────────
   const wrap: React.CSSProperties = { display: 'flex', gap: 16, alignItems: 'flex-start' }
@@ -310,6 +360,80 @@ export function ApProfilesSection() {
                 </button>
                 <button onClick={() => { setSel(null); setDraft(null) }} className="c-btn">Cancel</button>
               </div>
+
+              {/* ── WHICH CLIENTS USE THIS ────────────────────────────────────
+                  Linking used to be one client at a time on the client profile,
+                  which meant 25 page visits — or a 50-line SQL statement, which
+                  is what actually happened (Eli, 2026-09-08: "this will help
+                  immensely"). Both panes are here so the answer to "did I get
+                  them all" is on screen, not in a query.
+                  Only for a SAVED procedure: a new one has no id to link to. */}
+              {sel !== 'new' && (
+                <div style={{ marginTop: 22, borderTop: '1px solid var(--c-wash2)', paddingTop: 16 }}>
+                  <div style={lbl}>Clients using this procedure</div>
+
+                  {linkedHere.length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--c-fg-3)', marginBottom: 10 }}>
+                      None yet — add them from the list below. Until a client is linked,
+                      its invoices show no AP button.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                      {linkedHere.map(c => (
+                        <span key={c.id} style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12,
+                          background: 'var(--c-wash2)', borderRadius: 99, padding: '4px 6px 4px 11px',
+                        }}>
+                          {c.name}
+                          <button
+                            onClick={() => setClientLink(c.id, null)}
+                            disabled={linking === c.id}
+                            title="Unlink"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-fg-3)', fontSize: 13, lineHeight: 1, padding: '0 2px' }}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <input
+                    value={clientQuery}
+                    onChange={e => setClientQuery(e.target.value)}
+                    placeholder="Search label clients to add…"
+                    style={{ ...inp, marginBottom: 8 }}
+                  />
+                  <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {addable.length === 0 && (
+                      <div style={{ fontSize: 12, color: 'var(--c-fg-3)' }}>
+                        {clientQuery ? 'No label client matches that.' : 'Every label client is already linked.'}
+                      </div>
+                    )}
+                    {addable.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => setClientLink(c.id, sel!)}
+                        disabled={linking === c.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
+                          background: 'var(--c-wash)', border: 'none', borderRadius: 8,
+                          padding: '7px 10px', cursor: 'pointer', color: 'var(--c-fg)',
+                          font: 'inherit', fontSize: 12.5,
+                        }}
+                      >
+                        <span style={{ color: 'var(--c-st-booked)', fontWeight: 900 }}>+</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>{c.name}</span>
+                        {/* A client already pointing somewhere else is the one
+                            you must not reassign by accident — say where. */}
+                        {c.ap_profile_id && (
+                          <span style={{ fontSize: 10.5, color: 'var(--c-st-warm)' }}>
+                            moves from {rows.find(r => r.id === c.ap_profile_id)?.name ?? 'another'}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
