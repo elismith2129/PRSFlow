@@ -812,7 +812,10 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   // Page numbers last, once the total is known.
   const pages = doc.getPages()
   pages.forEach((p, i) => {
-    p.drawText(`Page ${i + 1} of ${pages.length}`, {
+    // Integers only, so this cannot actually carry a bad character — wrapped
+    // anyway so the rule "every encode is sanitized" has NO exceptions, and the
+    // selftest guard can be absolute rather than heuristic.
+    p.drawText(winAnsiSafe(`Page ${i + 1} of ${pages.length}`), {
       x: PAGE[0] - M - 60, y: M - 14, size: 7, font, color: RULE,
     })
   })

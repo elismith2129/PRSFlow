@@ -120,6 +120,60 @@ if (maybeSingle.n) warns.push(`.maybeSingle() ×${maybeSingle.n} in ${maybeSingl
 const engRate = countAcross(/\bbooking\??\.engineer_rate|\bb\??\.engineer_rate/g)
 if (engRate.n) warns.push(`bookings.engineer_rate reads ×${engRate.n} (dead column — legacy create path only; baseline 2 on 2026-08-17): ${engRate.where.join(', ')}`)
 
+// ── PDF text must be sanitized before it is ENCODED (WO-1064, WO-1081) ──────
+// pdf-lib's StandardFonts are WinAnsi. Any character outside that set throws,
+// and BOTH drawText AND widthOfTextAtSize encode — the second is the trap,
+// because measuring happens before drawing, so a draw-time sanitizer never runs.
+// WO-1081: a stored newline in an old session-info cell 500'd the whole package
+// preview on a work order whose visible fields all looked clean.
+//
+// Rule: any FUNCTION that encodes text must also sanitize. FAIL, not warn — the
+// symptom is a client's invoice package refusing to build.
+//
+// Scoped per function on purpose. Two earlier versions of this check passed a
+// deliberately reintroduced bug: v1 scanned nearby lines and was satisfied by
+// its own comment; v2 tracked variable names file-wide, so paragraph()'s
+// sanitized `rest` vouched for wrapLines()' unsanitized `rest`. A guard that
+// cannot fail is worse than no guard, so it is tested by breaking the code on
+// purpose — see the three cases in the WO-1081 commit.
+{
+  const pdf = sources.find(s => s.path.endsWith('lib/woPdf.ts'))
+  if (pdf) {
+    const lines = pdf.text.split('\n').map(l => l.replace(/\/\/.*$/, ''))
+    // Chunk at top-level functions and class methods — crude but sufficient:
+    // every encode site in this file sits inside one of them.
+    const starts = []
+    lines.forEach((l, i) => {
+      const isFn = /^(?:export\s+)?(?:async\s+)?function\s+\w+/.test(l)
+      // A class method, but NOT a control statement — `while (…) {` at two spaces
+      // of indent looks identical to a method signature and split wrapLines in half.
+      const isMethod = /^\s{2}(?!(?:while|if|for|switch|catch|do|return|else|try)\b)\w+\s*\(/.test(l)
+      if (isFn || isMethod) starts.push(i)
+    })
+    if (starts[0] !== 0) starts.unshift(0)
+    const bad = []
+    starts.forEach((from, idx) => {
+      const to = idx + 1 < starts.length ? starts[idx + 1] : lines.length
+      const body = lines.slice(from, to)
+      const encodes = body.filter(l => /\.(?:drawText|widthOfTextAtSize)\(/.test(l))
+      if (encodes.length === 0) return
+      // A literal template with no interpolation carries no stored data.
+      const risky = encodes.filter(l => {
+        const m = l.match(/\.(?:drawText|widthOfTextAtSize)\(\s*([^,)]+)/)
+        return !(m && /^`[^`$]*`$/.test(m[1].trim()))
+      })
+      if (risky.length === 0) return
+      if (body.some(l => /winAnsiSafe\(/.test(l))) return
+      bad.push(`  ${(lines[from] || '').trim().slice(0, 70)} (line ${from + 1})`)
+    })
+    if (bad.length) {
+      fails.push(`lib/woPdf.ts: function(s) encode text without sanitizing (WinAnsi crash — WO-1081):\n${bad.join('\n')}`)
+    } else {
+      oks.push('PDF text is sanitized before every encode')
+    }
+  }
+}
+
 const lime = countAcross(/#c8f04e/gi, p => p.includes('global-error'))
 if (lime.n) warns.push(`hardcoded #c8f04e ×${lime.n} (retired accent) in: ${lime.where.join(', ')}`)
 else oks.push('No retired-accent literals outside the error fallback')
