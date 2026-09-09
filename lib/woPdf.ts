@@ -262,7 +262,12 @@ type Col = {
 
 /** Break a string into lines that fit `width`, breaking on spaces where it can. */
 function wrapLines(font: PDFFont, str: string, size: number, width: number): string[] {
-  const text = String(str ?? '').trim()
+  // SANITIZE BEFORE MEASURING, not just before drawing (WO-1081, 2026-09-08).
+  // `widthOfTextAtSize` ENCODES the string to measure it, so a stored newline
+  // threw "WinAnsi cannot encode 0x000a" here — before any drawText ran, and
+  // therefore before Sheet.text()'s winAnsiSafe could clean it. The package
+  // preview 500'd on a work order whose visible fields all looked fine.
+  const text = winAnsiSafe(String(str ?? '')).trim()
   if (!text) return []
   const lines: string[] = []
   let rest = text
@@ -436,7 +441,9 @@ function table(
 
 /** Wrapped free text — the one place truncation would lose meaning. */
 function paragraph(s: Sheet, body: string, size = 8.5, leading = 12) {
-  let rest = String(body)
+  // Sanitized here for the same reason as wrapLines: the width measurement
+  // below encodes, so raw text throws before Sheet.text() can clean it.
+  let rest = winAnsiSafe(String(body))
   while (rest.length > 0) {
     s.need(leading + 2)
     let cut = rest.length
