@@ -2418,8 +2418,21 @@ export function WorkOrderPopup({
     for (const r of dated) {
       const last = segs[segs.length - 1]
       const rLoc = r.location || venue
-      if (last && last.studio === r.studio && last.location === rLoc && isNextDay(last.end, r.date)) {
-        last.end = r.date
+      // SAME DAY CONTINUES THE RUN, it does not start a new one (Eli,
+      // 2026-09-09 — "we opened a work order to add one day and now the
+      // calendar looks like this": two overlapping bars for one session).
+      //
+      // Two rows can share a date legitimately — a room booked 2P–8P and again
+      // later that night — and `+ Add Studio Time` creates a row with an EMPTY
+      // date, so picking one that already exists is the normal outcome of
+      // "add a day". isNextDay is false for an identical date, so the second
+      // row opened a SECOND segment starting mid-range, and the projection
+      // dutifully wrote a second booking card overlapping the first.
+      const sameDay = last?.end === r.date
+      if (last && last.studio === r.studio && last.location === rLoc
+          && (sameDay || isNextDay(last.end, r.date))) {
+        // Never move `end` backwards — on a same-day row it is already correct.
+        if (!sameDay) last.end = r.date
         applyStaff(last, r.eng_name, r.eng_role || 'assistant')
       } else {
         const seg: Seg = { studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, eng: '', asst: '' }
