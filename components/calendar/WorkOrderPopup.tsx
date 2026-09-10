@@ -848,6 +848,21 @@ export function WorkOrderPopup({
   const [stView, setStView] = useState<'list' | 'cards' | null>(null)
   // The day sheet: which date's card is open for editing (card view only).
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null)
+  /**
+   * THE NEW-DAY PROMPT (Eli, 2026-09-09: "one button that opens up a new card
+   * where you select the date and studio").
+   *
+   * `+ Add Studio Time` used to append a row with an EMPTY date, and picking a
+   * date already in the table — the ordinary way to "add a day" — put two rows
+   * on one date, which the projection read as a second segment and drew as a
+   * second overlapping calendar bar. Asking for the date and the room BEFORE
+   * the row exists means an undated, roomless row never exists at all.
+   *
+   * Non-null = the prompt is open. `letter` is a LETTER and `venue` a venue
+   * name, the one vocabulary the CLAUDE.md studio rule allows — same
+   * `venue|letter` select as the Seed panel and the row cell.
+   */
+  const [newDay, setNewDay] = useState<{ date: string; venue: string; letter: string } | null>(null)
   // Snapshot of the open day's rows, taken when the sheet opens (and again on
   // ‹ › day changes) — the baseline the sheet's Cancel reverts to (Eli,
   // 2026-08-18: "need save/cancel on the day pop up for runner and admin").
@@ -2005,7 +2020,16 @@ export function WorkOrderPopup({
 
   // ── Add studio time row ────────────────────────────────────────────────────
 
-  function addStRow() {
+  /**
+   * Create one studio-time row. `opts` carries the date and room the new-day
+   * prompt collected; everything else is inherited from the last studio row so
+   * the times, rate and rate type of the session carry forward.
+   *
+   * The parameter is optional because `openAddDay` is the only caller now —
+   * keeping the no-argument shape means the seed/repair paths that used to call
+   * this behave exactly as before if any is ever restored.
+   */
+  function addStRow(opts?: { date?: string; studio?: string; location?: string }) {
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     // Inherit from the last STUDIO row specifically — a standalone staff row has
     // studio '' (the eng-row encoding), and inheriting that would turn this
@@ -2034,10 +2058,15 @@ export function WorkOrderPopup({
       id: crypto.randomUUID(),
       // A studio-time row must never start with studio '' (that's an eng row):
       // last studio row → booking's room → 'A'.
-      studio: lastStudioRow?.studio || (booking.studio ? toStudioLetter(booking.studio) : 'A'),
-      location: lastStudioRow?.location || booking.location || '',
+      // toStudioLetter even on a value the prompt already produced as a letter:
+      // it is the one door into the letter form (CLAUDE.md), and a door with an
+      // exception is not a door.
+      studio: opts?.studio
+        ? toStudioLetter(opts.studio)
+        : (lastStudioRow?.studio || (booking.studio ? toStudioLetter(booking.studio) : 'A')),
+      location: opts?.location ?? (lastStudioRow?.location || booking.location || ''),
       eng_name: last?.eng_name || '',
-      date: '',
+      date: opts?.date || '',
       session_info: '',
       from_time: fromTime,
       to_time: toTime,
@@ -2075,6 +2104,50 @@ export function WorkOrderPopup({
     }
     setStRows(prev => [...prev, newRow])
     if (last?.eng_rate || (last?.eng_hours ?? 0) > 0) setShowEngRows(true)
+  }
+
+  /**
+   * Open the new-day prompt, pre-filled with the obvious answer: the room the
+   * session is already in, on the day AFTER its last dated row. Adding a day to
+   * a session almost always means the next one, and a default that is usually
+   * right is the difference between two taps and six.
+   *
+   * Deliberately NOT defaulted to a blank date. A blank date is the state this
+   * whole change exists to abolish.
+   */
+  function openAddDay() {
+    const lastStudioRow = [...stRows].reverse().find(r => !!r.studio)
+    const dated = stRows.map(r => r.date || '').filter(Boolean).sort()
+    const lastDate = dated[dated.length - 1] || booking.start_date || getLocalToday()
+    const next = new Date(lastDate + 'T12:00:00')
+    next.setDate(next.getDate() + 1)
+    const venue = lastStudioRow?.location || booking.location || ''
+    const letter = toStudioLetter(lastStudioRow?.studio || booking.studio || '')
+    setNewDay({ date: next.toISOString().slice(0, 10), venue, letter })
+  }
+
+  /**
+   * Create the day and hand straight over to the day sheet — the card's own
+   * editing surface, where times, rate and the staff line (1ST/2ND, already on
+   * every room row via `eng_visible`) get filled in. Eli, 2026-09-09: "keep the
+   * same card design… the card always has the option for assistant or
+   * engineer." So there is nothing new to build for staff and no separate
+   * + Add Engineer / + Add Assistant buttons: the card has always carried both.
+   *
+   * List view does NOT open the sheet — the new row is simply there in the
+   * table, dated and roomed, which is what a table user asked for.
+   */
+  function confirmAddDay() {
+    if (!newDay || !newDay.date || !newDay.letter) return
+    addStRow({
+      date: newDay.date,
+      studio: newDay.letter,
+      // '' means "the booking's own venue", the same encoding a row stores.
+      location: newDay.venue === (booking.location || '') ? '' : newDay.venue,
+    })
+    const date = newDay.date
+    setNewDay(null)
+    if (stView === 'cards') setDaySheetDate(date)
   }
 
   // Standalone staff row — engineer (1ST) or assistant (2ND). Any number of
@@ -2130,43 +2203,14 @@ export function WorkOrderPopup({
     setStRows(prev => [...prev, newRow])
   }
 
-  function addEngRow(role: 'engineer' | 'assistant' = 'assistant') {
-    const engMaxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
-    const lastEng = [...stRows].reverse().find(r => r.eng_rate || (r.eng_hours ?? 0) > 0 || r.eng_from_time) || stRows[stRows.length - 1]
-    const newRow: StRow = {
-      id: crypto.randomUUID(),
-      studio: '',
-      location: '',
-      eng_name: '',
-      date: '',
-      session_info: '',
-      from_time: '',
-      to_time: '',
-      total_hours: null,
-      rate: '',
-      rate_daily: '',
-      row_rate_type: 'hour',
-      ot_rate: '',
-      ot_hours: '',
-      ot_charge: null,
-      charge: null,
-      sort_order: engMaxOrder + 1,
-      day_count: null,
-      eng_from_time: lastEng?.eng_from_time || '',
-      eng_to_time: lastEng?.eng_to_time || '',
-      eng_rate: lastEng?.eng_rate || '',
-      eng_hours: null,
-      eng_charge: null,
-      actual_from_time: '',
-      actual_to_time: '',
-      admin_checked: false,
-      admin_locked: false,
-      eng_visible: true,
-      eng_role: role,
-      status: 'in_progress',
-    }
-    setStRows(prev => [...prev, newRow])
-  }
+  /**
+   * `addEngRow` is GONE (2026-09-09). It made a standalone staff row with NO
+   * DATE — the staff twin of the undated studio row this session abolished. A
+   * staff line only means something on a day, and `addEngRowForDate` (the day
+   * card's + Add engineer / + Add assistant) is the dated version that already
+   * existed. Undated staff rows still LOAD and render, so nothing in the field
+   * breaks; there is just no longer a way to make a new one.
+   */
 
   async function deleteStRow(id: string) {
     const row = stRows.find(r => r.id === id)
@@ -2423,11 +2467,15 @@ export function WorkOrderPopup({
       // calendar looks like this": two overlapping bars for one session).
       //
       // Two rows can share a date legitimately — a room booked 2P–8P and again
-      // later that night — and `+ Add Studio Time` creates a row with an EMPTY
-      // date, so picking one that already exists is the normal outcome of
-      // "add a day". isNextDay is false for an identical date, so the second
+      // later that night — and `+ Add Studio Time` USED TO create a row with an
+      // EMPTY date, so picking one that already existed was the normal outcome
+      // of "add a day". isNextDay is false for an identical date, so the second
       // row opened a SECOND segment starting mid-range, and the projection
       // dutifully wrote a second booking card overlapping the first.
+      //
+      // The button now asks for the date up front (`openAddDay`), which removes
+      // the common way in — but this guard STAYS, because two blocks on one day
+      // is a real booking, not just a slip.
       const sameDay = last?.end === r.date
       if (last && last.studio === r.studio && last.location === rLoc
           && (sameDay || isNextDay(last.end, r.date))) {
@@ -2440,8 +2488,9 @@ export function WorkOrderPopup({
         segs.push(seg)
       }
     }
-    // Standalone staff rows (+ Add Engineer / + Add Assistant — no studio) fold
-    // into every segment covering their date, so a day can carry both roles.
+    // Standalone staff rows (the day card's + Add engineer / + Add assistant —
+    // dated, no studio) fold into every segment covering their date, so a day
+    // can carry both roles.
     for (const sr of stRows.filter(r => r.date && !r.studio && r.eng_name)) {
       for (const seg of segs) {
         if (sr.date >= seg.start && sr.date <= seg.end) applyStaff(seg, sr.eng_name, sr.eng_role || 'assistant')
@@ -5790,13 +5839,17 @@ export function WorkOrderPopup({
                   table and the PDF cannot disagree. */}
               {wide ? (
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', background: 'var(--c-wash)', borderRadius: 12, padding: '7px 12px', marginTop: 6 }}>
+                {/* ONE BUTTON (Eli, 2026-09-09). Three buttons appending blank
+                    rows was a list-era gesture: + Add Engineer / + Add Assistant
+                    made a dateless, roomless staff row, and + Add Studio Time a
+                    dateless one. Staff belongs to a day, and every room row
+                    already carries its 1ST/2ND line, so the staff buttons live
+                    on the day card where the day is known. This one asks for the
+                    date and the room first. */}
                 {!readOnly && !runner ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                    <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <button type="button" onClick={() => addEngRow('engineer')} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg)', opacity: 0.4, background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
-                      <button type="button" onClick={() => addEngRow('assistant')} className="c-x" style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
-                    </div>
+                    <button type="button" onClick={openAddDay} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add studio time</button>
+                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>Engineer and assistant are set on the day itself.</span>
                   </div>
                 ) : <div />}
                 <div style={{ marginLeft: 'auto', textAlign: 'right', minWidth: 0 }}>
@@ -5828,11 +5881,16 @@ export function WorkOrderPopup({
               </div>
               ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: stView === 'cards' ? '5px 4px 0' : '9px 4px 0' }}>
-                {!readOnly && !runner && stView !== 'cards' ? (
+                {/* Same one button as the wide bar above — see its note.
+                    NOW SHOWN IN CARD VIEW TOO. It used to be hidden there
+                    (`stView !== 'cards'`) because the row it made was undated,
+                    and an undated row lands in the "undated" group rather than
+                    appearing as the card you just asked for. The row is always
+                    dated now, so a card shows up where you expect it — and card
+                    view on a phone had no way to add a day at all. */}
+                {!readOnly && !runner ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={addStRow} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Studio Time</button>
-                  <button type="button" onClick={() => addEngRow('engineer')} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg)', opacity: 0.4, background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Engineer</button>
-                  <button type="button" onClick={() => addEngRow('assistant')} className="c-x" style={{ fontSize: 10, color: 'var(--c-st-warm)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add Assistant</button>
+                  <button type="button" onClick={openAddDay} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add studio time</button>
                 </div>
                 ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, background: 'var(--c-wash2)', borderRadius: 14, padding: '6px 12px' }}>
@@ -6034,6 +6092,115 @@ export function WorkOrderPopup({
             onClose={() => setHistOpen(false)}
           />
         )}
+
+        {/* ── NEW DAY: pick the date and the room BEFORE the row exists ──────
+            Eli, 2026-09-09: "one button that opens up a new card where you
+            select the date and studio", and "keep the same card design… the
+            card always has the option for assistant or engineer." So this is
+            deliberately NOT a new card design — it is two questions, and then
+            you land in the day card that already exists, where times, rate and
+            the 1ST/2ND staff line are edited exactly as on every other day.
+
+            Two fields, no more. Times and rate are inherited from the last day
+            and are one tap away in the sheet; asking for them here would rebuild
+            the day card in a modal, which is the thing not to do. */}
+        {newDay !== null && (() => {
+          const sameRoom = stRows.some(r =>
+            r.date === newDay.date && !!r.studio && toStudioLetter(r.studio) === newDay.letter)
+          return (
+            <div
+              onClick={() => setNewDay(null)}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 10031, background: 'rgba(0,0,0,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+                ...(isMobile ? { height: '100dvh' } : {}),
+              }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ width: 'min(380px, 94vw)', background: 'var(--c-bg)', borderRadius: 22, padding: '16px 18px 16px', boxShadow: 'var(--c-softsh)', boxSizing: 'border-box' }}
+              >
+                <div className="c-arch" style={{ fontSize: 16, marginBottom: 2 }}>Add studio time</div>
+                <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginBottom: 12 }}>
+                  Times, rate and staff carry over from the last day — change them on the card.
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+                  <span style={metaLabel}>Date</span>
+                  <input
+                    type="date"
+                    value={newDay.date}
+                    onChange={e => setNewDay(d => (d ? { ...d, date: e.target.value } : d))}
+                    className="c-input c-inset2"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span style={metaLabel}>Studio</span>
+                  {/* Same `venue|letter` select as the Seed panel and the row
+                      cell — every room at every venue, values are LETTERS. A
+                      room is never typed (CLAUDE.md, WO-1140). */}
+                  <select
+                    value={`${newDay.venue}|${newDay.letter}`}
+                    onChange={e => {
+                      const [loc, room] = e.target.value.split('|')
+                      setNewDay(d => (d ? { ...d, venue: loc, letter: room } : d))
+                    }}
+                    className="c-input c-inset2"
+                  >
+                    <option value="|">—</option>
+                    {/* A room the rows already use that no venue matches (a
+                        legacy hand-typed value) stays pickable rather than
+                        vanishing from the list mid-session. */}
+                    {newDay.letter && !STUDIO_LOCATIONS.some(l =>
+                      l.name === newDay.venue && l.rooms.some(r => toStudioLetter(r) === newDay.letter))
+                      && (
+                        <option value={`${newDay.venue}|${newDay.letter}`}>
+                          {roomCode(newDay.letter, newDay.venue) || newDay.letter}
+                        </option>
+                      )}
+                    {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
+                      const letter = toStudioLetter(room)
+                      return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
+                    }))}
+                  </select>
+                </div>
+
+                {/* SAY SO, DON'T BLOCK. Two blocks in one room on one night is a
+                    real booking (the projection keeps them on one segment), so
+                    this is a heads-up, not a guard — the bug was never that the
+                    day repeated, it was that nobody was told. */}
+                {sameRoom && (
+                  <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-st-warm)', marginTop: 9, lineHeight: 1.45 }}>
+                    That room already has time on this date. Adding another block is fine — it stays one
+                    session on the calendar.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+                  <button
+                    type="button"
+                    className="c-x"
+                    onClick={() => setNewDay(null)}
+                    style={{ fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', background: 'var(--c-wash2)', borderRadius: 99, padding: '6px 14px', cursor: 'pointer', opacity: 1, boxShadow: 'none' }}
+                  >Cancel</button>
+                  <button
+                    type="button"
+                    className="c-x"
+                    disabled={!newDay.date || !newDay.letter}
+                    onClick={confirmAddDay}
+                    style={{
+                      fontSize: 11, fontFamily: 'Inter', fontWeight: 800, color: 'var(--c-chip-ink)',
+                      background: 'var(--c-st-booked)', borderRadius: 99, padding: '6px 16px',
+                      cursor: newDay.date && newDay.letter ? 'pointer' : 'default',
+                      opacity: newDay.date && newDay.letter ? 1 : 0.4, boxShadow: 'none',
+                    }}
+                  >Add day</button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {daySheetDate !== null && (() => {
           const allDates = Array.from(new Set(stRows.filter(r => r.date).map(r => r.date))).sort()
