@@ -547,10 +547,25 @@ export function WorkOrderPopup({
   // "Past" means FULLY past: a multi-day import still running today (started
   // yesterday, ends tomorrow) is a live session that needs promoting, not
   // history — so the lock keys on end_date, falling back to start_date.
+  //
+  // ⚠ A PROMOTED IMPORT IS NOT HISTORY (WO-1068, Eli 2026-09-09). An import
+  // dated in the FUTURE is writable by the rule above, so it gets promoted and
+  // grows a real work order and invoice. Then the date passes — and this lock
+  // closed over live, billable work. WO-1068 sat in the Billing Hub with an
+  // invoice and could not be opened.
+  //
+  // Worse than a lock: the importedPast branch in initWO does not load the real
+  // WO at all, it fabricates a blank one from the booking row. So the "read-only
+  // work order" being shown was not the work order.
+  //
+  // `bookings.work_order_id` is the test because it is a STORED fact written
+  // only by create_work_order_atomic. It cannot self-unlock: the read-only path
+  // writes nothing, so a past import with no WO stays locked exactly as before.
   const importedPast =
     !!(booking as any).imported_at &&
     !!booking.start_date &&
-    ((booking.end_date || booking.start_date) < getLocalToday())
+    ((booking.end_date || booking.start_date) < getLocalToday()) &&
+    !(booking as any).work_order_id
   const readOnly = profile?.role === 'tech' || importedPast
   const [wo, setWo] = useState<WO | null>(null)
   const [stRows, setStRows] = useState<StRow[]>([])
