@@ -437,6 +437,19 @@ function normalizeStRow(d: any): StRow {
     charge = (totalHours != null && totalHours > 0 && !isNaN(rateNum) && rateNum > 0)
       ? parseFloat((totalHours * rateNum).toFixed(2))
       : (d.charge != null ? Number(d.charge) : null)
+    // LEGACY OT ON AN HOURLY ROW IS LOADED AS-IS, NOT ZEROED (Eli, 2026-09-10:
+    // "we shouldnt clear anyhting. lets just fix that logic?").
+    //
+    // I had this self-healing to '0' on load, matching how legacy studio names
+    // repair themselves. Wrong instinct here: a studio name is a typo, but an OT
+    // charge is MONEY THAT WAS INVOICED. Silently rewriting it the moment
+    // someone opens an old work order would change totals on invoices already
+    // sent and possibly paid — a correction nobody asked for, made invisibly, on
+    // a document that has already left the building.
+    //
+    // So the fix is forward-only: nothing new derives OT on an hourly row (see
+    // updateStRow), and anything already there stays exactly as it was billed.
+    // The row cell flags it rather than hiding it.
     otHoursStr = d.ot_hours != null ? String(d.ot_hours) : '0'
     otCharge = d.ot_charge != null ? Number(d.ot_charge) : null
   }
@@ -1626,22 +1639,36 @@ export function WorkOrderPopup({
       delete (updates as any).eng_rate
       delete (updates as any).row_rate_type
       if (Object.keys(updates).length === 0) return
-      // OT IS A DESIGNATION, DERIVED FROM THE CLOCK (Eli, 2026-08-16): the
-      // agreed window is the booked from/to (hourly) or 12h (day-rate; already
-      // auto below). When a runner moves the times on an HOURLY row, OT hours
-      // are recomputed as time beyond the booked hours — never typed, so the
-      // same hours can't be billed twice and the count can't disagree with the
-      // clock. Admin edits stay manual — overriding is the office's call.
-      if (row && row.row_rate_type !== 'day' && ('from_time' in updates || 'to_time' in updates)) {
-        const bookedHrs = calcHours(booking.from_time ?? '', booking.to_time ?? '')
-        const actualHrs = calcHours(
-          ('from_time' in updates ? updates.from_time : row.from_time) ?? '',
-          ('to_time' in updates ? updates.to_time : row.to_time) ?? '',
-        )
-        if (bookedHrs != null && actualHrs != null) {
-          (updates as any).ot_hours = String(Math.max(0, parseFloat((actualHrs - bookedHrs).toFixed(2))))
-        }
-      }
+      // ── AN HOURLY ROW HAS NO OVERTIME. EVER. ───────────────────────────
+      // (Eli, 2026-09-10, WO-1121: "8 hours session booked, went 9 hours. its
+      // billed as 9 hours + 1 hour of overtime so adds up to 10. OT should only
+      // apply to hours past 12 for day rates only. for regular hourly it should
+      // just be the number of the hours.")
+      //
+      // WHAT USED TO BE HERE, and why it double-billed. An hourly row derived
+      // `ot_hours = actual − booked`, so a booked-8 / ran-9 session got
+      // ot_hours = 1. But the hourly CHARGE is total_hours × rate, and
+      // total_hours is the ACTUAL 9 — so the ninth hour was charged once in the
+      // charge and again as OT. Ten hours billed for nine worked, on every
+      // hourly session that ran long.
+      //
+      // The comment that stood here claimed the opposite — "never typed, so the
+      // same hours can't be billed twice". It was reasoning about a design where
+      // the charge covered the BOOKED window and OT covered the overrun. That is
+      // not how the hourly charge is computed, and nobody noticed the mismatch
+      // because both halves read correctly on their own.
+      //
+      // The rule is now simply: hourly bills the clock. An hourly row that runs
+      // long bills more hours, which is what an hourly rate MEANS. Overtime is a
+      // day-rate concept only — a day rate buys a 12-hour window, so hours past
+      // 12 are extra (derived below, unchanged and correct).
+      //
+      // FORWARD-ONLY. Nothing is derived, and nothing existing is cleared
+      // (Eli, 2026-09-10: "we shouldnt clear anyhting"). An hourly row edited
+      // today simply never GAINS overtime; one that already carries some from
+      // the old logic keeps the number it was invoiced on, because that is what
+      // the client was actually billed. Correcting a sent invoice is a decision
+      // for a person, not a side effect of opening a screen.
     }
     if (row?.admin_locked && !pendingLockedEdits[id]) {
       setPendingLockedEdits(p => ({ ...p, [id]: { ...row } }))
@@ -5049,7 +5076,10 @@ export function WorkOrderPopup({
 
                   {/* OT */}
                   <div style={rowS}>
-                    {check('ot_hours', 'OT hours')}
+                    {/* Batch OT still exists for DAY rows — an hourly row
+                        ignores it (updateStRow zeroes OT on hourly), so this
+                        cannot reintroduce the WO-1121 double-bill. */}
+                    {check('ot_hours', 'OT hours (day rows)')}
                     <input value={batchVals.ot_hours} disabled={!batchOn.ot_hours} onChange={e => setBatchVals(v => ({ ...v, ot_hours: e.target.value }))} placeholder="0" className={bInpCls} style={{ maxWidth: 130, opacity: batchOn.ot_hours ? 1 : 0.45 }} />
                   </div>
                   <div style={rowS}>
@@ -5321,12 +5351,35 @@ export function WorkOrderPopup({
                             : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} className="c-tin c-tin-mono" placeholder="$0/hr" />
                           }
                         </div>
-                        {/* OT Hrs — day: auto display; hourly: editable */}
+                        {/* OT Hrs — DAY ROWS ONLY (WO-1121, 2026-09-10).
+                            An hourly row has no overtime: it bills the clock,
+                            so a long session is simply more hours. The cell used
+                            to be an editable input here, which is how the
+                            double-bill could be typed back in by hand even after
+                            the auto-derivation was removed. A day rate buys a
+                            12-hour window, so only there does "past the window"
+                            mean anything — and it is derived, never typed. */}
                         <div style={cellS}>
-                          {isDayRow
-                            ? <span style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
-                            : <input value={r.ot_hours ?? ''} onChange={e => updateStRow(r.id, { ot_hours: e.target.value })} className="c-tin c-tin-mono" placeholder="0" />
-                          }
+                          {isDayRow ? (
+                            <span style={{ fontSize: 10, color: 'var(--c-fg-2)' }}>{otHrsNum > 0 ? `${otHrsNum}h` : '—'}</span>
+                          ) : otHrsNum > 0 || (r.ot_charge ?? 0) > 0 ? (
+                            // LEGACY OT ON AN HOURLY ROW. Nothing creates these
+                            // any more, and we do not clear them — this is money
+                            // already invoiced. But it still counts toward the
+                            // row total, so it must be VISIBLE: showing "n/a"
+                            // over a live charge would hide the very thing that
+                            // made WO-1121 wrong. Warm, with the explanation on
+                            // hover, and no way to edit it into existence.
+                            <span
+                              style={{ fontSize: 10, color: 'var(--c-st-warm)', fontWeight: 700, cursor: 'help' }}
+                              title={'Legacy overtime, billed under the old rule that double-counted an hourly overrun. Left as invoiced — clear it by hand only if this invoice is being corrected.'}
+                            >{otHrsNum}h ⚠</span>
+                          ) : (
+                            <span
+                              style={{ fontSize: 10, color: 'var(--c-fg-3)' }}
+                              title="Hourly rows bill the clock — a long session is simply more hours. Overtime applies to day rates only, past 12 hours."
+                            >n/a</span>
+                          )}
                         </div>
                         {/* OT Rate — editable (auto-populated but overridable); a rate, so locked for runners */}
                         <div style={cellS}>
