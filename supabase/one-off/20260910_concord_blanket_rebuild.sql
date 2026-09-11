@@ -10,7 +10,7 @@
 -- cascaded too — which is why the originals could not be read back.
 --
 -- WHAT IT SHOULD BE (Eli, 2026-09-10, confirming docs/design-refs/
--- wo-blanket-rate-options.html): two days, Sep 3-4, ALL FIVE Paramount rooms,
+-- wo-blanket-rate-options.html): two days, Sep 2-3, ALL FIVE Paramount rooms,
 -- 10:00 AM - 10:00 PM, blanket $6,670/day = $13,340.
 --
 -- ── THE ALLOCATION ──────────────────────────────────────────────────────────
@@ -53,6 +53,11 @@
 -- overrun — Studio B's hour over is $155, never $142.60. No OT on this session
 -- (ot_hours '0'), but the rate is set so a later overrun prices correctly.
 --
+-- DATES CORRECTED 2026-09-10 (Eli: "change the concord dates to 2-3 instead of
+-- 3-4, same everything just slid over 1 day"). This file now reads as the
+-- session actually is. The live rows were moved by a follow-up statement, not
+-- by re-running this — re-running it would duplicate the work order's rows.
+--
 -- Run as ONE block. It is a transaction: all of it lands or none of it does.
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -73,7 +78,7 @@ where work_order_id = (select id from work_orders where wo_number = 'WO-1156');
 -- saying why is exactly how someone "corrects" them back to rack next month.
 update work_orders
 set session_notes = trim(coalesce(session_notes, '') || E'\n' ||
-  'WHOLE-BUILDING BLANKET RATE — $6,670/day x 2 days (Sep 3-4) = $13,340. ' ||
+  'WHOLE-BUILDING BLANKET RATE — $6,670/day x 2 days (Sep 2-3) = $13,340. ' ||
   'All five Paramount rooms. The per-room day rates below are ALLOCATED SHARES ' ||
   'of the blanket rate, pro-rata by rack (factor 0.92) — they are not the rooms'' ' ||
   'rack rates and must not be "corrected" to them. Client-facing invoice shows ONE ' ||
@@ -87,8 +92,8 @@ where wo_number = 'WO-1156';
 -- in no calendar column. studio is the LABEL form here ('Studio C'), per the
 -- studio-name rule — rows store the LETTER, cards store the LABEL.
 update bookings
-set start_date = '2026-09-03',
-    end_date   = '2026-09-04',
+set start_date = '2026-09-02',
+    end_date   = '2026-09-03',
     location   = 'Paramount',
     studio     = 'Studio C',
     from_time  = '10:00 AM',
@@ -113,16 +118,16 @@ select w.id, v.studio, 'Paramount', v.date, '10:00 AM', '10:00 PM',
        12, 'day', v.share, v.share, v.ot, 0, v.ord
 from work_orders w,
 (values
-  ('C', '2026-09-03', 1794, 195, 0),
-  ('C', '2026-09-04', 1794, 195, 1),
-  ('A', '2026-09-03', 1610, 175, 2),
-  ('A', '2026-09-04', 1610, 175, 3),
-  ('B', '2026-09-03', 1426, 155, 4),
-  ('B', '2026-09-04', 1426, 155, 5),
-  ('X', '2026-09-03', 1150, 125, 6),
-  ('X', '2026-09-04', 1150, 125, 7),
-  ('E', '2026-09-03',  690,  75, 8),
-  ('E', '2026-09-04',  690,  75, 9)
+  ('C', '2026-09-02', 1794, 195, 0),
+  ('C', '2026-09-03', 1794, 195, 1),
+  ('A', '2026-09-02', 1610, 175, 2),
+  ('A', '2026-09-03', 1610, 175, 3),
+  ('B', '2026-09-02', 1426, 155, 4),
+  ('B', '2026-09-03', 1426, 155, 5),
+  ('X', '2026-09-02', 1150, 125, 6),
+  ('X', '2026-09-03', 1150, 125, 7),
+  ('E', '2026-09-02',  690,  75, 8),
+  ('E', '2026-09-03',  690,  75, 9)
 ) as v(studio, date, share, ot, ord)
 where w.wo_number = 'WO-1156';
 
