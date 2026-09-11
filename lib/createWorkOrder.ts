@@ -11,11 +11,37 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 // Recording / Filming / Event-Playback sessions get WOs; Tech / Tour / Open Hours
 // (and cancelled-from-start bookings) do not.
 // (These are status values, not session_type values — see lib/supabase.ts.)
-const NON_SESSION_STATUSES = ['tour', 'tech', 'open_hours', 'cancelled']
+/**
+ * BLOCKS — calendar events where nothing is ever charged, so nothing is ever
+ * invoiced and no work order should exist.
+ *
+ * 'cancelled' WAS IN THIS LIST AND SHOULD NOT HAVE BEEN (Eli, 2026-09-10:
+ * "when I mark a session as cancelled, I still need that to populate in the
+ * billing hub as a normal WO... we still charge for these"). One constant was
+ * doing two unrelated jobs. A Tour is not billable in principle; a cancelled
+ * session usually IS — a 50% kill fee is the house norm — and lumping them
+ * together meant a cancellation silently left the billing hub, and one made
+ * before its work order existed never got one at all.
+ *
+ * Not charging a cancellation is now a DECISION, recorded by voiding it in the
+ * Closed bucket with a reason, rather than a disappearance. Same principle the
+ * 2026-08-11 ruling applied to already-invoiced cancellations.
+ */
+const NON_SESSION_STATUSES = ['tour', 'tech', 'open_hours']
 
 /**
- * True when a booking should have a work order auto-created at save time.
- * Excludes Tech / Tour / Open Hours blocks and cancelled bookings (locked PRSFlo principle).
+ * True when a booking should have a work order — i.e. money can be involved.
+ * Excludes Tech / Tour / Open Hours blocks ONLY.
+ *
+ * Includes 'cancelled' since 2026-09-10 (see above) and 'lockout' always (rent
+ * gets invoiced — CLAUDE.md).
+ *
+ * ⚠ THIS IS A BILLING GATE, NOT AN OPERATIONAL ONE. It answers "should this
+ *   reach a work order and the billing hub", never "is anything happening in
+ *   the room today". Daily-ops surfaces select status='confirmed', which
+ *   excludes cancellations and lockouts by status — see the BookingStatus note
+ *   in lib/supabase.ts. Do not reach for this function to decide what a runner
+ *   sees.
  */
 export function bookingShouldHaveWorkOrder(booking: Pick<Booking, 'status'>): boolean {
   return !NON_SESSION_STATUSES.includes(booking.status)

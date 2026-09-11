@@ -74,7 +74,9 @@ export type WoPdfInput = {
   studioRows: WoPdfRow[]
   rentalRows: WoPdfRow[]
   paymentRows: WoPdfRow[]
-  totals: { studio: number; engineer: number; rentals: number; cardFees: number; grand: number; paid: number; balance: number }
+  totals: { studio: number; engineer: number; rentals: number; cardFees: number; subtotal: number; discount: number; grand: number; paid: number; balance: number }
+  /** What the discount is CALLED on the client's invoice, e.g. "Cancellation — 50% kill fee". */
+  discountLabel?: string | null
   /**
    * BLANK FORM MODE (ruling 2026-08-12). Draws the same document with every
    * value empty and a writable baseline under each cell — the paper work order,
@@ -489,7 +491,7 @@ const INTERNAL_ONLY = [
 
 /** Build the work order as a standalone PDF. Returns the raw bytes. */
 export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array> {
-  const { studioRows, rentalRows, paymentRows, totals, blank = false } = input
+  const { studioRows, rentalRows, paymentRows, totals, discountLabel, blank = false } = input
 
   const wo: Record<string, any> = { ...input.wo }
   for (const key of INTERNAL_ONLY) delete wo[key]
@@ -762,6 +764,16 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   totalLine('Studio total', money(totals.studio))
   if (blank || totals.engineer > 0) totalLine('Eng total', money(totals.engineer))
   totalLine('Rentals total', money(totals.rentals))
+  // THE DISCOUNT IS NAMED ON THE DOCUMENT, not folded silently into the total
+  // (2026-09-10). A client who was quoted $4,000 and receives an invoice for
+  // $2,000 with no line explaining it will call and ask — and a kill fee is
+  // exactly the charge most likely to be argued about, so it says what it is.
+  // Subtotal only appears alongside it: without a discount it would restate the
+  // grand total one line up.
+  if (totals.discount > 0) {
+    totalLine('Subtotal', money(totals.subtotal))
+    totalLine(discountLabel || 'Discount', `-${money(totals.discount)}`)
+  }
   // 3% Credit/Debit surcharge (COD only, 2026-08-26) — a real charge, printed
   // whenever present so the client's paper matches the screen.
   if (totals.cardFees > 0) totalLine('Card fees (3%)', money(totals.cardFees))
@@ -844,7 +856,7 @@ export async function renderBlankWorkOrderPdf(): Promise<Uint8Array> {
     studioRows: [],
     rentalRows: [],
     paymentRows: [],
-    totals: { studio: 0, engineer: 0, rentals: 0, cardFees: 0, grand: 0, paid: 0, balance: 0 },
+    totals: { studio: 0, engineer: 0, rentals: 0, cardFees: 0, subtotal: 0, discount: 0, grand: 0, paid: 0, balance: 0 },
     blank: true,
   })
 }

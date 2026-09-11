@@ -767,6 +767,17 @@ export async function fetchNeedsWoQueue(opts?: {
   const candidates = (bookings ?? [])
     .filter(b => !(b as any).imported_at)
     .filter(b => bookingShouldHaveWorkOrder(b as any))
+    // CANCELLED IS EXCLUDED FROM THE ALARM, THOUGH IT IS NOW BILLABLE
+    // (2026-09-10). This queue means "a work order FAILED TO CREATE" — it is an
+    // anomaly report, not a to-do list. Cancelled sessions became work-order
+    // bearing on 2026-09-10, so every cancellation older than that date has no
+    // WO through no fault of anyone's, and including them would bury the real
+    // signal under months of history the first morning it shipped.
+    //
+    // The common path does not need the alarm anyway: a session is normally
+    // booked (WO created) and cancelled later, so the WO already exists. One
+    // created directly as cancelled gets its WO when someone opens it.
+    .filter(b => (b as any).status !== 'cancelled')
   if (candidates.length === 0) return []
 
   // bookings.work_order_id is the fast path, but it is written by the WO on save
@@ -808,7 +819,7 @@ export async function fetchBalancesQueue(opts?: {
 
   const { data: wosAll, error } = await supabase
     .from('work_orders')
-    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status')
+    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status, discount_kind, discount_value')
     .gte('session_date', from)
     .lte('session_date', to)
   if (!dbResult('Loading work orders for balances', error)) return []
@@ -852,6 +863,9 @@ export async function fetchBalancesQueue(opts?: {
       studioRows: stBy.get(w.id) ?? [],
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
+      // Or a discounted session sits in the collections queue for money the
+      // client was never asked for.
+      discount: { kind: (w as any).discount_kind ?? null, value: (w as any).discount_value ?? null },
     })
     // A WO with no line items at all is unbilled, not outstanding — skip it, or
     // every freshly-created WO would land in the collections queue on day one.

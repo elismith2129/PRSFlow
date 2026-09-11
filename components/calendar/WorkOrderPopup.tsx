@@ -140,6 +140,15 @@ type WO = {
   artist: string
   label: string
   ordered_by: string
+  /**
+   * WORK-ORDER DISCOUNT (2026-09-10) — built for cancellation kill fees.
+   * `discount_value` is held as a STRING here like every other money field on
+   * this screen, so a half-typed "5" on the way to "50" doesn't momentarily
+   * apply a 5% discount and repaint every total.
+   */
+  discount_kind: 'pct' | 'amt' | null
+  discount_value: string
+  discount_label: string
   po_number: string
   /**
    * This billing package can be sent WITHOUT a PO (migration 20260811150000).
@@ -378,6 +387,9 @@ function normalizeWO(d: any): WO {
     artist: d.artist ?? '',
     label: d.label ?? '',
     ordered_by: d.ordered_by ?? '',
+    discount_kind: d.discount_kind ?? null,
+    discount_value: d.discount_value != null ? String(d.discount_value) : '',
+    discount_label: d.discount_label ?? '',
     po_number: d.po_number ?? '',
     no_po_needed: d.no_po_needed ?? false,
     phone: d.phone ?? '',
@@ -2859,6 +2871,18 @@ export function WorkOrderPopup({
       artist: wo.artist || null,
       label: wo.label || null,
       ordered_by: wo.ordered_by || null,
+      // Written as a trio or not at all. A kind with no value (or the reverse)
+      // is a half-applied discount, which is the state most likely to be read
+      // as "no discount" on one screen and "some discount" on another.
+      ...(() => {
+        const v = stripCurrency(wo.discount_value)
+        const live = !!wo.discount_kind && v != null && v > 0
+        return {
+          discount_kind: live ? wo.discount_kind : null,
+          discount_value: live ? v : null,
+          discount_label: live ? (wo.discount_label || null) : null,
+        }
+      })(),
       po_number: wo.po_number || null,
       no_po_needed: wo.no_po_needed,
       phone: wo.phone || null,
@@ -3083,7 +3107,15 @@ export function WorkOrderPopup({
     studioRows: stRows,
     rentalRows: rentRows,
     paymentRows: payRows,
+    // Read from `wo` (live state), not the booking — the discount is a property
+    // of the invoice, and it must move the totals as you type it, not after a
+    // save round-trip.
+    discount: { kind: (wo as any)?.discount_kind ?? null, value: (wo as any)?.discount_value ?? null },
   })
+
+  /** Cancelled sessions are BILLABLE now (2026-09-10) — a kill fee is the house
+   *  norm — so the WO shows them like any other. This only drives copy. */
+  const sessionIsCancelled = (wo?.session_status || booking.status) === 'cancelled'
 
   // Live, derived — no state, so they cannot get stale behind an edit.
   // Duplicates outrank a missing rate: being charged twice is a bigger error
@@ -6094,8 +6126,114 @@ export function WorkOrderPopup({
                   { label: 'Studio Total', value: stTotal, color: 'var(--c-fg)', bold: false },
                   ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--c-fg)', bold: false }] : []),
                   { label: 'Rentals Total', value: rentTotal, color: 'var(--c-fg)', bold: false },
+                  // The pre-discount figure, shown ONLY when something is being
+                  // discounted. Without a discount it just restates Grand Total
+                  // one line up, and a total that appears twice is a total
+                  // people stop reading.
+                  ...(woTotals.discount > 0
+                    ? [{ label: 'Subtotal', value: woTotals.subtotal, color: 'var(--c-fg-2)', bold: false }]
+                    : []),
+                ].map(({ label, value, color, bold }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{label}</span>
+                    <span style={{ fontSize: bold ? 13 : 11, fontFamily: 'Inter', color, fontWeight: bold ? 700 : 400 }}>${value.toFixed(2)}</span>
+                  </div>
+                ))}
+
+                {/* ── DISCOUNT (Eli, 2026-09-10 — cancellation kill fees) ──────
+                    OPTION A from docs/design-refs/wo-cancellation-discount-
+                    options.html: an ALWAYS-VISIBLE line, not a "+ Discount"
+                    button. B was rejected because it hides the control exactly
+                    where it is needed — on a cancelled session — and a kill fee
+                    nobody remembers is a kill fee nobody invoices.
+
+                    NO 50% PRE-FILL, though it was offered (Eli: "no we will do
+                    it because we have 100% billed sometimes"). A default that
+                    silently halves a session somebody meant to bill in full is
+                    worse than typing two characters.
+
+                    Runner never sees it: discounting is an office act, same as
+                    every other number on this panel. */}
+                {!runner && (
+                  <div style={{ padding: '8px 14px', borderTop: '1px solid var(--c-wash2)', borderBottom: '1px solid var(--c-wash2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', flexShrink: 0 }}>Discount</span>
+                      {readOnly ? (
+                        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
+                          {woTotals.discount > 0 ? (wo.discount_label || 'Discount') : 'None'}
+                        </span>
+                      ) : (
+                        <>
+                          {/* %/$ — the same two-state toggle shape as the row
+                              Day/Hr control, so it reads as the same kind of
+                              thing. Switching kind keeps the number: going
+                              50% → $50 is a thing someone does on purpose. */}
+                          <span style={{ display: 'inline-flex', borderRadius: 99, overflow: 'hidden', background: 'var(--c-wash2)', flexShrink: 0 }}>
+                            {(['pct', 'amt'] as const).map(k => (
+                              <button
+                                key={k}
+                                type="button"
+                                className="c-x"
+                                onClick={() => {
+                                  setDirtyFields(prev => new Set(prev).add('discount_kind'))
+                                  setWo(w => w ? { ...w, discount_kind: w.discount_kind === k ? null : k } : w)
+                                }}
+                                style={{
+                                  padding: '3px 10px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700,
+                                  background: wo.discount_kind === k ? 'var(--c-fg)' : 'transparent',
+                                  color: wo.discount_kind === k ? 'var(--c-bg)' : 'var(--c-fg-2)',
+                                  cursor: 'pointer', boxShadow: 'none', borderRadius: 0, opacity: 1,
+                                }}
+                              >{k === 'pct' ? '%' : '$'}</button>
+                            ))}
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={wo.discount_value}
+                            placeholder={wo.discount_kind === 'amt' ? '0.00' : '0'}
+                            onChange={e => {
+                              setDirtyFields(prev => new Set(prev).add('discount_value'))
+                              setWo(w => w ? { ...w, discount_value: e.target.value } : w)
+                            }}
+                            className="c-input c-inset2"
+                            style={{ width: 74, fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 12 }}
+                          />
+                          <input
+                            type="text"
+                            value={wo.discount_label}
+                            // The client reads this on the invoice, so it says
+                            // what it is. Blank is legal; the total still moves.
+                            placeholder={sessionIsCancelled ? 'Cancellation — kill fee' : 'Reason on the invoice'}
+                            onChange={e => {
+                              setDirtyFields(prev => new Set(prev).add('discount_label'))
+                              setWo(w => w ? { ...w, discount_label: e.target.value } : w)
+                            }}
+                            className="c-input c-inset2"
+                            style={{ flex: 1, minWidth: 120, fontSize: 11 }}
+                          />
+                        </>
+                      )}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'Inter', color: woTotals.discount > 0 ? 'var(--c-st-hot)' : 'var(--c-fg-3)', fontWeight: woTotals.discount > 0 ? 700 : 400 }}>
+                        {woTotals.discount > 0 ? `−$${woTotals.discount.toFixed(2)}` : '—'}
+                      </span>
+                    </div>
+                    {/* The cancelled session that nobody has priced yet. Says it
+                        once, quietly, and only where it is actionable. */}
+                    {sessionIsCancelled && woTotals.discount === 0 && !readOnly && (
+                      <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-warm)', marginTop: 6, lineHeight: 1.45 }}>
+                        Cancelled session, billing in full. Add a discount if this is a kill fee.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {[
                   // 3% surcharge on Credit/Debit payments (COD only) — a real
-                  // charge, so it joins Grand Total.
+                  // charge, so it joins Grand Total. NOT reduced by the
+                  // discount: a card fee attaches to a PAYMENT, not to the
+                  // invoice (Eli, 2026-09-10 — "people pay in different
+                  // increments, and also OT after the fact").
                   ...(cardFeesTotal > 0 ? [{ label: 'Card Fees (3%)', value: cardFeesTotal, color: 'var(--c-fg)', bold: false }] : []),
                   { label: 'Grand Total', value: grandTotal, color: 'var(--c-fg)', bold: true },
                   { label: 'Total Paid', value: totalPaid, color: 'var(--c-st-booked)', bold: false },

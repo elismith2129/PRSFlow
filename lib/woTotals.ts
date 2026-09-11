@@ -54,10 +54,23 @@ export type TotalsPaymentRow = {
   fee_amount?: number | string | null
 }
 
+/** A work-order-level reduction of what is OWED (Eli, 2026-09-10 — cancellation
+ *  kill fees). `pct` is 0-100 of the pre-discount subtotal; `amt` is dollars.
+ *  Null/absent means no discount, which is the overwhelming majority of work
+ *  orders — there is deliberately no default, because a 50% that appears by
+ *  itself would silently halve a session someone meant to bill in full. */
+export type WoDiscount = {
+  kind: 'pct' | 'amt' | null
+  value: number | string | null
+} | null
+
 export type WoTotalsInput = {
   studioRows: TotalsStudioRow[]
   rentalRows: TotalsRentalRow[]
   paymentRows: TotalsPaymentRow[]
+  /** Optional — omitting it is exactly equivalent to no discount, so every
+   *  existing caller keeps its current numbers without being touched. */
+  discount?: WoDiscount
   // NO FALLBACK RATE. Removed 2026-08-13 along with its last caller. It existed
   // to inherit `bookings.engineer_rate`, which is vestigial — the booking form
   // is deleted and `buildBookingProjection` never writes that column. The WO
@@ -75,9 +88,18 @@ export type WoTotals = {
   studio: number
   engineer: number
   rentals: number
-  /** Σ payment fee_amount — the 3% card surcharges, which are charges. */
+  /** Σ payment fee_amount — the 3% card surcharges, which are charges.
+   *  NOT affected by the discount: a card fee attaches to a PAYMENT, not to
+   *  the invoice, because clients pay in increments and OT lands after the
+   *  fact (Eli, 2026-09-10). */
   cardFees: number
-  /** studio + engineer + rentals + cardFees */
+  /** studio + engineer + rentals, BEFORE any discount. Kept because "what was
+   *  this session worth before we discounted it" is the first question anyone
+   *  asks about a kill fee, and the rows must never be rewritten to answer it. */
+  subtotal: number
+  /** The money taken off, as a positive number. 0 when there is no discount. */
+  discount: number
+  /** subtotal − discount + cardFees */
   grand: number
   paid: number
   /** grand − paid. Positive means the client still owes. */
@@ -159,7 +181,27 @@ export function computeWoTotals(input: WoTotalsInput): WoTotals {
   const paid = paymentRows.reduce((s, p) => s + money(p.amount), 0)
   const cardFees = paymentRows.reduce((s, p) => s + money(p.fee_amount), 0)
 
-  const grand = studio + engineer + rentals + cardFees
+  // THE DISCOUNT APPLIES TO THE WHOLE WORK ORDER — studio, engineering and
+  // rentals alike (Eli's ruling, 2026-09-10; studio-only was offered and
+  // declined). It is computed HERE and never written into a row's `charge`:
+  // that is the blanket-rate landmine, a derived value waiting for a recompute
+  // to wipe it.
+  const subtotal = studio + engineer + rentals
+  const discount = (() => {
+    const d = input.discount
+    if (!d || !d.kind) return 0
+    const v = money(d.value)
+    if (!(v > 0)) return 0
+    const raw = d.kind === 'pct' ? subtotal * (v / 100) : v
+    // Never discount past zero into a credit. A work order that owes NEGATIVE
+    // money is not a thing this app models, and letting one exist would put a
+    // negative balance into AR where every consumer reads it as "overpaid".
+    return parseFloat(Math.min(raw, subtotal).toFixed(2))
+  })()
 
-  return { studio, engineer, rentals, cardFees, grand, paid, balance: grand - paid }
+  // Card fees are added AFTER, untouched by the discount — they are per-payment
+  // surcharges on money that actually moved, not a function of the invoice.
+  const grand = subtotal - discount + cardFees
+
+  return { studio, engineer, rentals, cardFees, subtotal, discount, grand, paid, balance: grand - paid }
 }

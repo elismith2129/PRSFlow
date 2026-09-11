@@ -150,7 +150,14 @@ export async function GET(req: NextRequest) {
   // The SAME totals function the work order screen displays. Two implementations
   // of this arithmetic is how a PDF ends up disagreeing with the screen that
   // approved it — see lib/woTotals for why it was extracted in the first place.
-  const totals = computeWoTotals({ studioRows, rentalRows, paymentRows })
+  // The DOCUMENT the client receives. If the discount is missing here the
+  // invoice asks for the full amount while the app shows the discounted one —
+  // the worst of the four places to get this wrong.
+  const totals = computeWoTotals({
+    studioRows, rentalRows, paymentRows,
+    discount: { kind: (wo as any)?.discount_kind ?? null, value: (wo as any)?.discount_value ?? null },
+  })
+  const discountLabel = (wo as any)?.discount_label ?? null
 
   // ── Build ─────────────────────────────────────────────────────────────────
   // NAMED FAILURES (2026-09-03 — the "Could not build the PDF (500)" error).
@@ -161,7 +168,7 @@ export async function GET(req: NextRequest) {
   try {
   const woPdf = await renderWorkOrderPdf({
     wo: { ...wo, location: venue },
-    studioRows, rentalRows, paymentRows, totals,
+    studioRows, rentalRows, paymentRows, totals, discountLabel,
   })
 
   let attachment: { bytes: Uint8Array; contentType: string } | null = null

@@ -72,6 +72,7 @@ import {
   downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
+  CLOSED_REASONS, closedReasonLabel,
   type SortCol, type StageKey,
 } from '@/lib/billing'
 
@@ -911,10 +912,10 @@ export default function BillingPage() {
         <CloseModal
           row={closing}
           onCancel={() => setClosing(null)}
-          onConfirm={async reason => {
+          onConfirm={async (reason, note) => {
             const r = closing
             setClosing(null)
-            await run(r.workOrderId, () => closeInvoice(r, reason, profile?.id ?? null))
+            await run(r.workOrderId, () => closeInvoice(r, reason, profile?.id ?? null, note))
           }}
         />
       )}
@@ -1156,7 +1157,12 @@ function Row({
         ) : row.awaitingPo && stage && row.approvedAt ? (
           <span className="c-bhint">Approved {fmtDayHeading(row.approvedAt.slice(0, 10))}</span>
         ) : row.closedReason ? (
-          <span className="c-bflag c-soon">{row.closedReason === 'written_off' ? 'Written off' : 'Voided'}</span>
+          // The note renders ON THE ROW, not behind a click. The entire value of
+          // recording a reason is that someone who was not there can read it.
+          <span className="c-bflag c-soon" title={row.closedNote || undefined}>
+            {closedReasonLabel(row.closedReason)}
+            {row.closedNote ? ` · ${row.closedNote}` : ''}
+          </span>
         ) : row.notStarted && row.bucket === 'progress' && !stage ? (
           /* The staged layout's In-progress badge already says it. */
           <span className="c-bflag c-soon">Not started</span>
@@ -1541,8 +1547,19 @@ function PackageModal({ row, booking, onClose, isOwner, approverId, approverName
 function CloseModal({ row, onCancel, onConfirm }: {
   row: InvoiceRow
   onCancel: () => void
-  onConfirm: (reason: ClosedReason) => void
+  onConfirm: (reason: ClosedReason, note: string) => void
 }) {
+  // A DROPDOWN AND A NOTE (Eli, 2026-09-10). This used to be two buttons —
+  // written off / voided — which could not tell a cancelled session we chose
+  // not to charge from a duplicate that should never have existed, and offered
+  // nowhere to say so. Both still land in the same bucket; the difference is
+  // whether anyone can reconstruct the decision a year later.
+  const [reason, setReason] = useState<ClosedReason | ''>('')
+  const [note, setNote] = useState('')
+  // 'Other' without a note is a reason that explains nothing — the one case
+  // where the sentence carries all the meaning, so it is required there only.
+  const needsNote = reason === 'other'
+  const ready = !!reason && (!needsNote || note.trim().length > 0)
   return (
     <div className="c-bmodal-wrap" onClick={onCancel}>
       <div className="c-bmodal" onClick={e => e.stopPropagation()}>
@@ -1552,11 +1569,33 @@ function CloseModal({ row, onCancel, onConfirm }: {
           {row.balance > 0 ? `${formatCurrency(String(row.balance))} outstanding` : 'Nothing outstanding'}
           {' · '}It leaves every pipeline and stops counting toward what you&apos;re owed. Still searchable.
         </div>
-        <button className="c-bact c-bblock" onClick={() => onConfirm('written_off')}>
-          Written off — we were owed this and gave up collecting
-        </button>
-        <button className="c-bact c-bblock" onClick={() => onConfirm('voided')}>
-          Voided — this invoice should never have existed
+
+        <select
+          value={reason}
+          onChange={e => setReason(e.target.value as ClosedReason | '')}
+          className="c-input c-inset2"
+          style={{ width: '100%', marginBottom: 8, fontSize: 12 }}
+        >
+          <option value="">Why is it being closed?</option>
+          {CLOSED_REASONS.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+        </select>
+
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={3}
+          placeholder={needsNote ? 'Required — what happened?' : 'Anything worth knowing later (optional)'}
+          className="c-input c-inset2"
+          style={{ width: '100%', marginBottom: 10, fontSize: 11.5, resize: 'vertical', fontFamily: 'inherit' }}
+        />
+
+        <button
+          className="c-bact c-bblock"
+          disabled={!ready}
+          style={{ opacity: ready ? 1 : 0.4, cursor: ready ? 'pointer' : 'default' }}
+          onClick={() => { if (ready) onConfirm(reason as ClosedReason, note) }}
+        >
+          {ready ? 'Close invoice' : needsNote ? 'Say why, then close' : 'Pick a reason'}
         </button>
         <button className="c-bact c-bmuted c-bblock" onClick={onCancel}>Cancel</button>
       </div>

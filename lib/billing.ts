@@ -51,7 +51,40 @@ import { logWoActivity } from '@/lib/woActivity'
 export type InvoiceState =
   | 'needs_invoice' | 'needs_approval' | 'approved' | 'awaiting_po' | 'sent' | 'paid' | 'closed'
 
-export type ClosedReason = 'written_off' | 'voided'
+/**
+ * WHY an invoice was closed. Widened 2026-09-10 (Eli: "need a drop down + free
+ * text for closed invoices so we can put a message in there") — two options
+ * could not distinguish a cancelled session we chose not to charge from a
+ * duplicate we should never have raised, and both live in the same bucket.
+ *
+ * 'written_off' | 'voided' are the ORIGINALS and stay legal: existing closed
+ * rows carry them, and guessing which flavour an old row meant would be
+ * inventing history rather than recording it.
+ */
+export type ClosedReason =
+  | 'written_off' | 'voided'
+  | 'written_off_bad_debt' | 'written_off_goodwill'
+  | 'voided_cancelled' | 'voided_duplicate' | 'voided_error'
+  | 'settled_adjusted' | 'other'
+
+/** The dropdown, in order. Label is what a person picks and what the row shows. */
+export const CLOSED_REASONS: { key: ClosedReason; label: string }[] = [
+  { key: 'written_off_bad_debt',  label: 'Written off — bad debt' },
+  { key: 'written_off_goodwill',  label: 'Written off — client goodwill' },
+  { key: 'voided_cancelled',      label: 'Voided — session cancelled, no charge' },
+  { key: 'voided_duplicate',      label: 'Voided — duplicate invoice' },
+  { key: 'voided_error',          label: 'Voided — billing error' },
+  { key: 'settled_adjusted',      label: 'Settled at an adjusted amount' },
+  { key: 'other',                 label: 'Other — say why' },
+]
+
+/** Display for any reason INCLUDING the two legacy values. */
+export function closedReasonLabel(r: ClosedReason | null): string {
+  if (!r) return 'Closed'
+  const hit = CLOSED_REASONS.find(x => x.key === r)
+  if (hit) return hit.label
+  return r === 'written_off' ? 'Written off' : 'Voided'
+}
 
 /**
  * TWO PIPELINES, NOT ONE (RULING 2026-08-11) — v2, superseding the nine-tab
@@ -195,6 +228,8 @@ export type InvoiceRow = {
   step: Step
   state: InvoiceState | null
   closedReason: ClosedReason | null
+  /** The sentence explaining the close, for someone who was not there. */
+  closedNote: string | null
   /** Owed on this invoice. 0 once settled. */
   balance: number
   total: number
@@ -482,7 +517,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks')
+    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, invoice_closed_note')
     .order('session_date', { ascending: false })
     // Secondary order = id: without it Postgres returns equal-date rows in
     // ARBITRARY order that can differ per refetch (the page-2 churn bug —
@@ -576,6 +611,10 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       studioRows: stRows,
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
+      // WITHOUT THIS the hub bills the undiscounted amount: a 50% kill fee
+      // would show the client owing the full session in AR, on the ladder and
+      // on the invoice total. Every computeWoTotals caller has to pass it.
+      discount: { kind: (w as any).discount_kind ?? null, value: (w as any).discount_value ?? null },
     })
 
     // THE SESSION'S LAST DAY comes from the work order's own dated rows, not
@@ -664,6 +703,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       step,
       state,
       closedReason: (w.invoice_closed_reason ?? null) as ClosedReason | null,
+      closedNote: (w as any).invoice_closed_note ?? null,
       balance: totals.balance,
       total: totals.grand,
       paid: totals.paid,
@@ -1361,11 +1401,13 @@ export async function closeInvoice(
   row: InvoiceRow,
   reason: ClosedReason,
   closedBy: string | null,
+  note?: string | null,
 ): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
     .update({
       invoice_state: 'closed',
+      invoice_closed_note: (note ?? '').trim() || null,
       invoice_closed_reason: reason,
       invoice_closed_at: new Date().toISOString(),
       invoice_closed_by: closedBy,
@@ -1386,6 +1428,9 @@ export async function reopenInvoice(row: InvoiceRow): Promise<boolean> {
     .from('work_orders')
     .update({
       invoice_state: row.sentAt ? 'sent' : 'needs_approval',
+      // The note goes with the reason. A reopened invoice carrying the
+      // explanation for a close that no longer applies is worse than no note.
+      invoice_closed_note: null,
       invoice_closed_reason: null,
       invoice_closed_at: null,
       invoice_closed_by: null,

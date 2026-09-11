@@ -276,6 +276,21 @@ export interface WorkOrder {
   runner_finished_at: string | null
   admin_approved: boolean
   admin_approved_at: string | null
+  /**
+   * WORK-ORDER-LEVEL DISCOUNT (migration 20260910120000) — built for
+   * cancellation kill fees, usable for any reduction. Applies to the WHOLE work
+   * order: studio, engineering and rentals. Card fees are NOT affected; those
+   * attach to each payment, not to the invoice.
+   *
+   * ⚠ Never bake this into studio_time_rows.charge. Rows keep their full booked
+   *   value and computeWoTotals applies the reduction once, at total time —
+   *   otherwise the next recompute silently wipes it (the blanket-rate
+   *   landmine), and the WO loses the ability to say what the session was worth
+   *   before the discount.
+   */
+  discount_kind: 'pct' | 'amt' | null
+  discount_value: number | null
+  discount_label: string | null
   created_at: string
   updated_at: string | null
 }
