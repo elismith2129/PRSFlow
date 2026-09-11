@@ -572,7 +572,12 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
-    supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
+    // fee_amount IS REQUIRED (WO-1121, 2026-09-10). Without it computeWoTotals
+    // sums cardFees to 0, so the hub's grand total came out short by every card
+    // surcharge on the work order and the balance under-reported: WO-1121 read
+    // $136.80 here against $180.00 on the work order — exactly the $43.20 fee.
+    // An under-stated balance is money quietly dropped from AR.
+    supabase.from('payment_rows').select('work_order_id, amount, fee_amount').in('work_order_id', ids),
   ])
   if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error)) return []
 
