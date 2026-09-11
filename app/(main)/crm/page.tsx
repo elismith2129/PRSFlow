@@ -23,6 +23,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { dbResult } from '@/lib/db'
+import { toast } from '@/components/ui/Toaster'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--c-st-hot)', warm: 'var(--c-st-warm)', cold: 'var(--c-fg-3)',
@@ -2002,7 +2003,72 @@ const parsedLoc0 = parseLocation(lead.location || '')
   // client profile gets the confirm-client step first, so a session is always
   // attached to a real client record — that link is what keeps the lead, the
   // booking and later renames in sync.
+  /**
+   * WHAT A LEAD MUST HAVE BEFORE IT CAN BECOME A SESSION (Eli, 2026-09-10).
+   *
+   * Start Booking does not open a form — it creates the booking AND its work
+   * order immediately and lands you in the WO. So whatever the lead is missing,
+   * the SESSION is missing, and it is already in the database by the time
+   * anyone notices.
+   *
+   * A booking with no ROOM matches no calendar column (the grid compares
+   * `bookings.studio` to the venue's room labels exactly), so it renders
+   * nowhere at all — saved, invoiceable, and invisible. That is how four
+   * Concord sessions went missing on 2026-09-10.
+   *
+   * ROOM, DATE AND RATE (Eli, 2026-09-10: "gate with rate").
+   *
+   * I argued for room and date only, on the grounds that requiring a rate
+   * would train people to type a placeholder into a billing field. Eli's call
+   * overrides that, and his reasoning is the stronger one: a session that
+   * reaches a work order with no rate is a session that can reach an INVOICE
+   * with no rate. The lead is where a price is agreed; carrying a blank one
+   * forward just moves the gap somewhere it costs money instead of somewhere
+   * it costs a click. The placeholder risk is real but it is visible — a wrong
+   * number on a work order gets queried; a missing one gets missed.
+   *
+   * Either rate satisfies it. The calendar seeds daily first, then hourly
+   * (`if (l.rate_daily) … else if (l.quote)`), so this mirrors that exactly —
+   * asking for a rate the booking path would then ignore would be nonsense.
+   *
+   * The venue alone is not enough: "Paramount" with no room is the same
+   * invisible card, one step narrower. StudioSelect is a single Venue|Room
+   * picker so its UI cannot produce that today (Eli: "i don't think there's an
+   * option for that" — correct). The check is on the ROOM anyway, because
+   * imports, legacy rows and any future edit path are not bound by that one
+   * control, and the cost of checking is nothing.
+   */
+  const bookBlockers: string[] = (() => {
+    const out: string[] = []
+    if (!parseLocation(lead.location || '').studio) out.push('a room')
+    if (!lead.session_date) out.push('a date')
+    if (!(lead.rate_daily || '').trim() && !(lead.quote || '').trim()) out.push('a rate')
+    return out
+  })()
+
+  /** "a room, a date and a rate" — an Oxford-less list, because three items
+   *  joined with ' and ' reads as a stutter. */
+  const bookMissingList = bookBlockers.length < 2
+    ? bookBlockers.join('')
+    : `${bookBlockers.slice(0, -1).join(', ')} and ${bookBlockers[bookBlockers.length - 1]}`
+
   function startBooking() {
+    // SAY WHAT IS MISSING, don't just sit there greyed out. A disabled control
+    // that explains nothing is the defect the login-screen ruling names: a
+    // surface may only claim what it knows, and it must say what it knows.
+    if (bookBlockers.length > 0) {
+      toast(
+        `Add ${bookMissingList} to this lead first.` +
+        // Only the room failure is INVISIBLE, so only it needs explaining. A
+        // missing date or rate is obvious on the work order; a missing room is
+        // a session nobody can find.
+        (bookBlockers.includes('a room')
+          ? ' A session with no room doesn’t appear on the calendar at all.'
+          : ''),
+        'error',
+      )
+      return
+    }
     if (lead.client_id) {
       leadRouter.push(`/calendar?newBooking=1&clientId=${lead.client_id}&leadId=${lead.id}`)
       return
@@ -2312,10 +2378,20 @@ const parsedLoc0 = parseLocation(lead.location || '')
             {/* Start Booking — restored July 28, 2026. It was swapped out for the
                 temporary Confirm-Client flow back when there was no booking form
                 to send anyone to; the Work Order is that destination now. */}
+            {/* GREYED UNTIL THE LEAD HAS A ROOM AND A DATE (Eli, 2026-09-10:
+                "start booking is grey until there is a room and date at least?
+                and when someone tries to click it says please add room").
+                NOT `disabled` — a disabled button swallows the click and
+                explains nothing. It stays clickable and answers. */}
             <button
               onClick={startBooking}
-              title={lead.client_id ? 'Open a Work Order for this lead' : 'Confirm the client profile, then open a Work Order'}
-              className="c-btn c-control c-raised-primary" style={{ whiteSpace: 'nowrap' as const }}
+              title={
+                bookBlockers.length > 0
+                  ? `Needs ${bookMissingList} on the lead first`
+                  : lead.client_id ? 'Open a Work Order for this lead' : 'Confirm the client profile, then open a Work Order'
+              }
+              className="c-btn c-control c-raised-primary"
+              style={{ whiteSpace: 'nowrap' as const, opacity: bookBlockers.length > 0 ? 0.4 : 1 }}
             >
               Start Booking
             </button>

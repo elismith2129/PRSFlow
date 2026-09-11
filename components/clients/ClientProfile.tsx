@@ -1,6 +1,5 @@
 'use client'
 import React, { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
 import { addArtistToLabel } from '@/lib/roster'
@@ -433,12 +432,10 @@ function BookingHistory({ leads }: { leads: BookingLead[] }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function ClientProfile({ client, contacts, bookingCount, loading, isMobile, onRefresh, onBack, onDelete }: Props) {
-  const router = useRouter()
   const [bookings, setBookings] = useState<BookingLead[]>([])
   const [showAddContact, setShowAddContact] = useState(false)
   const [showAddAdmin, setShowAddAdmin] = useState(false)
   const [showAddress, setShowAddress] = useState(false)
-  const [bookingToast, setBookingToast] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
@@ -752,12 +749,24 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               {client.name}
             </div>
           )}
-          <button
-            onClick={() => router.push(`/calendar?newBooking=1&clientId=${client.id}`)}
-            style={{ ...primaryBtn, fontSize: 9, padding: '5px 12px', flexShrink: 0, background: 'transparent', color: 'var(--c-fg)' }}
-          >
-            Start Booking
-          </button>
+          {/* START BOOKING REMOVED HERE (Eli, 2026-09-10: "remove from client
+              profile for sure").
+
+              It pushed `/calendar?newBooking=1&clientId=…` with NO leadId. The
+              calendar's Start Booking effect only fills the room from the LEAD
+              (`if (l.location)`), so with no lead there was nothing to fill it
+              from — and `createBookingAndOpenWO` creates the session AND its
+              work order immediately, no form in between. So this button made a
+              ROOMLESS booking every single time it was pressed, not just in an
+              edge case.
+
+              A booking with no studio matches no calendar column, so those
+              sessions rendered nowhere. Four of them (WO-1156..1159, Concord)
+              were made this way on 2026-09-10 and were only found because the
+              work orders turned up in a billing query.
+
+              Booking starts from a LEAD, which is where a room and a date live.
+              The CRM's Start Booking stays; it is gated on both. */}
         </div>
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, alignItems: 'center' }}>
           <span style={typeBadgeStyle}>{typeLabel}</span>
@@ -774,14 +783,10 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
         </div>
       </div>
 
-      {/* Start Booking toast */}
-      {bookingToast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 2000, background: 'var(--c-bg)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 24px rgba(0,0,0,0.5)', maxWidth: 320, fontFamily: 'Inter', fontSize: 11 }}>
-          <span style={{ color: 'var(--c-fg)', fontSize: 14 }}>🗓</span>
-          <span style={{ color: 'var(--c-fg)', flex: 1 }}>Booking flow coming in Chunk 6.</span>
-          <button onClick={() => setBookingToast(false)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>×</button>
-        </div>
-      )}
+      {/* The "Start Booking toast" that stood here is gone with the button.
+          It said "Booking flow coming in Chunk 6." — Chunk 6 shipped in June,
+          and `bookingToast` was never set true by anything, so the block had
+          been unreachable for three months. */}
 
       {/* Scrollable body */}
       <div style={{ overflowY: 'auto', flex: 1, padding: '14px 18px 18px' }}>
