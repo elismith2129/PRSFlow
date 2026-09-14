@@ -120,7 +120,7 @@ export default function BillingPage() {
   const [busy, setBusy] = useState<string | null>(null)
   // COLUMN SORT — billing only (Eli, 2026-09-03: sort, never filter). Date
   // desc is the default and the only order that shows the day dividers.
-  const [sortCol, setSortCol] = useState<SortCol>('date')
+  const [sortCol, setSortCol] = useState<SortCol>('queue')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   // THE ADD-PO STRIP (Eli, 2026-09-03) — a fold under the row, not a modal.
   // One open at a time; the row id is the key.
@@ -225,6 +225,10 @@ export default function BillingPage() {
   // heading lies about what follows it. Billing only; COD's merged bins keep
   // their own internal queue order.
   const dividers = staged && !searching && sortCol === 'date'
+  // STAGE DIVIDERS under the queue order (2026-09-14): "Needs review · 6"
+  // above the six, then "Needs invoice · 3", and so on — the list reads as a
+  // queue with its sections named, which is what makes a second page safe.
+  const stageDividers = staged && !searching && sortCol === 'queue'
 
   const perPage = pageSizeFor(pipeline === 'cod' ? 'progress' : activeBucket)
   const pages = pageCount(visible.length, perPage)
@@ -243,9 +247,12 @@ export default function BillingPage() {
   // soonest-first (the next session to happen leads); everything else by date,
   // newest first. Changing tab resets the sort so a Balance sort on one tab
   // doesn't quietly reorder the next.
+  // In progress opens in QUEUE order (Eli, 2026-09-14: needs review always on
+  // top); Awaiting PO oldest-approved first (the chase list) — sortBucket
+  // already orders it, so the column sort is date asc to match.
   useEffect(() => {
-    setSortCol(tab === 'awaiting' ? 'age' : 'date')
-    setSortDir(tab === 'notstarted' ? 'asc' : 'desc')
+    setSortCol(tab === 'awaiting' ? 'age' : tab === 'progress' && pipeline === 'billing' ? 'queue' : 'date')
+    setSortDir(tab === 'notstarted' || tab === 'po' ? 'asc' : 'desc')
   }, [tab, pipeline])
 
   // Switching pipeline lands on that side's FIRST tab — for COD that is Balance
@@ -731,6 +738,18 @@ export default function BillingPage() {
                 <u>{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length} session{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length === 1 ? '' : 's'}</u>
               </div>
             )}
+            {stageDividers && (i === 0 || billingStage(pageRows[i - 1]).key !== billingStage(r).key) && (() => {
+              const k = billingStage(r).key
+              // Count across the WHOLE tab, not the page — "Needs review · 6"
+              // must say six even when four of them are on the next page.
+              const n = visible.filter(x => billingStage(x).key === k).length
+              return (
+                <div className="c-bday">
+                  <b>{billingStage(r).label}</b><i />
+                  <u>{n} invoice{n === 1 ? '' : 's'}</u>
+                </div>
+              )
+            })()}
             {/* THE COD SWEEP (2026-09-07): every row wears its STAGE now —
                 billingStage carries a COD ladder branch, so a paid session
                 that still owes review no longer looks finished. The bin badge
@@ -792,11 +811,17 @@ export default function BillingPage() {
           </span>
         ))}
 
+        {/* PINNED PAGER (Eli, 2026-09-14). Sticky to the bottom of the
+            viewport while the list scrolls, and it says what is below —
+            "Page 1 of 3 · 16 more" — so a second page is announced where you
+            are looking, not discovered by scrolling past the last row. A
+            single page pins nothing: the count alone, unpinned. */}
         {visible.length > 0 && (
-          <div className="c-bpager">
+          <div className={`c-bpager${pages > 1 ? ' c-bpager-pinned' : ''}`}>
             <span className="c-binfo">
-              {(safePage - 1) * perPage + 1}–
-              {Math.min(safePage * perPage, visible.length)} of {visible.length}
+              {pages > 1
+                ? <>Page <b>{safePage}</b> of <b>{pages}</b> · {(safePage - 1) * perPage + 1}–{Math.min(safePage * perPage, visible.length)} of {visible.length}{visible.length - safePage * perPage > 0 ? <> · <b style={{ color: 'var(--c-st-warm)' }}>{visible.length - safePage * perPage} more</b></> : null}</>
+                : <>{visible.length} of {visible.length}</>}
             </span>
             {pages > 1 && Array.from({ length: pages }, (_, i) => i + 1).map(p => (
               <span key={p} className={`c-bpg${p === safePage ? ' c-on' : ''}`} onClick={() => setPage(p)}>{p}</span>
@@ -809,7 +834,7 @@ export default function BillingPage() {
             ? 'Searching every bucket and both pipelines, closed included — each result shows where it lives. Clear the search to go back.'
             : pipeline === 'cod'
               ? 'COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.'
-              : 'The badge says where each package is; the button is only ever the next real act — Add PO, Download, Mark sent, Mark paid. Drop a QuickBooks PDF straight onto a row to attach it (that also re-queues a Not-approved row). Approving happens in the strip above; a missing PO blocks sending, never approval.'}
+              : 'In progress is a queue: Needs review first, then invoice, approval, then the packages ready to go out. A package waiting on the client\u2019s PO sits in Awaiting PO. The button is only ever the next real act \u2014 Add PO, Download, Mark sent, Mark paid. Drop a QuickBooks PDF straight onto a row to attach it (that also re-queues a Not-approved row). Approving happens in the strip above; a missing PO blocks sending, never approval.'}
         </div>
       </div>
 

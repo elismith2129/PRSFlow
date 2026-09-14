@@ -141,6 +141,24 @@ owner+manager+billing / delete owner; realtime.
 calendar card — one card per room, as any multi-room day (Eli: "leave as separate cards"). The Concord one-off rows (WO-1156) are NOT bundled — they
 carry the share in `rate_daily` and keep working; converting them is a separate SQL.
 
+### Billing hub: Awaiting PO parked, In progress is a queue, the pager is pinned
+
+Eli, after a week on the hub: most invoices sat in Awaiting PO, and Needs-review rows were
+landing on page 2 behind them. Three changes, all billing-side (COD untouched):
+
+- **`po` bucket — "Awaiting PO" tab.** `deriveBucket` takes `awaitingPo`; a billing row at
+  step 3 with no PO (and not `no_po_needed`) parks there — same move as Not started: waiting
+  on someone else leaves the working list. Sorted oldest-approved first (the chase list).
+  The row's button is still Add PO; `billingStage`, `nextAction`, the dashboard tiles
+  (`lib/home.ts` reads stages, not buckets) and the approvals strip are unchanged.
+- **In progress opens in QUEUE order** (`SortCol 'queue'`, `queueRank` over `billingStage`:
+  review → invoice → approval → not approved → approved; date desc inside). Stage dividers
+  ("Needs review · 6", counted across the whole tab, not the page) replace day dividers under
+  this order; clicking Date restores the dated list with day dividers. Supersedes the Sep 3
+  date-desc default for In progress only.
+- **The pager is pinned** when there is more than one page (`.c-bpager-pinned`, sticky
+  bottom) and reads "Page 1 of 3 · 1–15 of 38 · **23 more**".
+
 **Files:** `lib/woBundles.ts` (new), `lib/studios.ts`, `lib/myday.ts`, `lib/woPdf.ts`,
 `components/calendar/WorkOrderPopup.tsx`, `app/(main)/page.tsx`, `app/api/wo-package/route.ts`,
 `supabase/migrations/20260914130000_wo_rate_bundles.sql`,

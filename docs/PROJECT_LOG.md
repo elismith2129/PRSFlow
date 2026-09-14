@@ -513,6 +513,24 @@ reading rack in the meantime.
 **Not done:** the client rate sheet (prs-rate-sheet skill) still carries its own copy of
 the rates. It should read this table, or be regenerated from it — separate.
 
+#### The billing hub's second page
+
+Eli, from a week of use: "while doing everything right and the app doing everything right,
+we have most invoices sitting in awaiting PO… I don't want needs-review invoices sitting on
+2nd+ pages." The cause was structural, not a bug: In progress held steps 0–3 sorted by
+date, and Awaiting PO — the one state where the next act is the CLIENT's — outnumbered
+everything and buried the rows that needed a hand.
+
+Three things, all accepted ("all three"): Awaiting PO parks in its own tab (the Not-started
+move — waiting on someone else leaves the working list); In progress opens as a queue,
+review first, with stage dividers instead of day dividers; the pager pins to the bottom
+and says how many more. Rejected: a hovering "there's another page" message — a thing
+that hovers gets dismissed; and sorting review to the top WITHOUT parking Awaiting PO,
+which fixes page one and leaves a tab that is still mostly waiting-on-client.
+
+**Kept:** clicking Date restores the Sep 3 dated list with its day dividers. The queue is
+the default, not the only order.
+
 #### Process
 
 - **A `git status` through the mount left `.git/index.lock`** and Eli's first push died on

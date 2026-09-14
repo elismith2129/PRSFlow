@@ -124,6 +124,7 @@ export type BucketKey =
   | 'closed'     // written off / voided — the archive for BOTH pipelines
   // Billing
   | 'notstarted' // first day is in the future — parked out of the working list
+  | 'po'         // approved, waiting on the CLIENT's PO — parked (2026-09-14)
   | 'awaiting'   // sent, waiting on the client's money
   // COD
   | 'balance'    // collection was missed. Rare, critical, leads its side.
@@ -142,6 +143,12 @@ export const BILLING_TABS: Bucket[] = [
   // stays in In progress and the date-sorted list stops leading with next
   // month's lockouts. "Defaults to off" = In progress stays the landing tab.
   { key: 'notstarted', label: 'Not started',      pill: 'c-fill-uncon' },
+  // AWAITING PO IS PARKED (Eli, 2026-09-14: "we have most invoices sitting in
+  // awaiting PO… I don't want needs-review invoices sitting on 2nd+ pages").
+  // Same move as Not started: a row waiting on SOMEONE ELSE leaves the working
+  // list. In progress is then only rows that need a hand from us. The row's
+  // button is still Add PO; nothing about the PO flow changes, only the tab.
+  { key: 'po',         label: 'Awaiting PO',      pill: 'c-fill-uncon' },
   { key: 'awaiting',   label: 'Awaiting payment', pill: 'c-fill-uncon' },
   { key: 'paid',       label: 'Paid',             pill: 'c-fill-booked' },
   { key: 'closed',     label: 'Closed',           pill: 'c-fill-dead' },
@@ -471,8 +478,10 @@ export function deriveBucket(args: {
   ended: boolean
   /** Billing only: first day in the future → parked in Not started. */
   notStarted?: boolean
+  /** Billing only: approved and no PO on the work order → parked in Awaiting PO. */
+  awaitingPo?: boolean
 }): BucketKey {
-  const { state, isCod, step, balance, grand, ended, notStarted } = args
+  const { state, isCod, step, balance, grand, ended, notStarted, awaitingPo } = args
   if (state === 'closed') return 'closed'
 
   if (isCod) {
@@ -500,6 +509,10 @@ export function deriveBucket(args: {
   // not being assembled, it just exists. Steps 0–3 with a started session are
   // one package being assembled; the rung shows on the stage badge.
   if (notStarted) return 'notstarted'
+  // Approved and waiting on the client's PO: the package is done, the next
+  // act is theirs. Parked so it cannot bury a Needs-review row (2026-09-14).
+  // Step 2 with no PO is NOT parked — approval is still our act.
+  if (step === 3 && awaitingPo) return 'po'
   return 'progress'
 }
 
@@ -704,6 +717,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
         state, isCod, step, balance: totals.balance, grand: totals.grand,
         ended: ended || anySubmitted,
         notStarted,
+        awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
       }),
       step,
       state,
@@ -822,6 +836,11 @@ export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] 
     if (bucket === 'awaiting') {
       return (b.ageDays ?? 0) - (a.ageDays ?? 0) || stable(a, b)
     }
+    if (bucket === 'po') {
+      // OLDEST approval first — the PO chase list, same logic as Awaiting
+      // payment: the one out longest is the one about to become a problem.
+      return (a.approvedAt ?? '9999').localeCompare(b.approvedAt ?? '9999') || stable(a, b)
+    }
     if (bucket === 'notstarted') {
       // Soonest first — the old Upcoming order: the next session to happen
       // leads the parked list.
@@ -849,7 +868,22 @@ export function sortBucket(rows: InvoiceRow[], bucket: BucketKey): InvoiceRow[] 
  * the divider and the In-progress badge both say so (supersedes the Aug 19
  * started-work-first sub-order for the default view; approved on the mock).
  */
-export type SortCol = 'date' | 'wo' | 'client' | 'status' | 'balance' | 'age'
+export type SortCol = 'date' | 'wo' | 'client' | 'status' | 'balance' | 'age' | 'queue'
+
+/**
+ * THE QUEUE ORDER (Eli, 2026-09-14) — In progress's default. Rows order by
+ * what they need from US, review first, then by date inside each stage. A
+ * Needs-review row can never sink under newer rows at a later stage. This is
+ * the "billing page is always sorted with needs review at the top" ruling; it
+ * supersedes the Sep 3 date-desc default FOR IN PROGRESS ONLY. Clicking Date
+ * still gives the dated list with its day dividers.
+ */
+export const QUEUE_RANK: Partial<Record<StageKey, number>> = {
+  review: 0, invoice: 1, approval: 2, not_approved: 3, approved: 4, po: 5, progress: 6,
+}
+export function queueRank(row: InvoiceRow): number {
+  return QUEUE_RANK[billingStage(row).key] ?? 9
+}
 
 export function sortByColumn(rows: InvoiceRow[], col: SortCol, dir: 'asc' | 'desc'): InvoiceRow[] {
   const flip = dir === 'asc' ? -1 : 1
@@ -861,6 +895,9 @@ export function sortByColumn(rows: InvoiceRow[], col: SortCol, dir: 'asc' | 'des
       case 'status':  return b.step - a.step
       case 'balance': return b.balance - a.balance
       case 'age':     return (b.ageDays ?? -1) - (a.ageDays ?? -1)
+      // Queue: lower rank first (desc is the default direction, so the sign
+      // is flipped here rather than in every caller), date desc inside.
+      case 'queue':   return queueRank(a) - queueRank(b) || (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
       default:        return (b.sessionDate ?? '').localeCompare(a.sessionDate ?? '')
     }
   }

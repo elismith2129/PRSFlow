@@ -118,6 +118,21 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open a test work order → "+ Seed — add multiple days". Tap rooms PRS A, B, C, E, X (each shows its rate from the table; you can edit one). Start and end dates two days apart, times 10 AM–10 PM. Type 6670 in Blanket rate / day. The button reads "Add · 2 days · 10 rows · 2 blanket days". Press it. List view shows two days, each with a Blanket rate strip at $6,670, five rows per day with SHARE totals adding to $6,670.00, and ONE staff line per day (not five). Close WITHOUT saving and reopen: everything is still there — the Seed saves as it goes.',
       },
       {
+        id: 'v128-billing-po-tab', area: 'Billing', device: 'desktop',
+        what: 'Approved invoices with no PO live in an Awaiting PO tab, not In progress',
+        how: 'Billing → the Billing side. There is a new tab, Awaiting PO, between Not started and Awaiting payment, with a count. Open it: every row is Approved with no PO, oldest approval first, and the button on each is Add PO. Go back to In progress: no row there says Awaiting PO any more.',
+      },
+      {
+        id: 'v128-billing-queue', area: 'Billing', device: 'desktop',
+        what: 'In progress opens with Needs review at the top, in named groups',
+        how: 'Billing → In progress. The first heading is "Needs review · N" (if any exist), then "Needs invoice", "Needs approval", "Not approved", "Approved", each with its count — the count is for the whole tab, even if some rows are on page 2. Nothing dated newer should appear above a Needs-review row. Click the Date column header: the list flips to the old dated order with day headings. Click another tab and back: it opens in the queue order again.',
+      },
+      {
+        id: 'v128-billing-pager', area: 'Billing', device: 'desktop',
+        what: 'The page strip stays on screen and says how many more',
+        how: 'Open a tab with more than 15 rows. Scroll the list: the strip at the bottom stays pinned to the screen and reads "Page 1 of N · 1–15 of X · Y more". Click 2 — it updates. On a tab with 15 rows or fewer the strip is not pinned and just shows the count.',
+      },
+      {
         id: 'v128-bundle-pdf', area: 'Billing', device: 'desktop',
         what: 'The PDF prints a whole-building day as ONE line with the rooms named',
         how: 'On a work order with a bundled day, download the work order PDF. The Studio time table shows one line for that day — "PRS ALL", "Paramount — whole building · Studios A, B…", Day, the blanket rate as both Rate and Total. There must be NO per-room dollar amounts for that day. The Studio total at the bottom still equals the blanket rate (plus any OT, which prints as its own room line).',

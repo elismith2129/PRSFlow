@@ -2091,6 +2091,16 @@ select.c-input {
 .c-bact.c-bblock { display: block; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px; font-size: 12px; }
 
 .c-bpager { display: flex; align-items: center; gap: 8px; justify-content: flex-end; padding: 9px 6px 2px; font-size: 11px; }
+/* Pinned when there is more than one page (2026-09-14): sticks to the bottom
+   of the viewport over the list so "Page 1 of 3 · 16 more" is on screen at
+   every scroll position. Own surface so rows don't read through it. */
+.c-bpager-pinned {
+  position: sticky; bottom: 0; z-index: 3;
+  margin: 8px -6px 0; padding: 9px 12px;
+  background: var(--c-srf); box-shadow: var(--c-softsh);
+  border-radius: 12px 12px 0 0;
+}
+.c-bpager .c-binfo b { font-weight: 800; color: var(--c-fg); }
 .c-binfo { margin-right: auto; opacity: .45; font-family: 'DM Mono', ui-monospace, monospace; font-size: 10.5px; }
 .c-bpg { padding: 3px 9px; border-radius: 99px; background: var(--c-wash2); font-size: 10.5px; font-weight: 700; cursor: pointer; opacity: .7; }
 .c-bpg.c-on { background: var(--c-ivory); color: #1b1a17; opacity: 1; }
