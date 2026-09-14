@@ -138,6 +138,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open WO-1184 (or any WO whose client card shows a wrong name). Next to the big name there is a small ✎. Click it, correct the spelling, Save. The card updates. Save the WO. Now check: the calendar card for that session, the Billing hub row, the client in CRM → Clients, and the WO PDF all show the corrected name. If the client had no profile before, CRM → Clients now has one with the corrected name.',
       },
       {
+        id: 'v129-label-anr', area: 'Work order', device: 'desktop',
+        what: 'Picking a label fills in its A&R’s email and phone',
+        how: 'On a new booking (or a WO with the client cleared), search "BMG". The row reads "BMG" with "A&R · Julia Calvo-Junkin" under it — not Julia’s name on its own. Pick it: the card shows BMG as the hero, Julia as the A&R, and her email and phone are filled from her A&R card. Email/Call/Text are live.',
+      },
+      {
         id: 'v129-memo-send', area: 'Memos', device: 'desktop',
         what: 'An owner can send a typed memo and a designed page memo',
         how: 'Rail → Operations → Memos. + New memo. Title, To = Runners, Must acknowledge, Typed note — type two lines, bold one. Preview shows it as the runner will see it. Send. It appears in the sent list as "0 / N". Now + New memo again, Kind = Designed page, choose the file docs/staff/wo-one-sheet-2026-09.html, To = Admin, Send. Open the sent row: the scoreboard lists every admin user as "Hasn’t opened the app" or "Opened".',

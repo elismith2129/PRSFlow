@@ -195,6 +195,28 @@ export function ClientPanel({
       if (value.anr_contact_id) {
         const found = all.find(c => c.id === value.anr_contact_id)
         if (found) { setAnrContact(found); setAnrEmail(found.email || ''); setAnrPhone(found.phone || '') }
+      } else {
+        // NO A&R CHOSEN YET — pick the obvious one (2026-09-14, BMG / Julia).
+        // Choosing the label filled the A&R's NAME (the client row's primary
+        // fname/lname) but never linked the A&R CARD, so her email and phone
+        // stayed blank. The card whose name matches the name already on the
+        // record wins; failing that, a label with exactly one A&R has no
+        // choice to make. Contact details fill only where they are EMPTY, so
+        // an old work order that recorded a different number keeps it.
+        const norm = (x: string) => x.trim().toLowerCase().replace(/\s+/g, ' ')
+        const want = norm(value.client_name || value.ordered_by || '')
+        const byName = want ? anrs.find(c => norm(`${c.fname || ''} ${c.lname || ''}`) === want) : null
+        const pick = byName || (anrs.length === 1 && !want ? anrs[0] : null)
+        if (pick) {
+          const nm = `${pick.fname || ''} ${pick.lname || ''}`.trim()
+          setAnrContact(pick); setAnrQuery(nm); setAnrEmail(pick.email || ''); setAnrPhone(pick.phone || '')
+          onChange({
+            anr_contact_id: pick.id,
+            ...(want ? {} : { client_name: nm, ordered_by: nm }),
+            ...(!value.email && pick.email ? { email: pick.email } : {}),
+            ...(!value.phone && pick.phone ? { phone: pick.phone } : {}),
+          })
+        }
       }
       if (value.anr_admin_contact_id) {
         const found = admins.find(c => c.id === value.anr_admin_contact_id)
@@ -266,11 +288,20 @@ export function ClientPanel({
 
       for (const c of (cd || []) as any[]) {
         const personName = `${c.fname || ''} ${c.lname || ''}`.trim()
-        const displayName = personName || c.name || ''
         const key = `client-${c.id}`
         if (seen.has(key)) continue
         seen.add(key)
-        results.push({ id: c.id, label: displayName, sub: '', isLabel: c.type === 'label', record: c })
+        // A LABEL IS SHOWN AS THE LABEL (2026-09-14, BMG). A label client's
+        // fname/lname are its primary A&R, and this row used to lead with
+        // them — typing "BMG" listed "Julia Calvo-Junkin" with nothing saying
+        // it WAS BMG, beside a second "BMG" row. Label first, A&R underneath.
+        const isLabel = c.type === 'label'
+        results.push({
+          id: c.id,
+          label: isLabel ? (c.name || personName) : (personName || c.name || ''),
+          sub: isLabel && personName ? `A&R · ${personName}` : '',
+          isLabel, record: c,
+        })
       }
 
       for (const ct of (ald || []) as any[]) {

@@ -76,6 +76,12 @@ left the invoice misspelled.
   it to every booking, lead **and work order** linked by `client_id`. Not linked → the name
   is saved as a new profile and this record is linked, so the next booking autofills.
 - `propagateClientRename` now patches `work_orders` (`label` ← label, `client` ← person).
+- **Client search shows a label as the label.** A label client's fname/lname are its primary
+  A&R, and the search row led with them — typing "BMG" listed "Julia Calvo-Junkin" with
+  nothing saying it was BMG, beside a second "BMG" row. Label first, "A&R · name" under it.
+- **Choosing a label auto-links its A&R card.** It filled the A&R's name but never linked
+  the card, so email and phone stayed blank. The A&R whose name matches the record wins;
+  a label with exactly one A&R needs no choice. Contact details fill only where empty.
 
 **Files:** `lib/memos.ts`, `hooks/useMyMemos.ts`, `components/memos/MemoView.tsx`,
 `components/memos/MemoGate.tsx`, `app/(main)/memos/page.tsx`,
