@@ -198,6 +198,8 @@ type StRow = {
   day_count: number | null
   ot_rate: string
   ot_hours: string
+  /** Day rows: hours the day rate buys before OT starts. '' = the 12h default. */
+  included_hours: string
   ot_charge: number | null
   eng_hours: number | null
   eng_rate: string
@@ -478,6 +480,7 @@ function normalizeStRow(d: any): StRow {
     charge, sort_order: d.sort_order ?? 0, day_count: dayCount,
     ot_rate: rowRateType === 'hour' ? (otRateStr || rate) : otRateStr,
     ot_hours: otHoursStr,
+    included_hours: d.included_hours != null ? String(d.included_hours) : '',
     ot_charge: otCharge,
     eng_hours: engHours,
     eng_rate: engRate,
@@ -779,7 +782,7 @@ export function WorkOrderPopup({
         total_hours: monthlyNA ? null : calcHours(from, to),
         rate: '', rate_daily: '', row_rate_type: 'day' as const,
         ot_rate: otRate > 0 ? String(otRate) : '',
-        ot_hours: '0', ot_charge: null, charge: null,
+        ot_hours: '0', ot_charge: null, included_hours: '', charge: null,
         sort_order: maxOrder, day_count: null,
         eng_hours: null, eng_rate: '', eng_charge: null,
         eng_from_time: from, eng_to_time: to,
@@ -1698,10 +1701,13 @@ export function WorkOrderPopup({
             u.ot_rate = rn > 0 ? String(parseFloat((rn / DAY_HOUR_RATIO).toFixed(2))) : u.ot_rate
           }
         }
-        // OT hours auto-derived from times (Total Hrs - 12 when > 12)
-        if ('from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates) {
+        // OT hours auto-derived from times: anything past what the day rate
+        // INCLUDES. Was a hard-coded 12 (WO-1076) — a day rate does not always
+        // buy twelve hours, and a 9-6 day or a 4-hour event billed its overrun
+        // for free.
+        if ('from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates || 'included_hours' in updates) {
           const actual = u.total_hours ?? 0
-          u.ot_hours = String(Math.max(0, parseFloat(actual.toFixed(2)) - 12))
+          u.ot_hours = String(Math.max(0, parseFloat((actual - includedHoursFor(u)).toFixed(2))))
         }
       } else {
         // Hourly: charge = total_hours × rate
@@ -2062,6 +2068,27 @@ export function WorkOrderPopup({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showExpenses, expenses])
 
+  /**
+   * WHAT A DAY RATE BUYS, IN HOURS, when nobody has said otherwise.
+   * The normal Paramount lockout. Overridable per day since 2026-09-14 — see
+   * includedHoursFor and migration 20260914120000.
+   */
+  const DEFAULT_INCLUDED_HOURS = 12
+
+  /**
+   * Hours THIS day's rate includes before overtime starts. The single source —
+   * the OT derivation, the "agreed with client" line and the day sheet all read
+   * it, so they cannot disagree about what the client actually agreed to.
+   *
+   * Was a hard-coded 12 in two places (WO-1076): a 9-6 day billed its tenth
+   * hour free, and the sheet's 'Agreed with client: 12h lockout' was a literal
+   * string that never read anything.
+   */
+  const includedHoursFor = (r: Pick<StRow, 'included_hours'>): number => {
+    const n = parseFloat((r.included_hours ?? '').replace(/[^0-9.]/g, ''))
+    return !isNaN(n) && n > 0 ? n : DEFAULT_INCLUDED_HOURS
+  }
+
   // ── Add studio time row ────────────────────────────────────────────────────
 
   /**
@@ -2127,6 +2154,10 @@ export function WorkOrderPopup({
       ot_rate: last?.ot_rate || '',
       ot_hours: '0',
       ot_charge: null,
+      // Inherit the day's agreement from the row above — a 4-hour event booked
+      // across three days is three rows of the same deal, not one exception and
+      // two accidents.
+      included_hours: last?.included_hours || '',
       charge,
       sort_order: maxOrder + 1 + i,
       day_count: null,
@@ -2276,7 +2307,7 @@ export function WorkOrderPopup({
       studio: '', location: '', eng_name: '', date,
       session_info: '', from_time: '', to_time: '', total_hours: null,
       rate: '', rate_daily: '', row_rate_type: 'hour',
-      ot_rate: '', ot_hours: '', ot_charge: null, charge: null,
+      ot_rate: '', ot_hours: '', ot_charge: null, included_hours: '', charge: null,
       sort_order: maxOrder + 1, day_count: null,
       // Follow the day's studio window — the same "staff times follow the
       // studio times until you change them" rule the sheet already states.
@@ -2944,6 +2975,9 @@ export function WorkOrderPopup({
       day_count: r.day_count ?? null,
       ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
       ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
+      // NULL = the 12h default, so a normal lockout stores nothing (migration
+      // 20260914120000). Only a real exception takes up a value.
+      included_hours: r.included_hours ? parseFloat(r.included_hours.replace(/[^0-9.]/g, '')) || null : null,
       ot_charge: r.ot_charge ?? null,
       eng_hours: r.eng_hours ?? null,
       eng_rate: r.eng_rate || null,
@@ -3097,6 +3131,7 @@ export function WorkOrderPopup({
           day_count: r.day_count ?? null,
           ot_rate: r.ot_rate ? parseFloat(r.ot_rate.replace(/[^0-9.]/g, '')) || null : null,
           ot_hours: r.ot_hours ? parseFloat(r.ot_hours) || null : null,
+          included_hours: r.included_hours ? parseFloat(r.included_hours.replace(/[^0-9.]/g, '')) || null : null,
           ot_charge: r.ot_charge ?? null,
           eng_hours: r.eng_hours ?? null,
           eng_rate: r.eng_rate || null,
@@ -6546,8 +6581,10 @@ export function WorkOrderPopup({
             : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
           const dayLocked = runner && sheetRows.length > 0 && sheetRows.every(r => r.admin_locked)
           const isDayRate = sheetStudioRows.some(r => r.row_rate_type === 'day')
+          // READS THE ROW NOW. This was the literal string '12h lockout' and
+          // said so on a 9-hour day and a 4-hour event alike (WO-1076).
           const agreedLabel = isDayRate
-            ? '12h lockout'
+            ? `${includedHoursFor(sheetStudioRows.find(r => r.row_rate_type === 'day') ?? { included_hours: '' })}h included`
             : (booking.from_time && booking.to_time) ? `${booking.from_time} – ${booking.to_time}` : null
           const fldK: React.CSSProperties = { fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }
           const hrsChip: React.CSSProperties = { fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 12, fontWeight: 700, color: 'var(--c-fg-2)', background: 'var(--c-wash2)', borderRadius: 99, padding: '4px 11px', whiteSpace: 'nowrap' }
@@ -6792,6 +6829,64 @@ export function WorkOrderPopup({
                                   : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="0" className="c-tin c-tin-mono" style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30, width: '100%' }} />}
                               </div>
                             </div>
+
+                            {/* HOURS INCLUDED + OT RATE, BESIDE THE DAY RATE
+                                (Eli, 2026-09-14: "where you put in the day rate
+                                should have the ot rate there, inputable. right
+                                now its way at the bottom. doesn't make sense to
+                                my staff").
+
+                                The three numbers are ONE deal — "$3,150 buys 12
+                                hours, then $325/hr" — and they were split across
+                                the sheet, with the OT rate read-only in a BILLING
+                                summary at the bottom. Someone setting up a
+                                4-hour event had no way to say so and no reason
+                                to scroll for the half of the deal they could not
+                                edit anyway.
+
+                                Day rows only: an hourly row has no overtime
+                                (WO-1121), so neither field means anything there. */}
+                            {r.row_rate_type === 'day' && (
+                              <>
+                                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 112, flexShrink: 0 }}>
+                                  <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>Hours included</div>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                    <input
+                                      value={r.included_hours}
+                                      onChange={e => updateStRow(r.id, { included_hours: e.target.value })}
+                                      // The placeholder IS the default — blank
+                                      // means 12, so a normal lockout is typed
+                                      // nowhere and an event is typed once.
+                                      placeholder={String(DEFAULT_INCLUDED_HOURS)}
+                                      className="c-tin c-tin-mono"
+                                      style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30, width: '100%' }}
+                                    />
+                                    <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, opacity: 0.45 }}>h</span>
+                                  </div>
+                                </div>
+                                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 128, flexShrink: 0 }}>
+                                  <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>OT rate / hr</div>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+                                    <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 17, fontWeight: 600, opacity: 0.45 }}>$</span>
+                                    <input
+                                      value={r.ot_rate}
+                                      onChange={e => updateStRow(r.id, { ot_rate: e.target.value })}
+                                      placeholder="0"
+                                      className="c-tin c-tin-mono"
+                                      style={{ fontSize: 17, fontWeight: 600, padding: 0, minHeight: 30, width: '100%' }}
+                                    />
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {/* The deal in one sentence, under the three fields that
+                            make it. Cheap to render, and it is the line someone
+                            reads back to a client. */}
+                        {r.row_rate_type === 'day' && !runner && (
+                          <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 6 }}>
+                            {includedHoursFor(r)}h included, then ${(parseFloat((r.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0).toFixed(0)}/hr overtime.
                           </div>
                         )}
                         {/* AM/PM tripwire (Eli, 2026-08-16): a wrong meridiem
