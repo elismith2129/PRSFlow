@@ -174,7 +174,10 @@ export default function DashboardPage() {
     })
     setMyDay(dash)
   }, [dutyRole, briefingViewer])
-  useEffect(() => { loadMyDay() }, [loadMyDay])
+  // dashDataVersion (the page's bookings channel) is a dep on purpose: the
+  // missing-WO and roomless alarms inside loadMyDayDashboard read bookings, and
+  // an alarm that only refreshes when a duty is ticked is not live (2026-09-14).
+  useEffect(() => { loadMyDay() }, [loadMyDay, dashDataVersion])
   useEffect(() => {
     const ch = supabase
       .channel('myday-dashboard')

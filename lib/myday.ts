@@ -33,6 +33,7 @@ import { dbResult } from '@/lib/db'
 import { getLocalToday } from '@/lib/time'
 import { computeWoTotals } from '@/lib/woTotals'
 import { bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
+import { isCalendarRoom } from '@/lib/studios'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -609,6 +610,19 @@ export type NeedsWoItem = {
   artist: string | null
 }
 
+/** A booking that matches NO calendar column (see fetchRoomlessQueue). */
+export type RoomlessItem = {
+  bookingId: string
+  date: string
+  location: string
+  studio: string
+  client: string
+  artist: string | null
+  status: string
+  /** WO-#### when the booking has a work order — the handle people search by. */
+  woNumber: string | null
+}
+
 export type BalanceItem = {
   workOrderId: string
   bookingId: string | null
@@ -801,6 +815,69 @@ export async function fetchNeedsWoQueue(opts?: {
       client: b.label || b.client_name || 'Unknown',
       artist: b.artist ?? null,
     }))
+}
+
+/**
+ * Bookings that render NOWHERE (2026-09-14).
+ *
+ * A booking whose (location, studio) is not a real calendar column saves, gets
+ * a work order, and appears in no grid — silent, and only findable by staring
+ * at a wall display. Four Concord sessions sat like that until a billing query
+ * tripped over them (2026-09-10). The entry points that made them are shut
+ * (v1.27.0: ClientProfile's Start Booking, free-text room boxes), but shutting
+ * doors is not the same as an alarm: this is the alarm, on the missing-WO
+ * precedent — an anomaly report, not a to-do list. Any count here means a
+ * write path exists that we have not found.
+ *
+ * Window is wide on purpose (−90 / +180 days): the Concord four were in the
+ * PAST, and a future roomless booking is the one that matters most — nobody
+ * will see it coming. Imported history is excluded (provenance, not state);
+ * cancelled is NOT excluded — a cancelled roomless booking still bills, and
+ * still says a bad path exists.
+ */
+export async function fetchRoomlessQueue(opts?: {
+  fromDate?: string
+  toDate?: string
+}): Promise<RoomlessItem[]> {
+  const today = getLocalToday()
+  const from = opts?.fromDate ?? shiftDate(today, -90)
+  const to = opts?.toDate ?? shiftDate(today, 180)
+
+  const { data: bookings, error } = await supabase
+    .from('bookings')
+    .select('id, status, start_date, location, studio, client_name, label, artist, work_order_id, imported_at')
+    .gte('start_date', from)
+    .lte('start_date', to)
+    .order('start_date')
+  if (!dbResult('Checking bookings for missing rooms', error)) return []
+
+  const bad = (bookings ?? [])
+    .filter(b => !(b as any).imported_at)
+    .filter(b => !isCalendarRoom(b.location, b.studio))
+  if (bad.length === 0) return []
+
+  // The WO number is how a person will find and fix it — pull it when there is one.
+  const woIds = bad.map(b => (b as any).work_order_id).filter(Boolean)
+  const woNum = new Map<string, string>()
+  if (woIds.length) {
+    const { data: wos, error: woErr } = await supabase
+      .from('work_orders')
+      .select('id, wo_number')
+      .in('id', woIds)
+    if (!dbResult('Loading work orders for roomless bookings', woErr)) return []
+    for (const w of wos ?? []) if (w.wo_number) woNum.set(w.id, w.wo_number)
+  }
+
+  return bad.map(b => ({
+    bookingId: b.id,
+    date: b.start_date,
+    location: b.location ?? '',
+    studio: b.studio ?? '',
+    client: b.label || b.client_name || 'Unknown',
+    artist: b.artist ?? null,
+    status: (b as any).status ?? '',
+    woNumber: woNum.get((b as any).work_order_id) ?? null,
+  }))
 }
 
 /**
@@ -1252,6 +1329,8 @@ export type BriefingInput = {
   duties: MyDayDuty[]
   entries: MyDayEntry[]
   needsWo: NeedsWoItem[]
+  /** Optional so older callers/tests compose without it. */
+  roomless?: RoomlessItem[]
   balances: BalanceItem[]
   today: string
   /** display_name per role, for "Fernando cleared…" rather than "Manager cleared…". */
@@ -1271,6 +1350,7 @@ const money0 = (n: number) =>
  */
 export function composeBriefing(input: BriefingInput): Briefing {
   const { viewer, duties, entries, needsWo, balances, today, names } = input
+  const roomless = input.roomless ?? []
   const yesterday = shiftDate(today, -1)
 
   const roles: MyDayRole[] =
@@ -1345,6 +1425,20 @@ export function composeBriefing(input: BriefingInput): Briefing {
       color: C_HOT,
       alert: true,
       text: `${needsWo.length} session${needsWo.length === 1 ? '' : 's'} missing a work order — auto-create failed, open ${needsWo.length === 1 ? 'it' : 'each one'} to retry`,
+    })
+  }
+
+  // ── RED — a booking with no calendar column (2026-09-14). Same class as
+  // the missing-WO alarm: an anomaly, not queue pressure. Names the handles
+  // (WO number, else client · date) because "4 bookings" is not actionable.
+  if (roomless.length > 0) {
+    const handles = roomless.slice(0, 3).map(r =>
+      r.woNumber ? `${r.woNumber} (${r.client}, ${r.date})` : `${r.client} · ${r.date}`)
+    const more = roomless.length > 3 ? ` +${roomless.length - 3} more` : ''
+    bullets.push({
+      color: C_HOT,
+      alert: true,
+      text: `${roomless.length} booking${roomless.length === 1 ? '' : 's'} with no room — on no calendar, invisible to runners: ${handles.join(', ')}${more}. Open ${roomless.length === 1 ? 'it' : 'each'} and set the studio.`,
     })
   }
 
@@ -1470,6 +1564,7 @@ export type MyDayDashboard = {
   progress: string
   briefing: Briefing
   needsWo: NeedsWoItem[]
+  roomless: RoomlessItem[]
   balances: BalanceItem[]
   entries: MyDayEntry[]
   duties: MyDayDuty[]
@@ -1496,9 +1591,10 @@ export async function loadMyDayDashboard(opts: {
     shiftDate(date, -BACKLOG_LOOKBACK_DAYS),
     date,
   )) ?? []
-  const [needsWo, balances] = await Promise.all([
+  const [needsWo, balances, roomless] = await Promise.all([
     fetchNeedsWoQueue(),
     fetchBalancesQueue(),
+    fetchRoomlessQueue(),
   ])
 
   const roleDuties = duties.filter(d => d.role === opts.role)
@@ -1512,11 +1608,13 @@ export async function loadMyDayDashboard(opts: {
       duties,
       entries,
       needsWo,
+      roomless,
       balances,
       today: date,
       names: opts.names,
     }),
     needsWo,
+    roomless,
     balances,
     entries,
     duties,

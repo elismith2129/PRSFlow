@@ -42,3 +42,20 @@ export function combineLocation(venue: string, studio: string): string {
   if (!studio) return venue
   return `${venue} · ${studio}`
 }
+
+/**
+ * Does this (venue, room) pair land in a calendar column? The grid matches
+ * `bookings.location === venue && bookings.studio === room` EXACTLY (CLAUDE.md
+ * → "Studio names: ONE vocabulary"). A booking that fails this test saves fine,
+ * gets a work order, and renders NOWHERE — four Concord sessions sat like that
+ * until a billing query tripped over them (2026-09-10). The roomless alarm in
+ * lib/myday.ts keys on this predicate (scripts/diagnose-wo.mjs, plain Node,
+ * carries its own copy of the room list — keep them in step).
+ */
+export function isCalendarRoom(venue: string | null | undefined, room: string | null | undefined): boolean {
+  const v = String(venue ?? '').trim()
+  const r = String(room ?? '').trim()
+  if (!v || !r) return false
+  const loc = STUDIO_LOCATIONS.find(l => l.name === v)
+  return !!loc && loc.rooms.includes(r)
+}
