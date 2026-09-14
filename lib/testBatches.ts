@@ -55,6 +55,61 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-14-2026-collect-blanket',
+    title: 'COLLECT display, roomless alarm, whole-building rate',
+    version: 'v1.28.0',
+    date: 'Sep 14, 2026',
+    intro:
+      'Three things. The COLLECT box on payments (test it on a phone as a runner would), the dashboard alarm for a booking with no room, and the whole-building rate on a multi-room day. Use a work order you can safely edit; undo any test bundle or test payment before you leave.',
+    items: [
+      {
+        id: 'v128-collect-both', area: 'Work order', device: 'phone',
+        what: 'Both amounts are visible, same size, BEFORE any payment type is picked',
+        how: 'Open a COD work order that still has a balance (runner app or admin). Look at the top of the Payments section. You should see a COLLECT box with two big red numbers: the cash/Zelle/check amount, and the card amount which is 3% more. Neither should be smaller or greyer than the other. There should be NO "If paying by card" line under Balance Due any more.',
+      },
+      {
+        id: 'v128-collect-fill', area: 'Work order', device: 'phone',
+        what: 'Picking a payment type fills in the matching amount',
+        how: 'Press "+ Add payment" and open the type dropdown. Each type shows an amount next to it (card types show the higher one). Pick Credit Card: the amount box fills with the card amount and a line under it says "includes $x card fee". Change the type to Zelle: the amount changes to the cash amount and the fee line disappears. Do NOT save.',
+      },
+      {
+        id: 'v128-collect-typed', area: 'Work order', device: 'desktop',
+        what: 'A typed amount is left alone when the type changes',
+        how: 'On a new payment row, type 100 in the amount first, THEN pick Credit Card. The amount must stay 100.00 (fee line says includes $2.91). Now pick Cash — still 100.00. Remove the row.',
+      },
+      {
+        id: 'v128-collect-history', area: 'Work order', device: 'desktop',
+        what: 'Fees already collected show as history, not in the collect number',
+        how: 'Open a COD work order that already has a saved card payment. Under the two numbers in the COLLECT box there is an "Already collected" line with the total paid and "card fees $x". The card fee from that old payment must NOT be added into the two collect numbers — the cash number should equal Balance Due exactly.',
+      },
+      {
+        id: 'v128-roomless-flo', area: 'Dashboard', device: 'desktop',
+        what: 'A booking with no room is called out on the dashboard by WO number',
+        how: 'Ask Eli whether any roomless booking exists right now (the SQL in the session notes lists them). If one does, the dashboard’s Flo line shows a RED bullet: "1 booking with no room — on no calendar… WO-#### (client, date). Open it and set the studio." If none exist, no such line appears. Not testable by creating one — the app no longer lets you.',
+      },
+      {
+        id: 'v128-bundle-toggle', area: 'Work order', device: 'desktop',
+        what: 'A multi-room day can be switched to one whole-building price',
+        how: 'Open a work order and switch to LIST view. Find (or make) a day with two or more room rows. On the first row of that day there is a small WHOLE BUILDING button. Press it: a Rate / day box appears. Type 6670 and tab out. The readout shows the room count, "% off rack" and "shares $6,670.00 ✓". Each room row’s Total now says SHARE with a number smaller than its rate, and the Day/Hr toggle on those rows is frozen. All the shares add up to exactly $6,670.00 and Studio Total reflects it.',
+      },
+      {
+        id: 'v128-bundle-rack', area: 'Work order', device: 'desktop',
+        what: 'The rate column stays the room’s normal rate, and OT bills at that rate',
+        how: 'On a bundled day, the Rate column still shows each room’s own day rate (e.g. $1,950) — it is NOT replaced by the share. Extend one room’s end time past its included hours so it gets OT: the OT charge uses the room’s rate ÷ 10, not the share. Turn WHOLE BUILDING off: every room goes back to its own rate as its Total.',
+      },
+      {
+        id: 'v128-bundle-save', area: 'Work order', device: 'desktop',
+        what: 'A whole-building day survives Save and reopen, and the card reads it',
+        how: 'Set up a bundled day, Save, close, reopen. The list view shows the WHOLE BUILDING button on with the same rate and the same shares; the Close button must NOT ask about unsaved changes if you touched nothing. Switch to CARDS view: the day card reads "Whole building $6,670/day". Open the day sheet: Billing shows "Whole building · one price" with the rate, then each room’s share. Clean up: turn it off and Save.',
+      },
+      {
+        id: 'v128-bundle-pdf', area: 'Billing', device: 'desktop',
+        what: 'The PDF prints a whole-building day as ONE line with the rooms named',
+        how: 'On a work order with a bundled day, download the work order PDF. The Studio time table shows one line for that day — "PRS ALL", "Paramount — whole building · Studios A, B…", Day, the blanket rate as both Rate and Total. There must be NO per-room dollar amounts for that day. The Studio total at the bottom still equals the blanket rate (plus any OT, which prints as its own room line).',
+      },
+    ],
+  },
+  {
     id: 'sep-14-2026-billing-math',
     title: 'Billing maths, cancelled sessions, and adding days',
     version: 'v1.27.0',

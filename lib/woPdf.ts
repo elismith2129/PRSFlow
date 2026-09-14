@@ -65,7 +65,7 @@ function winAnsiSafe(s: string): string {
 }
 import { calcHours } from '@/lib/time'
 import { engChargeForRow } from '@/lib/woTotals'
-import { roomCode } from '@/lib/studios'
+import { roomCode, STUDIO_SHORT } from '@/lib/studios'
 
 export type WoPdfRow = Record<string, any>
 
@@ -77,6 +77,9 @@ export type WoPdfInput = {
   totals: { studio: number; engineer: number; rentals: number; cardFees: number; subtotal: number; discount: number; grand: number; paid: number; balance: number }
   /** What the discount is CALLED on the client's invoice, e.g. "Cancellation — 50% kill fee". */
   discountLabel?: string | null
+  /** Whole-building blanket rates (wo_rate_bundles). RULING 3: the client sees
+   *  ONE line per bundled day, rooms named, never the per-room allocation. */
+  bundles?: { id: string; date: string; amount: number | string | null; label?: string | null }[]
   /**
    * BLANK FORM MODE (ruling 2026-08-12). Draws the same document with every
    * value empty and a writable baseline under each cell — the paper work order,
@@ -492,6 +495,7 @@ const INTERNAL_ONLY = [
 /** Build the work order as a standalone PDF. Returns the raw bytes. */
 export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array> {
   const { studioRows, rentalRows, paymentRows, totals, discountLabel, blank = false } = input
+  const bundleById = new Map((input.bundles ?? []).map(b => [b.id, b]))
 
   const wo: Record<string, any> = { ...input.wo }
   for (const key of INTERNAL_ONLY) delete wo[key]
@@ -610,6 +614,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   if (blank) {
     for (let i = 0; i < 10; i++) stRows.push(new Array(stCols.length).fill(''))
   } else {
+    const emittedBundles = new Set<string>()
     studioRows.forEach(r => {
       // A standalone staff row carries no studio — on screen it renders as the
       // engineer sub-row ALONE, with no studio line above it. Same here.
@@ -617,8 +622,49 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
       const isDayRow = r.row_rate_type === 'day'
       const rowTotal = num(r.charge) + num(r.ot_charge)
       const rowHrs = r.total_hours ?? calcHours(r.from_time || '', r.to_time || '')
+      const bundle = !isEngOnly && r.bundle_id ? bundleById.get(r.bundle_id) : undefined
 
-      if (!isEngOnly) {
+      if (bundle) {
+        // ── WHOLE-BUILDING DAY (lib/woBundles; ruling 3, 2026-09-03) ──────
+        // One line for the day at the blanket price, rooms NAMED and UNPRICED.
+        // The per-room shares in `charge` are internal and never print; the
+        // totals footer still sums them, which equals the blanket by the
+        // allocation invariant. Overtime is per room and prices off RACK, so
+        // a room that ran over gets its own line under the day.
+        if (!emittedBundles.has(bundle.id)) {
+          emittedBundles.add(bundle.id)
+          const members = studioRows.filter(m => m.bundle_id === bundle.id && String(m.studio || '').trim())
+          const venue = String(r.location || wo.location || '').trim()
+          const rooms = members.map(m => String(m.studio).trim()).join(', ')
+          const same = (k: string) => new Set(members.map(m => String(m[k] ?? ''))).size === 1 ? String(members[0][k] ?? '') : ''
+          const hrs = same('from_time') && same('to_time') ? calcHours(same('from_time'), same('to_time')) : null
+          const label = String(bundle.label || '').trim() || `${venue || 'Studio'} — whole building`
+          stRows.push([
+            `${STUDIO_SHORT[venue] || venue || ''} ALL`.trim(),
+            pdfDate(r.date),
+            `${label} · Studios ${rooms}${r.session_info ? ` · ${r.session_info}` : ''}`,
+            same('from_time'),
+            same('to_time'),
+            hrs != null ? String(hrs) : '',
+            'Day',
+            money(num(bundle.amount)),
+            '', '', '',
+            money(num(bundle.amount)),
+          ])
+        }
+        if (num(r.ot_charge) > 0) {
+          stRows.push([
+            roomCode(r.studio, r.location || wo.location),
+            pdfDate(r.date),
+            'Overtime',
+            '', '', '', '', '',
+            r.ot_hours ? String(r.ot_hours) : '',
+            r.ot_rate ? String(r.ot_rate) : '',
+            cash(r.ot_charge),
+            money(num(r.ot_charge)),
+          ])
+        }
+      } else if (!isEngOnly) {
         stRows.push([
           // "PRS A", never a bare "A" — every venue has a Studio A, and this
           // page is read months later by someone who was not there. A row's own
@@ -666,7 +712,9 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
           '', '', '',
           engCharge ? money(engCharge) : '',
         ]
-        if (isEngOnly) { stRows.push(sub) } else { stSubs[stRows.length - 1] = [sub] }
+        // APPENDED, not assigned (2026-09-14): a whole-building day prints as
+        // one line, so several rooms' staff lines hang under the same row.
+        if (isEngOnly) { stRows.push(sub) } else { (stSubs[stRows.length - 1] ??= []).push(sub) }
       }
     })
   }

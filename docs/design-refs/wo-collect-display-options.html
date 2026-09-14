@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — The COLLECT display: both numbers, always, before any selection</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  THE COLLECT DISPLAY (designed 2026-09-1x, mocked 2026-09-14, NOT YET BUILT).
+
+  ── THE FAILURE ─────────────────────────────────────────────────────────────
+
+  A runner reads "Balance Due $180.00", quotes it to the client, runs $180 on
+  the merchant terminal, THEN picks Credit Card on the payment row. The row
+  derives the 3% slice out of the $180 that was charged (cardFeeOfCharged), so
+  the base that actually reached the studio is $174.76 — we ate $5.24.
+
+  The bug is TIME. Balance Due is on screen from the start; "If paying by card
+  (incl. 3%)" sits one line under it in the same colour, and the card fee chip
+  only appears AFTER the method is chosen. Two numbers, two moments. A runner
+  acts on the first one they see.
+
+  ── THE RULE ────────────────────────────────────────────────────────────────
+
+  Never show one without the other. Both amounts, equal weight, BEFORE any
+  selection. Then the method pick fills the matching amount — no typing, no
+  desk math, no "which number was it".
+
+      COLLECT
+        $180.00   cash · Zelle · check
+        $185.40   card (incl. 3% fee)
+
+  Fees already collected (the 3% on a deposit) show separately as HISTORY, so
+  a later payment for OT clearly carries its own 3%.
+
+  ── WHAT DOES NOT CHANGE ────────────────────────────────────────────────────
+
+  The 3% attaches to each PAYMENT, never the invoice (Eli, 2026-09-10 —
+  clients pay in increments and OT lands after the fact).
+  payment_rows.fee_amount stays; cardFeeOfCharged / cardTotalForBase stay;
+  computeWoTotals stays. This is a DISPLAY + PRE-FILL change. No migration.
+
+  Where it lives: WorkOrderPopup, both modes. Runner mode (mode="runner") is
+  the surface that matters — "runners are…not thoughtful" — but the office
+  collects at the desk too, and one component means one behaviour.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1060px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:800px;line-height:1.65;margin-bottom:8px}
+.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:36px 0 4px;letter-spacing:-.01em}
+h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:800px;line-height:1.6;margin-bottom:14px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11px;opacity:.62;margin-bottom:12px;line-height:1.62;max-width:600px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.bad{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--hot);color:#fff;padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.note{font-size:10.5px;opacity:.55;margin-top:12px;line-height:1.65;max-width:840px}
+.cmp{border-left:2px solid var(--warm);padding-left:12px;margin:10px 0 20px;
+  font-size:11.5px;color:var(--fg2);line-height:1.6;max-width:840px}
+.cmp b{color:var(--warm)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:start}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* the phone-width runner card */
+.wo{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 15px;max-width:360px}
+.wolab{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:10px}
+.row2{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+.row2 .v{font-family:'DM Mono',ui-monospace,monospace}
+.row2.b .v,.row2.b .l{font-weight:700;font-size:13px}
+.rule{height:1px;background:var(--wash2);margin:7px 0}
+.hot{color:var(--hot)}
+.ok{color:var(--booked)}
+.dim{color:var(--fg3)}
+.small{font-size:10px;color:var(--fg2)}
+
+/* COLLECT block */
+.collect{background:var(--wash);border-radius:12px;padding:10px 12px;margin:8px 0 12px}
+.collect .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px;display:flex;justify-content:space-between}
+.cline{display:flex;align-items:baseline;gap:10px;padding:4px 0}
+.cline .amt{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em;color:var(--hot);min-width:96px}
+.cline .how{font-size:11px;color:var(--fg2)}
+.cline .how b{color:var(--fg);font-weight:700}
+.cline.pick{background:var(--wash2);border-radius:9px;margin:0 -6px;padding:4px 6px}
+.hist{font-size:10px;color:var(--fg3);margin-top:6px;padding-top:6px;border-top:1px solid var(--wash2);line-height:1.5}
+
+/* tiles variant */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 12px}
+.tile{background:var(--wash);border-radius:12px;padding:10px 12px;text-align:center}
+.tile .amt{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em;color:var(--hot)}
+.tile .how{font-size:10px;color:var(--fg2);margin-top:2px}
+.tile.pick{outline:2px solid var(--fg);outline-offset:-2px}
+
+/* payment row */
+.prow{display:grid;grid-template-columns:118px 1fr 18px;gap:8px;align-items:center;background:var(--wash);border-radius:12px;padding:8px 10px;margin-top:6px}
+.sel{background:var(--wash2);border-radius:8px;padding:6px 9px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center}
+.sel .car{color:var(--fg3);font-size:9px}
+.sel.empty{color:var(--fg3)}
+.inp{background:var(--wash2);border-radius:8px;padding:6px 9px;font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;text-align:right}
+.inp.ph{color:var(--fg3);font-weight:400}
+.feechip{grid-column:1/-1;font-size:10px;color:var(--fg2)}
+.feechip u{color:var(--fg3);margin-left:6px;cursor:pointer}
+.x{color:var(--fg3);text-align:center;font-size:14px}
+.add{font-size:10px;color:var(--fg2);margin-top:8px}
+.opts{background:var(--srf);box-shadow:var(--softsh);border-radius:10px;margin-top:5px;overflow:hidden;max-width:220px}
+.opts div{padding:7px 11px;font-size:11.5px;display:flex;justify-content:space-between}
+.opts div + div{border-top:1px solid var(--wash)}
+.opts div span{font-family:'DM Mono',ui-monospace,monospace;color:var(--fg3)}
+.opts div.on{background:var(--wash2);font-weight:700}
+
+/* today — the failure */
+.tl{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.t{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<h1 class="arch">The COLLECT display</h1>
+<p class="lede">
+  A runner reads <b>Balance Due $180.00</b>, quotes it, runs $180 on the terminal, <i>then</i> picks
+  Credit Card — and the studio eats $5.24. The bug is that the cash number and the card number
+  appear at <b>different times</b>. Fix: never show one without the other. Both amounts, equal
+  weight, before anything is selected; then the method pick <b>fills the matching amount</b>.
+</p>
+<div class="cmp">
+  <b>Nothing about the money model changes.</b> The 3% stays attached to each <i>payment</i>
+  (<code>payment_rows.fee_amount</code>, <code>cardFeeOfCharged</code>), never to the invoice —
+  deposits, OT after the fact and split payments all keep working exactly as today. This is a
+  display and a pre-fill. No migration.
+</div>
+
+<h2><span class="n">0</span>Today — why $180 gets run on the terminal</h2>
+<p class="sub">Same work order, two moments. Studio $680, a $500 deposit already taken by card.</p>
+<div class="tl">
+  <div class="wo">
+    <div class="t">Moment 1 · runner reads the totals</div>
+    <div class="row2"><span>Grand Total</span><span class="v">$695.00</span></div>
+    <div class="row2"><span>Total Paid</span><span class="v ok">$515.00</span></div>
+    <div class="row2 b"><span class="l hot">Balance Due</span><span class="v hot">$180.00</span></div>
+    <div class="row2"><span class="small">If paying by card (incl. 3%)</span><span class="v hot" style="font-size:11px">$185.40</span></div>
+    <p class="note">Bold red $180 is the number that gets read aloud. The $185.40 is smaller, one line down, and reads like a footnote.</p>
+  </div>
+  <div class="wo">
+    <div class="t">Moment 2 · after picking Credit Card and typing $180</div>
+    <div class="prow">
+      <div class="sel">Credit Card <span class="car">▾</span></div>
+      <div class="inp">180.00</div><div class="x">×</div>
+      <div class="feechip">includes $5.24 card fee (3%) <u>waive</u></div>
+    </div>
+    <div class="rule"></div>
+    <div class="row2 b"><span class="l hot">Balance Due</span><span class="v hot">$5.24</span></div>
+    <p class="note">Correct arithmetic, wrong outcome: the client has left, $5.24 is still owed, and it will never be collected. The fee did its job — on the wrong charged amount.</p>
+  </div>
+</div>
+
+<h2><span class="n">A</span>Stacked COLLECT block <span class="rec">Recommended</span></h2>
+<p class="sub">
+  Sits <b>above</b> the payment rows, replacing the “If paying by card” line under Balance Due.
+  Two lines, same size, same red, same weight. The runner cannot read one without the other.
+  Picking a method highlights its line and fills the amount on the new payment row.
+</p>
+<div class="grid3">
+  <div>
+    <div class="oh">Before any selection</div>
+    <div class="wo">
+      <div class="wolab">Payments</div>
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cline"><span class="amt">$180.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+        <div class="cline"><span class="amt">$185.40</span><span class="how"><b>card</b> · incl. 3% fee $5.40</span></div>
+        <div class="hist">Already collected: $515.00 (deposit, card · includes $15.00 fee)</div>
+      </div>
+      <div class="prow">
+        <div class="sel empty">— type — <span class="car">▾</span></div>
+        <div class="inp ph">0.00</div><div class="x">×</div>
+      </div>
+      <div class="add">+ Add payment</div>
+    </div>
+  </div>
+  <div>
+    <div class="oh">Picks Credit Card</div>
+    <div class="wo">
+      <div class="wolab">Payments</div>
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cline"><span class="amt dim" style="color:var(--fg3)">$180.00</span><span class="how">cash · Zelle · check</span></div>
+        <div class="cline pick"><span class="amt">$185.40</span><span class="how"><b>card</b> · incl. 3% fee $5.40</span></div>
+        <div class="hist">Already collected: $515.00 (deposit, card · includes $15.00 fee)</div>
+      </div>
+      <div class="prow">
+        <div class="sel">Credit Card <span class="car">▾</span></div>
+        <div class="inp">185.40</div><div class="x">×</div>
+        <div class="feechip">includes $5.40 card fee (3%) <u>waive</u></div>
+      </div>
+      <div class="add">+ Add payment</div>
+      <p class="note">Amount pre-filled to the card line. Still editable — a partial card payment is typed over it and the fee re-derives from what was charged, exactly as today.</p>
+    </div>
+  </div>
+  <div>
+    <div class="oh">Picks Zelle</div>
+    <div class="wo">
+      <div class="wolab">Payments</div>
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cline pick"><span class="amt">$180.00</span><span class="how"><b>cash</b> · <b>Zelle</b> · check</span></div>
+        <div class="cline"><span class="amt" style="color:var(--fg3)">$185.40</span><span class="how">card · incl. 3% fee $5.40</span></div>
+        <div class="hist">Already collected: $515.00 (deposit, card · includes $15.00 fee)</div>
+      </div>
+      <div class="prow">
+        <div class="sel">Zelle <span class="car">▾</span></div>
+        <div class="inp">180.00</div><div class="x">×</div>
+      </div>
+      <div class="add">+ Add payment</div>
+      <p class="note">No fee line, because there is no fee. Nothing to waive.</p>
+    </div>
+  </div>
+</div>
+<p class="note">
+  The dropdown itself also carries the number, so the amount is visible at the moment of choosing,
+  not only after:
+</p>
+<div class="opts">
+  <div>Cash <span>$180.00</span></div>
+  <div>Zelle <span>$180.00</span></div>
+  <div class="on">Credit Card <span>$185.40</span></div>
+  <div>Debit Card <span>$185.40</span></div>
+  <div>Check <span>$180.00</span></div>
+  <div>Other <span>$180.00</span></div>
+</div>
+
+<h2><span class="n">B</span>Two tiles, side by side</h2>
+<p class="sub">
+  Same rule, same behaviour, different shape: two equal tiles. Reads as a choice rather than a
+  list. Costs more height on a phone once the “already collected” history is added under it, and
+  the tile pair is harder to extend if a third method class ever appears.
+</p>
+<div class="grid2">
+  <div class="wo">
+    <div class="wolab">Payments</div>
+    <div class="tiles">
+      <div class="tile"><div class="amt">$180.00</div><div class="how">cash · Zelle · check</div></div>
+      <div class="tile"><div class="amt">$185.40</div><div class="how">card · incl. 3% fee</div></div>
+    </div>
+    <div class="hist" style="margin:-6px 0 10px">Already collected: $515.00 (deposit, card · includes $15.00 fee)</div>
+    <div class="prow">
+      <div class="sel empty">— type — <span class="car">▾</span></div>
+      <div class="inp ph">0.00</div><div class="x">×</div>
+    </div>
+  </div>
+  <div class="wo">
+    <div class="wolab">Payments · picked Debit Card</div>
+    <div class="tiles">
+      <div class="tile"><div class="amt" style="color:var(--fg3)">$180.00</div><div class="how">cash · Zelle · check</div></div>
+      <div class="tile pick"><div class="amt">$185.40</div><div class="how">card · incl. 3% fee</div></div>
+    </div>
+    <div class="prow">
+      <div class="sel">Debit Card <span class="car">▾</span></div>
+      <div class="inp">185.40</div><div class="x">×</div>
+      <div class="feechip">includes $5.40 card fee (3%) <u>waive</u></div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="n">1</span>Fees already collected are history, not part of the number</h2>
+<p class="sub">
+  A later payment carries its own 3%. When OT lands after the desk has already been settled, the
+  block shows only what is owed <i>now</i>, and the fees taken so far sit underneath as a record.
+</p>
+<div class="grid2">
+  <div class="wo">
+    <div class="wolab">Next week · $150 OT added after both payments</div>
+    <div class="collect">
+      <div class="k"><span>Collect</span><span>COD</span></div>
+      <div class="cline"><span class="amt">$150.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+      <div class="cline"><span class="amt">$154.50</span><span class="how"><b>card</b> · incl. 3% fee $4.50</span></div>
+      <div class="hist">Already collected: $700.40 across 2 payments · card fees $20.40</div>
+    </div>
+    <div class="rule"></div>
+    <div class="row2"><span>Card Fees (3%)</span><span class="v">$20.40</span></div>
+    <div class="row2"><span>Grand Total</span><span class="v">$850.40</span></div>
+    <div class="row2"><span>Total Paid</span><span class="v ok">$700.40</span></div>
+    <div class="row2 b"><span class="l hot">Balance Due</span><span class="v hot">$150.00</span></div>
+    <p class="note">The totals block stays as it is — minus the “If paying by card” line, which the COLLECT block now owns.</p>
+  </div>
+  <div>
+    <div class="oh">Edge states</div>
+    <div class="wo" style="margin-bottom:10px">
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cline"><span class="amt ok">$0.00</span><span class="how">paid in full</span></div>
+        <div class="hist">Collected: $700.40 across 2 payments · card fees $20.40</div>
+      </div>
+    </div>
+    <div class="wo" style="margin-bottom:10px">
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>Billing · Concord</span></div>
+        <div class="cline"><span class="amt" style="color:var(--fg2)">$1,340.00</span><span class="how">invoiced to the label — nothing to collect at the desk</span></div>
+      </div>
+      <p class="note">Billing sessions carry no 3% (COD only, unchanged). One line, plain colour, and the method pick fills the plain amount.</p>
+    </div>
+    <div class="wo">
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cline"><span class="amt">$180.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+        <div class="cline"><span class="amt">$185.40</span><span class="how"><b>card</b> · incl. 3% fee $5.40</span></div>
+      </div>
+      <div class="prow">
+        <div class="sel">Credit Card <span class="car">▾</span></div>
+        <div class="inp">100.00</div><div class="x">×</div>
+        <div class="feechip">includes $2.91 card fee (3%) <u>waive</u></div>
+      </div>
+      <p class="note">Partial card payment typed over the pre-fill: fee derives from the $100 charged, as today. The block above re-derives from the new balance the moment it is saved.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="n">2</span>Rules this locks in</h2>
+<p class="sub" style="max-width:840px">
+  <b>Equal weight, same colour, same size</b> — never bold one and footnote the other.
+  <b>Both before selection</b> — the block renders on open, not on method pick.
+  <b>Pick fills, never overrides a typed amount</b> — choosing a method on a row that already has
+  an amount leaves the amount alone (a runner who typed $100 meant $100).
+  <b>The dropdown shows the number next to the method</b> — the decision and the amount are in the
+  same place.
+  <b>History is separate</b> — fees already collected never fold into the collect number.
+  <b>Runner and admin see the same block</b> — one component, one behaviour.
+  <b>Cash line uses the balance; card line uses <code>cardTotalForBase(balance)</code></b> — the
+  existing helper, no new math.
+</p>
+
+</body>
+</html>

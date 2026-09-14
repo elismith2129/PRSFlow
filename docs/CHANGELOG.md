@@ -19,6 +19,87 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.28.0 — THE COLLECT DISPLAY, the roomless alarm, and the blanket rate built — Sep 14, 2026
+
+Three items off the v1.27.0 "Open" list, in priority order: the display that cost the studio
+3% at the desk, the alarm nothing had, and the whole-building rate that had been priced by
+hand twice.
+
+**Migration (run by hand, BEFORE the push — the save RPC's signature changes):**
+- `20260914130000_wo_rate_bundles.sql` — `wo_rate_bundles` table (one per WO per day),
+  `studio_time_rows.bundle_id`, RLS mirroring `studio_time_rows`, and
+  `save_work_order_atomic` **re-created with two new parameters** (`p_bundles`,
+  `p_bundle_deletes`). The old 8-arg overload is dropped first; until this runs, every
+  WO save from the new build fails with "function does not exist".
+
+### The COLLECT display (WorkOrderPopup, admin + runner)
+
+A runner read "Balance Due $180.00", quoted it, ran $180 on the terminal, THEN picked
+Credit Card. The row derived the 3% out of the $180 charged; the studio ate $5.24. The bug
+was TIME: bold cash number on open, small card number one line under it, fee chip only after
+the pick.
+
+- **COLLECT block at the top of Payments**: cash/Zelle/check amount and card amount (incl.
+  3%) at equal size and colour, before any method is chosen. "Already collected" history
+  underneath so a later OT payment visibly carries its own 3%.
+- **The method pick fills the amount** on a new row; the dropdown shows the amount next to
+  each method. A typed amount is never overwritten; a pre-filled one re-fills on a method
+  change (`prefilledPayIdsRef`).
+- **"If paying by card (incl. 3%)" is gone from the totals block.** Do not re-add it.
+
+> ⚠ **WATCH-OUT — the collect numbers come from the PERSISTED payments (`paySnapRef`), not
+> the live rows.** Otherwise picking Cash pre-fills $180, the live balance drops to $0, and
+> switching that row to Credit Card pre-fills $0. The row being filled in IS the collection
+> in progress; the block must keep showing what it was filled from until Save re-baselines.
+
+### The roomless alarm
+
+`isCalendarRoom(venue, room)` (lib/studios) is the one predicate for "lands in a calendar
+column". `fetchRoomlessQueue` (lib/myday, −90/+180 days, imported excluded, cancelled
+INCLUDED) feeds a RED Flo bullet naming up to three handles (WO number, else client · date).
+The dashboard's `loadMyDay` now re-runs on the page's `bookings` channel — it only refreshed
+on duty ticks before, which also meant the missing-WO alarm was not live.
+
+### The blanket rate — built (Option B: the day header owns the price)
+
+`lib/woBundles.ts`. A bundle is `(work_order_id, date, amount)`; every room row on that day
+is a member; each member's `charge` is its allocated share, pro-rata by the row's own
+`rate_daily`, remainder to the largest rack, Σ = amount to the penny. **`rate_daily` stays
+RACK** — it is the allocation basis and the OT basis ("OT is rack", ruling 5).
+
+- List view: a **Whole building** toggle on the first row of any multi-room day; rate/day
+  input; readout (rooms · % off rack · shares ✓). Members: Day/Hr frozen, Total tagged SHARE.
+- Day card reads "Whole building $6,670/day"; day sheet's Billing shows the one price above
+  the rooms' shares. Runner sees it read-only.
+- PDF (`lib/woPdf.ts`): **one line per bundled day** — `PRS ALL · Paramount — whole building ·
+  Studios A, B, C, E, X · $6,670` — rooms named, never the per-room split (ruling 3).
+  Overtime prints as its own room line under it. Staff sub-rows now APPEND (several rooms'
+  staff hang under one printed line) — they used to overwrite.
+
+> ⚠ **WATCH-OUT — the landmine is defused by RE-ESTABLISHING, not guarding.** Six code paths
+> derive a day row's charge from `rate_daily` and none know about bundles. Instead of
+> guarding each (the "edit both blocks" trap), an effect in WorkOrderPopup runs
+> `allocateBundleShares` after ANY rows/bundles change and writes the share back.
+> `normalizeStRow` keeps the STORED charge for a bundled row — deriving from rack on load
+> made every bundled WO open dirty. If you add a seventh charge-deriving path, you need do
+> nothing; if you add a path that writes `charge` to the DB directly, you do.
+
+> ⚠ **WATCH-OUT — `includedHoursFor` was inside the component.** The v1.27.0 fix could not
+> reach `normalizeStRow` (the LOAD path), `applyMonthlySplit` or `toggleRowRateType`, which
+> kept a literal 12 — a 9-hour day loaded with its OT computed against twelve until a time
+> was touched. Hoisted to module level; all three now read `included_hours`.
+
+**Not built (still parked, reminder owed):** the calendar card for blanket sessions; the
+`room_rates` table (ruling 7). The Concord one-off rows (WO-1156) are NOT bundled — they
+carry the share in `rate_daily` and keep working; converting them is a separate SQL.
+
+**Files:** `lib/woBundles.ts` (new), `lib/studios.ts`, `lib/myday.ts`, `lib/woPdf.ts`,
+`components/calendar/WorkOrderPopup.tsx`, `app/(main)/page.tsx`, `app/api/wo-package/route.ts`,
+`supabase/migrations/20260914130000_wo_rate_bundles.sql`,
+`docs/design-refs/wo-collect-display-options.html` (new)
+
+---
+
 ## v1.27.0 — MONEY CORRECTNESS: four billing bugs, cancelled sessions, and adding days — Sep 9–14, 2026
 
 The theme is **numbers that were quietly wrong**. Four separate over- or under-billing

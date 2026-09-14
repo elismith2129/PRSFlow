@@ -645,6 +645,33 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.28.0', date:'Sep 14, 2026',
+    headline:'Both prices on the desk before you pick a payment, an alarm for sessions with no room, and whole-building rates.',
+    desc:'A runner quoted the cash balance, ran that exact amount on the card terminal, and only then picked Credit Card — so the studio ate the 3%. The work order now shows the cash amount and the card amount side by side, same size, before anything is chosen. Two more things off the list: the app now shouts when a session has no room, and a whole-building day is one price instead of five made-up ones.',
+    changes:[
+      'On a work order, the Payments section starts with a COLLECT box: the amount for cash, Zelle or check, and the amount for a card (with the 3% already in it). Both big, both red, both there from the start. Read the client the line that matches how they’re paying.',
+      'Pick the payment type and the amount fills itself in — the dropdown even shows the number next to each type. If you type your own amount (a partial payment), it stays yours.',
+      'Under the box, "Already collected" shows what’s been paid so far and how much of it was card fees, so an overtime charge next week clearly carries its own 3%.',
+      'The old "If paying by card" line at the bottom of the totals is gone. That small line under a big Balance Due is what caused the mistake.',
+      'The dashboard’s Flo line now flags any booking with no room, by WO number. A session with no room appears on no calendar, so nobody sees it coming — four slipped through in September before anyone noticed.',
+      'Whole-building days: in the work order’s list view, any day with two or more rooms has a "Whole building" switch. Flip it, type the price for the day, and every room on that day gets its fair share of it automatically (bigger rooms take more). Overtime still bills at the room’s normal rate.',
+      'The client’s invoice shows a whole-building day as one line — "Paramount — whole building · Studios A, B, C, E, X · $6,670" — never the per-room split.',
+      'Day rates with fewer than 12 hours included: the fix from v1.27.0 didn’t reach the moment a work order opens, so overtime could still show against 12 until you touched a time. It now reads the included hours everywhere.',
+    ],
+    affects:'At the desk: read the COLLECT box, not Balance Due. Cash line for cash/Zelle/check, card line for a card. Then pick the type and the amount is already there.',
+    dev:[
+      'COLLECT block at the top of Payments (WorkOrderPopup, admin + runner): cash and card amounts at equal weight before any method is chosen; method pick pre-fills a new row (dropdown shows the amount per method); typed amounts are never overwritten. "If paying by card (incl. 3%)" removed from the totals block — do not re-add it.',
+      'WATCH-OUT: the collect numbers come from the PERSISTED payments (paySnapRef), not the live rows — otherwise picking Cash pre-fills $180, the live balance drops to $0, and switching the row to Credit Card pre-fills $0.',
+      'Roomless alarm: isCalendarRoom(venue, room) in lib/studios is the one predicate; fetchRoomlessQueue in lib/myday (-90/+180 days, imported excluded, cancelled included) feeds a RED Flo bullet naming the handles. The dashboard’s loadMyDay now re-runs on the bookings channel — the missing-WO alarm was not live either.',
+      'Blanket rate (lib/woBundles, Option B): wo_rate_bundles (one per WO per day) + studio_time_rows.bundle_id. Each member row’s charge = allocated share pro-rata by rate_daily, remainder to the largest rack, sum exact. rate_daily stays RACK (allocation basis + OT basis — "OT is rack").',
+      'WATCH-OUT: the recompute landmine is defused by RE-ESTABLISHING, not guarding — an effect runs allocateBundleShares after any rows/bundles change and writes the share back. normalizeStRow keeps the STORED charge for a bundled row, or every bundled WO opened dirty.',
+      'PDF prints one line per bundled day (PRS ALL · whole building · rooms named, unpriced); overtime prints as its own room line; staff sub-rows now APPEND instead of overwriting.',
+      'includedHoursFor hoisted to module level: normalizeStRow (load), applyMonthlySplit and toggleRowRateType kept a literal 12.',
+      'Migration: 20260914130000_wo_rate_bundles.sql — re-creates save_work_order_atomic with p_bundles + p_bundle_deletes (old 8-arg overload dropped). Run BEFORE the push.',
+      'Still parked: the calendar card for blanket sessions (reminder owed); room_rates table (ruling 7).',
+    ],
+  },
+  {
     ver:'v1.27.0', date:'Sep 14, 2026',
     headline:'Four billing mistakes fixed, and cancelled sessions now get invoiced.',
     desc:'A handful of work orders were charging the wrong amount \u2014 some too much, some too little \u2014 and none of it looked wrong on screen. All four are fixed. Cancelled sessions also stop disappearing: they come through to Billing like any other session, because we usually still charge a kill fee.',

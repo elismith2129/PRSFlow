@@ -25,6 +25,7 @@ import { dbResult } from '@/lib/db'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
+import { allocateBundleShares, bundleReadout, type WoRateBundle } from '@/lib/woBundles'
 import { WoHistoryModal } from '@/components/calendar/WoHistoryModal'
 import { woAuditView, diffWoForSave, buildWoSnapshot, logWoActivity } from '@/lib/woActivity'
 
@@ -200,6 +201,9 @@ type StRow = {
   ot_hours: string
   /** Day rows: hours the day rate buys before OT starts. '' = the 12h default. */
   included_hours: string
+  /** Whole-building blanket rate member (lib/woBundles). When set, `charge`
+   *  is the allocated SHARE of the day's bundle, and rate_daily is RACK. */
+  bundle_id: string | null
   ot_charge: number | null
   eng_hours: number | null
   eng_rate: string
@@ -413,6 +417,29 @@ function normalizeWO(d: any): WO {
   }
 }
 
+const DEFAULT_INCLUDED_HOURS = 12
+/**
+ * Hours THIS day's rate includes before overtime starts (WO-1076). THE single
+ * source for the OT derivation, the "agreed with client" line and the day
+ * sheet. Module-level (2026-09-14, second pass): the first fix put it inside
+ * the component, so normalizeStRow (the LOAD path), applyMonthlySplit and
+ * toggleRowRateType kept a literal 12 — a 9-hour day loaded with its OT
+ * computed against twelve until someone touched a time.
+ */
+function includedHoursFor(r: Pick<StRow, 'included_hours'>): number {
+  const n = parseFloat((r.included_hours ?? '').replace(/[^0-9.]/g, ''))
+  return !isNaN(n) && n > 0 ? n : DEFAULT_INCLUDED_HOURS
+}
+
+/** DB → screen. amount numeric → "$6,670.00" display string. */
+function normalizeBundle(d: any): WoRateBundle {
+  return {
+    id: d.id, work_order_id: d.work_order_id, date: d.date ?? '',
+    amount: d.amount != null ? formatCurrency(String(d.amount)) : '',
+    label: d.label ?? '',
+  }
+}
+
 function normalizeStRow(d: any): StRow {
   const dayCount = d.day_count != null ? Number(d.day_count) : null
   const rowRateType: 'hour' | 'day' = d.row_rate_type === 'day' ? 'day' : 'hour'
@@ -427,10 +454,17 @@ function normalizeStRow(d: any): StRow {
 
   if (rowRateType === 'day') {
     const rateNum = parseFloat(String(rateDailyRaw || rate).replace(/[^0-9.]/g, ''))
-    charge = !isNaN(rateNum) && rateNum > 0 ? rateNum : (d.charge != null ? Number(d.charge) : null)
-    // OT hours auto-derived from session times (max(0, actual - 12))
+    // A BUNDLED row's charge is its stored allocated SHARE, not rate_daily
+    // (which is rack) — lib/woBundles. Deriving from rack here would flip the
+    // charge on load and the allocation effect would flip it back, leaving the
+    // work order "dirty" the moment it opened.
+    charge = d.bundle_id
+      ? (d.charge != null ? Number(d.charge) : null)
+      : (!isNaN(rateNum) && rateNum > 0 ? rateNum : (d.charge != null ? Number(d.charge) : null))
+    // OT hours auto-derived from session times: past what the day INCLUDES
+    // (included_hours, NULL = 12). Was a literal 12 here until 2026-09-14.
     const actualHours = calcHours(d.from_time ?? '', d.to_time ?? '') ?? 0
-    const autoOt = Math.max(0, parseFloat(actualHours.toFixed(2)) - 12)
+    const autoOt = Math.max(0, parseFloat((actualHours - includedHoursFor({ included_hours: d.included_hours != null ? String(d.included_hours) : '' })).toFixed(2)))
     const otRateNum = parseFloat(otRateStr.replace(/[^0-9.]/g, '')) || 0
     otHoursStr = String(autoOt)
     otCharge = autoOt > 0 && otRateNum > 0 ? parseFloat((autoOt * otRateNum).toFixed(2)) : null
@@ -481,6 +515,7 @@ function normalizeStRow(d: any): StRow {
     ot_rate: rowRateType === 'hour' ? (otRateStr || rate) : otRateStr,
     ot_hours: otHoursStr,
     included_hours: d.included_hours != null ? String(d.included_hours) : '',
+    bundle_id: d.bundle_id ?? null,
     ot_charge: otCharge,
     eng_hours: engHours,
     eng_rate: engRate,
@@ -792,6 +827,7 @@ export function WorkOrderPopup({
         // effect of the times toggle — see the state declaration.
         eng_visible: monthlyStaff,
         eng_role: 'assistant' as const,
+        bundle_id: null,
         status: 'in_progress' as const,
       }
     })
@@ -821,8 +857,9 @@ export function WorkOrderPopup({
         u.to_time = monthlyTo
         const hrs = calcHours(monthlyFrom, monthlyTo)
         u.total_hours = hrs
-        // Same OT derivation as the day-rate updateRow path: beyond 12h = OT.
-        u.ot_hours = String(Math.max(0, parseFloat(((hrs ?? 0)).toFixed(2)) - 12))
+        // Same OT derivation as the day-rate updateRow path: beyond what the
+        // day includes = OT (was a literal 12 until 2026-09-14).
+        u.ot_hours = String(Math.max(0, parseFloat(((hrs ?? 0) - includedHoursFor(u)).toFixed(2))))
       }
       if (otRate > 0) u.ot_rate = String(otRate)
       const rn = parseFloat((u.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
@@ -950,6 +987,16 @@ export function WorkOrderPopup({
   // its snapshot the user hasn't touched that table and remote changes adopt.
   const paySnapRef = useRef<string>('')
   const rentSnapRef = useRef<string>('')
+  // ── WHOLE-BUILDING BLANKET RATE (lib/woBundles) ───────────────────────────
+  // One bundle per DAY (Option B — the day header owns the price). Local-first
+  // like the rows: edited in state, written by save_work_order_atomic.
+  const [bundles, setBundles] = useState<WoRateBundle[]>([])
+  const bundlesDirtyRef = useRef(false)
+  const deletedBundleIdsRef = useRef<string[]>([])
+  /** Rows whose amount the pick wrote, not the runner. A pick REFILLS these
+   *  (Cash → Credit Card must move $180 → $185.40); a typed amount is left
+   *  alone — a runner who typed $100 meant $100. Local only, never saved. */
+  const prefilledPayIdsRef = useRef<Set<string>>(new Set())
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Ref mirrors for the live-merge: the realtime channel is created once, so
   // its callbacks close over THAT render's state — reading these refs instead
@@ -1152,6 +1199,37 @@ export function WorkOrderPopup({
     // sessions (≤3 days) and list for long runs.
     setStView(runner ? 'cards' : (dayCount > 0 && dayCount <= 3 ? 'cards' : 'list'))
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Blanket-rate bundles: load once the WO resolves ───────────────────────
+  // Separate from the rows' load paths on purpose: initWO has five of them
+  // (adopt, create, reconcile, dedupe, reload) and a sixth thing to remember in
+  // each is how a field goes silently missing (the computeWoTotals lesson).
+  const [bundlesLoadedFor, setBundlesLoadedFor] = useState<string | null>(null)
+  useEffect(() => {
+    const id = wo?.id
+    if (!id || bundlesLoadedFor === id) return
+    let live = true
+    supabase.from('wo_rate_bundles').select('*').eq('work_order_id', id).order('date')
+      .then(({ data, error }) => {
+        if (!live) return
+        if (!dbResult('Loading blanket rates', error)) return
+        setBundles((data ?? []).map(normalizeBundle))
+        setBundlesLoadedFor(id)
+      })
+    return () => { live = false }
+  }, [wo?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── THE ALLOCATION INVARIANT (lib/woBundles — read its header) ────────────
+  // Every member row's charge = its pro-rata share of the day's bundle. Six
+  // code paths derive a day row's charge from rate_daily and none of them know
+  // about bundles — instead of guarding each, this effect re-applies the
+  // allocation after ANY change to rows or bundles. allocateBundleShares
+  // returns the same reference when nothing moved, so this cannot loop.
+  useEffect(() => {
+    if (bundles.length === 0 && !stRows.some(r => r.bundle_id)) return
+    const next = allocateBundleShares(stRows, bundles)
+    if (next !== stRows) setStRows(next)
+  }, [stRows, bundles])
 
   // Real-time subscription: work_orders status updates only
   useEffect(() => {
@@ -1466,6 +1544,12 @@ export function WorkOrderPopup({
       supabase.from('wo_expenses').select('*').eq('work_order_id', id).order('sort_order'),
     ])
     setExpenses((exp ?? []) as WoExpense[])
+
+    // Blanket rates: adopt remote unless this screen has touched them.
+    if (!bundlesDirtyRef.current) {
+      const { data: bd } = await supabase.from('wo_rate_bundles').select('*').eq('work_order_id', id).order('date')
+      if (bd) setBundles(bd.map(normalizeBundle))
+    }
 
     // WO header fields — adopt remote except the keys the user has dirtied.
     if (woRow) {
@@ -1845,6 +1929,50 @@ export function WorkOrderPopup({
     setBatchOn({ room: false, from: false, to: false, rate: false, ot_hours: false, ot_rate: false, staff: false, notes: false })
   }
 
+  // ── BLANKET RATE: the day header owns the price (Option B, lib/woBundles) ─
+  /** Turn a day's rooms into one whole-building price, or back to rack. */
+  function setDayBundle(date: string, on: boolean) {
+    bundlesDirtyRef.current = true
+    if (on) {
+      if (bundles.some(b => b.date === date)) return
+      // Hourly rooms on this day become day rows — a bundle is a DAY price,
+      // and rack (rate_daily) is the allocation basis. Same pure ×10
+      // conversion as the row's own Day/Hr toggle (house rate law).
+      setStRows(prev => prev.map(r => {
+        if (r.date !== date || !(r.studio || '').trim() || r.row_rate_type === 'day') return r
+        const hr = parseFloat((r.rate || '').replace(/[^0-9.]/g, '')) || 0
+        const daily = hr > 0 ? parseFloat((hr * DAY_HOUR_RATIO).toFixed(2)) : 0
+        return {
+          ...r,
+          row_rate_type: 'day' as const,
+          rate_daily: daily > 0 ? String(daily) : r.rate_daily,
+          ot_rate: hr > 0 ? String(hr) : r.ot_rate,
+          ot_hours: String(Math.max(0, parseFloat(((calcHours(r.from_time, r.to_time) ?? 0) - includedHoursFor(r)).toFixed(2)))),
+        }
+      }))
+      // Membership + shares are the allocation effect's job — it runs on the
+      // next render and writes every member's charge.
+      setBundles(prev => [...prev, { id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date, amount: '', label: '' }])
+    } else {
+      const b = bundles.find(x => x.date === date)
+      if (!b) return
+      deletedBundleIdsRef.current.push(b.id)
+      setBundles(prev => prev.filter(x => x.id !== b.id))
+      // Members return to RACK — charge = rate_daily, like any day row. Rack
+      // was never overwritten (that is the point of keeping it), so nothing
+      // is lost by turning a bundle off.
+      setStRows(prev => prev.map(r => {
+        if (r.bundle_id !== b.id) return r
+        const rack = parseFloat((r.rate_daily || '').replace(/[^0-9.]/g, '')) || 0
+        return { ...r, bundle_id: null, charge: rack > 0 ? rack : null }
+      }))
+    }
+  }
+  function setBundleAmount(id: string, amount: string) {
+    bundlesDirtyRef.current = true
+    setBundles(prev => prev.map(b => b.id === id ? { ...b, amount } : b))
+  }
+
   function toggleRowRateType(id: string) {
     setStRows(prev => prev.map(r => {
       if (r.id !== id) return r
@@ -1863,7 +1991,7 @@ export function WorkOrderPopup({
         const otRate = rateNum > 0 ? String(rateNum) : (dailyNum > 0 ? String(parseFloat((dailyNum / DAY_HOUR_RATIO).toFixed(2))) : '')
         const otRateNum = parseFloat(otRate.replace(/[^0-9.]/g, '')) || 0
         const actual = calcHours(r.from_time, r.to_time) ?? 0
-        const otHrs = Math.max(0, parseFloat(actual.toFixed(2)) - 12)
+        const otHrs = Math.max(0, parseFloat((actual - includedHoursFor(r)).toFixed(2)))
         return {
           ...r,
           row_rate_type: 'day' as const,
@@ -2078,7 +2206,6 @@ export function WorkOrderPopup({
    * The normal Paramount lockout. Overridable per day since 2026-09-14 — see
    * includedHoursFor and migration 20260914120000.
    */
-  const DEFAULT_INCLUDED_HOURS = 12
 
   /**
    * Hours THIS day's rate includes before overtime starts. The single source —
@@ -2089,10 +2216,9 @@ export function WorkOrderPopup({
    * hour free, and the sheet's 'Agreed with client: 12h lockout' was a literal
    * string that never read anything.
    */
-  const includedHoursFor = (r: Pick<StRow, 'included_hours'>): number => {
-    const n = parseFloat((r.included_hours ?? '').replace(/[^0-9.]/g, ''))
-    return !isNaN(n) && n > 0 ? n : DEFAULT_INCLUDED_HOURS
-  }
+  // (includedHoursFor is module-level now — see above normalizeStRow. It was
+  //  inside the component, which is why the LOAD path, the monthly split and
+  //  the Day/Hr toggle could not reach it and kept their hard-coded 12.)
 
   // ── Add studio time row ────────────────────────────────────────────────────
 
@@ -2163,6 +2289,8 @@ export function WorkOrderPopup({
       // across three days is three rows of the same deal, not one exception and
       // two accidents.
       included_hours: last?.included_hours || '',
+      // Joins the day's bundle, if there is one, via the allocation effect.
+      bundle_id: null,
       charge,
       sort_order: maxOrder + 1 + i,
       day_count: null,
@@ -2322,7 +2450,7 @@ export function WorkOrderPopup({
       eng_hours: null, eng_charge: null,
       actual_from_time: '', actual_to_time: '',
       admin_checked: false, admin_locked: false, eng_visible: true,
-      eng_role: role, status: 'in_progress',
+      eng_role: role, status: 'in_progress', bundle_id: null,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -2994,7 +3122,15 @@ export function WorkOrderPopup({
       admin_checked: r.admin_checked,
       admin_locked: r.admin_locked,
       eng_visible: r.eng_visible,
+      bundle_id: r.bundle_id ?? null,
     }))
+
+    // Blanket-rate bundles: upserted BEFORE the rows that reference them
+    // (the RPC orders it), deleted after. Amount is numeric in the DB.
+    const bundlePayloads = bundles.filter(b => b.date).map(b => ({
+      id: b.id, date: b.date, amount: stripCurrency(b.amount) ?? 0, label: oneLine(b.label) || null,
+    }))
+    const bundleDeletes = deletedBundleIdsRef.current.filter(id => !bundles.some(b => b.id === id))
 
     // Rental + payment rows that have content — upserts.
     const rentPayloads = rentRows.filter(r => r.item || r.charge).map(r => ({
@@ -3018,6 +3154,8 @@ export function WorkOrderPopup({
       p_rentals: rentPayloads,
       p_payments: payPayloads,
       p_secondary_cards: projection?.secondaryCards ?? [],
+      p_bundles: bundlePayloads,
+      p_bundle_deletes: bundleDeletes,
     })
     // All-or-nothing: on failure NOTHING was written — keep the popup open so
     // the user's edits aren't lost, and let them retry.
@@ -3077,6 +3215,8 @@ export function WorkOrderPopup({
     // Re-baseline the live-merge: everything just written IS the database now.
     paySnapRef.current = JSON.stringify(payRows)
     rentSnapRef.current = JSON.stringify(rentRows)
+    bundlesDirtyRef.current = false
+    deletedBundleIdsRef.current = []
     setSaving(false)
     onSaved?.()
     if (close) onClose()
@@ -3098,6 +3238,7 @@ export function WorkOrderPopup({
   function isDirty(): boolean {
     if (dirtyFields.size > 0) return true
     if (deletedRowsRef.current.length > 0) return true
+    if (bundlesDirtyRef.current) return true
     return JSON.stringify(stRows) !== JSON.stringify(originalStRowsRef.current)
   }
 
@@ -3201,12 +3342,60 @@ export function WorkOrderPopup({
   // COD only — billing/label sessions never carry the fee. The AMOUNT field is
   // what actually hit the card; the fee is the 3% slice inside it, derived by
   // cardFeeOfCharged so the runner types exactly what the terminal charged and
-  // the split is exact. "Card Total" under Balance Due is the number staff
-  // reads to the terminal — balance × 1.03 — so nobody does math at the desk.
+  // the split is exact. The number staff reads to the terminal — balance ×
+  // 1.03 — lives in the COLLECT block at the top of Payments (below).
   // wo is still null on the first render (before initWO resolves) — this block
   // sits ABOVE the loading/early returns, so it must never dereference wo bare.
   const isCodWo = wo?.payment_status === 'COD'
-  const cardTotalDue = isCodWo && balanceDue > 0 ? cardTotalForBase(balanceDue) : 0
+
+  // ── THE COLLECT DISPLAY (Eli, 2026-09-14; mock docs/design-refs/
+  // wo-collect-display-options.html, option A) ──────────────────────────────
+  // THE FAILURE: a runner read "Balance Due $180.00", quoted it, ran $180 on
+  // the terminal, THEN picked Credit Card — and the row derived the 3% out of
+  // the $180 charged, so the studio ate $5.24. The bug was TIME: the cash
+  // number was bold on open, the card number a small line under it, and the
+  // fee chip only appeared after the method pick. Two numbers, two moments.
+  //
+  // THE RULE: never show one without the other. Both amounts, equal weight,
+  // BEFORE any selection; then the method pick fills the matching amount.
+  //
+  // The collect numbers are computed from the PERSISTED payments (paySnapRef
+  // — "the database now"), not the live rows. Otherwise picking Cash on a new
+  // row pre-fills $180, the live balance drops to $0, and switching that same
+  // row to Credit Card would pre-fill… $0. The row being filled in IS the
+  // collection in progress; the block must keep showing what it was filled
+  // from until Save re-baselines the snapshot.
+  //
+  // Nothing about the money model changes: the 3% still attaches to each
+  // PAYMENT (payment_rows.fee_amount, cardFeeOfCharged), never the invoice.
+  const persistedPay: PayRow[] = (() => {
+    try { return paySnapRef.current ? (JSON.parse(paySnapRef.current) as PayRow[]) : [] } catch { return [] }
+  })()
+  const collectTotals = computeWoTotals({
+    studioRows: stRows,
+    rentalRows: rentRows,
+    paymentRows: persistedPay,
+    discount: { kind: (wo as any)?.discount_kind ?? null, value: (wo as any)?.discount_value ?? null },
+  })
+  /** What the client owes now, by cash / Zelle / check. */
+  const collectBase = collectTotals.balance > 0 ? parseFloat(collectTotals.balance.toFixed(2)) : 0
+  /** What to run on the card so the base above is what the studio keeps. COD only. */
+  const collectCard = isCodWo && collectBase > 0 ? cardTotalForBase(collectBase) : 0
+  const collectPaidCount = persistedPay.filter(p => (stripCurrency(p.amount) ?? 0) > 0).length
+  /** The amount a method pick fills in: card methods get the card total. */
+  function collectAmountFor(method: string): number {
+    return CARD_PAY_TYPES.includes(method) && collectCard > 0 ? collectCard : collectBase
+  }
+  /** A row that is not yet in the database — the collection in progress. */
+  const isUnsavedPay = (id: string) => !persistedPay.some(p => p.id === id)
+  /** The method of the row being filled in right now, to light its line. */
+  const collectPicked = (() => {
+    for (let i = payRows.length - 1; i >= 0; i--) {
+      const p = payRows[i]
+      if (p.payment_type && isUnsavedPay(p.id)) return CARD_PAY_TYPES.includes(p.payment_type) ? 'card' : 'cash'
+    }
+    return null as 'card' | 'cash' | null
+  })()
 
   /** Re-derive a payment row's fee from its type + amount. Card + COD → 3%
    *  slice of the charged amount; anything else → no fee. */
@@ -5268,6 +5457,66 @@ export function WorkOrderPopup({
                         overflow: 'hidden',
                       }}
                     >
+                      {/* ── THE DAY HEADER OWNS THE PRICE (Option B, ruled
+                          2026-09-03; docs/design-refs/wo-blanket-rate-options
+                          .html; lib/woBundles). A slim strip on the first row
+                          of a multi-room day: WHOLE BUILDING toggle, the rate
+                          per day, and the readout (rooms · % off rack · shares
+                          balance). Every room row under it becomes a member and
+                          its Total becomes its allocated share. A one-room day
+                          has nothing to bundle and shows nothing. Runner sees
+                          the price read-only — the office set it. */}
+                      {firstOfDay && r.date && (() => {
+                        const b = bundles.find(x => x.date === r.date)
+                        const roomsToday = stRows.filter(x => x.date === r.date && (x.studio || '').trim()).length
+                        if (!b && (roomsToday < 2 || runner || readOnly)) return null
+                        const ro = b ? bundleReadout(b, stRows) : null
+                        const balanced = ro ? Math.abs(ro.shareSum - ro.amount) < 0.005 : false
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 12px 4px', borderBottom: b ? '1px solid var(--c-wash2)' : 'none' }}>
+                            {(runner || readOnly) ? (
+                              <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg)' }}>Whole building</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setDayBundle(r.date, !b)}
+                                title={b ? 'Back to each room at its own rate' : 'One price for every room on this day'}
+                                style={{ ...toggleStyle(!!b), letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: 8.5 }}
+                              >Whole building</button>
+                            )}
+                            {b && ro && (
+                              <>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                                  Rate / day
+                                  {(runner || readOnly)
+                                    ? <span className="c-tnum" style={{ color: 'var(--c-fg)', fontWeight: 700 }}>{b.amount || '—'}</span>
+                                    : <input
+                                        value={b.amount}
+                                        onChange={e => setBundleAmount(b.id, e.target.value)}
+                                        onBlur={e => setBundleAmount(b.id, e.target.value ? formatCurrency(e.target.value) : '')}
+                                        placeholder="$0/day"
+                                        className="c-tin c-tin-mono c-tin-show"
+                                        style={{ width: 84, fontWeight: 700 }}
+                                      />}
+                                </span>
+                                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
+                                  {ro.rooms} room{ro.rooms === 1 ? '' : 's'}
+                                  {ro.rackTotal > 0 ? ` · rack $${ro.rackTotal.toLocaleString('en-US')}` : ''}
+                                  {ro.offRackPct != null ? ` · ${ro.offRackPct >= 0 ? `${ro.offRackPct}% off rack` : `${Math.abs(ro.offRackPct)}% over rack`}` : ''}
+                                </span>
+                                {ro.amount > 0 && (
+                                  <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: balanced ? 'var(--c-st-booked)' : 'var(--c-st-hot)', fontWeight: 700 }}>
+                                    shares ${ro.shareSum.toFixed(2)} {balanced ? '✓' : '≠ rate'}
+                                  </span>
+                                )}
+                                {ro.amount === 0 && !runner && (
+                                  <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-warm)', fontWeight: 700 }}>type the day's price</span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
                       {/* Runner mode: a day admin locked is the office's — the
                           whole row goes inert (the lock/delete cells' own
                           pointerEvents:auto is neutralised by the runner
@@ -5376,9 +5625,9 @@ export function WorkOrderPopup({
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle — office's call; frozen for runners */}
-                        <div style={{ ...cellS, gap: 2, padding: '3px 4px' }}>
-                          <button style={{ ...toggleStyle(isDayRow), cursor: runner ? 'default' : 'pointer' }} disabled={runner} onClick={() => !runner && !isDayRow && toggleRowRateType(r.id)}>Day</button>
-                          <button style={{ ...toggleStyle(!isDayRow), cursor: runner ? 'default' : 'pointer' }} disabled={runner} onClick={() => !runner && isDayRow && toggleRowRateType(r.id)}>Hr</button>
+                        <div style={{ ...cellS, gap: 2, padding: '3px 4px' }} title={r.bundle_id ? 'Whole-building day — a bundle is a day price' : undefined}>
+                          <button style={{ ...toggleStyle(isDayRow), cursor: (runner || r.bundle_id) ? 'default' : 'pointer' }} disabled={runner || !!r.bundle_id} onClick={() => !runner && !r.bundle_id && !isDayRow && toggleRowRateType(r.id)}>Day</button>
+                          <button style={{ ...toggleStyle(!isDayRow), cursor: (runner || r.bundle_id) ? 'default' : 'pointer', opacity: r.bundle_id ? 0.4 : 1 }} disabled={runner || !!r.bundle_id} onClick={() => !runner && !r.bundle_id && isDayRow && toggleRowRateType(r.id)}>Hr</button>
                         </div>
                         {/* Rate — LOCKED IN RUNNER MODE (Eli: "lock rates").
                             Read-only text, not a disabled input: hidden nothing,
@@ -5432,7 +5681,8 @@ export function WorkOrderPopup({
                           {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
                         </div>
                         {/* Total Charge = charge + OT charge */}
-                        <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }}>
+                        <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', gap: 4, color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }} title={r.bundle_id ? 'Allocated share of the whole-building rate (pro-rata by rack). Rate column is rack.' : undefined}>
+                          {r.bundle_id && <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', color: 'var(--c-fg-3)' }}>SHARE</span>}
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
                         {/* Lock pill — always clickable even when WO is completed.
@@ -5784,6 +6034,16 @@ export function WorkOrderPopup({
                                   with no rate says so in warm, the same signal the
                                   table and sheet use for a missing rate. */}
                               {first && (() => {
+                                // A whole-building day reads its ONE price, never
+                                // a room's share (lib/woBundles).
+                                const dayBundle = bundles.find(x => x.date === g.date)
+                                if (dayBundle) {
+                                  return (
+                                    <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                                      Whole building {dayBundle.amount || <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}>rate?</span>}/day
+                                    </span>
+                                  )
+                                }
                                 const daily = first.row_rate_type === 'day'
                                 const raw = ((daily ? first.rate_daily : first.rate) ?? '').toString().trim()
                                 if (!raw) {
@@ -6173,18 +6433,80 @@ export function WorkOrderPopup({
           <div style={{ order: ORD.payments, display: 'flex', flexDirection: 'column', gap: 16, ...(isMobile ? mCard : {}) }}>
               <div>
                 <SectionHeader carved title="Payments" />
+                {/* COLLECT — both numbers, always, before any selection. See the
+                    derivation block above (collectBase / collectCard). Equal
+                    size, equal colour: never bold one and footnote the other.
+                    Hidden only when the work order has nothing on it yet. */}
+                {wo && collectTotals.grand > 0 && (
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 12px', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 4 }}>
+                      <span>Collect</span>
+                      <span>{isCodWo ? 'COD' : 'Billing'}</span>
+                    </div>
+                    {collectBase > 0 ? (
+                      <>
+                        {([
+                          { key: 'cash', amt: collectBase, how: isCodWo ? <><b style={{ color: 'var(--c-fg)' }}>cash</b> · Zelle · check</> : <>invoiced — nothing to collect at the desk</> },
+                          ...(collectCard > 0 ? [{ key: 'card', amt: collectCard, how: <><b style={{ color: 'var(--c-fg)' }}>card</b> · incl. 3% fee ${(collectCard - collectBase).toFixed(2)}</> }] : []),
+                        ] as { key: 'cash' | 'card'; amt: number; how: React.ReactNode }[]).map(line => {
+                          const dimmed = collectPicked !== null && collectPicked !== line.key
+                          const picked = collectPicked === line.key
+                          return (
+                            <div key={line.key} style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 6px', margin: '0 -6px', borderRadius: 9, background: picked ? 'var(--c-wash2)' : 'transparent' }}>
+                              <span style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, letterSpacing: '-0.02em', minWidth: 100, color: dimmed ? 'var(--c-fg-3)' : (isCodWo ? 'var(--c-st-hot)' : 'var(--c-fg)') }}>
+                                ${line.amt.toFixed(2)}
+                              </span>
+                              <span style={{ fontSize: 11, fontFamily: 'Inter', color: dimmed ? 'var(--c-fg-3)' : 'var(--c-fg-2)' }}>{line.how}</span>
+                            </div>
+                          )
+                        })}
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 0' }}>
+                        <span style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, letterSpacing: '-0.02em', minWidth: 100, color: 'var(--c-st-booked)' }}>$0.00</span>
+                        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>paid in full</span>
+                      </div>
+                    )}
+                    {/* HISTORY — fees already taken never fold into the number
+                        above. A later payment (OT next week) carries its own 3%. */}
+                    {collectPaidCount > 0 && (
+                      <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--c-wash2)' }}>
+                        Already collected: ${collectTotals.paid.toFixed(2)} across {collectPaidCount} payment{collectPaidCount === 1 ? '' : 's'}
+                        {collectTotals.cardFees > 0 ? ` · card fees $${collectTotals.cardFees.toFixed(2)}` : ''}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div>
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
                       <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
                         <div style={cellS}>
-                          <select value={p.payment_type} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, payment_type: e.target.value, last_four: '' }) : x))} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
+                          <select value={p.payment_type} onChange={e => {
+                            const method = e.target.value
+                            // THE PICK FILLS THE AMOUNT (Collect display). Only
+                            // on a row not yet saved, and only when the amount
+                            // is empty or was itself pre-filled — a typed
+                            // amount is the runner's and is never overwritten.
+                            const fill = isUnsavedPay(p.id) && !!method && (!p.amount || prefilledPayIdsRef.current.has(p.id))
+                            const target = fill ? collectAmountFor(method) : 0
+                            if (fill && target > 0) prefilledPayIdsRef.current.add(p.id)
+                            setPayRows(prev => prev.map(x => x.id === p.id
+                              ? withCardFee({ ...x, payment_type: method, last_four: '', amount: fill && target > 0 ? formatCurrency(String(target)) : x.amount })
+                              : x))
+                          }} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
                             <option value="">— type —</option>
-                            {PAY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            {/* The number sits next to the method, so the
+                                decision and the amount are in one place. Only
+                                for the row being collected now. */}
+                            {PAY_TYPES.map(t => {
+                              const amt = isUnsavedPay(p.id) && collectBase > 0 ? collectAmountFor(t) : 0
+                              return <option key={t} value={t}>{amt > 0 ? `${t} · $${amt.toFixed(2)}` : t}</option>
+                            })}
                           </select>
                         </div>
-                        <div style={cellIn}><input value={p.amount} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x))} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, amount: formatCurrency(e.target.value) }) : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
+                        <div style={cellIn}><input value={p.amount} onChange={e => { prefilledPayIdsRef.current.delete(p.id); setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x)) }} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, amount: formatCurrency(e.target.value) }) : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
                         <div style={cellIn}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
                         {needsLast4 && (
                           <div style={cellIn}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono c-tin-show" /></div>
@@ -6333,10 +6655,12 @@ export function WorkOrderPopup({
                   // Hot balance is COD-only (Eli 2026-08-24) — red = collect
                   // at the desk. A billing session's open balance shows plain.
                   { label: 'Balance Due', value: balanceDue, color: balanceDue > 0 ? (wo.payment_status === 'COD' ? 'var(--c-st-hot)' : 'var(--c-fg)') : 'var(--c-st-booked)', bold: true },
-                  // THE number a runner reads to the card terminal: balance
-                  // × 1.03. PRSFlo is the source of truth — no desk math, no
-                  // calling a manager. COD with an open balance only.
-                  ...(cardTotalDue > 0 ? [{ label: 'If paying by card (incl. 3%)', value: cardTotalDue, color: 'var(--c-st-hot)', bold: false }] : []),
+                  // "If paying by card (incl. 3%)" used to sit here, small,
+                  // under a bold Balance Due. That is the display that cost
+                  // the studio 3% (2026-09-14): the runner acted on the bold
+                  // number. Both amounts now live in the COLLECT block at the
+                  // top of Payments, equal weight — do not re-add a card line
+                  // here.
                 ].map(({ label, value, color, bold }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px' }}>
                     <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{label}</span>
@@ -7066,15 +7390,28 @@ export function WorkOrderPopup({
                       Rate wells (room / OT / staff) are office inputs. */}
                   <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '10px 14px', margin: '10px 0 4px' }}>
                     <div style={{ ...fldK, marginBottom: 4 }}>{runner ? 'Billing · set by the office' : 'Billing'}</div>
+                    {/* Whole-building day: the ONE price, then each room's share
+                        below it. The price itself is edited in the list view's
+                        day header (Option B) — here it is read. */}
+                    {(() => {
+                      const b = daySheetDate ? bundles.find(x => x.date === daySheetDate) : null
+                      if (!b) return null
+                      return (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg)', fontWeight: 700, padding: '2px 0 4px', borderBottom: '1px solid var(--c-wash2)', marginBottom: 3 }}>
+                          <span>Whole building · one price for every room</span>
+                          <span className="c-tnum">{b.amount || '—'}</span>
+                        </div>
+                      )
+                    })()}
                     {sheetStudioRows.map(r => {
                       const isDayRow = r.row_rate_type === 'day'
                       return (
                         <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
                           {runner ? (
-                            <span>Room {isDayRow ? `lockout — 12h incl. (${r.rate_daily || '—'})` : `${r.total_hours ?? calcHours(r.from_time, r.to_time) ?? '—'}h × ${r.rate || '—'}/hr`}</span>
+                            <span>Room {r.bundle_id ? `share of the whole-building rate (rack ${r.rate_daily || '—'})` : isDayRow ? `lockout — ${includedHoursFor(r)}h incl. (${r.rate_daily || '—'})` : `${r.total_hours ?? calcHours(r.from_time, r.to_time) ?? '—'}h × ${r.rate || '—'}/hr`}</span>
                           ) : (
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              Room
+                              {r.bundle_id ? 'Room rack' : 'Room'}
                               {isDayRow
                                 ? <input value={r.rate_daily} onChange={e => updateStRow(r.id, { rate_daily: e.target.value })} placeholder="$0/day" className="c-tin c-tin-mono" style={{ width: 80 }} />
                                 : <input value={r.rate} onChange={e => updateStRow(r.id, { rate: e.target.value })} placeholder="$0/hr" className="c-tin c-tin-mono" style={{ width: 80 }} />}

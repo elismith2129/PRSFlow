@@ -120,11 +120,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [st, rent, pay] = await Promise.all([
+  const [st, rent, pay, bnd] = await Promise.all([
     supabaseAdmin.from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order'),
     supabaseAdmin.from('rental_rows').select('*').eq('work_order_id', id).order('sort_order'),
     supabaseAdmin.from('payment_rows').select('*').eq('work_order_id', id),
+    // Whole-building blanket rates — the PDF prints one line per bundled day.
+    supabaseAdmin.from('wo_rate_bundles').select('id, date, amount, label').eq('work_order_id', id),
   ])
+  const bundles = bnd.data ?? []
 
   const studioRows = st.data ?? []
   const rentalRows = rent.data ?? []
@@ -168,7 +171,7 @@ export async function GET(req: NextRequest) {
   try {
   const woPdf = await renderWorkOrderPdf({
     wo: { ...wo, location: venue },
-    studioRows, rentalRows, paymentRows, totals, discountLabel,
+    studioRows, rentalRows, paymentRows, totals, discountLabel, bundles,
   })
 
   let attachment: { bytes: Uint8Array; contentType: string } | null = null

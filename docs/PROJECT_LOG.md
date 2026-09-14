@@ -380,6 +380,112 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### September 14, 2026 (evening) — Both numbers at once, the alarm that was missing, and the blanket rate built (v1.28.0)
+
+Three items off the previous entry's "Open" list, taken in the order they were ranked.
+
+#### The COLLECT display — the bug was time, not arithmetic
+
+A runner reads Balance Due $180.00, quotes it, runs $180 on the terminal, THEN picks
+Credit Card. `cardFeeOfCharged(180)` does exactly what it was built to do — derives the
+fee out of what was charged — and the studio ate $5.24. Every number on the screen was
+correct. The cash figure was bold and first; the card figure was a small line beneath it;
+the fee chip only existed after the pick. **Two numbers, two moments. A runner acts on the
+first one they see.**
+
+Rule adopted: never show one without the other. The COLLECT block sits at the top of
+Payments with both amounts at equal size and colour, before any selection, and the method
+pick fills the matching amount (the dropdown shows the number next to each method). Fees
+already collected are a history line underneath so an OT payment next week visibly carries
+its own 3%. Option A (stacked) over B (tiles) — B costs more phone height once the history
+line is under it. The "If paying by card" line under Balance Due is gone; that line IS the
+failure and must not come back.
+
+**One trap, found while building.** The collect numbers cannot come from the live rows.
+Pick Cash on a new row → it pre-fills $180 → the live balance is now $0 → change that
+same row to Credit Card → it would pre-fill $0. So the block computes from the PERSISTED
+payments (`paySnapRef`, "the database now") and stays fixed until Save re-baselines it.
+The row being filled in is the collection in progress, not a fact about the balance yet.
+
+**Rejected:** a rule that a method change always re-fills. A runner who typed $100 meant
+$100 — only an amount the pick itself wrote is re-written (`prefilledPayIdsRef`).
+
+#### Nothing detected a roomless booking — now the dashboard does
+
+The entry points were shut in v1.27.0, but a door that is shut is not an alarm. On the
+missing-WO precedent: `fetchRoomlessQueue` (−90/+180 days — the Concord four were in the
+PAST, and a future one is the one nobody sees coming) feeds a red Flo bullet that names the
+WO numbers. "4 bookings" alone is not actionable; "WO-1156 (Concord, 2026-09-02)" is.
+
+Cancelled bookings are INCLUDED (unlike the missing-WO queue): a cancelled roomless booking
+still bills, and still proves a write path exists that we have not found.
+
+Found on the way: the dashboard's `loadMyDay` only re-ran on duty ticks. The existing
+missing-WO alarm was therefore not live either — it refreshed when someone completed a
+duty, not when a booking changed. It now also keys on the page's bookings channel.
+
+**Rejected:** a queue panel for it. The noir dashboard's fixed-geometry law leaves no box,
+and an anomaly count that should read zero does not deserve a permanent slot.
+
+#### The blanket rate — Option B, built as ruled
+
+Nine rulings and two manual rebuilds later, it is code. `wo_rate_bundles` is one row per
+work order per DAY; every room row on that day is a member; each member's `charge` becomes
+its pro-rata share of the amount by the row's own `rate_daily`. Σ exact, remainder to the
+largest rack — proven necessary on 2026-09-03 when the stale rate sheet produced $6,669.99.
+
+**The decision that mattered: `rate_daily` stays RACK.** The one-off SQL had written the
+share into `rate_daily` to make recomputes idempotent, because the feature did not exist.
+With `bundle_id` marking the rows, rack stays where it was, and two things fall out for
+free: editing the bundle amount re-allocates live (rack is the basis, right there on the
+row), and the day-row OT rate — rack ÷ 10 — is already the "OT is rack" ruling with no
+special case.
+
+**The landmine, and why it is not guarded.** Six paths derive a day row's charge from
+`rate_daily`: load, `updateStRow`, the Day/Hr toggle, `addStRows`, batch edit, monthly
+split. Guarding each one is the "edit both blocks" trap that bit twice last session. So
+the invariant is RE-ESTABLISHED instead: an effect runs `allocateBundleShares` after every
+rows/bundles change and writes the share back over whatever a recompute produced. A
+recompute can wipe the allocation for one render; it cannot survive it. The one place that
+needed to know is `normalizeStRow`, which keeps a bundled row's STORED charge — deriving
+from rack on load, then re-allocating, left every bundled work order "dirty" the moment it
+opened and the Close button asking about changes nobody made.
+
+**Membership is the day's rooms by construction** (the Option B consequence): a row added
+to a bundled day joins it; a row moved off the day leaves it. This is what makes option
+C's failure — four rooms bundled, the fifth forgotten at rack on top, invoice $750 over
+with every invariant passing — unreachable. Kept strict on purpose; no per-row opt-out.
+
+**Found and fixed on the way:** the v1.27.0 `includedHoursFor` fix lived inside the
+component, so `normalizeStRow` (the LOAD path), `applyMonthlySplit` and
+`toggleRowRateType` had kept their literal 12. A 9-hour day loaded with its OT computed
+against twelve until someone touched a time. Hoisted to module level; three call sites.
+
+**Not built, deliberately:** the `room_rates` table (ruling 7 — allocation works off the
+rate typed on the row, and Eli's brief did not ask for it); converting WO-1156's one-off
+rows into a real bundle (the charges would not change, but it is a data rewrite on an
+invoiced WO — Eli's call, SQL offered in chat). **Still parked, reminder given:** the
+calendar card for blanket sessions — five cards each showing a share rather than the
+blanket. Eli, 2026-09-03: "There might be a cool way to do something there."
+
+#### Process
+
+- **A `git status` through the mount left `.git/index.lock`** and Eli's first push died on
+  it. The commit block I had sent was then wrong twice over: the lock, and the fact that
+  the blanket work landed in the same file as the Collect display, so the two could no
+  longer be committed separately. Send commit blocks when the file set is final, not when
+  a feature feels done.
+- Two mocks would have been over-mocking: the blanket rate already had a ruled drawing, so
+  it was built straight from B. The Collect display got its options page because it had
+  none.
+
+#### Open
+
+- **Blanket calendar card** — parked, not dropped. Reminder owed each time this is touched.
+- **`room_rates` table** (ruling 7) — the allocation basis is still a number someone typed.
+- **WO-1156 conversion** — offered, not run.
+- **Cancelled sessions excluded from the missing-WO alarm** — unchanged from last session.
+
 ### September 9–14, 2026 — Four ways to bill the wrong number, and the calendar that broke sessions into pieces
 
 Twelve commits. Two features, one live-data repair, and **four separate billing
