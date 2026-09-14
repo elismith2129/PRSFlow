@@ -25,7 +25,8 @@ import { dbResult } from '@/lib/db'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
-import { allocateBundleShares, bundleReadout, type WoRateBundle } from '@/lib/woBundles'
+import { allocateBundleShares, bundleReadout, proRataShares, type WoRateBundle } from '@/lib/woBundles'
+import { fetchRoomRates, dayRateFor, hourlyFromDay, type RoomRate } from '@/lib/roomRates'
 import { WoHistoryModal } from '@/components/calendar/WoHistoryModal'
 import { woAuditView, diffWoForSave, buildWoSnapshot, logWoActivity } from '@/lib/woActivity'
 
@@ -682,34 +683,81 @@ export function WorkOrderPopup({
    * is opened from a WO that already knows its room, so asking again was a
    * blank field with exactly one right answer.
    */
+  /** A room key is `Venue|Letter` — the one vocabulary (CLAUDE.md studio rule). */
   type SeedGroup = {
     id: string
-    // location: '' means the booking's own venue — same encoding as a row's
-    // location cell. A WO can span buildings, so the seed must reach any room.
-    studio: string; location: string; start: string; end: string; from: string; to: string
-    rateType: 'day' | 'hour'; rate: string
+    // ROOMS, PLURAL (2026-09-14, docs/design-refs/wo-seed-rooms-and-rates-
+    // options.html §2). A group is a set of rooms × a date range. Each room's
+    // rate is filled from room_rates when it is picked and stays editable.
+    rooms: string[]
+    rateByRoom: Record<string, string>
+    start: string; end: string; from: string; to: string
+    rateType: 'day' | 'hour'
+    // Optional BLANKET RATE / DAY (+ OT): every day of the range becomes a
+    // bundle over these rooms. Blank = ordinary rows at their own rates.
+    blanket: string; blanketOt: string
     engOn: boolean; engName: string; engRate: string; engRole: 'engineer' | 'assistant'
   }
+  const bookingRoomKey = booking.location && booking.studio ? `${booking.location}|${toStudioLetter(booking.studio)}` : ''
   const newSeedGroup = useCallback((from?: SeedGroup): SeedGroup => ({
     id: crypto.randomUUID(),
-    // A second group usually varies ONE thing (the room, or the dates), so it
+    // A second group usually varies ONE thing (the rooms, or the dates), so it
     // inherits the previous group rather than starting blank.
-    studio: from?.studio ?? (booking.studio ? toStudioLetter(booking.studio) : ''),
-    location: from?.location ?? '',
+    rooms: from?.rooms ?? (bookingRoomKey ? [bookingRoomKey] : []),
+    rateByRoom: from?.rateByRoom ?? {},
     start: '', end: '',
     from: from?.from ?? '', to: from?.to ?? '',
-    rateType: from?.rateType ?? 'day', rate: from?.rate ?? '',
+    rateType: from?.rateType ?? 'day',
+    blanket: '', blanketOt: '',
     engOn: from?.engOn ?? false, engName: from?.engName ?? '',
     engRate: from?.engRate ?? '', engRole: from?.engRole ?? 'assistant',
-  }), [booking.studio])
+  }), [bookingRoomKey])
   const [seedGroups, setSeedGroups] = useState<SeedGroup[]>(() => [{
     id: crypto.randomUUID(),
-    studio: booking.studio ? toStudioLetter(booking.studio) : '',
-    location: '',
+    rooms: bookingRoomKey ? [bookingRoomKey] : [],
+    rateByRoom: {},
     start: '', end: '', from: '', to: '',
-    rateType: 'day', rate: '',
+    rateType: 'day',
+    blanket: '', blanketOt: '',
     engOn: false, engName: '', engRate: '', engRole: 'assistant',
   }])
+  // ── Room rates (lib/roomRates) — read in exactly three places: Add-dates,
+  // the Seed panel, a blank row's room pick. Fills, never overrides. ─────────
+  const [roomRates, setRoomRates] = useState<RoomRate[]>([])
+  useEffect(() => {
+    if (runner) return
+    let live = true
+    fetchRoomRates().then(r => { if (live) setRoomRates(r) })
+    return () => { live = false }
+  }, [runner])
+  /** Toggle a room in a seed group; a newly picked room gets its table rate. */
+  const toggleSeedRoom = useCallback((id: string, key: string) => {
+    setSeedGroups(prev => prev.map(g => {
+      if (g.id !== id) return g
+      if (g.rooms.includes(key)) return { ...g, rooms: g.rooms.filter(k => k !== key) }
+      const [venue, letter] = key.split('|')
+      const table = dayRateFor(roomRates, venue, letter)
+      const rateByRoom = { ...g.rateByRoom }
+      if (!rateByRoom[key] && table) rateByRoom[key] = formatCurrency(String(table))
+      return { ...g, rooms: [...g.rooms, key], rateByRoom }
+    }))
+  }, [roomRates])
+  // The booking's own room is pre-picked before the rates load; fill it once
+  // they do (never overwriting a typed one).
+  useEffect(() => {
+    if (!roomRates.length) return
+    setSeedGroups(prev => prev.map(g => {
+      const rateByRoom = { ...g.rateByRoom }
+      let changed = false
+      for (const key of g.rooms) {
+        if (rateByRoom[key]) continue
+        const [venue, letter] = key.split('|')
+        const t = dayRateFor(roomRates, venue, letter)
+        if (t) { rateByRoom[key] = formatCurrency(String(t)); changed = true }
+      }
+      return changed ? { ...g, rateByRoom } : g
+    }))
+  }, [roomRates])
   const patchSeed = useCallback((id: string, patch: Partial<SeedGroup>) => {
     setSeedGroups(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g))
   }, [])
@@ -1930,6 +1978,16 @@ export function WorkOrderPopup({
     setBatchOn({ room: false, from: false, to: false, rate: false, ot_hours: false, ot_rate: false, staff: false, notes: false })
   }
 
+  /** A BLANK row's room pick fills its rate from room_rates — the third of
+   *  the three places the table reads (Add-dates, Seed, here). A row that
+   *  already has a rate keeps it whatever room it moves to. */
+  function rateFillFor(r: StRow, venue: string, letter: string): Partial<StRow> {
+    if ((r.rate || '').trim() || (r.rate_daily || '').trim()) return {}
+    const t = dayRateFor(roomRates, venue, letter)
+    if (!t) return {}
+    return { rate_daily: String(t), rate: String(hourlyFromDay(t)), ot_rate: String(hourlyFromDay(t)) }
+  }
+
   // ── BLANKET RATE: the day header owns the price (Option B, lib/woBundles) ─
   /** Turn a day's rooms into one whole-building price, or back to rack. */
   function setDayBundle(date: string, on: boolean) {
@@ -2282,8 +2340,12 @@ export function WorkOrderPopup({
     // room starts with no rate and the warm "rate?" nudge. (room_rates, ruling
     // 7, is the real answer — the right rate by default, no typing.)
     const sameRoom = !opts?.studio || !lastStudioRow || toStudioLetter(opts.studio) === lastStudioRow.studio
-    const rateStr = sameRoom ? (last?.rate || '') : ''
-    const rateDailyStr = sameRoom ? (last?.rate_daily || '') : ''
+    // A DIFFERENT room arrives at ITS OWN rack rate from room_rates (table,
+    // 2026-09-14) — the one of three places the table fills a rate. No row
+    // for it in the table → blank + the warm "rate?" nudge, as before.
+    const tableDay = sameRoom ? null : dayRateFor(roomRates, opts?.location || booking.location, opts?.studio)
+    const rateStr = sameRoom ? (last?.rate || '') : (tableDay ? String(hourlyFromDay(tableDay)) : '')
+    const rateDailyStr = sameRoom ? (last?.rate_daily || '') : (tableDay ? String(tableDay) : '')
     // STAFF copies only onto a NEW DAY. A room added to a day that already
     // has one is joining a day that is already staffed — copying the staff
     // line made "2ND Wyatt Sayre" appear twice on one card.
@@ -2324,7 +2386,7 @@ export function WorkOrderPopup({
       rate: rateStr,
       rate_daily: rateDailyStr || '',
       row_rate_type: rowRateType,
-      ot_rate: last?.ot_rate || '',
+      ot_rate: sameRoom ? (last?.ot_rate || '') : (tableDay ? String(hourlyFromDay(tableDay)) : ''),
       ot_hours: '0',
       ot_charge: null,
       // Inherit the day's agreement from the row above — a 4-hour event booked
@@ -3624,33 +3686,62 @@ export function WorkOrderPopup({
 
   // ── Seed panel: bulk-append studio_time_rows for a date range ────────────────
   async function handleSeed() {
-    const ready = seedGroups.filter(g => g.start)
+    const ready = seedGroups.filter(g => g.start && g.rooms.length > 0)
     if (!woIdRef.current || ready.length === 0) return
+    const woId = woIdRef.current
     setSeedBusy(true)
     setSeedMsg(null)
     try {
       let added = 0
       let skipped = 0
-      // Sequential, not Promise.all: each group's insert reads the rows already
-      // present to skip dates it would duplicate, so they must not race.
+      // What is already there, per (venue|letter, date). The seed lib's own
+      // skipExisting is by DATE ALONE, which is right for one room and wrong
+      // for five — the second room would be skipped on every day the first
+      // room has. So the skip is done here, per room.
+      const { data: existingRows } = await supabase
+        .from('studio_time_rows').select('date, studio, location, sort_order').eq('work_order_id', woId)
+      const have = new Set((existingRows ?? []).filter(r => r.studio).map(r => `${r.location || booking.location || ''}|${toStudioLetter(r.studio)}|${r.date}`))
+      let sortBase = (existingRows ?? []).reduce((m, r) => Math.max(m, r.sort_order ?? 0), -1) + 1
+      // Blanket days to create, per date → amount/OT (last group wins a date).
+      const blanketByDate = new Map<string, { amount: number; ot: number }>()
+
+      // Sequential, not Promise.all — inserts share the sort counter.
       for (const g of ready) {
         const dates = dateRange(g.start, g.end || g.start)
-        const res = await seedStudioTimeRows({
-          workOrderId: woIdRef.current,
-          studio: g.studio ? toStudioLetter(g.studio) : '',
-          location: g.location || '',
-          dates,
-          fromTime: g.from,
-          toTime: g.to,
-          rateType: g.rateType,
-          rate: g.rateType === 'hour' ? g.rate : '',
-          rateDaily: g.rateType === 'day' ? g.rate : '',
-          engRate: g.engOn && g.engRate ? g.engRate : undefined,
-          engName: g.engOn && g.engName.trim() ? g.engName.trim() : undefined,
-          engRole: g.engOn ? g.engRole : undefined,
-        })
-        added += res.inserted
-        skipped += dates.length - res.inserted
+        const blanket = stripCurrency(g.blanket) ?? 0
+        for (let ri = 0; ri < g.rooms.length; ri++) {
+          const key = g.rooms[ri]
+          const [venue, letter] = key.split('|')
+          const roomDates = dates.filter(d => !have.has(`${venue}|${letter}|${d}`))
+          skipped += dates.length - roomDates.length
+          if (!roomDates.length) continue
+          // Per-room rate (filled from room_rates when picked, editable). The
+          // Hr type derives the hourly from the day figure — house law.
+          const dayNum = stripCurrency(g.rateByRoom[key] || '') ?? 0
+          const res = await seedStudioTimeRows({
+            workOrderId: woId,
+            studio: letter,
+            // '' = the booking's own venue, the encoding a row stores.
+            location: venue === (booking.location || '') ? '' : venue,
+            dates: roomDates,
+            fromTime: g.from,
+            toTime: g.to,
+            rateType: g.rateType,
+            rate: g.rateType === 'hour' && dayNum > 0 ? String(hourlyFromDay(dayNum)) : '',
+            rateDaily: g.rateType === 'day' && dayNum > 0 ? String(dayNum) : '',
+            sortOrderStart: sortBase,
+            // STAFF ONCE PER DAY. The first room carries the group's staff
+            // line; every further room on the same day runs unstaffed rather
+            // than repeating the same assistant five times on one card.
+            engRate: ri === 0 && g.engOn && g.engRate ? g.engRate : undefined,
+            engName: ri === 0 && g.engOn && g.engName.trim() ? g.engName.trim() : undefined,
+            engRole: ri === 0 ? (g.engOn ? g.engRole : undefined) : 'none',
+          }, { skipExisting: false })
+          added += res.inserted
+          sortBase += res.inserted
+          roomDates.forEach(d => have.add(`${venue}|${letter}|${d}`))
+        }
+        if (blanket > 0) for (const d of dates) blanketByDate.set(d, { amount: blanket, ot: stripCurrency(g.blanketOt) ?? 0 })
         // A named 1ST engineer also becomes the WO-level fallback (legacy field,
         // used as the placeholder + card fallback). Assistants stay row-only.
         if (g.engOn && g.engName.trim() && g.engRole === 'engineer') {
@@ -3658,8 +3749,41 @@ export function WorkOrderPopup({
           setWo(w => w ? { ...w, engineer: g.engName.trim() } : w)
         }
       }
+
+      // BLANKET DAYS (lib/woBundles). One bundle per date, upserted; then every
+      // room row on that date joins it and its allocated share is WRITTEN —
+      // this path saves to the database directly (unlike the local-first
+      // rows), so the shares must land now, not on the next Save, or billing
+      // reads rack until someone presses it.
+      if (blanketByDate.size > 0) {
+        const { error: bErr } = await supabase.from('wo_rate_bundles').upsert(
+          Array.from(blanketByDate.entries()).map(([date, v]) => ({ work_order_id: woId, date, amount: v.amount, ot_amount: v.ot })),
+          { onConflict: 'work_order_id,date' },
+        )
+        if (!dbResult('Saving blanket rates', bErr)) throw new Error('Blanket rates were not saved.')
+        const [{ data: bRows }, { data: rowsNow }] = await Promise.all([
+          supabase.from('wo_rate_bundles').select('*').eq('work_order_id', woId).in('date', Array.from(blanketByDate.keys())),
+          supabase.from('studio_time_rows').select('id, date, studio, rate_daily, charge, ot_charge, ot_hours, row_rate_type, bundle_id').eq('work_order_id', woId).in('date', Array.from(blanketByDate.keys())),
+        ])
+        for (const b of bRows ?? []) {
+          const members = (rowsNow ?? []).filter(r => r.date === b.date && (r.studio || '').trim())
+          const racks = members.map(r => Number(r.rate_daily) || 0)
+          const shares = proRataShares(Number(b.amount) || 0, racks)
+          const otShares = proRataShares(Number(b.ot_amount) || 0, racks)
+          for (let i = 0; i < members.length; i++) {
+            const { error } = await supabase.from('studio_time_rows').update({
+              bundle_id: b.id, row_rate_type: 'day', charge: shares[i], ot_charge: otShares[i] > 0 ? otShares[i] : null, ot_hours: 0,
+            }).eq('id', members[i].id)
+            if (!dbResult('Allocating blanket rate', error)) throw new Error('Blanket shares were not saved.')
+          }
+        }
+        bundlesDirtyRef.current = false
+        const { data: allB } = await supabase.from('wo_rate_bundles').select('*').eq('work_order_id', woId).order('date')
+        if (allB) setBundles(allB.map(normalizeBundle))
+      }
+
       const { data: reloaded } = await supabase.from('studio_time_rows')
-        .select('*').eq('work_order_id', woIdRef.current).order('date')
+        .select('*').eq('work_order_id', woId).order('date')
       setStRows((reloaded ?? []).map(normalizeStRow))
       originalStRowsRef.current = (reloaded ?? []).map(normalizeStRow)
       setSeedGroups([newSeedGroup()])
@@ -4967,53 +5091,56 @@ export function WorkOrderPopup({
                       )}
                       {/* Note: plain <div> wrappers, NOT <label> — a <label> forwards
                           clicks to its first control, which broke the Day/Hr toggle. */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(126px, 1fr))', gap: 10 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          <span style={metaLabel}>Studio</span>
-                          {/* A PICKER, NOT A TEXT BOX (2026-09-08). This was a free
-                              input, and "PRS-A" typed here on WO-1140 produced three
-                              booking cards that existed in the database but appeared
-                              in no room on the calendar — the grid matches room
-                              labels exactly. A room is a closed set; let people pick
-                              from it. Any unrecognised value already on the row is
-                              kept as an option so opening an old WO can't silently
-                              rewrite its room. */}
-                          {/* EVERY room at EVERY venue — a WO can span buildings,
-                              so limiting this to the booking's venue made rooms
-                              unreachable (Eli, 2026-09-08). Same `venue|letter`
-                              encoding and the same "PRS A" labels as the row
-                              cell below, so the two controls can't disagree.
-                              Values are LETTERS: the seed state and
-                              seedStudioTimeRows both speak letters, and making
-                              the options full labels is what left nothing
-                              selected and printed "C (not a room here)". */}
-                          <select
-                            value={`${seed.location || booking.location || ''}|${toStudioLetter(seed.studio)}`}
-                            onChange={e => {
-                              const [loc, room] = e.target.value.split('|')
-                              // '' location = the booking's own venue, matching
-                              // how a row stores it.
-                              patchSeed(seed.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
-                            }}
-                            className="c-input c-inset2"
-                          >
-                            <option value="|">—</option>
-                            {/* A value no room matches (a legacy hand-typed row)
-                                stays visible instead of being silently rewritten. */}
-                            {seed.studio && !STUDIO_LOCATIONS.some(l =>
-                              l.name === (seed.location || booking.location)
-                              && l.rooms.some(r => toStudioLetter(r) === toStudioLetter(seed.studio)))
-                              && (
-                                <option value={`${seed.location || booking.location || ''}|${toStudioLetter(seed.studio)}`}>
-                                  {roomCode(toStudioLetter(seed.studio), seed.location || booking.location) || toStudioLetter(seed.studio) || '—'}
-                                </option>
-                              )}
-                            {STUDIO_LOCATIONS.map(l => l.rooms.map(room => {
-                              const letter = toStudioLetter(room)
-                              return <option key={`${l.name}|${letter}`} value={`${l.name}|${letter}`}>{STUDIO_SHORT[l.name] ?? l.name} {letter}</option>
-                            }))}
-                          </select>
+                      {/* ROOMS, PLURAL (2026-09-14; mock wo-seed-rooms-and-rates-
+                          options.html §2). Chips, every room at every venue, the
+                          same `venue|letter` vocabulary as the row cell. Picking a
+                          room fills its rate from room_rates (editable below);
+                          five rooms × two days is one press. A room is never
+                          typed (CLAUDE.md, WO-1140). */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={metaLabel}>Rooms</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                          {STUDIO_LOCATIONS.map(l => (
+                            <span key={l.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginRight: 6 }}>
+                              <span style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', color: 'var(--c-fg-3)' }}>{STUDIO_SHORT[l.name] ?? l.name}</span>
+                              {l.rooms.map(room => {
+                                const letter = toStudioLetter(room)
+                                const key = `${l.name}|${letter}`
+                                const on = seed.rooms.includes(key)
+                                return (
+                                  <button key={key} type="button" onClick={() => toggleSeedRoom(seed.id, key)} style={{ padding: '4px 9px', borderRadius: 99, fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: on ? 'var(--c-fg)' : 'var(--c-wash2)', color: on ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{letter}</button>
+                                )
+                              })}
+                            </span>
+                          ))}
                         </div>
+                        {/* Each picked room's rate — from the table, editable.
+                            Hr type shows the hourly (day ÷ 10) beside it. */}
+                        {seed.rooms.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                            {seed.rooms.map(key => {
+                              const [venue, letter] = key.split('|')
+                              const v = seed.rateByRoom[key] || ''
+                              const dayNum = stripCurrency(v) ?? 0
+                              return (
+                                <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--c-wash)', borderRadius: 9, padding: '3px 6px 3px 9px' }}>
+                                  <span style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{roomCode(letter, venue)}</span>
+                                  <input
+                                    value={v}
+                                    onChange={e => patchSeed(seed.id, { rateByRoom: { ...seed.rateByRoom, [key]: e.target.value } })}
+                                    onBlur={e => patchSeed(seed.id, { rateByRoom: { ...seed.rateByRoom, [key]: e.target.value ? formatCurrency(e.target.value) : '' } })}
+                                    placeholder="$/day"
+                                    className="c-tin c-tin-mono c-tin-show"
+                                    style={{ width: 72, ...(v ? {} : { background: 'color-mix(in srgb, var(--c-st-warm) 20%, transparent)', borderRadius: 5 }) }}
+                                  />
+                                  {seed.rateType === 'hour' && dayNum > 0 && <span style={{ fontSize: 9.5, fontFamily: "'DM Mono', ui-monospace, monospace", color: 'var(--c-fg-3)' }}>${hourlyFromDay(dayNum)}/hr</span>}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(126px, 1fr))', gap: 10 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                           <span style={metaLabel}>Start date</span>
                           <input type="date" value={seed.start} onChange={e => patchSeed(seed.id, { start: e.target.value })} className="c-input c-inset2" />
@@ -5031,20 +5158,50 @@ export function WorkOrderPopup({
                           <TimeInput value={seed.to} onChange={v => patchSeed(seed.id, { to: v })} className="c-input c-inset2" />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                          <span style={metaLabel}>Rate</span>
-                          {/* flexShrink:0 on the toggle — the Hr button used to be
-                              squeezed to nothing by the rate input in a narrow cell,
-                              so the control looked like a static "Day" label. */}
-                          <div style={{ display: 'flex', gap: 4, minWidth: 0 }}>
-                            <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', flexShrink: 0 }}>
-                              {(['day', 'hour'] as const).map(rt => (
-                                <button key={rt} type="button" onClick={() => patchSeed(seed.id, { rateType: rt })} style={{ padding: '4px 9px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', background: seed.rateType === rt ? 'var(--c-fg)' : 'var(--c-wash2)', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
-                              ))}
-                            </div>
-                            <input value={seed.rate} onChange={e => patchSeed(seed.id, { rate: e.target.value })} className="c-input c-inset2" style={{ flex: 1, minWidth: 0 }} />
+                          <span style={metaLabel}>Type</span>
+                          {/* Rates live on the room chips above; this only says
+                              Day or Hr (hourly = day ÷ 10, house law). */}
+                          <div style={{ display: 'flex', borderRadius: 4, overflow: 'hidden', alignSelf: 'flex-start' }}>
+                            {(['day', 'hour'] as const).map(rt => (
+                              <button key={rt} type="button" onClick={() => patchSeed(seed.id, { rateType: rt })} style={{ padding: '7px 12px', fontSize: 10, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', background: seed.rateType === rt ? 'var(--c-fg)' : 'var(--c-wash2)', color: seed.rateType === rt ? 'var(--c-bg)' : 'var(--c-fg-2)' }}>{rt === 'day' ? 'Day' : 'Hr'}</button>
+                            ))}
                           </div>
                         </div>
                       </div>
+
+                      {/* BLANKET RATE / DAY — optional. Every day of the range
+                          becomes a bundle over the picked rooms (lib/woBundles);
+                          OT is the typed whole-day figure. Blank = plain rows. */}
+                      {(() => {
+                        const amt = stripCurrency(seed.blanket) ?? 0
+                        const racks = seed.rooms.map(k => stripCurrency(seed.rateByRoom[k] || '') ?? 0)
+                        const rackTotal = racks.reduce((a, b) => a + b, 0)
+                        const off = amt > 0 && rackTotal > 0 ? parseFloat(((1 - amt / rackTotal) * 100).toFixed(2)) : null
+                        let days = 0
+                        try { days = seed.start ? dateRange(seed.start, seed.end || seed.start).length : 0 } catch { days = 0 }
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--c-wash2)', paddingTop: 10 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              <span style={metaLabel}>Blanket rate / day</span>
+                              <input value={seed.blanket} onChange={e => patchSeed(seed.id, { blanket: e.target.value })} onBlur={e => patchSeed(seed.id, { blanket: e.target.value ? formatCurrency(e.target.value) : '' })} placeholder="none — rooms at their own rates" className="c-input c-inset2" style={{ width: 200, fontFamily: "'DM Mono', ui-monospace, monospace" }} />
+                            </div>
+                            {amt > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <span style={metaLabel}>OT (whole day)</span>
+                                <input value={seed.blanketOt} onChange={e => patchSeed(seed.id, { blanketOt: e.target.value })} onBlur={e => patchSeed(seed.id, { blanketOt: e.target.value ? formatCurrency(e.target.value) : '' })} placeholder="$0" className="c-input c-inset2" style={{ width: 90, fontFamily: "'DM Mono', ui-monospace, monospace" }} />
+                              </div>
+                            )}
+                            {amt > 0 && (
+                              <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', paddingBottom: 8 }}>
+                                {seed.rooms.length} room{seed.rooms.length === 1 ? '' : 's'}
+                                {rackTotal > 0 ? ` · rack $${rackTotal.toLocaleString('en-US')}` : ''}
+                                {off != null ? ` · ${off >= 0 ? `${off}% off rack` : `${Math.abs(off)}% over rack`}` : ''}
+                                {days > 1 ? ` · ${days} days = $${(amt * days).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
 
                       {/* Staff — off by default; toggle on to add an engineer (1ST) or assistant (2ND) + rate */}
                       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
@@ -5095,11 +5252,24 @@ export function WorkOrderPopup({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Appends one row per day; dates already in the table are skipped.</span>
                     {(() => {
-                      const ready = seedGroups.filter(g => g.start).length
+                      const readyGroups = seedGroups.filter(g => g.start && g.rooms.length > 0)
+                      const ready = readyGroups.length
                       const can = ready > 0 && !seedBusy
+                      // SAY WHAT IT WILL MAKE before it is pressed: rows, and
+                      // blanket days when a price is typed.
+                      let rows = 0, days = 0, blanketDays = 0
+                      for (const g of readyGroups) {
+                        let n = 0
+                        try { n = dateRange(g.start, g.end || g.start).length } catch { n = 0 }
+                        days += n; rows += n * g.rooms.length
+                        if ((stripCurrency(g.blanket) ?? 0) > 0) blanketDays += n
+                      }
+                      const label = seedBusy ? 'Adding…'
+                        : ready === 0 ? 'Add rows'
+                        : `Add · ${days} day${days === 1 ? '' : 's'} · ${rows} row${rows === 1 ? '' : 's'}${blanketDays > 0 ? ` · ${blanketDays} blanket day${blanketDays === 1 ? '' : 's'}` : ''}`
                       return (
                         <button type="button" disabled={!can} onClick={handleSeed} style={{ padding: '7px 16px', borderRadius: 6, fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, whiteSpace: 'nowrap', cursor: can ? 'pointer' : 'default', background: ready > 0 ? 'var(--c-fg)' : 'var(--c-wash)', color: ready > 0 ? 'var(--c-bg)' : 'var(--c-fg-3)' }}>
-                          {seedBusy ? 'Adding…' : ready > 1 ? `Add rows · ${ready} groups` : 'Add rows'}
+                          {label}
                         </button>
                       )
                     })()}
@@ -5594,7 +5764,7 @@ export function WorkOrderPopup({
                             value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}
                             onChange={e => {
                               const [loc, room] = e.target.value.split('|')
-                              updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
+                              updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room, ...rateFillFor(r, loc, room) })
                             }}
                             className="c-tin" style={{ padding: '2px 2px', fontSize: 10 }}
                           >
@@ -6377,7 +6547,10 @@ export function WorkOrderPopup({
                     date and the room first. */}
                 {!readOnly && !runner ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                    <button type="button" onClick={openAddDay} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add studio time</button>
+                    <button type="button" onClick={openAddDay} className="c-control c-soft c-raised-chip" style={{ padding: '7px 14px' }}>+ Add studio time</button>
+                    {/* A real button, not a text link (Eli, 2026-09-14: "really
+                        small and reminiscent of early builds"). c-soft pill,
+                        same family as the sheet's Save. */}
                     <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>Engineer and assistant are set on the day itself.</span>
                   </div>
                 ) : <div />}
@@ -6419,7 +6592,7 @@ export function WorkOrderPopup({
                     view on a phone had no way to add a day at all. */}
                 {!readOnly && !runner ? (
                 <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                  <button type="button" onClick={openAddDay} className="c-x" style={{ fontSize: 10, color: 'var(--c-fg-2)', background: 'none', boxShadow: 'none', cursor: 'pointer', padding: 0 }}>+ Add studio time</button>
+                  <button type="button" onClick={openAddDay} className="c-control c-soft c-raised-chip" style={{ padding: '7px 14px' }}>+ Add studio time</button>
                 </div>
                 ) : <div />}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3, background: 'var(--c-wash2)', borderRadius: 14, padding: '6px 12px' }}>
@@ -6926,6 +7099,18 @@ export function WorkOrderPopup({
                   ) : (
                     <>
                       Adds <b style={{ color: 'var(--c-fg)' }}>{fresh.length} day{fresh.length === 1 ? '' : 's'}</b>
+                      {/* THE RATE IS NAMED BEFORE YOU PRESS. Same room as the last
+                          row → its rate carries over; a different room → its own
+                          rack from room_rates, or "rate?" if the table has none. */}
+                      {(() => {
+                        const lastRoom = [...stRows].reverse().find(r => !!r.studio)
+                        const same = !lastRoom || lastRoom.studio === newDay.letter
+                        if (same) return null
+                        const t = dayRateFor(roomRates, newDay.venue, newDay.letter)
+                        return t
+                          ? <> · {roomCode(newDay.letter, newDay.venue)} at <b style={{ color: 'var(--c-fg)' }}>${t.toLocaleString('en-US')}/day</b></>
+                          : <> · <span style={{ color: 'var(--c-st-warm)' }}>no rate on file for {roomCode(newDay.letter, newDay.venue)} — set it on the card</span></>
+                      })()}
                       {skipped > 0 && <> · {skipped} already there, skipped</>}
                       {joins
                         ? <> · joins the existing run — <b style={{ color: 'var(--c-st-booked)' }}>one block</b> on the calendar</>
@@ -7150,7 +7335,7 @@ export function WorkOrderPopup({
                               value={`${r.location || booking.location || ''}|${toStudioLetter(r.studio)}`}
                               onChange={e => {
                                 const [loc, room] = e.target.value.split('|')
-                                updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room })
+                                updateStRow(r.id, { location: loc === (booking.location || '') ? '' : loc, studio: room, ...rateFillFor(r, loc, room) })
                               }}
                               className="c-tin c-arch"
                               style={{ fontSize: 13, padding: '2px 4px', width: 'auto', cursor: 'pointer' }}

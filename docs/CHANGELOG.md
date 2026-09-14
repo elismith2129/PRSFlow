@@ -110,9 +110,31 @@ RACK** — it is the allocation basis and the OT basis ("OT is rack", ruling 5).
 - The sheet's generic `select` rule no longer hits `select.c-input` (the Add-dates room
   read as a sheared "ERS B" — 10px padding on a 32px fixed height).
 
-**Not built:** the `room_rates` table (ruling 7) — the real fix for a new room's default
-rate; and the Seed panel taking multiple rooms + a blanket price (one press for 5 rooms ×
-2 days). Both proposed, to be mocked first. **Closed, not parked:** the blanket
+### Room rates + the multi-room Seed (same evening; mock `docs/design-refs/wo-seed-rooms-and-rates-options.html`)
+
+**Migration `20260914150000_room_rates.sql`** — `room_rates(venue, room, day_rate, min_hours)`,
+seeded from the rate sheet with Paramount A corrected to $1,750; RLS read staff / write
+owner+manager+billing / delete owner; realtime.
+
+- **`lib/roomRates.ts`** — `fetchRoomRates`, `dayRateFor(rates, venue, letter)`,
+  `hourlyFromDay` (÷ 10). **Reads in exactly three places** (Eli: "not anywhere else"):
+  the Add-dates prompt (a *different* room arrives at its own rate, named before you
+  press), the Seed panel, and a blank row's room pick (`rateFillFor`). **Fills, never
+  overrides** a typed rate. Not the lead form; never an existing row.
+- **Admin → Rates** (`components/admin/RoomRatesSection.tsx`): day rate editable in place,
+  hourly derived and shown, min hours display-only.
+- **Seed panel takes rooms, plural, and a blanket price.** `SeedGroup.studio/location` →
+  `rooms: string[]` (`venue|letter` chips) + `rateByRoom` (filled from the table when a
+  room is picked, editable) + `blanket`/`blanketOt`. Five rooms × two days is one press:
+  rows per room, **staff once per day** (rooms after the first seed `engRole: 'none'`),
+  and when a blanket is typed, `wo_rate_bundles` upserted per date and every member row's
+  share **written to the DB immediately** — this path saves directly, so waiting for the
+  next Save would have left billing reading rack.
+
+> ⚠ **WATCH-OUT — `seedStudioTimeRows`' own `skipExisting` skips by DATE ALONE.** Right for
+> one room, wrong for five: the second room would be skipped on every day the first has.
+> The multi-room seed passes `skipExisting: false` and skips per `(venue|letter, date)`
+> itself. Don't "simplify" it back. **Closed, not parked:** the blanket
 calendar card — one card per room, as any multi-room day (Eli: "leave as separate cards"). The Concord one-off rows (WO-1156) are NOT bundled — they
 carry the share in `rate_daily` and keep working; converting them is a separate SQL.
 

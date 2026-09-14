@@ -498,9 +498,20 @@ rule was written for the next DAY of the same room and was wrong for the next RO
 same day. Rate now copies only for the same room; staff only onto a new day. And a
 five-day blanket should not mean typing the price five times: "→ all days".
 
-**Proposed, not built — Eli asked for analysis first:** `room_rates` (ruling 7) so a new
-room arrives at its own rate with no typing, and the Seed panel taking multiple rooms + a
-blanket price so 5 rooms × 2 days is one press. Both to be mocked before building.
+**Then built, after the analysis and one mock (`wo-seed-rooms-and-rates-options.html`):**
+`room_rates` and the multi-room Seed. Eli confirmed the three fill points and "not
+anywhere else" — the table fills an empty rate at Add-dates, Seed and a blank row's room
+pick; it never touches the lead form or an existing row. That boundary matters: a rate
+table that *corrects* rows would be the retroactive-money instinct in a new coat.
+
+The Seed's own `skipExisting` skips by date alone, which was invisible with one room and
+would have silently dropped four of five rooms on a blanket day. Skipped per room now.
+Shares on a seeded blanket day are written to the DB at seed time: the Seed path saves
+directly, and shares that waited for the next Save would have left the billing hub
+reading rack in the meantime.
+
+**Not done:** the client rate sheet (prs-rate-sheet skill) still carries its own copy of
+the rates. It should read this table, or be regenerated from it — separate.
 
 #### Process
 

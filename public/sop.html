@@ -657,6 +657,8 @@ const VERSIONS=[
       'Whole-building days: on a work order, any day has a "Blanket rate" switch (list view, on the day’s first row — or in the day card’s Billing box). Flip it, type the price for the day, and every room on that day gets its fair share of it automatically (bigger rooms take more). Overtime on a whole-building day is a number you type next to the rate — it is not worked out from the clock, because those deals are always custom — and it is shared across the rooms the same way.',
       'The client’s invoice shows a whole-building day as one line — "Paramount — whole building · Studios A, B, C, E, X · $6,670" — never the per-room split.',
       'Day rates with fewer than 12 hours included: the fix from v1.27.0 didn’t reach the moment a work order opens, so overtime could still show against 12 until you touched a time. It now reads the included hours everywhere.',
+      'Room rates live in the app now — Admin → Rates. When you add a room to a work order (Add dates, the Seed panel, or picking a room on a blank row) it arrives at that room’s rate instead of copying whatever the row above had. It never changes a rate that’s already on a row. Owners, managers and billing can edit the rates there.',
+      'The Seed panel takes more than one room at a time: tap the rooms, pick the dates, and (optionally) type a Blanket rate per day and its OT. One press builds every row, one staff line per day, with the blanket shared across the rooms. Five rooms for two days used to be twelve steps.',
     ],
     affects:'At the desk: read the COLLECT box, not Balance Due. Cash line for cash/Zelle/check, card line for a card. Then pick the type and the amount is already there.',
     dev:[
@@ -668,7 +670,9 @@ const VERSIONS=[
       'PDF prints one line per bundled day (PRS ALL · whole building · rooms named, unpriced); overtime prints as its own room line; staff sub-rows now APPEND instead of overwriting.',
       'includedHoursFor hoisted to module level: normalizeStRow (load), applyMonthlySplit and toggleRowRateType kept a literal 12.',
       'Migration: 20260914130000_wo_rate_bundles.sql — re-creates save_work_order_atomic with p_bundles + p_bundle_deletes (old 8-arg overload dropped). Run BEFORE the push.',
-      'Still parked: the calendar card for blanket sessions (reminder owed); room_rates table (ruling 7).',
+      'room_rates (migration 20260914150000) + lib/roomRates: fills an empty rate at Add-dates, Seed and a blank row’s room pick — never overrides, not the lead form, never an existing row. Admin → Rates edits it.',
+      'Seed panel: rooms[] chips + rateByRoom + blanket/blanketOt. Staff once per day; bundles upserted and shares WRITTEN at seed time (the Seed saves directly). WATCH-OUT: seedStudioTimeRows.skipExisting skips by date alone — the multi-room seed skips per (room, date) itself.',
+      'Calendar card for blanket sessions: CLOSED — one card per room (Eli).',
     ],
   },
   {

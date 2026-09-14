@@ -103,6 +103,21 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Set up a bundled day, Save, close, reopen. The list view shows the BLANKET RATE button on with the same rate and the same shares; the Close button must NOT ask about unsaved changes if you touched nothing. Switch to CARDS view: the day card reads "Blanket rate $6,670/day". Open the day sheet: Billing shows "Blanket rate · one price" with the rate, then each room’s share. Clean up: turn it off and Save.',
       },
       {
+        id: 'v128-rates-admin', area: 'Admin', device: 'desktop',
+        what: 'Room rates are editable in Admin → Rates and the change is live',
+        how: 'Admin → Rates. Every room at every venue is listed with a Day rate, an Hourly (always the day ÷ 10) and a minimum. As an owner/manager/billing user, click a day rate, change it, press Enter — it saves, the hourly updates. Change it back. Nothing on any existing work order should change.',
+      },
+      {
+        id: 'v128-rates-adddates', area: 'Work order', device: 'desktop',
+        what: 'Adding a DIFFERENT room arrives at that room’s own rate',
+        how: 'Open a work order in Studio A. + Add studio time → pick Studio B. Before pressing, the line under the fields says "PRS B at $1,550/day" (the rate from Admin → Rates). Press Add day: the new row’s Rate is $1,550, not Studio A’s rate. Now add another day of the SAME room: its rate copies from the row above, as before.',
+      },
+      {
+        id: 'v128-seed-rooms', area: 'Work order', device: 'desktop',
+        what: 'The Seed panel builds five rooms × two days with a blanket in one press',
+        how: 'Open a test work order → "+ Seed — add multiple days". Tap rooms PRS A, B, C, E, X (each shows its rate from the table; you can edit one). Start and end dates two days apart, times 10 AM–10 PM. Type 6670 in Blanket rate / day. The button reads "Add · 2 days · 10 rows · 2 blanket days". Press it. List view shows two days, each with a Blanket rate strip at $6,670, five rows per day with SHARE totals adding to $6,670.00, and ONE staff line per day (not five). Close WITHOUT saving and reopen: everything is still there — the Seed saves as it goes.',
+      },
+      {
         id: 'v128-bundle-pdf', area: 'Billing', device: 'desktop',
         what: 'The PDF prints a whole-building day as ONE line with the rooms named',
         how: 'On a work order with a bundled day, download the work order PDF. The Studio time table shows one line for that day — "PRS ALL", "Paramount — whole building · Studios A, B…", Day, the blanket rate as both Rate and Total. There must be NO per-room dollar amounts for that day. The Studio total at the bottom still equals the blanket rate (plus any OT, which prints as its own room line).',

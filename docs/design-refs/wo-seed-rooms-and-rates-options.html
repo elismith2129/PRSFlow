@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — One press for a blanket booking: room rates + a multi-room Seed</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ONE PRESS FOR A BLANKET BOOKING (Eli, 2026-09-14 evening; analysis accepted:
+  "go").
+
+  What it costs today to build a 2-day, 5-room blanket WO: book one room →
+  open the WO → + Add studio time four times → flip Blanket rate on each day,
+  type the price and the OT on each day. Twelve actions, and until tonight two
+  of them were wrong by default (a new room inherited the previous room's rate;
+  staff copied twice onto one day).
+
+  Eli: "I hope to have all the protocols for booking done correctly, but in
+  the instance, like this one, we need to sort after the fact. My rates and
+  bookings can change on a dime so really always need very simple ways to
+  doctor up WOs after the fact on the admin side."
+
+  So: two things, built in this order.
+
+  1. ROOM RATES ARE A TABLE (ruling 7, Sep 3 — approved then, built now).
+     room_rates(venue, room, day_rate, hourly = day ÷ 10). Every place a room
+     is picked and no rate exists yet reads the rate from here: the Add-dates
+     prompt, the Seed panel, the row's room dropdown on a blank row. Editable
+     in Admin. This is what makes "add ERS B" arrive at ERS B's price with no
+     typing — and what stops the rate sheet drifting (Paramount A was quoted at
+     $1,650 for months; it is $1,750).
+
+  2. THE SEED PANEL TAKES ROOMS, PLURAL, AND A BLANKET PRICE.
+     A seed group already has one room, a date range, times, a rate, staff.
+     The room becomes a set of chips (pick A, B, C, E, X), each room's rate
+     auto-fills from room_rates and stays editable, and an optional BLANKET
+     RATE / DAY (+ OT) field makes every day of the range a bundle. Press
+     once: ten rows, two bundles, allocated. The day header (Option B) still
+     owns the price afterward for edits — this is only the creation path.
+
+  ── What does NOT change ────────────────────────────────────────────────────
+  · The row's rate_daily stays the allocation basis (rack). room_rates only
+    FILLS it; it never overrides a rate someone typed.
+  · A blanket is still one bundle per day; "→ all days" already exists.
+  · Nothing is retroactive. Existing rows keep whatever rate they have.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1060px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:800px;line-height:1.65;margin-bottom:8px}
+.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:36px 0 4px;letter-spacing:-.01em}
+h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:800px;line-height:1.6;margin-bottom:14px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.note{font-size:10.5px;opacity:.55;margin-top:12px;line-height:1.65;max-width:840px}
+.cmp{border-left:2px solid var(--warm);padding-left:12px;margin:10px 0 20px;
+  font-size:11.5px;color:var(--fg2);line-height:1.6;max-width:840px}
+.cmp b{color:var(--warm)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+
+.wo{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 15px;max-width:520px}
+.wolab{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:10px}
+.k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:block;margin-bottom:3px}
+.f{display:flex;flex-direction:column}
+.inp{background:var(--wash);border-radius:9px;padding:6px 10px;font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px;font-weight:600;min-width:84px}
+.inp.ph{color:var(--fg3);font-weight:400}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:10px;font-weight:700;border-radius:99px;padding:5px 11px;background:var(--wash2);color:var(--fg2);cursor:pointer}
+.chip.on{background:var(--fg);color:var(--bg)}
+.chip.venue{background:transparent;color:var(--fg3);padding-left:0;cursor:default;font-weight:800;letter-spacing:.06em;font-size:9px}
+.rates{margin:6px 0 10px;border-radius:10px;background:var(--wash);padding:8px 10px}
+.rates div{display:flex;justify-content:space-between;font-size:11px;padding:2px 0}
+.rates .n{font-family:'DM Mono',ui-monospace,monospace}
+.rates .n.ed{border-bottom:1px dashed var(--fg3)}
+.blanket{border-top:1px solid var(--wash2);padding-top:10px;margin-top:4px}
+.ro{font-size:10.5px;color:var(--fg2);margin-top:6px}
+.ro b{color:var(--booked)}
+.btn{display:inline-block;background:var(--fg);color:var(--bg);border-radius:99px;padding:7px 14px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-top:10px}
+.soft{display:inline-block;background:var(--wash2);color:var(--fg);border-radius:99px;padding:7px 14px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+
+table.rt{width:100%;border-collapse:collapse;font-size:11.5px;max-width:520px}
+table.rt th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+table.rt td{padding:6px 10px 6px 0;border-top:1px solid var(--wash)}
+table.rt td.num{text-align:right;font-family:'DM Mono',ui-monospace,monospace}
+table.rt td.num.ed{color:var(--fg);border-bottom:none}
+table.rt td.num span{border-bottom:1px dashed var(--fg3)}
+.venue-h td{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding-top:12px;border-top:none}
+.prow{display:grid;grid-template-columns:52px 54px 1fr 56px 56px 30px 40px 64px 64px;gap:0;font-size:10.5px;padding:4px 8px;background:var(--wash);border-radius:8px;margin-bottom:3px;align-items:center}
+.prow.h{background:transparent;font-size:8px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3)}
+.prow .m{font-family:'DM Mono',ui-monospace,monospace;text-align:right}
+.prow .tag{font-size:7.5px;font-weight:800;letter-spacing:.06em;color:var(--fg3);margin-right:3px}
+.strip{display:flex;align-items:center;gap:10px;font-size:10px;color:var(--fg2);padding:5px 8px;margin:6px 0 3px}
+.strip .tg{background:var(--fg);color:var(--bg);font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px}
+</style>
+</head>
+<body>
+
+<h1>One press for a blanket booking</h1>
+<p class="lede">
+  Two days, five rooms, one price. Today that is twelve actions on the work order. This page
+  is the two changes that make it <b>one press</b> — and make every later edit start from the
+  right number. Nothing about how a blanket day is stored or edited afterward changes; the day
+  header still owns the price.
+</p>
+<div class="cmp">
+  <b>The default was the bug.</b> Adding ERS B beside ERS A copied A's $3,150 onto B. The blanket
+  allocates by that number, so one inherited rate quietly skews every room's share. A rate
+  should come from the <i>room</i>, not from the row above it. That is what a rate table is for.
+</div>
+
+<h2><span class="n">1</span>Room rates become a table <span class="rec">Build first</span></h2>
+<p class="sub">
+  <code>room_rates</code>: one row per room, day rate, hourly = day ÷ 10 (house law). Read wherever a
+  room is picked and no rate exists yet — the Add-dates prompt, the Seed panel, a blank row's
+  room dropdown. It only <i>fills</i>; it never overwrites a rate someone typed. Edited in
+  Admin → Rates. Seeded from the rate sheet with Paramount A corrected to $1,750.
+</p>
+<div class="grid2">
+  <div>
+    <div class="oh">Admin → Rates</div>
+    <div class="wo">
+      <table class="rt">
+        <tr><th>Room</th><th style="text-align:right">Day</th><th style="text-align:right">Hourly</th><th></th></tr>
+        <tr class="venue-h"><td colspan="4">Paramount · Hollywood</td></tr>
+        <tr><td>Studio C</td><td class="num ed"><span>$1,950</span></td><td class="num">$195</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr><td>Studio A</td><td class="num ed"><span>$1,750</span></td><td class="num">$175</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr><td>Studio B</td><td class="num ed"><span>$1,550</span></td><td class="num">$155</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr><td>Studio X</td><td class="num ed"><span>$1,250</span></td><td class="num">$125</td><td class="num" style="color:var(--fg3)">6 hr min</td></tr>
+        <tr><td>Studio E</td><td class="num ed"><span>$750</span></td><td class="num">$75</td><td class="num" style="color:var(--fg3)">4 hr min</td></tr>
+        <tr class="venue-h"><td colspan="4">Ameraycan · North Hollywood</td></tr>
+        <tr><td>Studio A</td><td class="num ed"><span>$1,750</span></td><td class="num">$175</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr><td>Studio B</td><td class="num ed"><span>$1,750</span></td><td class="num">$175</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr class="venue-h"><td colspan="4">Encore · Burbank</td></tr>
+        <tr><td>Studio A</td><td class="num ed"><span>$1,850</span></td><td class="num">$185</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr><td>Studio B</td><td class="num ed"><span>$1,950</span></td><td class="num">$195</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr class="venue-h"><td colspan="4">Track Record · North Hollywood</td></tr>
+        <tr><td>North</td><td class="num ed"><span>$1,950</span></td><td class="num">$195</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+        <tr><td>South</td><td class="num ed"><span>$1,450</span></td><td class="num">$145</td><td class="num" style="color:var(--fg3)">8 hr min</td></tr>
+      </table>
+      <p class="note">Day is the typed number; hourly is derived (÷ 10) and shown, not stored twice. Minimum hours is display-only for the rate sheet — the WO does not enforce it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="oh">What changes on the WO</div>
+    <div class="wo" style="margin-bottom:10px">
+      <div class="wolab">Add dates · after</div>
+      <div class="row">
+        <div class="f"><span class="k">First day</span><span class="inp">09/09/2026</span></div>
+        <div class="f"><span class="k">Last day</span><span class="inp">09/09/2026</span></div>
+        <div class="f"><span class="k">Studio</span><span class="inp">ERS B ▾</span></div>
+      </div>
+      <div class="ro">Adds 1 day · ERS B at <b>$1,950/day</b> · joins Sep 9's card</div>
+      <p class="note">The rate is named before you press. It comes from the table, not from the row above. Times and staff behaviour are unchanged (times copy; staff only onto a new day).</p>
+    </div>
+    <div class="wo">
+      <div class="wolab">A blank row's room dropdown · after</div>
+      <div class="prow h"><span>Studio</span><span>Date</span><span>Session</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span style="text-align:right">Rate</span><span style="text-align:right">Total</span></div>
+      <div class="prow"><span>PRS X ▾</span><span>9-12</span><span></span><span>10:00</span><span>10:00</span><span>12h</span><span>Day</span><span class="m">$1,250</span><span class="m">$1,250.00</span></div>
+      <p class="note">Pick a room on a row with no rate → rate fills. A row that already has a rate keeps it, even if you change the room. Doctoring stays doctoring.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="n">2</span>The Seed panel takes rooms, plural, and a blanket price <span class="rec">Then this</span></h2>
+<p class="sub">
+  A seed group already has one room, a date range, times, a rate, staff. The room becomes a
+  <b>set of chips</b>; each picked room shows its rate from the table (editable); an optional
+  <b>Blanket rate / day</b> and <b>OT</b> turn every day of the range into a bundle. One press.
+</p>
+<div class="grid2">
+  <div>
+    <div class="oh">Seed — add multiple days · after</div>
+    <div class="wo">
+      <span class="k">Rooms</span>
+      <div class="chips" style="margin-bottom:8px">
+        <span class="chip venue">PRS</span>
+        <span class="chip on">A</span><span class="chip on">B</span><span class="chip on">C</span><span class="chip on">E</span><span class="chip on">X</span>
+        <span class="chip venue" style="margin-left:8px">ARS</span><span class="chip">A</span><span class="chip">B</span>
+        <span class="chip venue" style="margin-left:8px">ERS</span><span class="chip">A</span><span class="chip">B</span>
+        <span class="chip venue" style="margin-left:8px">TRS</span><span class="chip">N</span><span class="chip">S</span>
+      </div>
+      <div class="rates">
+        <div><span>PRS C</span><span class="n ed">$1,950</span></div>
+        <div><span>PRS A</span><span class="n ed">$1,750</span></div>
+        <div><span>PRS B</span><span class="n ed">$1,550</span></div>
+        <div><span>PRS X</span><span class="n ed">$1,250</span></div>
+        <div><span>PRS E</span><span class="n ed">$750</span></div>
+        <div style="border-top:1px solid var(--wash2);margin-top:4px;padding-top:4px;color:var(--fg3)"><span>Rack / day</span><span class="n">$7,250</span></div>
+      </div>
+      <div class="row">
+        <div class="f"><span class="k">Start date</span><span class="inp">09/02/2026</span></div>
+        <div class="f"><span class="k">End date</span><span class="inp">09/03/2026</span></div>
+        <div class="f"><span class="k">From</span><span class="inp">10:00 AM</span></div>
+        <div class="f"><span class="k">To</span><span class="inp">10:00 PM</span></div>
+      </div>
+      <div class="row">
+        <div class="f"><span class="k">Type</span><span class="soft" style="padding:5px 10px">Day</span></div>
+        <div class="f"><span class="k">Staff</span><span class="inp ph">Engineer, TBD</span></div>
+      </div>
+      <div class="blanket">
+        <div class="row" style="margin-bottom:4px">
+          <div class="f"><span class="k">Blanket rate / day</span><span class="inp">$6,670</span></div>
+          <div class="f"><span class="k">OT (whole day)</span><span class="inp ph">$0</span></div>
+        </div>
+        <div class="ro">5 rooms · 8.00% off rack · <b>shares $6,670.00 ✓</b> per day · 2 days = $13,340</div>
+      </div>
+      <span class="btn">Apply · 2 days · 10 rows · 2 blanket days</span>
+      <p class="note">Blank the blanket field and this is exactly today's Seed panel with more than one room: ten rows at their own rack rates, no bundles. One staff line per DAY, not per room (the day is staffed once).</p>
+    </div>
+  </div>
+  <div>
+    <div class="oh">What it makes</div>
+    <div class="wo">
+      <div class="wolab">Studio time · list view · after one press</div>
+      <div class="strip"><span class="tg">Blanket rate</span> Rate / day <b class="m" style="font-family:'DM Mono',monospace">$6,670</b> · OT <span style="color:var(--fg3)">—</span> · 5 rooms · rack $7,250 · 8% off rack <span style="color:var(--booked);font-weight:700;margin-left:auto">shares $6,670.00 ✓</span></div>
+      <div class="prow h"><span>Studio</span><span>Date</span><span>Session</span><span>From</span><span>To</span><span>Hrs</span><span>Type</span><span style="text-align:right">Rate</span><span style="text-align:right">Total</span></div>
+      <div class="prow"><span>PRS C</span><span>9-2</span><span></span><span>10:00</span><span>10:00</span><span>12h</span><span>Day</span><span class="m">$1,950</span><span class="m"><span class="tag">SHARE</span>$1,794.00</span></div>
+      <div class="prow"><span>PRS A</span><span>9-2</span><span></span><span>10:00</span><span>10:00</span><span>12h</span><span>Day</span><span class="m">$1,750</span><span class="m"><span class="tag">SHARE</span>$1,610.00</span></div>
+      <div class="prow"><span>PRS B</span><span>9-2</span><span></span><span>10:00</span><span>10:00</span><span>12h</span><span>Day</span><span class="m">$1,550</span><span class="m"><span class="tag">SHARE</span>$1,426.00</span></div>
+      <div class="prow"><span>PRS X</span><span>9-2</span><span></span><span>10:00</span><span>10:00</span><span>12h</span><span>Day</span><span class="m">$1,250</span><span class="m"><span class="tag">SHARE</span>$1,150.00</span></div>
+      <div class="prow"><span>PRS E</span><span>9-2</span><span></span><span>10:00</span><span>10:00</span><span>12h</span><span>Day</span><span class="m">$750</span><span class="m"><span class="tag">SHARE</span>$690.00</span></div>
+      <div class="strip"><span class="tg">Blanket rate</span> Rate / day <b style="font-family:'DM Mono',monospace">$6,670</b> · 9-3 · same five rooms <span style="color:var(--booked);font-weight:700;margin-left:auto">shares $6,670.00 ✓</span></div>
+      <div class="prow" style="color:var(--fg3)"><span>5 rows</span><span>9-3</span><span>same allocation</span><span></span><span></span><span></span><span></span><span></span><span class="m">$6,670.00</span></div>
+      <p class="note">Exactly the rows and bundles you would have built by hand. Every later edit — a room's rack, the blanket price, OT, dropping a room, adding a day — happens where it does today. The Seed only saves the twelve presses.</p>
+    </div>
+    <div class="wo" style="margin-top:12px">
+      <div class="wolab">Data</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.7;color:var(--fg2)">
+        room_rates (venue text, room text, day_rate numeric, min_hours int, sort)<br>
+        &nbsp;&nbsp;unique (venue, room) · hourly = day_rate / DAY_HOUR_RATIO<br>
+        &nbsp;&nbsp;RLS: read any staff · write owner/manager/billing<br>
+        lib/roomRates.ts · rateForRoom(venue, letter) → day rate<br>
+        SeedGroup.rooms: string[] (was studio: string)<br>
+        SeedGroup.blanketAmount / blanketOt: string<br>
+        No change to wo_rate_bundles, studio_time_rows, or the save RPC.
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="n">3</span>Three things to rule</h2>
+<p class="sub" style="max-width:840px">
+  <b>a · Where else does the table fill?</b> Proposed: Add-dates, Seed, blank-row room pick. NOT the
+  lead form (a quote is a quote) and NOT existing rows. Anything else?
+  <b>b · Who edits rates?</b> Proposed: owner, manager, billing — in Admin → Rates.
+  <b>c · The client rate sheet reads the table.</b> The prs-rate-sheet skill has its own copy and has
+  drifted once; it should read this table, or at least be regenerated from it. Later, separate.
+</p>
+
+</body>
+</html>
