@@ -380,6 +380,153 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### September 9–14, 2026 — Four ways to bill the wrong number, and the calendar that broke sessions into pieces
+
+Twelve commits. Two features, one live-data repair, and **four separate billing
+defects** — which is the story worth keeping.
+
+#### The pattern: both halves read correctly on their own
+
+Every one of the four money bugs survived because nothing on screen looked wrong.
+
+- **Hourly OT (WO-1121).** An hourly row derived `ot_hours = actual − booked`. The
+  charge is `total_hours × rate`, and `total_hours` is the ACTUAL number — so the
+  overrun hour was charged in the charge AND again as overtime. Booked 8, ran 9,
+  billed 10. The comment sitting on that code claimed the opposite: *"never typed,
+  so the same hours can't be billed twice."* It was reasoning about a design where
+  the charge covered the BOOKED window and OT covered the overrun. That is not how
+  the hourly charge is computed. **A comment asserting an invariant is not a test.**
+- **Card fees in the hub.** The payment query selected `amount` but not
+  `fee_amount`. Balance under-reported by every 3% surcharge, on every card WO.
+- **Day-rate OT (WO-1076).** `actual − 12`, with 12 hard-coded — and the sheet's
+  "Agreed with client: **12h lockout**" was a LITERAL STRING that read nothing. It
+  looked like a read value, which is worse than saying nothing, and it lied on every
+  9-hour day and every 4-hour event.
+- **…and its own follow-up.** Fixing that, `included_hours` went into the block
+  deriving OT hours but not the one computing OT charge. The sheet then read
+  "OT 1h × $325/hr" directly above **$0.00**. Caught by Eli in a screenshot within
+  minutes — the hours and the money disagreeing IS the visible tell, when there is one.
+
+**Two structural traps named, because both bit within one session:**
+
+1. `updateStRow` derives OT hours in one block and OT charge in another, each keyed
+   on an explicit `'field' in updates` list. They are a pair and were edited singly.
+2. `computeWoTotals` has **four** callers and two use explicit column lists. A field
+   the function needs is silently zero unless every `.select()` is remembered. This
+   caused the card-fee bug and nearly made the new discount a no-op in the hub.
+
+#### Cancelled sessions are billable — the constant that did two jobs
+
+`NON_SESSION_STATUSES = ['tour','tech','open_hours','cancelled']`. A Tour is never
+charged; a cancelled session usually is. Lumping them meant a cancellation silently
+left the billing hub, and one cancelled before its WO existed never got one.
+
+**Rejected: putting the discount in `payment_rows`** (Eli's first instinct). Those are
+money RECEIVED — `paid = Σ amount`, `balance = grand − paid` — so a discount entered
+there makes the WO read as PAID when nothing arrived: a $3,000 kill fee showing a zero
+balance in AR while the client still owes every penny. Exactly the failure the
+2026-08-11 cancelled-invoice ruling exists to prevent.
+
+**Rejected: a 50% pre-fill on cancelled sessions.** Eli: *"no we will do it because we
+have 100% billed sometimes."* A default that silently halves a session someone meant to
+bill in full is worse than typing two characters.
+
+**Rejected: gating Start Booking on rate — then adopted.** I argued room and date only,
+on the grounds that requiring a rate trains people to type placeholders into billing
+fields. Eli overruled, and his reasoning is stronger: **a wrong number gets queried, a
+missing one gets missed.**
+
+#### The retroactive-repair instinct, corrected
+
+My first pass at the hourly-OT fix had `normalizeStRow` zero the OT on load and
+`updateStRow` zero it on any edit, self-healing the way legacy studio names do. Eli:
+*"we shouldnt clear anyhting. lets just fix that logic?"*
+
+He is right and the distinction is worth keeping: **a studio name is a typo; an OT
+charge is money that was invoiced.** Rewriting it the moment someone opens an old work
+order would change totals on invoices already sent and possibly paid — a correction
+nobody asked for, made invisibly, on a document that has left the building. Correcting
+a sent invoice is a decision for a person, not a side effect of opening a screen.
+
+The fix is forward-only; legacy OT survives, flagged in warm with a ⚠, because it still
+counts toward the row total and hiding a live charge behind "n/a" recreates the original
+sin in a new form. **Consequence accepted:** the OT cell is no longer an input on hourly
+rows, which also removed the only UI way to CLEAR a legacy value. Exactly one row
+existed (WO-1121, never invoiced) and was fixed in SQL.
+
+#### The calendar was breaking one session into many
+
+Two causes, found a day apart.
+
+1. **Same-day rows opened a new segment.** `+ Add Studio Time` created a row with an
+   EMPTY date; picking a date already in the table is the ordinary way to "add a day",
+   and `isNextDay` is false for an identical date. Two overlapping bars for one session.
+2. **The projection walked every dated row in ONE date-sorted pass**, testing "did the
+   room change?" inline. Correct only with one room in play. Two rooms across two days
+   interleave — A10, B10, A11, B11 — so every row saw a different room than the one
+   before it: **four one-day cards instead of two two-day bars**, six rows over three
+   days wrote six. Rows are grouped by room first now, then walked by date, and segments
+   sorted by start so segment 0 (the PRIMARY booking card) stays the session's opening day.
+
+Verified by replaying old against new over eleven shapes; single-room results identical
+in every one.
+
+**The UI fix Eli asked for:** one `+ Add studio time` that asks First day / Last day /
+Studio up front, so an undated, roomless row cannot exist. `+ Add Engineer` /
+`+ Add Assistant` deleted — they made undated, roomless STAFF rows, and every room row
+already carries its 1ST/2ND line. Eli: *"keep the same card design. We don't want to
+change that."* Nothing on the day card or day sheet moved.
+
+#### Roomless bookings — found by accident, the worst kind
+
+Four Concord work orders with no room, no venue, no times. A booking with no studio
+matches no calendar column, so it saves, gets a work order, and renders **nowhere**.
+Found only because the WOs surfaced in a billing query.
+
+`ClientProfile`'s Start Booking pushed `?newBooking=1&clientId=` with **no `leadId`** —
+so the calendar had no lead to read a room from and made a roomless session on *every*
+press. Removed. CRM's is gated on room, date and rate, and stays clickable while greyed
+so it can say what is missing.
+
+**Worth noting how it was found at all:** Eli asked to merge "the recent Concord
+sessions", I queried them, and the rows came back empty. Two rounds of narrowing before
+the real shape appeared. **The first query was too narrow** — it filtered on
+`work_orders.label|client` only, while the labels live denormalized on `bookings` too.
+
+#### The Concord blanket rate, billed by hand
+
+The parked whole-building feature (`docs/design-refs/wo-blanket-rate-options.html`, Sep
+3 — nine rulings, zero code) met its second live case. Rebuilt as ONE work order:
+Sep 2–3, five Paramount rooms, $6,670/day = $13,340, allocated pro-rata by rack at
+**exactly 0.92** so every share lands whole and they sum to the blanket with no
+remainder. `supabase/one-off/20260910_concord_blanket_rebuild.sql` carries the reasoning.
+
+**Second time this has cost manual work.** The design is settled; it is implementation
+only. Also still owed from those notes: *the calendar card for blanket sessions is
+parked, not dropped.*
+
+#### Process
+
+- **A commit I reported as failed had succeeded.** The FUSE mount's `.git/HEAD.lock`
+  warning printed, I read `git log` immediately after, saw a stale HEAD and concluded
+  the commit had not landed. It had. **Read the output, not the exit you expected** —
+  the same lesson already recorded on 2026-08-1x about a command that had ERRORED.
+- **Eli asked for shorter answers, twice.** Long explanations of correct work are still
+  a cost paid by the person reading them at 1am.
+
+#### Open
+
+- **The COLLECT display is designed but NOT built.** Both totals always visible with
+  equal weight (cash vs card incl. 3%), payment method fills the matching amount, fees
+  already collected shown as history. The failure it prevents: a runner reads the
+  balance, quotes it, runs that amount on the terminal, and the studio eats the 3%.
+  The numbers currently appear at different TIMES, which is the whole bug.
+- **Nothing DETECTS a roomless booking** arriving by an unforeseen path. The entry
+  points are shut; there is no alarm. My Day's missing-WO queue is the precedent.
+- **Cancelled sessions are excluded from that missing-WO alarm** — judgement call, open
+  to reversal. Every cancellation older than 2026-09-10 has no WO through nobody's
+  fault, and including them would bury the signal under months of history.
+
 ### September 8, 2026 — Client AP Protocols, and the booking cards nobody could see
 
 **Sessions before this one are already logged through v1.25.0** (`b88dd6e`). This

@@ -19,6 +19,102 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.27.0 — MONEY CORRECTNESS: four billing bugs, cancelled sessions, and adding days — Sep 9–14, 2026
+
+The theme is **numbers that were quietly wrong**. Four separate over- or under-billing
+defects, all invisible because each half of the calculation read correctly on its own.
+Plus the calendar stops fragmenting multi-room sessions, and cancelled sessions finally
+reach billing.
+
+**Migrations (both run by hand — the code reads these columns and errors without them):**
+- `20260910120000_wo_discount_and_closed_note.sql` — `work_orders.discount_kind|discount_value|discount_label`, `work_orders.invoice_closed_note`, widened `invoice_closed_reason` CHECK.
+- `20260914120000_st_included_hours.sql` — `studio_time_rows.included_hours` (nullable; NULL = 12).
+
+### The billing bugs
+
+**1 · Hourly rows were billing overtime on top of the hours (WO-1121).** An hourly row
+derived `ot_hours = actual − booked`, but the hourly charge is `total_hours × rate` and
+`total_hours` is the ACTUAL figure — so an overrun hour was charged twice. Booked 8, ran
+9, billed 10. **Hourly rows now have no overtime at all**: a long session simply bills more
+hours, which is what an hourly rate means. Overtime is a day-rate concept only. The OT
+cell is no longer an input on hourly rows.
+
+**2 · The billing hub under-reported every balance by the card fee.** Its payment query
+selected `amount` but not `fee_amount`, so `computeWoTotals` summed `cardFees` to 0 and
+the grand total came out short by every 3% surcharge on the order. WO-1121 read $136.80 in
+the hub against $180.00 on the work order. **Affected every WO with a card payment.**
+
+**3 · Day rates were assumed to buy 12 hours (WO-1076).** `actual − 12` was hard-coded, as
+was the sheet's `'12h lockout'` label — a literal string that read nothing and so lied on
+every non-12h day. A 9–6 day billed its tenth hour free; a 4-hour event could never incur
+OT. `included_hours` is a field now, NULL = 12.
+
+**4 · …and its follow-up: OT hours moved but the charge didn't.** `included_hours` was
+added to the block deriving OT hours and not the one computing OT charge, so the sheet read
+"OT 1h × $325/hr" directly above $0.00.
+
+> ⚠ **WATCH-OUT — the dependency-list trap, twice in one session.** `updateStRow` derives OT
+> hours in one block and OT charge in another, keyed on explicit `'field' in updates` lists.
+> Edit one without the other and the hours and the money disagree on screen. Any input that
+> can move OT hours belongs in BOTH.
+
+> ⚠ **WATCH-OUT — `computeWoTotals` has four callers and two use explicit column lists.**
+> The WO screen, the billing hub, the My Day balance queue and the invoice PDF. A field the
+> function needs is silently zero unless each `.select()` is remembered. This caused bug 2
+> and nearly caused the discount to no-op in the hub.
+
+### Cancelled sessions are billable
+
+`NON_SESSION_STATUSES` was `['tour','tech','open_hours','cancelled']` — one constant doing
+two jobs. A Tour is never charged; a cancelled session usually IS (50% kill fee is the
+house norm). Now blocks only. Cancellations get work orders and reach the hub; **not**
+charging one is a decision recorded by voiding it in Closed, not a disappearance.
+
+- **Work-order discount** (`discount_kind|value|label`). Applies to the whole WO — studio,
+  engineering, rentals. **Never** baked into `studio_time_rows.charge`: rows keep their full
+  booked value and the reduction is applied once at total time, so no recompute can wipe it
+  and the WO can still say what the session was worth before the discount.
+- **Card fees are untouched by it** — a fee attaches to a PAYMENT, not the invoice, because
+  clients pay in increments and OT lands after the fact.
+  `grand = studio + engineer + rentals − discount + Σ payment fees`.
+- **No 50% pre-fill**, deliberately — sessions are sometimes billed in full, and a default
+  that silently halves one is worse than typing two characters.
+- **Closed gets seven reasons plus a free-text note**, required only on "Other". Renders on
+  the row, clears on reopen. The two legacy values stay legal and old rows are not rewritten.
+
+### The calendar stops fragmenting sessions
+
+- **Same-day rows continue a run** instead of opening a second segment — two rows on one
+  date drew two overlapping bars for one session.
+- **The projection groups by ROOM before walking dates.** It used to walk every dated row in
+  one date-sorted pass with "did the room change?" inline, which is correct only with one
+  room in play: two rooms over two days interleave (A10, B10, A11, B11) and wrote FOUR
+  one-day cards instead of two two-day bars. Six rows over three days wrote six.
+- **Adding days is one prompt**: First day / Last day / Studio, with the room a `<select>`.
+  `+ Add Studio Time` used to append a row with an EMPTY date, and picking one already in the
+  table was the ordinary way to trigger the duplicate-date bug. `+ Add Engineer` /
+  `+ Add Assistant` are gone — they made undated, roomless staff rows, and every room row
+  already carries its 1ST/2ND line.
+
+### Roomless bookings
+
+A booking with no studio matches no calendar column, so it saves, gets a work order, and
+renders nowhere. Four Concord sessions vanished this way.
+
+- **ClientProfile's Start Booking is removed.** It pushed `?newBooking=1&clientId=` with no
+  `leadId`, so there was no lead to read a room from — it made a roomless session on **every**
+  press, not as an edge case.
+- **CRM's Start Booking is gated** on room, date and rate. Not `disabled` — it stays
+  clickable and says what is missing, because a disabled control that explains nothing is its
+  own defect.
+
+**Files:** `lib/createWorkOrder.ts`, `lib/woTotals.ts`, `lib/billing.ts`, `lib/myday.ts`,
+`lib/woPdf.ts`, `lib/supabase.ts`, `components/calendar/WorkOrderPopup.tsx`,
+`components/clients/ClientProfile.tsx`, `app/(main)/crm/page.tsx`,
+`app/(main)/billing/page.tsx`, `app/api/wo-package/route.ts`
+
+---
+
 ## v1.26.0 — CLIENT AP PROTOCOLS, and the invisible booking cards — Sep 8, 2026
 
 **Migrations (run by Eli, same day):**

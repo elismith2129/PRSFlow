@@ -645,6 +645,32 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.27.0', date:'Sep 14, 2026',
+    headline:'Four billing mistakes fixed, and cancelled sessions now get invoiced.',
+    desc:'A handful of work orders were charging the wrong amount \u2014 some too much, some too little \u2014 and none of it looked wrong on screen. All four are fixed. Cancelled sessions also stop disappearing: they come through to Billing like any other session, because we usually still charge a kill fee.',
+    changes:[
+      'Hourly sessions no longer add overtime on top of the hours. If an 8-hour session runs 9, it bills 9 hours \u2014 it used to bill 10. Overtime is a DAY-RATE thing only.',
+      'Day rates no longer assume 12 hours. On the day card there\u2019s now a "Hours included" box next to the room rate \u2014 leave it blank for a normal lockout, or type 9 for a 9\u20136 day, or 4 for a short event. Overtime starts after whatever you put there. The OT rate is right next to it now instead of buried at the bottom.',
+      'The Billing list was showing balances that were slightly too low on any invoice with a card payment \u2014 it was leaving out the 3% fee. The work order was right, the list was wrong. Now they match.',
+      'Cancel a session and it still shows up in Billing for review, invoice and PO. If you\u2019re NOT charging for it, close it in Billing and pick a reason \u2014 it no longer just vanishes.',
+      'Work orders have a Discount line now, for kill fees. Type 50 and % for half, or a dollar amount, plus a short reason that prints on the invoice. It doesn\u2019t fill itself in \u2014 sometimes a cancellation gets billed in full.',
+      'Closing an invoice now asks why, from a list (written off, voided, duplicate, billing error, settled), plus a box for a note. The note shows on the row so the next person knows what happened.',
+      'Adding days to a session is one button. "+ Add studio time" asks for the first day, last day and the room, so you can add a whole week at once. Sessions in more than one room now draw one clean bar per room on the calendar instead of a separate block for every single day.',
+      'Booking from a client profile has been removed \u2014 it was creating sessions with no room, which then showed up on no calendar at all. Start Booking on a lead now stays greyed out until the lead has a room, a date and a rate, and tells you which one is missing.',
+    ],
+    dev:[
+      'Hourly rows have no overtime at all: the charge is total_hours x rate and total_hours is the ACTUAL figure, so deriving ot_hours = actual - booked billed the overrun twice (WO-1121: booked 8, ran 9, billed 10).',
+      'Existing OT on hourly rows is NOT cleared \u2014 forward-only fix. A studio name is a typo; an OT charge is money that was invoiced. Legacy values render in warm with a warning instead.',
+      'studio_time_rows.included_hours (nullable, NULL = 12). OT = max(0, actual - coalesce(included_hours, 12)). The old "12h lockout" label was a literal string that read nothing.',
+      'WATCH-OUT: updateStRow derives OT hours and OT charge in two separate blocks keyed on explicit \u2018field in updates\u2019 lists. Any input that moves OT hours must appear in BOTH \u2014 missing it shipped "OT 1h x $325/hr" above $0.00.',
+      'WATCH-OUT: computeWoTotals has four callers and two use explicit column lists (billing hub, My Day balance). A field it needs is silently zero unless every .select() is remembered \u2014 this caused the card-fee bug.',
+      'NON_SESSION_STATUSES loses cancelled: one constant was gating both blocks (never charged) and cancellations (usually charged).',
+      'Discount lives on work_orders, never baked into studio_time_rows.charge \u2014 rows keep their booked value so no recompute can wipe the allocation. Card fees attach to payments, not the invoice, so the discount never touches them.',
+      'buildBookingProjection groups rows by ROOM before walking dates. The single date-sorted pass wrote four one-day cards for two rooms over two days.',
+      'Migrations: 20260910120000_wo_discount_and_closed_note.sql, 20260914120000_st_included_hours.sql.',
+    ],
+  },
+  {
     ver:'v1.26.0', date:'Sep 8, 2026',
     headline:'Every label\'s invoice instructions are now in the app, on the invoice.',
     desc:'You approve an invoice for Atlantic. Now what — portal or email? Do they need a PO first? There\'s an AP button on the row that tells you, in steps, for that exact label. 26 label procedures are loaded, taken from the AP structure sheet.',

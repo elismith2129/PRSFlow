@@ -55,6 +55,66 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'sep-14-2026-billing-math',
+    title: 'Billing maths, cancelled sessions, and adding days',
+    version: 'v1.27.0',
+    date: 'Sep 14, 2026',
+    intro:
+      'Four work orders were charging the wrong amount and none of it looked wrong on screen. These checks are mostly arithmetic — read the numbers, not the layout. Test on the live site. Use a real work order you can safely edit, or make one, and DO NOT leave a test discount saved on a client\u2019s invoice.',
+    items: [
+      {
+        id: 'v127-hourly-no-ot', area: 'Work order', device: 'desktop',
+        what: 'An hourly session that runs long bills the extra hours once, not twice',
+        how: 'Open a work order with an HOURLY day row (the /HR toggle). Note the hours and rate. Change the END time to make the session an hour longer. The hours and the Studio Total should go up by exactly one hour of the rate. In the OT Hrs column you should see "n/a", NOT an input box. Nothing should appear as overtime.',
+      },
+      {
+        id: 'v127-day-included-hours', area: 'Work order', device: 'desktop',
+        what: 'A day rate can include something other than 12 hours, and overtime starts after it',
+        how: 'Open a day card (click a day on a work order using a DAY rate). Beside "Room rate / day" there are now two more boxes: "Hours included" and "OT rate / hr". Leave Hours included blank and set the room times to an 11-hour day \u2014 no overtime. Now type 9 into Hours included. The line underneath should read "9h included, then $X/hr overtime", the OVERTIME box should say it ran 2h past the agreed 9h, and BILLING at the bottom should show OT 2h with a real dollar figure \u2014 not $0.00.',
+      },
+      {
+        id: 'v127-ot-charge-matches', area: 'Work order', device: 'desktop',
+        what: 'The overtime hours and the overtime money agree',
+        how: 'On that same day card, look at the BILLING block. If it says "OT 2h x 325/hr" the amount on that line must be 650.00, and the Day total must include it. If the hours show but the money reads $0.00, that is the bug \u2014 report it.',
+      },
+      {
+        id: 'v127-hub-balance-matches', area: 'Billing', device: 'desktop',
+        what: 'The Billing list balance matches the work order balance on card payments',
+        how: 'Find an invoice that has a Credit Card or Debit payment recorded. Note the Balance Due on the Billing row. Open the work order and compare it to Balance Due in the totals. They must be identical. Before this fix the list was lower by the 3% card fee.',
+      },
+      {
+        id: 'v127-cancelled-in-billing', area: 'Billing', device: 'desktop',
+        what: 'A cancelled session still appears in Billing',
+        how: 'Take a test session, open its work order and set the session status to Cancelled. Save. Go to Billing \u2014 it should still be listed for review, not gone. (Before, cancelling made it vanish.)',
+      },
+      {
+        id: 'v127-discount', area: 'Work order', device: 'desktop',
+        what: 'A kill-fee discount halves the total and says so',
+        how: 'On that cancelled work order, find the Discount line in the totals. Press %, type 50, and type a reason like "Cancellation \u2014 50% kill fee". The Subtotal should appear, the discount should show as a red minus figure, and Grand Total should drop by half. Clear it afterwards \u2014 set the value back to blank.',
+      },
+      {
+        id: 'v127-closed-reason', area: 'Billing', device: 'desktop',
+        what: 'Closing an invoice asks why and lets you leave a message',
+        how: 'On a test invoice in Billing, choose Close. You should get a dropdown of reasons (written off, voided, duplicate, billing error, settled, other) and a note box. Pick "Other" \u2014 the button should stay greyed until you type a note. Pick a normal reason, add a note, close it. The reason and your note should show on the Closed row. Then reopen it.',
+      },
+      {
+        id: 'v127-add-dates', area: 'Work order', device: 'desktop',
+        what: 'Adding days asks for the dates and the room first',
+        how: 'Open a work order and press "+ Add studio time". You should get First day, Last day and Studio \u2014 not a blank row. Leave Last day as-is for one day, or set it later for a range. It should tell you how many days it will add and whether they join the existing run. There should be no "+ Add Engineer" or "+ Add Assistant" buttons at the bottom any more.',
+      },
+      {
+        id: 'v127-one-bar-per-room', area: 'Calendar', device: 'desktop',
+        what: 'A multi-day session in two rooms draws one bar per room, not one per day',
+        how: 'Make a test session with two different rooms across two days (four day-rows total), save it, then look at the calendar. You should see TWO bars, each spanning both days \u2014 one per room. Four separate one-day blocks is the bug.',
+      },
+      {
+        id: 'v127-start-booking-gate', area: 'CRM', device: 'desktop',
+        what: 'Start Booking will not create a session with no room',
+        how: 'In CRM, open a lead with no studio set. The Start Booking button should look faded. Click it \u2014 it should tell you what is missing (room, date, rate) rather than doing nothing or creating a session. Add all three and it should go through. Also check a client profile in CRM \u2192 Clients: there should be NO Start Booking button there any more.',
+      },
+    ],
+  },
+  {
     id: 'sep-8-2026-ap-protocols',
     title: 'Client AP Protocols, studio names, and the invoice package',
     version: 'v1.26.0',
