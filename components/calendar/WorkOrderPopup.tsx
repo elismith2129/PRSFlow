@@ -436,6 +436,7 @@ function normalizeBundle(d: any): WoRateBundle {
   return {
     id: d.id, work_order_id: d.work_order_id, date: d.date ?? '',
     amount: d.amount != null ? formatCurrency(String(d.amount)) : '',
+    ot_amount: d.ot_amount != null && Number(d.ot_amount) > 0 ? formatCurrency(String(d.ot_amount)) : '',
     label: d.label ?? '',
   }
 }
@@ -1952,7 +1953,7 @@ export function WorkOrderPopup({
       }))
       // Membership + shares are the allocation effect's job — it runs on the
       // next render and writes every member's charge.
-      setBundles(prev => [...prev, { id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date, amount: '', label: '' }])
+      setBundles(prev => [...prev, { id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date, amount: '', ot_amount: '', label: '' }])
     } else {
       const b = bundles.find(x => x.date === date)
       if (!b) return
@@ -1964,13 +1965,20 @@ export function WorkOrderPopup({
       setStRows(prev => prev.map(r => {
         if (r.bundle_id !== b.id) return r
         const rack = parseFloat((r.rate_daily || '').replace(/[^0-9.]/g, '')) || 0
-        return { ...r, bundle_id: null, charge: rack > 0 ? rack : null }
+        // OT goes back to the clock rule (past included hours, at ot_rate).
+        const otHrs = Math.max(0, parseFloat(((calcHours(r.from_time, r.to_time) ?? 0) - includedHoursFor(r)).toFixed(2)))
+        const otRate = parseFloat((r.ot_rate || '').replace(/[^0-9.]/g, '')) || 0
+        return { ...r, bundle_id: null, charge: rack > 0 ? rack : null, ot_hours: String(otHrs), ot_charge: otHrs > 0 && otRate > 0 ? parseFloat((otHrs * otRate).toFixed(2)) : null }
       }))
     }
   }
   function setBundleAmount(id: string, amount: string) {
     bundlesDirtyRef.current = true
     setBundles(prev => prev.map(b => b.id === id ? { ...b, amount } : b))
+  }
+  function setBundleOt(id: string, ot_amount: string) {
+    bundlesDirtyRef.current = true
+    setBundles(prev => prev.map(b => b.id === id ? { ...b, ot_amount } : b))
   }
 
   function toggleRowRateType(id: string) {
@@ -3128,7 +3136,7 @@ export function WorkOrderPopup({
     // Blanket-rate bundles: upserted BEFORE the rows that reference them
     // (the RPC orders it), deleted after. Amount is numeric in the DB.
     const bundlePayloads = bundles.filter(b => b.date).map(b => ({
-      id: b.id, date: b.date, amount: stripCurrency(b.amount) ?? 0, label: oneLine(b.label) || null,
+      id: b.id, date: b.date, amount: stripCurrency(b.amount) ?? 0, ot_amount: stripCurrency(b.ot_amount) ?? 0, label: oneLine(b.label) || null,
     }))
     const bundleDeletes = deletedBundleIdsRef.current.filter(id => !bundles.some(b => b.id === id))
 
@@ -5468,10 +5476,14 @@ export function WorkOrderPopup({
                           the price read-only — the office set it. */}
                       {firstOfDay && r.date && (() => {
                         const b = bundles.find(x => x.date === r.date)
-                        const roomsToday = stRows.filter(x => x.date === r.date && (x.studio || '').trim()).length
-                        if (!b && (roomsToday < 2 || runner || readOnly)) return null
+                        // Any dated day, one room or five (Eli, 2026-09-14 on
+                        // WO-1076: the second room was not on the WO yet, and a
+                        // switch gated on two rooms was invisible). Rates and
+                        // bookings "change on a dime" — the control is always
+                        // there on the admin side.
+                        if (!b && (runner || readOnly)) return null
                         const ro = b ? bundleReadout(b, stRows) : null
-                        const balanced = ro ? Math.abs(ro.shareSum - ro.amount) < 0.005 : false
+                        const balanced = ro ? Math.abs(ro.shareSum - ro.amount) < 0.005 && Math.abs(ro.otShareSum - ro.otAmount) < 0.005 : false
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 12px 4px', borderBottom: b ? '1px solid var(--c-wash2)' : 'none' }}>
                             {(runner || readOnly) ? (
@@ -5499,6 +5511,22 @@ export function WorkOrderPopup({
                                         style={{ width: 84, fontWeight: 700 }}
                                       />}
                                 </span>
+                                {/* OT is a TYPED amount for the day (Eli,
+                                    2026-09-14) — allocated across the rooms
+                                    like the rate. Never clocked on a blanket. */}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                                  OT
+                                  {(runner || readOnly)
+                                    ? <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>{b.ot_amount || '—'}</span>
+                                    : <input
+                                        value={b.ot_amount}
+                                        onChange={e => setBundleOt(b.id, e.target.value)}
+                                        onBlur={e => setBundleOt(b.id, e.target.value ? formatCurrency(e.target.value) : '')}
+                                        placeholder="$0"
+                                        className="c-tin c-tin-mono c-tin-show"
+                                        style={{ width: 70 }}
+                                      />}
+                                </span>
                                 <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
                                   {ro.rooms} room{ro.rooms === 1 ? '' : 's'}
                                   {ro.rackTotal > 0 ? ` · rack $${ro.rackTotal.toLocaleString('en-US')}` : ''}
@@ -5506,7 +5534,7 @@ export function WorkOrderPopup({
                                 </span>
                                 {ro.amount > 0 && (
                                   <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: balanced ? 'var(--c-st-booked)' : 'var(--c-st-hot)', fontWeight: 700 }}>
-                                    shares ${ro.shareSum.toFixed(2)} {balanced ? '✓' : '≠ rate'}
+                                    shares ${(ro.shareSum + ro.otShareSum).toFixed(2)} {balanced ? '✓' : '≠ rate'}
                                   </span>
                                 )}
                                 {ro.amount === 0 && !runner && (
@@ -7395,11 +7423,40 @@ export function WorkOrderPopup({
                         day header (Option B) — here it is read. */}
                     {(() => {
                       const b = daySheetDate ? bundles.find(x => x.date === daySheetDate) : null
-                      if (!b) return null
+                      const canEdit = !runner && !readOnly && !!daySheetDate
+                      // The toggle lives HERE too (Eli, 2026-09-14 evening: "not
+                      // seeing how to do that") — one-day sessions open in cards,
+                      // so a control that only existed in list view was invisible
+                      // on exactly the work orders it was built for.
+                      if (!b && !canEdit) return null
+                      const ro = b ? bundleReadout(b, stRows) : null
                       return (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg)', fontWeight: 700, padding: '2px 0 4px', borderBottom: '1px solid var(--c-wash2)', marginBottom: 3 }}>
-                          <span>Whole building · one price for every room</span>
-                          <span className="c-tnum">{b.amount || '—'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg)', padding: '2px 0 6px', borderBottom: '1px solid var(--c-wash2)', marginBottom: 3 }}>
+                          {canEdit ? (
+                            <button
+                              type="button"
+                              onClick={() => setDayBundle(daySheetDate!, !b)}
+                              title={b ? 'Back to each room at its own rate' : 'One price for every room on this day'}
+                              style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 3, cursor: 'pointer', background: b ? 'var(--c-fg)' : 'var(--c-wash2)', color: b ? 'var(--c-bg)' : 'var(--c-fg-2)' }}
+                            >Whole building</button>
+                          ) : (
+                            <span style={{ fontWeight: 700 }}>Whole building · one price for every room</span>
+                          )}
+                          {b && (
+                            <>
+                              {canEdit
+                                ? <input value={b.amount} onChange={e => setBundleAmount(b.id, e.target.value)} onBlur={e => setBundleAmount(b.id, e.target.value ? formatCurrency(e.target.value) : '')} placeholder="$0/day" className="c-tin c-tin-mono c-tin-show" style={{ width: 84, fontWeight: 700 }} />
+                                : <span className="c-tnum" style={{ fontWeight: 700 }}>{b.amount || '—'}</span>}
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--c-fg-2)' }}>
+                                OT
+                                {canEdit
+                                  ? <input value={b.ot_amount} onChange={e => setBundleOt(b.id, e.target.value)} onBlur={e => setBundleOt(b.id, e.target.value ? formatCurrency(e.target.value) : '')} placeholder="$0" className="c-tin c-tin-mono c-tin-show" style={{ width: 70 }} />
+                                  : <span className="c-tnum">{b.ot_amount || '—'}</span>}
+                              </span>
+                              {ro && ro.offRackPct != null && <span style={{ fontSize: 10, color: 'var(--c-fg-3)' }}>{ro.rooms} room{ro.rooms === 1 ? '' : 's'} · {ro.offRackPct}% off rack</span>}
+                              {ro && ro.amount === 0 && canEdit && <span style={{ fontSize: 10, color: 'var(--c-st-warm)', fontWeight: 700 }}>type the day's price</span>}
+                            </>
+                          )}
                         </div>
                       )
                     })()}
@@ -7454,9 +7511,10 @@ export function WorkOrderPopup({
                     })}
                     {/* OT: its own line, only when it exists (Eli, 2026-08-16 —
                         plain itemized list, no agreement sub-headings). */}
-                    {otHrsDay > 0 && (
+                    {(otHrsDay > 0 || otChargeDay > 0) && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
-                        <span>{`OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}`}</span>
+                        {/* A blanket day's OT is a typed figure with no hours. */}
+                        <span>{otHrsDay > 0 ? `OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}` : 'OT · whole building, allocated'}</span>
                         <span className="c-tnum">{`$${otChargeDay.toFixed(2)}`}</span>
                       </div>
                     )}

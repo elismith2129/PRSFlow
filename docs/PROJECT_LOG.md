@@ -468,6 +468,29 @@ invoiced WO — Eli's call, SQL offered in chat). **Still parked, reminder given
 calendar card for blanket sessions — five cards each showing a share rather than the
 blanket. Eli, 2026-09-03: "There might be a cool way to do something there."
 
+#### Same evening: WO-1076, and two rulings that came from using it
+
+Eli went to put the blanket on WO-1076 and could not find the switch. Two reasons, both
+mine: the day had ONE room row (the second room was not on the WO yet) and I had gated the
+switch on two; and a one-day session opens in Cards, where the switch did not exist at all.
+**A control gated on the state you expect is invisible in the state you get.** It shows on
+any dated day now, in list view and on the day sheet.
+
+**OT on a blanket day is typed, not clocked.** Eli: "for OT in the instance of whole
+building buy outs or just blanket deals, these are always custom so need full flex. So
+likely OT for blanket rates will be just an OT applied to the booking, no need to have it
+auto fill OT. And for multiroom/whole building OT, just allocate the OT across." This
+supersedes ruling 5 ("OT is rack") for bundled days: `wo_rate_bundles.ot_amount`, allocated
+into member `ot_charge` with the rate's weights; member `ot_hours` cleared. Non-bundled day
+rows are untouched. The clock rule was the right default for a rack day and the wrong one
+for a negotiated day — a $6,670 deal's overrun is a phone call, not arithmetic.
+
+The wider point Eli made, worth keeping verbatim: *"I hope to have all the protocols for
+booking done correctly, but in the instance, like this one, we need to sort after the fact.
+My rates and bookings can change on a dime so really always need very simple ways to
+doctor up WOs after the fact on the admin side."* The WO is the place things get fixed
+later; every admin control should assume the booking was wrong.
+
 #### Process
 
 - **A `git status` through the mount left `.git/index.lock`** and Eli's first push died on
@@ -481,7 +504,9 @@ blanket. Eli, 2026-09-03: "There might be a cool way to do something there."
 
 #### Open
 
-- **Blanket calendar card** — parked, not dropped. Reminder owed each time this is touched.
+- ~~**Blanket calendar card**~~ — **CLOSED (Eli, 2026-09-14 evening): "we dont need a
+  special card… leave as separate cards."** Cards are written from the WO's rows, so a
+  blanket day draws one card per room, same as any multi-room day. No reminder owed.
 - **`room_rates` table** (ruling 7) — the allocation basis is still a number someone typed.
 - **WO-1156 conversion** — offered, not run.
 - **Cancelled sessions excluded from the missing-WO alarm** — unchanged from last session.

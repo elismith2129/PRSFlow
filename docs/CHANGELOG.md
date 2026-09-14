@@ -89,8 +89,19 @@ RACK** — it is the allocation basis and the OT basis ("OT is rack", ruling 5).
 > kept a literal 12 — a 9-hour day loaded with its OT computed against twelve until a time
 > was touched. Hoisted to module level; all three now read `included_hours`.
 
-**Not built (still parked, reminder owed):** the calendar card for blanket sessions; the
-`room_rates` table (ruling 7). The Concord one-off rows (WO-1156) are NOT bundled — they
+**Same evening, two amendments (migration `20260914140000_wo_rate_bundles_ot.sql`):**
+- **The switch shows on ANY dated day**, one room or five. WO-1076 had one room row and a
+  two-room gate made the control invisible on exactly the WO it was for. Also on the day
+  sheet's Billing box now — one-day sessions open in Cards, where list view's switch never
+  showed.
+- **OT on a bundled day is a TYPED amount** (`wo_rate_bundles.ot_amount`), allocated across
+  the rooms into `ot_charge` with the same weights as the rate; member rows' `ot_hours` are
+  cleared and never clocked. Supersedes ruling 5 ("OT is rack") for bundled days only —
+  Eli: "these are always custom so need full flex… just allocate the OT across." The PDF
+  prints it in the day line's OT column, never per room.
+
+**Not built:** the `room_rates` table (ruling 7). **Closed, not parked:** the blanket
+calendar card — one card per room, as any multi-room day (Eli: "leave as separate cards"). The Concord one-off rows (WO-1156) are NOT bundled — they
 carry the share in `rate_daily` and keep working; converting them is a separate SQL.
 
 **Files:** `lib/woBundles.ts` (new), `lib/studios.ts`, `lib/myday.ts`, `lib/woPdf.ts`,

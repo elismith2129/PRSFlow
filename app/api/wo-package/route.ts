@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
     supabaseAdmin.from('rental_rows').select('*').eq('work_order_id', id).order('sort_order'),
     supabaseAdmin.from('payment_rows').select('*').eq('work_order_id', id),
     // Whole-building blanket rates — the PDF prints one line per bundled day.
-    supabaseAdmin.from('wo_rate_bundles').select('id, date, amount, label').eq('work_order_id', id),
+    supabaseAdmin.from('wo_rate_bundles').select('id, date, amount, ot_amount, label').eq('work_order_id', id),
   ])
   const bundles = bnd.data ?? []
 

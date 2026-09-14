@@ -26,11 +26,19 @@
 // effect), and it writes the share back over whatever a recompute produced.
 // A recompute can wipe the allocation for one render; it cannot survive it.
 //
-// The row keeps rate_daily = RACK. That is deliberate and load-bearing:
-//   · rack is the allocation basis, so editing the bundle amount re-allocates
-//     live with nothing to look up;
-//   · the day-row OT rate is rack ÷ 10 (DAY_HOUR_RATIO), and OT on a bundled
-//     day is priced off RACK, never the share (ruling 5: "OT is rack").
+// The row keeps rate_daily = RACK. That is deliberate and load-bearing: rack
+// is the allocation basis, so editing the bundle amount re-allocates live
+// with nothing to look up.
+//
+// OVERTIME ON A BUNDLED DAY IS A TYPED AMOUNT (Eli, 2026-09-14 evening —
+// supersedes ruling 5 "OT is rack" for bundled days): "these are always
+// custom so need full flex… just an OT applied to the booking, no need to
+// have it auto fill OT… just allocate the OT across." The bundle carries
+// ot_amount; it is allocated into each member's ot_charge with the SAME
+// weights as the rate. Member rows' ot_hours are cleared — a blanket deal's
+// overrun is negotiated, not clocked — and the per-row derivation that
+// updateStRow performs on a time edit is overwritten by the next allocation
+// pass, like every other recompute.
 // (The 2026-09-10 one-off wrote the SHARE into rate_daily because this feature
 //  did not exist; those rows are not bundled and keep working unchanged.)
 //
@@ -47,6 +55,8 @@ export type WoRateBundle = {
   date: string
   /** Display string on the screen ("$6,670"); numeric in the DB. */
   amount: string
+  /** Overtime for the whole day, typed. '' = none. Allocated like amount. */
+  ot_amount: string
   label: string
 }
 
@@ -59,6 +69,8 @@ export type BundleRow = {
   row_rate_type: 'hour' | 'day'
   rate_daily: string
   charge: number | null
+  ot_hours: string
+  ot_charge: number | null
 }
 
 function money(v: string | number | null | undefined): number {
@@ -119,11 +131,13 @@ export function allocateBundleShares<R extends BundleRow>(rows: R[], bundles: Wo
     if (idx.length === 0) continue
     const racks = idx.map(i => money(out[i].rate_daily))
     const shares = proRataShares(money(b.amount), racks)
+    const otShares = proRataShares(money(b.ot_amount), racks)
     idx.forEach((i, k) => {
       const r = out[i]
       const share = shares[k]
-      if (r.row_rate_type !== 'day' || (r.charge ?? null) !== share) {
-        out[i] = { ...r, row_rate_type: 'day', charge: share }
+      const ot = otShares[k] > 0 ? otShares[k] : null
+      if (r.row_rate_type !== 'day' || (r.charge ?? null) !== share || (r.ot_charge ?? null) !== ot || (r.ot_hours || '0') !== '0') {
+        out[i] = { ...r, row_rate_type: 'day', charge: share, ot_charge: ot, ot_hours: '0' }
         changed = true
       }
     })
@@ -136,13 +150,17 @@ export function bundleReadout(bundle: WoRateBundle, rows: BundleRow[]): {
   rooms: number
   rackTotal: number
   amount: number
+  otAmount: number
   offRackPct: number | null
   shareSum: number
+  otShareSum: number
 } {
   const members = rows.filter(r => r.bundle_id === bundle.id)
   const rackTotal = members.reduce((s, r) => s + money(r.rate_daily), 0)
   const amount = money(bundle.amount)
+  const otAmount = money(bundle.ot_amount)
   const shareSum = parseFloat(members.reduce((s, r) => s + (r.charge ?? 0), 0).toFixed(2))
+  const otShareSum = parseFloat(members.reduce((s, r) => s + (r.ot_charge ?? 0), 0).toFixed(2))
   const offRackPct = rackTotal > 0 && amount > 0 ? parseFloat(((1 - amount / rackTotal) * 100).toFixed(2)) : null
-  return { rooms: members.length, rackTotal, amount, offRackPct, shareSum }
+  return { rooms: members.length, rackTotal, amount, otAmount, offRackPct, shareSum, otShareSum }
 }

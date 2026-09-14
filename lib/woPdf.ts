@@ -79,7 +79,7 @@ export type WoPdfInput = {
   discountLabel?: string | null
   /** Whole-building blanket rates (wo_rate_bundles). RULING 3: the client sees
    *  ONE line per bundled day, rooms named, never the per-room allocation. */
-  bundles?: { id: string; date: string; amount: number | string | null; label?: string | null }[]
+  bundles?: { id: string; date: string; amount: number | string | null; ot_amount?: number | string | null; label?: string | null }[]
   /**
    * BLANK FORM MODE (ruling 2026-08-12). Draws the same document with every
    * value empty and a writable baseline under each cell — the paper work order,
@@ -639,6 +639,9 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
           const same = (k: string) => new Set(members.map(m => String(m[k] ?? ''))).size === 1 ? String(members[0][k] ?? '') : ''
           const hrs = same('from_time') && same('to_time') ? calcHours(same('from_time'), same('to_time')) : null
           const label = String(bundle.label || '').trim() || `${venue || 'Studio'} — whole building`
+          // OT on a blanket day is ONE typed figure for the building (Eli,
+          // 2026-09-14), printed on the day's line — never per room.
+          const ot = num(bundle.ot_amount)
           stRows.push([
             `${STUDIO_SHORT[venue] || venue || ''} ALL`.trim(),
             pdfDate(r.date),
@@ -648,20 +651,9 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
             hrs != null ? String(hrs) : '',
             'Day',
             money(num(bundle.amount)),
-            '', '', '',
-            money(num(bundle.amount)),
-          ])
-        }
-        if (num(r.ot_charge) > 0) {
-          stRows.push([
-            roomCode(r.studio, r.location || wo.location),
-            pdfDate(r.date),
-            'Overtime',
-            '', '', '', '', '',
-            r.ot_hours ? String(r.ot_hours) : '',
-            r.ot_rate ? String(r.ot_rate) : '',
-            cash(r.ot_charge),
-            money(num(r.ot_charge)),
+            '', '',
+            ot > 0 ? money(ot) : '',
+            money(num(bundle.amount) + ot),
           ])
         }
       } else if (!isEngOnly) {
