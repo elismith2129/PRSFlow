@@ -90,17 +90,17 @@ export const TEST_BATCHES: TestBatch[] = [
       {
         id: 'v128-bundle-toggle', area: 'Work order', device: 'desktop',
         what: 'A multi-room day can be switched to one whole-building price',
-        how: 'Open a work order and switch to LIST view (or open a day card — the same button is in its Billing box). On the first row of any day there is a small WHOLE BUILDING button. Press it: a Rate / day box appears. Type 6670 and tab out. The readout shows the room count, "% off rack" and "shares $6,670.00 ✓". Each room row’s Total now says SHARE with a number smaller than its rate, and the Day/Hr toggle on those rows is frozen. All the shares add up to exactly $6,670.00 and Studio Total reflects it.',
+        how: 'Open a work order and switch to LIST view (or open a day card — the same button is in its Billing box). On the first row of any day there is a small BLANKET RATE button. Press it: a Rate / day box appears. Type 6670 and tab out. The readout shows the room count, "% off rack" and "shares $6,670.00 ✓". Each room row’s Total now says SHARE with a number smaller than its rate, and the Day/Hr toggle on those rows is frozen. All the shares add up to exactly $6,670.00 and Studio Total reflects it.',
       },
       {
         id: 'v128-bundle-rack', area: 'Work order', device: 'desktop',
         what: 'The rate column stays the room’s normal rate, and OT is a typed amount shared across the rooms',
-        how: 'On a bundled day, the Rate column still shows each room’s own day rate (e.g. $1,950) — it is NOT replaced by the share. Type 500 in the OT box next to the rate: the OT Chg column fills across the rooms (bigger rooms take more) and adds to exactly $500.00; OT Hrs stays blank. Extending a room’s end time must NOT change the OT. Turn WHOLE BUILDING off: every room goes back to its own rate, and OT goes back to the clock rule.',
+        how: 'On a bundled day, the Rate column still shows each room’s own day rate (e.g. $1,950) — it is NOT replaced by the share. Type 500 in the OT box next to the rate: the OT Chg column fills across the rooms (bigger rooms take more) and adds to exactly $500.00; OT Hrs stays blank. Extending a room’s end time must NOT change the OT. Turn BLANKET RATE off: every room goes back to its own rate, and OT goes back to the clock rule.',
       },
       {
         id: 'v128-bundle-save', area: 'Work order', device: 'desktop',
         what: 'A whole-building day survives Save and reopen, and the card reads it',
-        how: 'Set up a bundled day, Save, close, reopen. The list view shows the WHOLE BUILDING button on with the same rate and the same shares; the Close button must NOT ask about unsaved changes if you touched nothing. Switch to CARDS view: the day card reads "Whole building $6,670/day". Open the day sheet: Billing shows "Whole building · one price" with the rate, then each room’s share. Clean up: turn it off and Save.',
+        how: 'Set up a bundled day, Save, close, reopen. The list view shows the BLANKET RATE button on with the same rate and the same shares; the Close button must NOT ask about unsaved changes if you touched nothing. Switch to CARDS view: the day card reads "Blanket rate $6,670/day". Open the day sheet: Billing shows "Blanket rate · one price" with the rate, then each room’s share. Clean up: turn it off and Save.',
       },
       {
         id: 'v128-bundle-pdf', area: 'Billing', device: 'desktop',

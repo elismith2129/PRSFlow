@@ -638,7 +638,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
           const rooms = members.map(m => String(m.studio).trim()).join(', ')
           const same = (k: string) => new Set(members.map(m => String(m[k] ?? ''))).size === 1 ? String(members[0][k] ?? '') : ''
           const hrs = same('from_time') && same('to_time') ? calcHours(same('from_time'), same('to_time')) : null
-          const label = String(bundle.label || '').trim() || `${venue || 'Studio'} — whole building`
+          const label = String(bundle.label || '').trim() || `${venue || 'Studio'} — blanket rate`
           // OT on a blanket day is ONE typed figure for the building (Eli,
           // 2026-09-14), printed on the day's line — never per room.
           const ot = num(bundle.ot_amount)

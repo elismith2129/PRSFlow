@@ -1980,6 +1980,27 @@ export function WorkOrderPopup({
     bundlesDirtyRef.current = true
     setBundles(prev => prev.map(b => b.id === id ? { ...b, ot_amount } : b))
   }
+  /** One price for every day of the session (Eli, 2026-09-14: a 5-day blanket
+   *  should not mean typing the price five times). Creates a bundle on every
+   *  dated day that lacks one and copies this day's rate + OT onto all. */
+  function applyBundleToAllDays(from: WoRateBundle) {
+    bundlesDirtyRef.current = true
+    const dates = Array.from(new Set(stRows.filter(r => r.date && (r.studio || '').trim()).map(r => r.date)))
+    // Hourly rooms on those days become day rows, same conversion as setDayBundle.
+    setStRows(prev => prev.map(r => {
+      if (!dates.includes(r.date) || !(r.studio || '').trim() || r.row_rate_type === 'day') return r
+      const hr = parseFloat((r.rate || '').replace(/[^0-9.]/g, '')) || 0
+      const daily = hr > 0 ? parseFloat((hr * DAY_HOUR_RATIO).toFixed(2)) : 0
+      return { ...r, row_rate_type: 'day' as const, rate_daily: daily > 0 ? String(daily) : r.rate_daily, ot_rate: hr > 0 ? String(hr) : r.ot_rate }
+    }))
+    setBundles(prev => {
+      const next = prev.map(b => ({ ...b, amount: from.amount, ot_amount: from.ot_amount }))
+      for (const d of dates) {
+        if (!next.some(b => b.date === d)) next.push({ id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date: d, amount: from.amount, ot_amount: from.ot_amount, label: from.label })
+      }
+      return next
+    })
+  }
 
   function toggleRowRateType(id: string) {
     setStRows(prev => prev.map(r => {
@@ -2252,8 +2273,21 @@ export function WorkOrderPopup({
     const rowRateType = last?.row_rate_type || 'hour'
     const fromTime = last?.from_time || ''
     const toTime = last?.to_time || ''
-    const rateStr = last?.rate || ''
-    const rateDailyStr = last?.rate_daily || ''
+
+    // WHAT CARRIES OVER DEPENDS ON WHAT IS BEING ADDED (Eli, 2026-09-14, on
+    // WO-1076). Times and rate type always copy. The RATE copies only when it
+    // is the SAME ROOM — another day of Studio A is the same deal; Studio B
+    // added beside Studio A is not, and B inheriting A's $3,150 skewed every
+    // blanket share (the allocation weights by this number). A different
+    // room starts with no rate and the warm "rate?" nudge. (room_rates, ruling
+    // 7, is the real answer — the right rate by default, no typing.)
+    const sameRoom = !opts?.studio || !lastStudioRow || toStudioLetter(opts.studio) === lastStudioRow.studio
+    const rateStr = sameRoom ? (last?.rate || '') : ''
+    const rateDailyStr = sameRoom ? (last?.rate_daily || '') : ''
+    // STAFF copies only onto a NEW DAY. A room added to a day that already
+    // has one is joining a day that is already staffed — copying the staff
+    // line made "2ND Wyatt Sayre" appear twice on one card.
+    const haveDay = new Set(stRows.filter(r => !!r.studio).map(r => r.date))
 
     let totalHours: number | null = null
     let charge: number | null = null
@@ -2281,7 +2315,7 @@ export function WorkOrderPopup({
       id: crypto.randomUUID(),
       studio,
       location,
-      eng_name: last?.eng_name || '',
+      eng_name: haveDay.has(date) ? '' : (last?.eng_name || ''),
       date,
       session_info: '',
       from_time: fromTime,
@@ -2318,7 +2352,8 @@ export function WorkOrderPopup({
       actual_to_time: '',
       admin_checked: false,
       admin_locked: false,
-      eng_visible: true,
+      // A second room on an already-staffed day carries no staff line.
+      eng_visible: !haveDay.has(date),
       // Follow the row above (so a session staffed with an engineer keeps adding
       // engineers), otherwise fall back to assistant.
       eng_role: last?.eng_role || 'assistant',
@@ -5487,14 +5522,14 @@ export function WorkOrderPopup({
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 12px 4px', borderBottom: b ? '1px solid var(--c-wash2)' : 'none' }}>
                             {(runner || readOnly) ? (
-                              <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg)' }}>Whole building</span>
+                              <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg)' }}>Blanket rate</span>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setDayBundle(r.date, !b)}
                                 title={b ? 'Back to each room at its own rate' : 'One price for every room on this day'}
                                 style={{ ...toggleStyle(!!b), letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: 8.5 }}
-                              >Whole building</button>
+                              >Blanket rate</button>
                             )}
                             {b && ro && (
                               <>
@@ -5532,6 +5567,9 @@ export function WorkOrderPopup({
                                   {ro.rackTotal > 0 ? ` · rack $${ro.rackTotal.toLocaleString('en-US')}` : ''}
                                   {ro.offRackPct != null ? ` · ${ro.offRackPct >= 0 ? `${ro.offRackPct}% off rack` : `${Math.abs(ro.offRackPct)}% over rack`}` : ''}
                                 </span>
+                                {!runner && !readOnly && ro.amount > 0 && new Set(stRows.filter(x => x.date && (x.studio || '').trim()).map(x => x.date)).size > 1 && (
+                                  <button type="button" onClick={() => applyBundleToAllDays(b)} title="Put this rate and OT on every day of the session" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>→ all days</button>
+                                )}
                                 {ro.amount > 0 && (
                                   <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: balanced ? 'var(--c-st-booked)' : 'var(--c-st-hot)', fontWeight: 700 }}>
                                     shares ${(ro.shareSum + ro.otShareSum).toFixed(2)} {balanced ? '✓' : '≠ rate'}
@@ -5653,7 +5691,7 @@ export function WorkOrderPopup({
                         {/* Total Hrs — always auto-calc */}
                         <div style={{ ...cellS, color: 'var(--c-fg-2)', fontSize: 10 }}>{rowHrs != null ? `${rowHrs}h` : '—'}</div>
                         {/* Rate Type toggle — office's call; frozen for runners */}
-                        <div style={{ ...cellS, gap: 2, padding: '3px 4px' }} title={r.bundle_id ? 'Whole-building day — a bundle is a day price' : undefined}>
+                        <div style={{ ...cellS, gap: 2, padding: '3px 4px' }} title={r.bundle_id ? 'Blanket-rate day — one price for the day' : undefined}>
                           <button style={{ ...toggleStyle(isDayRow), cursor: (runner || r.bundle_id) ? 'default' : 'pointer' }} disabled={runner || !!r.bundle_id} onClick={() => !runner && !r.bundle_id && !isDayRow && toggleRowRateType(r.id)}>Day</button>
                           <button style={{ ...toggleStyle(!isDayRow), cursor: (runner || r.bundle_id) ? 'default' : 'pointer', opacity: r.bundle_id ? 0.4 : 1 }} disabled={runner || !!r.bundle_id} onClick={() => !runner && !r.bundle_id && isDayRow && toggleRowRateType(r.id)}>Hr</button>
                         </div>
@@ -5709,7 +5747,7 @@ export function WorkOrderPopup({
                           {(r.ot_charge ?? 0) > 0 ? `$${r.ot_charge!.toFixed(2)}` : '—'}
                         </div>
                         {/* Total Charge = charge + OT charge */}
-                        <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', gap: 4, color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }} title={r.bundle_id ? 'Allocated share of the whole-building rate (pro-rata by rack). Rate column is rack.' : undefined}>
+                        <div className="c-tnum" style={{ ...cellS, justifyContent: 'flex-end', gap: 4, color: rowTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-2)', fontWeight: rowTotal > 0 ? 600 : 400 }} title={r.bundle_id ? 'Allocated share of the blanket rate (pro-rata by rack). Rate column is rack.' : undefined}>
                           {r.bundle_id && <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', color: 'var(--c-fg-3)' }}>SHARE</span>}
                           {rowTotal > 0 ? `$${rowTotal.toFixed(2)}` : '—'}
                         </div>
@@ -6068,7 +6106,7 @@ export function WorkOrderPopup({
                                 if (dayBundle) {
                                   return (
                                     <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
-                                      Whole building {dayBundle.amount || <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}>rate?</span>}/day
+                                      Blanket rate {dayBundle.amount || <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}>rate?</span>}/day
                                     </span>
                                   )
                                 }
@@ -7438,9 +7476,9 @@ export function WorkOrderPopup({
                               onClick={() => setDayBundle(daySheetDate!, !b)}
                               title={b ? 'Back to each room at its own rate' : 'One price for every room on this day'}
                               style={{ fontSize: 8.5, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 3, cursor: 'pointer', background: b ? 'var(--c-fg)' : 'var(--c-wash2)', color: b ? 'var(--c-bg)' : 'var(--c-fg-2)' }}
-                            >Whole building</button>
+                            >Blanket rate</button>
                           ) : (
-                            <span style={{ fontWeight: 700 }}>Whole building · one price for every room</span>
+                            <span style={{ fontWeight: 700 }}>Blanket rate · one price for every room</span>
                           )}
                           {b && (
                             <>
@@ -7465,7 +7503,7 @@ export function WorkOrderPopup({
                       return (
                         <div key={r.id + '-bill'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0', gap: 8 }}>
                           {runner ? (
-                            <span>Room {r.bundle_id ? `share of the whole-building rate (rack ${r.rate_daily || '—'})` : isDayRow ? `lockout — ${includedHoursFor(r)}h incl. (${r.rate_daily || '—'})` : `${r.total_hours ?? calcHours(r.from_time, r.to_time) ?? '—'}h × ${r.rate || '—'}/hr`}</span>
+                            <span>Room {r.bundle_id ? `share of the blanket rate (rack ${r.rate_daily || '—'})` : isDayRow ? `lockout — ${includedHoursFor(r)}h incl. (${r.rate_daily || '—'})` : `${r.total_hours ?? calcHours(r.from_time, r.to_time) ?? '—'}h × ${r.rate || '—'}/hr`}</span>
                           ) : (
                             <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                               {r.bundle_id ? 'Room rack' : 'Room'}
@@ -7514,7 +7552,7 @@ export function WorkOrderPopup({
                     {(otHrsDay > 0 || otChargeDay > 0) && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', padding: '2px 0' }}>
                         {/* A blanket day's OT is a typed figure with no hours. */}
-                        <span>{otHrsDay > 0 ? `OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}` : 'OT · whole building, allocated'}</span>
+                        <span>{otHrsDay > 0 ? `OT ${otHrsDay}h${sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}/hr` : ''}` : 'OT · blanket rate, allocated'}</span>
                         <span className="c-tnum">{`$${otChargeDay.toFixed(2)}`}</span>
                       </div>
                     )}

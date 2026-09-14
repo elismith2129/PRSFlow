@@ -67,9 +67,9 @@ is a member; each member's `charge` is its allocated share, pro-rata by the row'
 `rate_daily`, remainder to the largest rack, Σ = amount to the penny. **`rate_daily` stays
 RACK** — it is the allocation basis and the OT basis ("OT is rack", ruling 5).
 
-- List view: a **Whole building** toggle on the first row of any multi-room day; rate/day
+- List view: a **Blanket rate** toggle on the first row of any multi-room day; rate/day
   input; readout (rooms · % off rack · shares ✓). Members: Day/Hr frozen, Total tagged SHARE.
-- Day card reads "Whole building $6,670/day"; day sheet's Billing shows the one price above
+- Day card reads "Blanket rate $6,670/day"; day sheet's Billing shows the one price above
   the rooms' shares. Runner sees it read-only.
 - PDF (`lib/woPdf.ts`): **one line per bundled day** — `PRS ALL · Paramount — whole building ·
   Studios A, B, C, E, X · $6,670` — rooms named, never the per-room split (ruling 3).
@@ -100,7 +100,19 @@ RACK** — it is the allocation basis and the OT basis ("OT is rack", ruling 5).
   Eli: "these are always custom so need full flex… just allocate the OT across." The PDF
   prints it in the day line's OT column, never per room.
 
-**Not built:** the `room_rates` table (ruling 7). **Closed, not parked:** the blanket
+- **Named "Blanket rate"** everywhere (Eli) — button, sheet, card, PDF line
+  ("Paramount — blanket rate · Studios A, B").
+- **Adding a room copies less**: the rate carries over only for the SAME room (Studio B
+  inheriting Studio A's $3,150 skewed every share); staff carries over only onto a NEW day
+  (a second room on a staffed day made "2ND Wyatt Sayre" twice).
+- **"→ all days"** on the strip copies a day's rate + OT onto every dated day, creating
+  bundles where missing.
+- The sheet's generic `select` rule no longer hits `select.c-input` (the Add-dates room
+  read as a sheared "ERS B" — 10px padding on a 32px fixed height).
+
+**Not built:** the `room_rates` table (ruling 7) — the real fix for a new room's default
+rate; and the Seed panel taking multiple rooms + a blanket price (one press for 5 rooms ×
+2 days). Both proposed, to be mocked first. **Closed, not parked:** the blanket
 calendar card — one card per room, as any multi-room day (Eli: "leave as separate cards"). The Concord one-off rows (WO-1156) are NOT bundled — they
 carry the share in `rate_daily` and keep working; converting them is a separate SQL.
 

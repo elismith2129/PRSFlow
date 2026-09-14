@@ -373,7 +373,10 @@ select {
 
 /* (5) INPUT DEPTH — recessed inset shadow on all form fields.
    `.c-input` is excluded: the carved system supplies its own inset via .c-inset2,
-   and this rule would otherwise sit on top of it. */
+   and this rule would otherwise sit on top of it. SELECTS TOO (2026-09-14): the
+   select lines here excluded only .c-tin, so a `select.c-input` inside a sheet
+   got this 10px padding on top of .c-input's 32px height + 30px line-height —
+   the Add-dates room read as a sheared "ERS B". Same exclusion as the inputs. */
 input:not(.c-input), textarea:not(.c-input), select:not(.c-input) {
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
@@ -1391,10 +1394,10 @@ select.c-input {
 
 
 .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
-.c-sheet select:not(.c-tin),
+.c-sheet select:not(.c-tin):not(.c-input),
 .c-sheet textarea:not(.c-textarea):not(.c-tin),
 .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
-.c-panel select:not(.c-tin),
+.c-panel select:not(.c-tin):not(.c-input),
 .c-panel textarea:not(.c-textarea):not(.c-tin) {
   border-radius: 14px; padding: 10px 14px; width: 100%;
   background: var(--c-bg); color: var(--c-fg);
@@ -1402,10 +1405,10 @@ select.c-input {
   box-shadow: inset 3px 3px 9px rgba(0, 0, 0, .34), inset -3px -3px 9px rgba(255, 255, 255, .03);
 }
 [data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
-[data-theme="light"] .c-sheet select:not(.c-tin),
+[data-theme="light"] .c-sheet select:not(.c-tin):not(.c-input),
 [data-theme="light"] .c-sheet textarea:not(.c-textarea):not(.c-tin),
 [data-theme="light"] .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
-[data-theme="light"] .c-panel select:not(.c-tin),
+[data-theme="light"] .c-panel select:not(.c-tin):not(.c-input),
 [data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
   box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .07), inset -3px -3px 8px rgba(255, 255, 255, .65);
 }
@@ -2274,19 +2277,19 @@ select.c-input {
 
 /* Bare fields caught by the sheet/panel catch-alls: flat wash, no carve. */
 .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
-.c-sheet select:not(.c-tin),
+.c-sheet select:not(.c-tin):not(.c-input),
 .c-sheet textarea:not(.c-textarea):not(.c-tin),
 .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
-.c-panel select:not(.c-tin),
+.c-panel select:not(.c-tin):not(.c-input),
 .c-panel textarea:not(.c-textarea):not(.c-tin) {
   background: var(--c-wash);
   box-shadow: none;
 }
 [data-theme="light"] .c-sheet input:not([type="file"]):not(.c-input):not(.c-tin),
-[data-theme="light"] .c-sheet select:not(.c-tin),
+[data-theme="light"] .c-sheet select:not(.c-tin):not(.c-input),
 [data-theme="light"] .c-sheet textarea:not(.c-textarea):not(.c-tin),
 [data-theme="light"] .c-panel input:not([type="file"]):not(.c-input):not(.c-tin),
-[data-theme="light"] .c-panel select:not(.c-tin),
+[data-theme="light"] .c-panel select:not(.c-tin):not(.c-input),
 [data-theme="light"] .c-panel textarea:not(.c-textarea):not(.c-tin) {
   box-shadow: none;
 }

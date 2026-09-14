@@ -491,6 +491,17 @@ My rates and bookings can change on a dime so really always need very simple way
 doctor up WOs after the fact on the admin side."* The WO is the place things get fixed
 later; every admin control should assume the booking was wrong.
 
+**Then, from watching WO-1076 get built by hand:** "Whole building" is called **Blanket
+rate** (Eli — it is not always the building). Adding ERS B beside ERS A copied A's $3,150
+onto B and A's assistant onto the same day twice — the "carry over from the last day"
+rule was written for the next DAY of the same room and was wrong for the next ROOM of the
+same day. Rate now copies only for the same room; staff only onto a new day. And a
+five-day blanket should not mean typing the price five times: "→ all days".
+
+**Proposed, not built — Eli asked for analysis first:** `room_rates` (ruling 7) so a new
+room arrives at its own rate with no typing, and the Seed panel taking multiple rooms + a
+blanket price so 5 rooms × 2 days is one press. Both to be mocked before building.
+
 #### Process
 
 - **A `git status` through the mount left `.git/index.lock`** and Eli's first push died on
