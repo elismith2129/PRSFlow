@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Memos: write it once, everyone reads it, you can see who did</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  MEMOS (Eli, 2026-09-14 evening).
+
+  "A company memo — something I can just type into and send to admin, runners
+  or both. They each get notified as a pop-up and they have to read and sign
+  they acknowledge. Want the accountability, but mostly want people to
+  actually read and learn. In addition to text, you and I will regularly
+  create memos to send out (like this one for instance). Company updates, app
+  updates, problems that are recurring (runners missing punches etc). A
+  company memo board where there's a pop-up for them as well as an archive.
+  And on my side, owner and Fernando, we get a little analytics of who's seen
+  and acknowledged and who hasn't."
+
+  ── RULINGS (Eli, same evening) ─────────────────────────────────────────────
+
+  1. SOFT THEN HARD. The pop-up can be closed once ("I'll read it later"); it
+     comes back on the next open; after 48 hours it blocks the app until
+     signed. A runner opening the hub at 11pm is not stonewalled by 400 words;
+     nobody gets to ignore it for a week.
+  2. SENDERS: owners + Fernando only.
+  3. AUDIENCE IS STRICT. Runners never see admin memos; runner-only memos do
+     not go to admin. "Everyone" goes to both.
+  4. IN THE APP ONLY for now. No push, no SMS. The scoreboard therefore also
+     says "hasn't opened the app since …" — a pop-up cannot reach someone who
+     never opens it, and that fact belongs on Eli's side of the screen.
+  5. NO ATTACHMENTS TO OPEN. "I want that stuff to just appear and be very
+     readable, not extra clicks." A designed memo (today's WO one-sheet)
+     renders INLINE, graphics and all, inside the pop-up and the archive.
+
+  ── THE PRECEDENT ───────────────────────────────────────────────────────────
+  components/SopGate.tsx: a full-screen, non-dismissable modal until the
+  person acknowledges the SOP, stored per person via a SECURITY DEFINER RPC.
+  Memos are that gate generalized to a feed, with a soft first showing, an
+  archive and a scoreboard. Runners have individual logins (create-runners),
+  so acknowledgments are per PERSON.
+
+  ── DATA ────────────────────────────────────────────────────────────────────
+  memos
+    id, title, kind ('note' | 'page'), body_html, audience ('admin' |
+    'runners' | 'everyone'), requires_ack bool, sent_by (user_profiles.id),
+    sent_at, archived_at
+      kind 'note' — typed in the app: RichNote HTML (bold, bullets), rendered
+                    through sanitizeNote like every note.
+      kind 'page' — a designed memo: full HTML (the one-sheet), rendered in a
+                    sandboxed <iframe srcdoc> (no scripts) so it keeps its
+                    graphics without touching the app's DOM.
+  memo_receipts
+    memo_id, user_id, first_seen_at, deferred_at (the one "later"),
+    acknowledged_at, initials
+      unique (memo_id, user_id). A row appears on first showing; ack fills it.
+  RLS: memos SELECT = audience matches my role (runners: 'runners'|'everyone';
+       everyone else: 'admin'|'everyone'); INSERT/UPDATE owner + manager.
+       memo_receipts: SELECT own row, or all rows if owner/manager; INSERT /
+       UPDATE own row only (via RPC memo_ack / memo_defer, SECURITY DEFINER,
+       same shape as acknowledge_sop).
+
+  ── WHERE ───────────────────────────────────────────────────────────────────
+  Pop-up: mounted in app/(main)/layout.tsx (admin) and app/runner/layout.tsx
+  (runners) — the person's landing surface, never inside a work order.
+  Archive + compose + scoreboard: /memos, rail → Operations. Runners: a
+  "Memos" tile on the Runner Hub → /runner/memos (archive, read-only).
+  Unread count = a badge on the rail item / hub tile.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1100px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:820px;line-height:1.65;margin-bottom:8px}
+.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:36px 0 4px;letter-spacing:-.01em}
+h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:820px;line-height:1.6;margin-bottom:14px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.note{font-size:10.5px;opacity:.55;margin-top:12px;line-height:1.65;max-width:840px}
+.cmp{border-left:2px solid var(--warm);padding-left:12px;margin:10px 0 20px;font-size:11.5px;color:var(--fg2);line-height:1.6;max-width:840px}
+.cmp b{color:var(--warm)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:start}
+@media(max-width:860px){.grid2,.grid3{grid-template-columns:1fr}}
+.wo{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 15px}
+.wolab{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:10px}
+.k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:block;margin-bottom:3px}
+.inp{background:var(--wash);border-radius:9px;padding:6px 10px;font-size:12px;display:block}
+.inp.ph{color:var(--fg3)}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+.btn{display:inline-block;background:var(--fg);color:var(--bg);border-radius:99px;padding:8px 16px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.soft{display:inline-block;background:var(--wash2);color:var(--fg);border-radius:99px;padding:8px 16px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:10px;font-weight:700;border-radius:99px;padding:4px 11px;background:var(--wash2);color:var(--fg2)}
+.chip.on{background:var(--fg);color:var(--bg)}
+.tog{display:inline-flex;border-radius:99px;background:var(--wash2);overflow:hidden}
+.tog span{padding:4px 11px;font-size:10px;font-weight:700}
+.tog span.on{background:var(--fg);color:var(--bg)}
+/* phone */
+.phone{width:300px;background:var(--bg);border-radius:28px;padding:12px;box-shadow:var(--softsh);margin:0 auto}
+.phone .scr{background:var(--srf);border-radius:20px;padding:16px 15px 14px;min-height:480px;display:flex;flex-direction:column}
+.memo-h{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.memo-t{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.02em;line-height:1.15;margin:4px 0 6px}
+.memo-m{font-size:10px;color:var(--fg3);margin-bottom:10px}
+.memo-b{font-size:11.5px;line-height:1.55;color:var(--fg2);flex:1}
+.memo-b b{color:var(--fg)}
+.memo-b ul{padding-left:16px;margin:6px 0}
+.memo-b li{margin:2px 0}
+.ack{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+.ack .sig{display:flex;align-items:center;gap:8px;background:var(--wash);border-radius:12px;padding:9px 12px;font-size:11.5px}
+.ack .sig b{font-family:'DM Mono',monospace;font-size:14px;letter-spacing:.06em;margin-left:auto;background:var(--srf);border-radius:8px;padding:3px 10px}
+.ack .btn{text-align:center;display:block}
+.ack .later{text-align:center;font-size:10.5px;color:var(--fg3);text-decoration:underline}
+.ack .hard{text-align:center;font-size:10px;color:var(--hot);font-weight:700}
+/* scoreboard */
+table.sb{width:100%;border-collapse:collapse;font-size:11.5px}
+table.sb th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+table.sb td{padding:6px 10px 6px 0;border-top:1px solid var(--wash)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:99px;margin-right:6px;vertical-align:1px}
+.dot.ok{background:var(--booked)}.dot.seen{background:var(--warm)}.dot.no{background:var(--hot)}.dot.off{background:var(--fg3)}
+.bar{height:6px;border-radius:99px;background:var(--wash2);overflow:hidden;margin:6px 0 2px}
+.bar i{display:block;height:100%;background:var(--booked)}
+.row{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--wash);font-size:11.5px}
+.row .t{font-weight:700}
+.row .m{color:var(--fg3);font-size:10px}
+.row .r{margin-left:auto;font-family:'DM Mono',monospace;font-size:11px}
+.pill{font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--wash2);color:var(--fg2)}
+.pill.ok{background:var(--booked);color:var(--chip-ink)}
+.pill.hot{background:var(--hot);color:#fff}
+.pill.warm{background:var(--warm);color:var(--chip-ink)}
+.page-frame{border:1px solid var(--wash2);border-radius:10px;padding:10px;background:var(--bg);font-size:10px;color:var(--fg2)}
+.page-frame .ph2{height:90px;border-radius:8px;background:repeating-linear-gradient(135deg,var(--wash) 0 8px,transparent 8px 16px);display:flex;align-items:center;justify-content:center;font-size:9.5px;color:var(--fg3)}
+</style>
+</head>
+<body>
+
+<h1>Memos</h1>
+<p class="lede">
+  Write it once. It appears for the people it's for, the next time they open the app. They read it
+  <b>where it appears</b> — no attachment to open — and sign with their initials. You see who has and
+  who hasn't. The SOP gate already does this for one document; this is the same thing for a feed.
+</p>
+<div class="cmp">
+  <b>Rulings folded in.</b> Soft then hard (one "later", then it blocks after 48 hours). Senders: owners and Fernando.
+  Audience is strict — runners never see admin memos, runner memos never reach admin. In the app only, for now.
+  A designed memo renders inline, graphics and all.
+</div>
+
+<h2><span class="n">1</span>Writing one</h2>
+<p class="sub">Two kinds. <b>Note</b> — you type it here, same bold/bullets as every note in the app. <b>Page</b> — a designed memo like today's one-sheet: the file goes in whole and shows exactly as designed. Both are one screen.</p>
+<div class="grid2">
+  <div class="wo">
+    <div class="wolab">Memos → New memo · a typed note</div>
+    <span class="k">Title</span><span class="inp">Punches: clock in before you touch the room</span>
+    <div style="display:flex;gap:16px;margin:10px 0;flex-wrap:wrap">
+      <div><span class="k">To</span><div class="chips"><span class="chip">Admin</span><span class="chip on">Runners</span><span class="chip">Everyone</span></div></div>
+      <div><span class="k">Signature</span><div class="tog"><span class="on">Must acknowledge</span><span>Just read</span></div></div>
+    </div>
+    <span class="k">Memo</span>
+    <div class="inp" style="min-height:120px;line-height:1.55;color:var(--fg2)">
+      Three of the last five nights had a missing punch. <b style="color:var(--fg)">Clock in on the hub before you open the room, clock out after the closing checklist.</b><br><br>
+      • A missing punch means payroll guesses your hours.<br>
+      • If you forget, tell your manager the same night — not the next day.
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <span class="btn">Send to 9 runners</span><span class="soft">Preview</span>
+      <span style="font-size:10px;color:var(--fg3);margin-left:auto">Sends now. It shows on each person's next open.</span>
+    </div>
+  </div>
+  <div class="wo">
+    <div class="wolab">Memos → New memo · a designed page</div>
+    <span class="k">Title</span><span class="inp">What changed on the work order — September</span>
+    <div style="display:flex;gap:16px;margin:10px 0;flex-wrap:wrap">
+      <div><span class="k">To</span><div class="chips"><span class="chip on">Admin</span><span class="chip">Runners</span><span class="chip">Everyone</span></div></div>
+      <div><span class="k">Signature</span><div class="tog"><span class="on">Must acknowledge</span><span>Just read</span></div></div>
+    </div>
+    <span class="k">Memo</span>
+    <div class="page-frame">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="color:var(--fg)">wo-one-sheet-2026-09.html</b><span class="pill ok">Renders inline</span></div>
+      <div class="ph2">the one-sheet, exactly as designed — headings, tables, graphics</div>
+      <div style="margin-top:6px">Drop an HTML file here, or paste its contents. Readers see the page itself inside the memo, not a link to it.</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+      <span class="btn">Send to 7 admin</span><span class="soft">Preview</span>
+    </div>
+    <p class="note">This is how the memos you and I make together go out: I hand you the file, you drop it in, press Send. No PDF, no link, no "see attached".</p>
+  </div>
+</div>
+
+<h2><span class="n">2</span>What they see <span class="rec">Soft, then hard</span></h2>
+<p class="sub">On the Runner Hub for runners, the dashboard for admin — the landing screen, never inside a work order. The memo is the whole screen. The signature is their initials, already filled from their profile: pressing it is signing, not dismissing.</p>
+<div class="grid3">
+  <div>
+    <div class="oh">First showing · can wait</div>
+    <div class="phone"><div class="scr">
+      <div class="memo-h">Memo · from Eli · 1 of 1</div>
+      <div class="memo-t">Punches: clock in before you touch the room</div>
+      <div class="memo-m">Sent Mon Sep 14 · to all runners</div>
+      <div class="memo-b">
+        Three of the last five nights had a missing punch. <b>Clock in on the hub before you open the room, clock out after the closing checklist.</b>
+        <ul><li>A missing punch means payroll guesses your hours.</li><li>If you forget, tell your manager the same night — not the next day.</li></ul>
+      </div>
+      <div class="ack">
+        <div class="sig">I've read this <b>WS</b></div>
+        <span class="btn">Sign &amp; continue</span>
+        <span class="later">I'll read it later</span>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="oh">Second showing · 48 hours on</div>
+    <div class="phone"><div class="scr">
+      <div class="memo-h">Memo · from Eli · 1 of 1</div>
+      <div class="memo-t">Punches: clock in before you touch the room</div>
+      <div class="memo-m">Sent Mon Sep 14 · to all runners</div>
+      <div class="memo-b">
+        Three of the last five nights had a missing punch. <b>Clock in on the hub before you open the room, clock out after the closing checklist.</b>
+        <ul><li>A missing punch means payroll guesses your hours.</li><li>If you forget, tell your manager the same night — not the next day.</li></ul>
+      </div>
+      <div class="ack">
+        <div class="sig">I've read this <b>WS</b></div>
+        <span class="btn">Sign &amp; continue</span>
+        <span class="hard">You put this off on Monday. It needs a signature to go on.</span>
+      </div>
+    </div></div>
+    <p class="note">The "later" link is gone. Same memo, same button; the only thing that changed is that waiting is no longer an option. It says why.</p>
+  </div>
+  <div>
+    <div class="oh">A designed page, on a phone</div>
+    <div class="phone"><div class="scr">
+      <div class="memo-h">Memo · from Eli · 2 of 2</div>
+      <div class="memo-t">What changed on the work order — September</div>
+      <div class="memo-m">Sent Mon Sep 14 · to admin</div>
+      <div class="memo-b">
+        <div class="page-frame" style="min-height:220px"><div class="ph2" style="height:200px">the one-sheet, scrolling inside the memo, one column on a phone</div></div>
+      </div>
+      <div class="ack">
+        <div class="sig">I've read this <b>SJ</b></div>
+        <span class="btn">Sign &amp; continue</span>
+        <span class="later">I'll read it later</span>
+      </div>
+    </div></div>
+    <p class="note">"Just read" memos have no signature block — one button, <b>Got it</b>, and the receipt records that it was opened.</p>
+  </div>
+</div>
+
+<h2><span class="n">3</span>The board and the scoreboard</h2>
+<p class="sub">One page, <b>/memos</b>, under Operations. Everyone gets the archive of what was sent to them. Owners and Fernando get the sender view on top of it — and per memo, who has signed, who has only seen it, who hasn't opened the app.</p>
+<div class="grid2">
+  <div class="wo">
+    <div class="wolab">Memos · sender view (owner / Fernando)</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span class="btn">+ New memo</span><span style="font-size:10px;color:var(--fg3)">12 sent · 3 open</span></div>
+    <div class="row"><span class="pill warm">Runners</span><span class="t">Punches: clock in before you touch the room</span><span class="m">Sep 14</span><span class="r">6 / 9 signed</span></div>
+    <div class="row"><span class="pill">Admin</span><span class="t">What changed on the work order — September</span><span class="m">Sep 14</span><span class="r">2 / 7 signed</span></div>
+    <div class="row"><span class="pill">Everyone</span><span class="t">Holiday schedule — Thanksgiving week</span><span class="m">Sep 9</span><span class="r">16 / 16 ✓</span></div>
+    <div class="row"><span class="pill">Everyone</span><span class="t">New COD collect box on the work order</span><span class="m">Sep 8</span><span class="r">14 / 16</span></div>
+    <div class="row" style="opacity:.55"><span class="pill">Runners</span><span class="t">Mic inventory — every night, no exceptions</span><span class="m">Aug 27 · just read</span><span class="r">9 / 9 opened</span></div>
+    <p class="note">A runner's archive is the same list with only their memos and their own status on each. No counts, no names.</p>
+  </div>
+  <div class="wo">
+    <div class="wolab">Memo → Punches: clock in before you touch the room</div>
+    <div style="font-size:11px;color:var(--fg2)">Sent Mon Sep 14, 9:12 PM · to 9 runners · must acknowledge</div>
+    <div class="bar"><i style="width:67%"></i></div>
+    <div style="font-size:10px;color:var(--fg3);margin-bottom:10px">6 signed · 1 put it off · 2 haven't opened the app</div>
+    <table class="sb">
+      <tr><th>Runner</th><th>Status</th><th>When</th></tr>
+      <tr><td>Wyatt S.</td><td><span class="dot ok"></span>Signed WS</td><td class="mono">Sep 14, 10:41 PM</td></tr>
+      <tr><td>Maya R.</td><td><span class="dot ok"></span>Signed MR</td><td class="mono">Sep 15, 8:03 AM</td></tr>
+      <tr><td>Devon K.</td><td><span class="dot ok"></span>Signed DK</td><td class="mono">Sep 15, 4:55 PM</td></tr>
+      <tr><td>Luis A.</td><td><span class="dot ok"></span>Signed LA</td><td class="mono">Sep 15, 6:20 PM</td></tr>
+      <tr><td>Tia M.</td><td><span class="dot ok"></span>Signed TM</td><td class="mono">Sep 15, 9:47 PM</td></tr>
+      <tr><td>Jordan P.</td><td><span class="dot ok"></span>Signed JP</td><td class="mono">Sep 16, 3:10 PM</td></tr>
+      <tr><td>Chris B.</td><td><span class="dot seen"></span>Put it off · blocks Wed 9:12 PM</td><td class="mono">Sep 14, 11:30 PM</td></tr>
+      <tr><td>Sam O.</td><td><span class="dot off"></span>Hasn't opened the app</td><td class="mono">last open Sep 11</td></tr>
+      <tr><td>Nate F.</td><td><span class="dot off"></span>Hasn't opened the app</td><td class="mono">last open Sep 13</td></tr>
+    </table>
+    <p class="note">Three states, not two: <b>signed</b>, <b>saw it and put it off</b> (the one "later" — with the moment it turns hard), and <b>hasn't opened the app</b> — which is not their fault yet and is the one you can't fix from here. "Last open" is what tells you whether to text them.</p>
+  </div>
+</div>
+
+<h2><span class="n">4</span>Rules this locks in</h2>
+<p class="sub" style="max-width:860px">
+  <b>One memo at a time</b>, oldest unread first — a stack of five is read as five, not skimmed as one.
+  <b>The signature is the initials</b>, pre-filled and shown large; pressing Sign records name, initials and time.
+  <b>"Later" works once per memo.</b> After 48 hours from that press the memo blocks until signed, and the screen says why.
+  <b>Sending is final</b> — a sent memo can be archived (hidden from the board, receipts kept) but not edited; a correction is a new memo.
+  <b>Nothing leaves the app</b> — no email, no SMS — so the scoreboard shows last-open, because that is the honest limit of a pop-up.
+  <b>Designed pages are sandboxed</b> — they render in a frame with no scripts, so a memo can't touch the app around it.
+</p>
+
+</body>
+</html>

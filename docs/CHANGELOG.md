@@ -19,6 +19,55 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.29.0 — MEMOS: write it once, everyone reads it, you can see who did — Sep 14, 2026 (late)
+
+Eli: "a company memo — type into it and send to admin, runners or both. They each get
+notified as a pop-up and they have to read and sign they acknowledge. Want the
+accountability, but mostly want people to actually read and learn." Mock:
+`docs/design-refs/memos-options.html`. The SOP gate generalized to a feed.
+
+**Migration `20260914160000_memos.sql`** — `memos`, `memo_receipts`,
+`user_profiles.last_seen_at`; RLS (`memo_audiences_for_me()`); RPCs `memo_seen`,
+`memo_defer`, `memo_ack`, `touch_last_seen` (SECURITY DEFINER, own row only); a trigger that
+refuses edits to a sent memo; realtime on both tables.
+
+- **Two kinds.** `note` — typed in the app (RichNoteEditor, rendered through `sanitizeNote`).
+  `page` — a designed memo (the WO one-sheet): full HTML dropped or pasted in, rendered
+  INLINE in a sandboxed `<iframe srcdoc>` with no scripts (Eli: "not extra clicks to view
+  an attachment").
+- **Audience by role, strict** (`admin` / `runners` / `everyone`), enforced in RLS and
+  re-applied client-side for senders, who can SELECT everything: a runner-only memo never
+  pops for Eli. Senders: owner + manager.
+- **The pop-up** (`components/memos/MemoGate.tsx`, mounted in BOTH layouts) shows only on
+  the landing surface — `/` for admin, `/runner/[studio]` for runners — one memo at a time,
+  oldest first. **Soft then hard:** "I'll read it later" once; every later open shows it
+  again with the deadline ("Not now" still works); `HARD_AFTER_HOURS` (48) after the first
+  deferral it blocks until signed and says why. Signature = initials, pre-filled from the
+  profile, editable. "Just read" memos take one **Got it**.
+- **`/memos`** (rail → Operations, unread badge): everyone's board with their own status;
+  owners/managers get compose + every memo with done/total + a per-memo scoreboard —
+  signed · put it off (with when it blocks) · opened, not signed · hasn't opened the app
+  (last open date, from `last_seen_at`) — and Archive.
+- **Runner hub:** a Memos tile with the unread count, and a strip above the tiles while
+  anything is unread; `/runner/[studio]/memos` is their board.
+- **`hooks/useMyMemos.ts`** — ONE shared channel (`memos-shared`) for `memos` +
+  `memo_receipts`; the gate, rail badge, hub tile and both boards read it. Never open
+  another.
+
+> ⚠ **WATCH-OUT — a sent memo cannot be edited, by trigger.** Six signatures on a changed
+> text mean nothing. Archive and send a correction. The compose form says so.
+
+> ⚠ **WATCH-OUT — `last_seen_at` is stamped by the gate on mount**, so "hasn't opened the
+> app" is only as fresh as the last time a surface with `MemoGate` loaded. Both layouts
+> mount it; a new layout that doesn't will read as "never".
+
+**Files:** `lib/memos.ts`, `hooks/useMyMemos.ts`, `components/memos/MemoView.tsx`,
+`components/memos/MemoGate.tsx`, `app/(main)/memos/page.tsx`,
+`app/runner/[studio]/memos/page.tsx`, `app/runner/[studio]/page.tsx`, `app/(main)/layout.tsx`,
+`app/runner/layout.tsx`, `components/layout/Rail.tsx`
+
+---
+
 ## v1.28.0 — THE COLLECT DISPLAY, the roomless alarm, and the blanket rate built — Sep 14, 2026
 
 Three items off the v1.27.0 "Open" list, in priority order: the display that cost the studio

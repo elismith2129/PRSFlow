@@ -645,6 +645,28 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.29.0', date:'Sep 14, 2026',
+    headline:'Memos: when the office sends one, it appears the next time you open the app. Read it, sign it.',
+    desc:'Company updates, app changes, things that keep going wrong — they come as a memo now, not a text you have to find later. It pops up on your landing screen (the dashboard, or the Runner Hub), you read it right there, and you sign it with your initials.',
+    changes:[
+      'A memo pops up the next time you open the app. Read it, tap "Sign & continue" — your initials are already filled in. That’s your signature.',
+      'Busy? Tap "I’ll read it later". It comes back next time you open the app. After 48 hours it stops letting you put it off and you have to sign to go on. The screen tells you when.',
+      'Some memos are just for reading — those have one button, "Got it".',
+      'Every memo you’ve been sent is on your Memos page: on the rail under Operations for the office, a Memos tile on the Runner Hub for runners. Unread ones are counted on the badge.',
+      'Owners and Fernando can send memos: type one, or drop in a designed page like the work-order one-sheet — it shows inside the memo, no attachment to open. They also see who has signed, who put it off, and who hasn’t opened the app since when.',
+      'A sent memo can’t be edited — it can be archived and replaced. Your signature always means the words you actually read.',
+    ],
+    affects:'When a memo pops up, read it. If you truly can’t right now, put it off once — and come back to it from the Memos tile before it comes back on its own.',
+    dev:[
+      'memos + memo_receipts + user_profiles.last_seen_at (migration 20260914160000). RPCs memo_seen / memo_defer / memo_ack / touch_last_seen, SECURITY DEFINER, own row only. A trigger refuses edits to a sent memo.',
+      'kind note = RichNote HTML through sanitizeNote; kind page = full HTML in a sandboxed iframe srcdoc, no scripts — a designed memo renders inline, never as an attachment.',
+      'Audience by role, strict, in RLS (memo_audiences_for_me) and re-applied client-side in fetchMyMemos — senders can SELECT every memo and a runner-only memo must never pop for Eli.',
+      'Soft then hard: one deferral; HARD_AFTER_HOURS (48) after it the gate blocks. MemoGate mounted in both layouts, shows on landing surfaces only (/ and /runner/[studio]).',
+      'WATCH-OUT: ONE shared channel (hooks/useMyMemos.ts, memos-shared) for memos + receipts — gate, rail badge, hub tile, both boards. Never open another.',
+      'Scoreboard states: signed · put it off (with when it blocks) · opened, not signed · hasn’t opened the app (last_seen_at, stamped by the gate on mount).',
+    ],
+  },
+  {
     ver:'v1.28.0', date:'Sep 14, 2026',
     headline:'Both prices on the desk before you pick a payment, an alarm for sessions with no room, and whole-building rates.',
     desc:'A runner quoted the cash balance, ran that exact amount on the card terminal, and only then picked Credit Card — so the studio ate the 3%. The work order now shows the cash amount and the card amount side by side, same size, before anything is chosen. Two more things off the list: the app now shouts when a session has no room, and a whole-building day is one price instead of five made-up ones.',

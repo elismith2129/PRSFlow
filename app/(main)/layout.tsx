@@ -3,6 +3,7 @@ import { AuthGuard } from '@/components/auth/AuthGuard'
 import { WebInquiryProvider } from '@/components/notifications/WebInquiryProvider'
 import { WebInquiryToaster } from '@/components/notifications/WebInquiryToaster'
 import { SopGate } from '@/components/SopGate'
+import { MemoGate } from '@/components/memos/MemoGate'
 import TestingFloater from '@/components/dev/TestingFloater'
 
 export default function MainLayout({
@@ -26,6 +27,8 @@ export default function MainLayout({
         <WebInquiryToaster />
         {/* First-login SOP gate — full-screen, blocks the app until acknowledged. */}
         <SopGate />
+        {/* Memos (2026-09-14) — the pop-up. Shows on the dashboard only. */}
+        <MemoGate surface="admin" />
         {/* Floating test checklist — scoped to the INTERNAL app on purpose.
             Runner testing happens on a phone with the checklist open on a computer,
             so the panel has no business on /runner (it would only cover the phone-

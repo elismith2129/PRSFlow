@@ -133,6 +133,31 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open a tab with more than 15 rows. Scroll the list: the strip at the bottom stays pinned to the screen and reads "Page 1 of N · 1–15 of X · Y more". Click 2 — it updates. On a tab with 15 rows or fewer the strip is not pinned and just shows the count.',
       },
       {
+        id: 'v129-memo-send', area: 'Memos', device: 'desktop',
+        what: 'An owner can send a typed memo and a designed page memo',
+        how: 'Rail → Operations → Memos. + New memo. Title, To = Runners, Must acknowledge, Typed note — type two lines, bold one. Preview shows it as the runner will see it. Send. It appears in the sent list as "0 / N". Now + New memo again, Kind = Designed page, choose the file docs/staff/wo-one-sheet-2026-09.html, To = Admin, Send. Open the sent row: the scoreboard lists every admin user as "Hasn’t opened the app" or "Opened".',
+      },
+      {
+        id: 'v129-memo-popup', area: 'Runner', device: 'phone',
+        what: 'A runner gets the memo as a full-screen pop-up on the hub, and can put it off once',
+        how: 'Log in as a runner and open a studio hub. The memo fills the screen: title, body, "I’ve read this" with your initials, Sign & continue, and "I’ll read it later". Tap later: the hub shows a "1 memo waiting" strip and the Memos tile reads "1 unread". Leave and come back (reload): the memo pops again, the link now says "Not now" and a line says when it needs a signature by.',
+      },
+      {
+        id: 'v129-memo-sign', area: 'Runner', device: 'phone',
+        what: 'Signing records the initials and clears the memo everywhere',
+        how: 'On the pop-up (or from the Memos tile → the memo), tap Sign & continue. The pop-up closes, the strip disappears, the tile reads "All read". On the owner’s Memos page the scoreboard row for that runner now says "Signed XX" with the time, and the count moved 0 / N → 1 / N without a refresh.',
+      },
+      {
+        id: 'v129-memo-page', area: 'Memos', device: 'phone',
+        what: 'A designed page memo reads inline on a phone — no attachment, no link',
+        how: 'As an admin user on a phone, open the dashboard: the one-sheet memo pops up with the page itself scrolling inside it, one column. There is nothing to download or open. Sign it.',
+      },
+      {
+        id: 'v129-memo-audience', area: 'Memos', device: 'desktop',
+        what: 'Runner-only memos never reach admin, and admin memos never reach runners',
+        how: 'The runner memo from the first item must NOT pop up on the owner’s dashboard and must not be on the owner’s "my board" (it is on the sent list). Log in as a runner: the admin one-sheet memo is not on the runner’s Memos page.',
+      },
+      {
         id: 'v128-bundle-pdf', area: 'Billing', device: 'desktop',
         what: 'The PDF prints a whole-building day as ONE line with the rooms named',
         how: 'On a work order with a bundled day, download the work order PDF. The Studio time table shows one line for that day — "PRS ALL", "Paramount — whole building · Studios A, B…", Day, the blanket rate as both Rate and Total. There must be NO per-room dollar amounts for that day. The Studio total at the bottom still equals the blanket rate (plus any OT, which prints as its own room line).',

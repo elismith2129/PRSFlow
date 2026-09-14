@@ -531,6 +531,30 @@ which fixes page one and leaves a tab that is still mostly waiting-on-client.
 **Kept:** clicking Date restores the Sep 3 dated list with its day dividers. The queue is
 the default, not the only order.
 
+#### Memos (v1.29.0) — the SOP gate, generalized
+
+Eli's ask, verbatim in the mock's header. What was already there: a per-person
+acknowledgment gate (SopGate) and individual runner logins. What was missing: a feed, an
+audience, a receipt per showing, and the sender's view of who has and hasn't.
+
+Rulings, all Eli's in one message: soft then hard (one "later", 48 hours, then it blocks);
+senders are owners and Fernando; audience is strict both ways; in the app only for now;
+and — the one that shaped the data model — **no attachments to open.** "I want that stuff
+to just appear and be very readable." So a memo has two kinds: a typed note, and a
+designed page that renders inline in a sandboxed frame. Today's one-sheet is the first.
+
+One rule added and accepted: **a sent memo is never edited.** Six signatures on a changed
+text mean nothing; archive and send a correction. The DB trigger refuses, not just the UI.
+
+The honest limit, put on the sender's side of the screen: a pop-up cannot reach someone who
+never opens the app. The scoreboard's third state is "hasn't opened the app since …" —
+that row is the one that tells Eli whether to text someone, and pretending the memo
+"reached" them would hide it.
+
+**Caught while building:** a sender can SELECT every memo (they need the scoreboard), so
+the personal fetch re-applies the audience client-side — otherwise a runner-only memo
+would have popped for Eli on his own dashboard.
+
 #### Process
 
 - **A `git status` through the mount left `.git/index.lock`** and Eli's first push died on

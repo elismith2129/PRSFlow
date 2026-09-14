@@ -1,0 +1,326 @@
+<title>Work Orders, September 2026</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f5f3ee; --srf:#ffffff; --fg:#2a2722; --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.48);
+  --wash:rgba(42,39,34,.06); --wash2:rgba(42,39,34,.11);
+  --ink:#2a2722; --ivory:#f5f3ee;
+  --green:#2fbf93; --warm:#e08a2e; --hot:#e0483c;
+  --sh:0 1px 2px rgba(42,39,34,.06), 0 6px 18px rgba(42,39,34,.07);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1a17; --srf:#242320; --fg:#d9d6cd; --fg2:rgba(217,214,205,.74); --fg3:rgba(217,214,205,.5);
+    --wash:rgba(217,214,205,.08); --wash2:rgba(217,214,205,.14);
+    --ink:#d9d6cd; --ivory:#1b1a17;
+    --green:#43dfae; --warm:#ffa94d; --hot:#ff5a4d;
+    --sh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1b1a17; --srf:#242320; --fg:#d9d6cd; --fg2:rgba(217,214,205,.74); --fg3:rgba(217,214,205,.5);
+  --wash:rgba(217,214,205,.08); --wash2:rgba(217,214,205,.14);
+  --ink:#d9d6cd; --ivory:#1b1a17;
+  --green:#43dfae; --warm:#ffa94d; --hot:#ff5a4d;
+  --sh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:28px 24px 48px}
+.sheet{max-width:1040px;margin:0 auto}
+.arch{font-family:'Archivo Black',sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px;padding-bottom:16px;border-bottom:2px solid var(--fg)}
+.brand{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.02em}
+.brand span{opacity:.45}
+h1{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:-.025em;line-height:1.05;text-wrap:balance;margin-top:6px}
+.lede{font-size:13px;color:var(--fg2);max-width:520px;line-height:1.55}
+.meta{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);text-align:right}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--srf);box-shadow:var(--sh);border-radius:16px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px;break-inside:avoid}
+.card.wide{grid-column:1/-1}
+.eyebrow{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.card h2{font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.015em;line-height:1.2;text-wrap:balance}
+.card p{font-size:12.5px;color:var(--fg2);line-height:1.55;max-width:60ch}
+.card p b{color:var(--fg);font-weight:700}
+.steps{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--fg2)}
+.steps div{display:flex;gap:9px;align-items:baseline}
+.steps i{font-style:normal;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:var(--fg);background:var(--wash2);border-radius:99px;min-width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.rule{font-size:11px;color:var(--fg);background:var(--wash);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:7px 10px;line-height:1.5}
+.rule.hot{border-color:var(--hot)}
+.rule.warm{border-color:var(--warm)}
+
+/* ── the mock fragments ── */
+.ui{background:var(--wash);border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.45}
+.ui .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:block;margin-bottom:3px}
+.ui .row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.inp{background:var(--srf);border-radius:8px;padding:5px 9px;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;min-width:80px;box-shadow:inset 0 0 0 1px var(--wash2)}
+.inp.ph{color:var(--fg3);font-weight:400}
+.btn{display:inline-block;background:var(--ink);color:var(--ivory);border-radius:99px;padding:6px 12px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.soft{display:inline-block;background:var(--wash2);color:var(--fg);border-radius:99px;padding:6px 12px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.tog{display:inline-block;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:3px;background:var(--ink);color:var(--ivory)}
+.tog.off{background:var(--wash2);color:var(--fg2)}
+.chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.chips .v{font-size:8.5px;font-weight:800;letter-spacing:.06em;color:var(--fg3);margin-left:4px}
+.chip{font-size:10px;font-weight:700;border-radius:99px;padding:3px 9px;background:var(--wash2);color:var(--fg2)}
+.chip.on{background:var(--ink);color:var(--ivory)}
+.tbl{display:grid;gap:2px;font-size:10.5px}
+.tbl .h{display:grid;font-size:8px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 6px 3px}
+.tbl .r{display:grid;background:var(--srf);border-radius:6px;padding:4px 6px;align-items:center}
+.tbl .m{font-family:'DM Mono',monospace;text-align:right;font-variant-numeric:tabular-nums}
+.tag{font-size:7.5px;font-weight:800;letter-spacing:.06em;color:var(--fg3);margin-right:3px}
+.strip{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--fg2);padding:4px 6px 6px;flex-wrap:wrap}
+.strip .ok{color:var(--green);font-weight:700;margin-left:auto}
+.big{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;color:var(--hot)}
+.cline{display:flex;align-items:baseline;gap:10px;padding:2px 0}
+.cline .how{font-size:11px;color:var(--fg2)}
+.cline .how b{color:var(--fg)}
+.hist{font-size:9.5px;color:var(--fg3);margin-top:5px;padding-top:5px;border-top:1px solid var(--wash2)}
+.tabs{display:flex;gap:5px;flex-wrap:wrap}
+.tab{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg2)}
+.tab.on{background:var(--ink);color:var(--ivory)}
+.tab u{text-decoration:none;opacity:.6;margin-left:4px;font-family:'DM Mono',monospace}
+.div{display:flex;align-items:center;gap:7px;font-size:10px;margin:6px 0 2px}
+.div b{font-weight:800}
+.div i{flex:1;height:1px;background:var(--wash2)}
+.div u{text-decoration:none;color:var(--fg3);font-family:'DM Mono',monospace}
+.pager{display:flex;justify-content:flex-end;gap:8px;align-items:center;font-size:10px;color:var(--fg2);background:var(--srf);border-radius:8px 8px 0 0;padding:6px 10px;margin-top:6px;box-shadow:var(--sh)}
+.pager b{color:var(--fg)}
+.pager .pg{font-family:'DM Mono',monospace;background:var(--wash2);border-radius:4px;padding:1px 6px}
+.pager .pg.on{background:var(--ink);color:var(--ivory)}
+.day{background:var(--srf);border-radius:10px;padding:9px 11px;font-size:11px}
+.day .t{font-family:'Archivo Black',sans-serif;font-size:12px}
+.day .t span{color:var(--fg2);font-weight:400;font-family:Inter,sans-serif;font-size:10.5px;margin-left:6px}
+.day .tm{font-family:'DM Mono',monospace;font-size:12px;font-weight:600;margin-top:3px}
+.day .tm span{font-family:Inter,sans-serif;font-size:10px;color:var(--fg2);font-weight:400;margin-left:6px}
+.day .st{font-size:10px;color:var(--fg2);margin-top:2px}
+.day .st b{color:var(--warm);font-size:8.5px;margin-right:4px}
+
+footer{margin-top:22px;padding-top:12px;border-top:1px solid var(--wash2);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--fg3)}
+@media print{
+  body{background:#fff;color:#1a1815;padding:0}
+  .card{box-shadow:none;border:1px solid #d9d5cc;break-inside:avoid}
+  header{border-color:#1a1815}
+  .grid{gap:12px}
+  @page{margin:12mm}
+}
+</style>
+
+<div class="sheet">
+<header>
+  <div>
+    <div class="brand">PRS<span>Flo</span> · Work Orders</div>
+    <h1>What changed on the work order, and how to use it</h1>
+    <p class="lede">Adding days, whole-building deals, room rates, collecting at the desk, and the billing queue. Everything here is live as of the September 14 release.</p>
+  </div>
+  <div class="meta">v1.28 · Sep 2026<br>For office, billing &amp; managers</div>
+</header>
+
+<div class="grid">
+
+  <!-- 1 · Adding days -->
+  <section class="card">
+    <div class="eyebrow">Adding days to a session</div>
+    <h2>One button asks for the dates and the room. That's it.</h2>
+    <div class="ui">
+      <span class="k">Add dates</span>
+      <div class="row">
+        <div><span class="k">First day</span><span class="inp">09/16/2026</span></div>
+        <div><span class="k">Last day</span><span class="inp">09/18/2026</span></div>
+        <div><span class="k">Studio</span><span class="inp">PRS B ▾</span></div>
+      </div>
+      <div style="font-size:10px;color:var(--fg2);margin-top:8px">Adds <b style="color:var(--fg)">3 days</b> · PRS B at <b style="color:var(--fg)">$1,550/day</b> · joins the existing run — <b style="color:var(--green)">one block</b> on the calendar</div>
+      <div style="margin-top:8px"><span class="soft">+ Add studio time</span></div>
+    </div>
+    <div class="steps">
+      <div><i>1</i>Open the work order → <b>+ Add studio time</b> (bottom of Studio Time).</div>
+      <div><i>2</i>First day, last day, room. A single day is just first = last.</div>
+      <div><i>3</i>Read the line under the fields — it says what you're about to make, and the rate.</div>
+    </div>
+    <p>Times and staff carry over from the last day when it's the <b>same room</b>. A <b>different room</b> arrives at its own rate from the rate table, and gets no staff line if the day already has one.</p>
+  </section>
+
+  <!-- 2 · Seed -->
+  <section class="card">
+    <div class="eyebrow">Seed — add multiple days</div>
+    <h2>Several rooms, a date range, one press.</h2>
+    <div class="ui">
+      <span class="k">Rooms</span>
+      <div class="chips"><span class="v">PRS</span><span class="chip on">A</span><span class="chip on">B</span><span class="chip on">C</span><span class="chip on">E</span><span class="chip on">X</span><span class="v">ARS</span><span class="chip">A</span><span class="chip">B</span><span class="v">ERS</span><span class="chip">A</span><span class="chip">B</span><span class="v">TRS</span><span class="chip">N</span><span class="chip">S</span></div>
+      <div class="chips" style="margin-top:6px"><span class="chip" style="background:var(--srf)">PRS C <span class="mono">$1,950</span></span><span class="chip" style="background:var(--srf)">PRS A <span class="mono">$1,750</span></span><span class="chip" style="background:var(--srf)">PRS B <span class="mono">$1,550</span></span><span class="chip" style="background:var(--srf)">PRS X <span class="mono">$1,250</span></span><span class="chip" style="background:var(--srf)">PRS E <span class="mono">$750</span></span></div>
+      <div class="row" style="margin-top:8px">
+        <div><span class="k">Start</span><span class="inp">09/02</span></div>
+        <div><span class="k">End</span><span class="inp">09/03</span></div>
+        <div><span class="k">From</span><span class="inp">10:00 AM</span></div>
+        <div><span class="k">To</span><span class="inp">10:00 PM</span></div>
+        <div><span class="k">Type</span><span class="tog">Day</span> <span class="tog off">Hr</span></div>
+      </div>
+      <div class="row" style="margin-top:8px;border-top:1px solid var(--wash2);padding-top:8px">
+        <div><span class="k">Blanket rate / day</span><span class="inp">$6,670</span></div>
+        <div><span class="k">OT (whole day)</span><span class="inp ph">$0</span></div>
+        <span style="font-size:10px;color:var(--fg2);padding-bottom:6px">5 rooms · rack $7,250 · 8% off rack · 2 days = $13,340</span>
+      </div>
+      <div style="margin-top:8px"><span class="btn">Add · 2 days · 10 rows · 2 blanket days</span></div>
+    </div>
+    <div class="steps">
+      <div><i>1</i>Tap every room in the deal. Each shows its rate — change one if the deal is different.</div>
+      <div><i>2</i>Dates, times, Day or Hr. Staff goes on <b>once per day</b>, not once per room.</div>
+      <div><i>3</i>Leave <b>Blanket rate</b> blank for ordinary rows; type it for a whole-building price.</div>
+    </div>
+    <p>The button tells you exactly what it will make before you press it. It saves as it goes — no separate Save needed for the rows it creates.</p>
+  </section>
+
+  <!-- 3 · Blanket rate -->
+  <section class="card wide">
+    <div class="eyebrow">Blanket rate · whole-building and multi-room deals</div>
+    <h2>One price for the day. Every room gets its fair share. Overtime is a number you type.</h2>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;align-items:start" class="split">
+      <div class="ui">
+        <div class="strip"><span class="tog">Blanket rate</span> Rate / day <span class="inp" style="min-width:0;padding:2px 7px">$6,670</span> OT <span class="inp" style="min-width:0;padding:2px 7px">$500</span> <span>5 rooms · rack $7,250 · 8% off rack</span> <span class="ok">shares $7,170.00 ✓</span></div>
+        <div class="tbl">
+          <div class="h" style="grid-template-columns:52px 40px 1fr 46px 36px 70px 74px"><span>Studio</span><span>Date</span><span></span><span>Type</span><span style="text-align:right">Rate</span><span style="text-align:right">OT chg</span><span style="text-align:right">Total</span></div>
+          <div class="r" style="grid-template-columns:52px 40px 1fr 46px 36px 70px 74px"><span>PRS C</span><span>9-2</span><span></span><span>Day</span><span class="m">$1,950</span><span class="m">$134.48</span><span class="m"><span class="tag">SHARE</span>$1,794.00</span></div>
+          <div class="r" style="grid-template-columns:52px 40px 1fr 46px 36px 70px 74px"><span>PRS A</span><span>9-2</span><span></span><span>Day</span><span class="m">$1,750</span><span class="m">$120.69</span><span class="m"><span class="tag">SHARE</span>$1,610.00</span></div>
+          <div class="r" style="grid-template-columns:52px 40px 1fr 46px 36px 70px 74px"><span>PRS B</span><span>9-2</span><span></span><span>Day</span><span class="m">$1,550</span><span class="m">$106.90</span><span class="m"><span class="tag">SHARE</span>$1,426.00</span></div>
+          <div class="r" style="grid-template-columns:52px 40px 1fr 46px 36px 70px 74px"><span>PRS X</span><span>9-2</span><span></span><span>Day</span><span class="m">$1,250</span><span class="m">$86.21</span><span class="m"><span class="tag">SHARE</span>$1,150.00</span></div>
+          <div class="r" style="grid-template-columns:52px 40px 1fr 46px 36px 70px 74px"><span>PRS E</span><span>9-2</span><span></span><span>Day</span><span class="m">$750</span><span class="m">$51.72</span><span class="m"><span class="tag">SHARE</span>$690.00</span></div>
+        </div>
+        <div style="font-size:9.5px;color:var(--fg3);margin-top:6px">Rate column = the room's normal rate. Total = its share. Shares always add up to the blanket exactly.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="steps">
+          <div><i>1</i>On any day: <b>Blanket rate</b> switch — list view on the day's first row, or the day card's Billing box.</div>
+          <div><i>2</i>Type the price for the day. Bigger rooms take more of it automatically.</div>
+          <div><i>3</i>Overtime on a blanket day: type the total in the <b>OT</b> box. It's shared the same way. Nothing is worked out from the clock — those deals are custom.</div>
+          <div><i>4</i>Same price every day? <b>→ all days</b> copies it across.</div>
+        </div>
+        <div class="rule">The client's invoice prints one line — <b>"Paramount — blanket rate · Studios A, B, C, E, X · $6,670"</b> — never the per-room split.</div>
+        <div class="rule warm">Switch it off and every room goes back to its own rate. Nothing is lost.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Rates -->
+  <section class="card">
+    <div class="eyebrow">Room rates · Admin → Rates</div>
+    <h2>Rates live in the app. Rooms arrive at the right number.</h2>
+    <div class="ui">
+      <div class="tbl">
+        <div class="h" style="grid-template-columns:1fr 70px 60px"><span>Room</span><span style="text-align:right">Day</span><span style="text-align:right">Hourly</span></div>
+        <div class="r" style="grid-template-columns:1fr 70px 60px"><span>PRS C</span><span class="m">$1,950</span><span class="m" style="color:var(--fg2)">$195</span></div>
+        <div class="r" style="grid-template-columns:1fr 70px 60px"><span>PRS A</span><span class="m">$1,750</span><span class="m" style="color:var(--fg2)">$175</span></div>
+        <div class="r" style="grid-template-columns:1fr 70px 60px"><span>PRS B</span><span class="m">$1,550</span><span class="m" style="color:var(--fg2)">$155</span></div>
+        <div class="r" style="grid-template-columns:1fr 70px 60px"><span>ERS A · ERS B</span><span class="m">$1,850 · $1,950</span><span class="m" style="color:var(--fg2)"></span></div>
+        <div class="r" style="grid-template-columns:1fr 70px 60px"><span>TRS North · South</span><span class="m">$1,950 · $1,450</span><span class="m" style="color:var(--fg2)"></span></div>
+      </div>
+    </div>
+    <p>The table <b>fills</b> a rate when you add a room and no rate is there yet — Add dates, the Seed panel, or picking a room on a blank row. It <b>never changes</b> a rate already on a row, and it never touches the lead form. Owners, managers and billing can edit it under the rail's <b>Admin → Rates</b>.</p>
+    <div class="rule">Hourly is always the day rate ÷ 10. You only ever type the day rate.</div>
+  </section>
+
+  <!-- 5 · Day cards -->
+  <section class="card">
+    <div class="eyebrow">Day cards</div>
+    <h2>A card is a day, not a room.</h2>
+    <div class="ui">
+      <div class="day">
+        <div class="t">ERS A · ERS B <span>Wed, Sep 9</span></div>
+        <div class="tm">9:00 AM – 7:00 PM <span>10h · Blanket rate $4,500/day</span></div>
+        <div class="st"><b>2ND</b>Wyatt Sayre · 8:30 AM – 7:00 PM</div>
+      </div>
+    </div>
+    <p>Add a second room to a day that already exists and it <b>joins that day's card</b> — "ERS A · ERS B". A new date gets its own card. Tap the card to open the day sheet, where times, staff, rate, hours included and the blanket switch all live.</p>
+    <div class="steps">
+      <div><i>×</i>A duplicate staff line? Press its × on the card. A room added to a staffed day shouldn't add one — but old sessions may have them.</div>
+    </div>
+  </section>
+
+  <!-- 6 · Collect -->
+  <section class="card">
+    <div class="eyebrow">COD · collecting at the desk</div>
+    <h2>Read the COLLECT box. Then pick the payment type.</h2>
+    <div class="ui">
+      <span class="k">Collect</span>
+      <div class="cline"><span class="big">$180.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+      <div class="cline"><span class="big">$185.40</span><span class="how"><b>card</b> · incl. 3% fee $5.40</span></div>
+      <div class="hist">Already collected: $515.00 (deposit, card · includes $15.00 fee)</div>
+      <div class="row" style="margin-top:8px"><span class="inp">Credit Card · $185.40 ▾</span><span class="inp">185.40</span><span class="inp ph" style="flex:1">memo</span></div>
+    </div>
+    <div class="steps">
+      <div><i>1</i>Both numbers are there before you touch anything. Cash line for cash, Zelle or check. Card line for any card.</div>
+      <div><i>2</i>Pick the type — the amount fills itself. The dropdown shows the number next to each type.</div>
+      <div><i>3</i>Partial payment? Type your own amount. It stays yours.</div>
+    </div>
+    <div class="rule hot">Never quote Balance Due to a card customer. Quote the card line. That's the whole reason the box exists.</div>
+  </section>
+
+  <!-- 7 · OT & day rates -->
+  <section class="card">
+    <div class="eyebrow">Day rates, hours included, overtime</div>
+    <h2>A day rate buys 12 hours unless you say otherwise.</h2>
+    <div class="ui">
+      <div class="row">
+        <div><span class="k">Type</span><span class="tog">Day</span> <span class="tog off">Hr</span></div>
+        <div><span class="k">Room rate</span><span class="inp">$3,150</span></div>
+        <div><span class="k">Hours included</span><span class="inp">9</span></div>
+        <div><span class="k">OT rate</span><span class="inp">$315</span></div>
+      </div>
+      <div style="font-size:10px;color:var(--fg2);margin-top:8px">9:00 AM – 7:00 PM · 10h · <b style="color:var(--warm)">OT 1h · $315.00</b></div>
+    </div>
+    <p>Leave <b>Hours included</b> blank for a normal lockout. Type 9 for a 9–6 day, 4 for a short event. Overtime starts after that number, at the OT rate (normally the day rate ÷ 10).</p>
+    <div class="rule">Hourly rows have <b>no overtime</b>. An 8-hour session that runs 9 bills 9 hours. Overtime is a day-rate thing.</div>
+  </section>
+
+  <!-- 8 · Discount / cancelled -->
+  <section class="card">
+    <div class="eyebrow">Cancelled sessions &amp; kill fees</div>
+    <h2>Cancelled still bills. The Discount line is where the kill fee goes.</h2>
+    <div class="ui">
+      <div class="row" style="align-items:center">
+        <span style="font-size:10px;color:var(--fg2)">Discount</span>
+        <span class="tog">%</span><span class="tog off">$</span>
+        <span class="inp" style="min-width:56px">50</span>
+        <span class="inp ph" style="flex:1">Cancellation — kill fee</span>
+        <span class="mono" style="color:var(--hot);font-weight:700">−$1,575.00</span>
+      </div>
+    </div>
+    <p>A cancelled session comes through to Billing like any other. Charging a kill fee: type the percent or amount and a short reason — it prints on the invoice. Not charging at all: close it in Billing and pick a reason.</p>
+    <div class="rule warm">It never fills itself in. Sometimes a cancellation is billed in full.</div>
+  </section>
+
+  <!-- 9 · Billing queue -->
+  <section class="card wide">
+    <div class="eyebrow">Billing hub · Billing side</div>
+    <h2>In progress is a queue. Awaiting PO has its own tab. The page strip stays on screen.</h2>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;align-items:start" class="split">
+      <div class="ui">
+        <div class="tabs"><span class="tab on">In progress <u>11</u></span><span class="tab">Not started <u>6</u></span><span class="tab">Awaiting PO <u>19</u></span><span class="tab">Awaiting payment <u>8</u></span><span class="tab">Paid <u>42</u></span><span class="tab">Closed <u>3</u></span></div>
+        <div class="div"><b>Needs review</b><i></i><u>4 invoices</u></div>
+        <div class="tbl"><div class="r" style="grid-template-columns:90px 1fr 70px"><span class="tag" style="color:var(--warm)">NEEDS REVIEW</span><span>WO-1178 · Concord · Sep 12</span><span class="m">$3,588.00</span></div><div class="r" style="grid-template-columns:90px 1fr 70px"><span class="tag" style="color:var(--warm)">NEEDS REVIEW</span><span>WO-1171 · Atlantic · Sep 10</span><span class="m">$1,750.00</span></div></div>
+        <div class="div"><b>Needs invoice</b><i></i><u>3 invoices</u></div>
+        <div class="tbl"><div class="r" style="grid-template-columns:90px 1fr 70px"><span class="tag">NEEDS INVOICE</span><span>WO-1166 · Warner · Sep 8</span><span class="m">$6,670.00</span></div></div>
+        <div class="div"><b>Approved</b><i></i><u>4 invoices</u></div>
+        <div class="tbl"><div class="r" style="grid-template-columns:90px 1fr 70px"><span class="tag" style="color:var(--green)">APPROVED</span><span>WO-1152 · Def Jam · Sep 4</span><span class="m">$1,950.00</span></div></div>
+        <div class="pager">Page <b>1</b> of <b>2</b> · 1–8 of 11 · <b style="color:var(--warm)">3 more</b> <span class="pg on">1</span><span class="pg">2</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="steps">
+          <div><i>1</i><b>Needs review</b> is always at the top of In progress, then needs invoice, needs approval, then packages ready to send. Each group has a heading with its count — for the whole tab, not just this page.</div>
+          <div><i>2</i>A package waiting on the <b>client's PO</b> sits in <b>Awaiting PO</b>, oldest first. Its button is still Add PO.</div>
+          <div><i>3</i>More than one page? The strip at the bottom stays pinned and says how many more are below.</div>
+        </div>
+        <div class="rule">Want the old dated list with day headings? Click the <b>Date</b> column. It comes back when you switch tabs.</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <span>Full release notes in the app: Training → SOP → Version History (v1.27.0 and v1.28.0).</span>
+  <span>Questions → Eli.</span>
+</footer>
+</div>
+<style>@media (max-width:760px){.split{grid-template-columns:1fr !important}}</style>

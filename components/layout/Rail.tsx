@@ -10,6 +10,8 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { fetchApprovalsQueue } from '@/lib/billing'
+import { useMyMemos } from '@/hooks/useMyMemos'
+import { unreadCount } from '@/lib/memos'
 import { Sun, Moon } from 'lucide-react'
 
 /**
@@ -58,6 +60,7 @@ const BUSINESS: RailItem[] = [
 const OPERATIONS: RailItem[] = [
   // The notes channel, promoted from /my-day to its own reading page
   // (2026-09-06 ruling: notes want a LARGE box, not a dashboard squint box).
+  { href: '/memos', label: 'Memos', ic: '✉' },
   { href: '/shift-notes', label: 'Shift Notes', ic: '✎' },
   { href: '/daily-ops', label: 'Daily Ops', ic: '◔' },
   { href: '/runner', label: 'Runner Hub', ic: '▷' },
@@ -106,6 +109,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
   const [approvalsDue, setApprovalsDue] = useState(0)
   const { profile } = useUserProfile()
+  // Memos unread (2026-09-14) — the shared memos channel, same as the gate.
+  const { memos: myMemos } = useMyMemos(profile)
+  const memosUnread = unreadCount(myMemos)
   const clientsVersion = useClientsVersion()
   const woVersion = useWoInvoicesVersion()
 
@@ -204,6 +210,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     // Teal marks the count that is YOURS to act on (approvals); the neutral
     // grey CRM badge is informational.
     const approvals = item.href === '/billing' && approvalsDue > 0 ? approvalsDue : 0
+    const memoBadge = item.href === '/memos' && memosUnread > 0 ? memosUnread : 0
     return (
       <Link
         key={item.href}
@@ -215,6 +222,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
         <span className="c-rail-ic">{item.ic}</span>
         {item.label}
         {badge > 0 && <span className="c-rail-badge c-dim">{badge > 99 ? '99+' : badge}</span>}
+        {memoBadge > 0 && <span className="c-rail-badge c-ok" title="Memos waiting for you">{memoBadge > 99 ? '99+' : memoBadge}</span>}
         {approvals > 0 && <span className="c-rail-badge c-ok" title="Invoices ready for your approval">{approvals > 99 ? '99+' : approvals}</span>}
       </Link>
     )

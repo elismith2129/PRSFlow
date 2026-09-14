@@ -10,6 +10,8 @@ import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
 import { Hint, useHints, setHintsEnabled } from '@/components/ui/Hint'
+import { useMyMemos } from '@/hooks/useMyMemos'
+import { unreadCount, isHard } from '@/lib/memos'
 
 
 
@@ -313,12 +315,21 @@ export default function StudioDailyOpsPage() {
   // TO SHIP: delete this constant and the `soon` flag on the tile below.
   const MICS_COMING_SOON = true
 
+  // MEMOS (2026-09-14): the tile carries the unread count, and a strip above
+  // the tiles says it in words while anything is unread — "I'll read it
+  // later" leaves the memo here, one tap away. (useMyMemos shares ONE
+  // channel with the gate; never open another.)
+  const { memos: myMemos } = useMyMemos(hubProfile)
+  const memosUnread = unreadCount(myMemos)
+  const memosHard = myMemos.some(m => isHard(m))
+
   const TILES = [
     { label: 'Opening checklist', route: `/runner/${studio}/checklist/opening`, category: 'opening' },
     { label: 'Closing checklist', route: `/runner/${studio}/checklist/closing`, category: 'closing' },
     { label: 'Mic inventory', route: `/runner/${studio}/mics`, category: 'mic_inventory', soon: MICS_COMING_SOON },
     { label: 'Petty cash', route: `/runner/${studio}/petty-cash`, category: 'petty_cash' },
     { label: 'Stock list', route: `/runner/${studio}/stock`, category: 'stock' },
+    { label: 'Memos', route: `/runner/${studio}/memos`, category: 'memos' },
     // Shift notes left the tiles 2026-09-01 — the runner notes CHANNEL lives
     // inline at the bottom of this page now (view + write in one place,
     // RunnerNotesChannel), so a tile to a second surface would be the exact
@@ -522,11 +533,24 @@ export default function StudioDailyOpsPage() {
           <div className="c-label" style={{ marginBottom: 9 }}>{dayPartLabel()}
             <Hint tip="Everything here saves as you tap — no save button. Found a problem? Use needs-attention with a note and photo; that reports it to the office automatically. Submitted-with-a-problem always beats never-submitted." />
           </div>
+          {memosUnread > 0 && (
+            <button
+              type="button"
+              onClick={() => router.push(`/runner/${studio}/memos`)}
+              style={{ ...surface, width: '100%', marginBottom: 9, display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: 'none', font: 'inherit', color: 'var(--c-fg)', cursor: 'pointer', borderLeft: `3px solid ${memosHard ? 'var(--c-st-hot)' : 'var(--c-st-warm)'}` }}
+            >
+              <span style={{ fontSize: 12.5, fontWeight: 700 }}>{memosUnread} memo{memosUnread === 1 ? '' : 's'} waiting</span>
+              <span style={{ fontSize: 10.5, color: 'var(--c-fg)', opacity: 0.55, marginLeft: 'auto' }}>{memosHard ? 'needs your signature' : 'tap to read'} ›</span>
+            </button>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
             {TILES.map(t => {
               const soon = 'soon' in t && t.soon
-              const done = !soon && submittedCategories.has(t.category)
-              const statusText = soon ? 'Coming soon' : done ? 'Submitted' : 'Not started'
+              const isMemos = t.category === 'memos'
+              const done = !soon && (isMemos ? memosUnread === 0 : submittedCategories.has(t.category))
+              const statusText = soon ? 'Coming soon'
+                : isMemos ? (memosUnread > 0 ? `${memosUnread} unread` : 'All read')
+                : done ? 'Submitted' : 'Not started'
               return (
                 <button
                   key={t.route}
@@ -548,9 +572,9 @@ export default function StudioDailyOpsPage() {
                       booked-green, everything else is just quiet text. */}
                   <span style={{
                     fontSize: 10, marginTop: 4,
-                    color: done ? 'var(--c-st-booked)' : 'var(--c-fg)',
-                    opacity: done ? 1 : 0.45,
-                    fontWeight: done ? 700 : 400,
+                    color: done ? 'var(--c-st-booked)' : (isMemos ? (memosHard ? 'var(--c-st-hot)' : 'var(--c-st-warm)') : 'var(--c-fg)'),
+                    opacity: done || isMemos ? 1 : 0.45,
+                    fontWeight: done || isMemos ? 700 : 400,
                   }}>
                     {statusText}
                   </span>
