@@ -104,13 +104,13 @@ export const TEST_BATCHES: TestBatch[] = [
       },
       {
         id: 'v128-rates-admin', area: 'Admin', device: 'desktop',
-        what: 'Room rates are editable in Admin → Rates and the change is live',
-        how: 'Admin → Rates. Every room at every venue is listed with a Day rate, an Hourly (always the day ÷ 10) and a minimum. As an owner/manager/billing user, click a day rate, change it, press Enter — it saves, the hourly updates. Change it back. Nothing on any existing work order should change.',
+        what: 'Room rates are editable in Admin → Rates (the rail’s Admin group, /rates) and the change is live',
+        how: 'Admin → Rates (the rail’s Admin group, /rates). Every room at every venue is listed with a Day rate, an Hourly (always the day ÷ 10) and a minimum. As an owner/manager/billing user, click a day rate, change it, press Enter — it saves, the hourly updates. Change it back. Nothing on any existing work order should change.',
       },
       {
         id: 'v128-rates-adddates', area: 'Work order', device: 'desktop',
         what: 'Adding a DIFFERENT room arrives at that room’s own rate',
-        how: 'Open a work order in Studio A. + Add studio time → pick Studio B. Before pressing, the line under the fields says "PRS B at $1,550/day" (the rate from Admin → Rates). Press Add day: the new row’s Rate is $1,550, not Studio A’s rate. Now add another day of the SAME room: its rate copies from the row above, as before.',
+        how: 'Open a work order in Studio A. + Add studio time → pick Studio B. Before pressing, the line under the fields says "PRS B at $1,550/day" (the rate from Admin → Rates (the rail’s Admin group, /rates)). Press Add day: the new row’s Rate is $1,550, not Studio A’s rate. Now add another day of the SAME room: its rate copies from the row above, as before.',
       },
       {
         id: 'v128-seed-rooms', area: 'Work order', device: 'desktop',

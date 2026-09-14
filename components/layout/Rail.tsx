@@ -74,6 +74,14 @@ const HR: RailItem[] = [
   { href: '/hiring', label: 'Hiring', ic: '✎' },
   { href: '/training', label: 'Training', ic: '✦' },
 ]
+// ADMIN (Eli, 2026-09-14: "we should create one so that we don't create more
+// existing tabs"). Settings-shaped pages — edited rarely, read often — get a
+// group of their own instead of being wedged into Operations. The old /admin
+// page stays out of the nav; this is its rebuilt home, one page at a time.
+// Owner / manager / billing only (the pages here change what things cost).
+const ADMIN: RailItem[] = [
+  { href: '/rates', label: 'Rates', ic: '$' },
+]
 // Rarely-used items live behind the foot's Settings disclosure (Eli,
 // 2026-08-17): DEV, the theme toggle, Sign Out. Admin is OUT of the nav
 // entirely — the page still exists for bookmarks, but everything it held is
@@ -109,6 +117,10 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const filterItems = (items: RailItem[]) => items.filter(item => {
     if (profile?.role === 'tech' && item.href === '/crm') return false
     if (item.href === '/nadines' && !isEli) return false
+    if (item.href === '/rates'
+      && profile?.role !== 'owner'
+      && profile?.role !== 'manager'
+      && profile?.role !== 'billing') return false
     // Shift Notes inherits /my-day's audience (2026-08-24: "all admin has
     // access to read and write and submit") — owner/manager/billing/asst
     // manager. tech/runner still get nothing (runners have their own channel).
@@ -281,6 +293,8 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
           {filterItems(OPERATIONS).map(i => renderItem(i))}
           <div className="c-rail-grp">HR</div>
           {filterItems(HR).map(i => renderItem(i))}
+          {filterItems(ADMIN).length > 0 && <div className="c-rail-grp">Admin</div>}
+          {filterItems(ADMIN).map(i => renderItem(i))}
         </>
       )}
       <div className="c-rail-foot">

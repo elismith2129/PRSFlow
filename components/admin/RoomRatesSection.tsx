@@ -1,7 +1,7 @@
 'use client'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Admin → Rates — the rack day rate per room (lib/roomRates, table room_rates).
+// /rates (rail → Admin → Rates) — the rack day rate per room (lib/roomRates, table room_rates).
 //
 // One table, grouped by venue, the day rate editable in place. Hourly is shown
 // (day ÷ 10) and never typed — house law. min_hours is display-only for the

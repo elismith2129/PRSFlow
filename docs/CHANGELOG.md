@@ -121,8 +121,11 @@ owner+manager+billing / delete owner; realtime.
   the Add-dates prompt (a *different* room arrives at its own rate, named before you
   press), the Seed panel, and a blank row's room pick (`rateFillFor`). **Fills, never
   overrides** a typed rate. Not the lead form; never an existing row.
-- **Admin → Rates** (`components/admin/RoomRatesSection.tsx`): day rate editable in place,
-  hourly derived and shown, min hours display-only.
+- **A new ADMIN rail group** (Eli: "we should create one so that we don't create more
+  existing tabs") — owner/manager/billing only — holding `/rates`
+  (`components/admin/RoomRatesSection.tsx`): day rate editable in place, hourly derived and
+  shown, min hours display-only. The old `/admin` page stays out of the nav; this group is
+  its rebuilt home, one page at a time.
 - **Seed panel takes rooms, plural, and a blanket price.** `SeedGroup.studio/location` →
   `rooms: string[]` (`venue|letter` chips) + `rateByRoom` (filled from the table when a
   room is picked, editable) + `blanket`/`blanketOt`. Five rooms × two days is one press:
