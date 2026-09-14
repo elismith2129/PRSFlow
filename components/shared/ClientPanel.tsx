@@ -252,7 +252,7 @@ export function ClientPanel({
     const q = searchQuery.trim()
     if (q.length < 2) { setClientSuggestions([]); setShowClientDD(false); return }
     const t = setTimeout(async () => {
-      const [{ data: cd }, { data: ctd }, { data: ald }] = await Promise.all([
+      const [{ data: cd }, { data: ctd }, { data: ald }, { data: rd }] = await Promise.all([
         supabase.from('clients')
           .select('id,type,name,fname,lname,email,phone,artists,srs_client')
           .or(`name.ilike.%${q}%,fname.ilike.%${q}%,lname.ilike.%${q}%`)
@@ -265,6 +265,14 @@ export function ClientPanel({
           .select('id,client_id,fname,lname,email,phone,artists,contact_type,clients(id,name,type,srs_client)')
           .neq('artists', '{}')
           .limit(100),
+        // THE LABEL'S OWN ROSTER (2026-09-14, BMG → Julia → Lainey Wilson).
+        // Artist matches only looked at each A&R card's artists[]; an artist
+        // added on the label's profile roster (clients.artists) was invisible
+        // to search. Matched client-side like the contacts, same shape.
+        supabase.from('clients')
+          .select('id,type,name,fname,lname,email,phone,artists,srs_client')
+          .neq('artists', '{}')
+          .limit(200),
       ])
 
       const seen = new Set<string>()
@@ -319,6 +327,23 @@ export function ClientPanel({
             id: parentClient.id, label: artistName, sub: parentClient.name,
             isLabel: parentClient.type === 'label',
             record: { ...parentClient, _artistMatch: artistName },
+          })
+        }
+      }
+
+      for (const c of (rd || []) as any[]) {
+        if (!Array.isArray(c.artists)) continue
+        for (const artistName of c.artists as string[]) {
+          if (typeof artistName !== 'string') continue
+          if (!artistName.toLowerCase().includes(q.toLowerCase())) continue
+          const key = `roster-${c.id}-${artistName.toLowerCase()}`
+          // An A&R card already claimed this artist for this client — one row.
+          if (seen.has(key) || results.some(r => r.id === c.id && r.label.toLowerCase() === artistName.toLowerCase())) continue
+          seen.add(key)
+          results.push({
+            id: c.id, label: artistName, sub: c.name,
+            isLabel: c.type === 'label',
+            record: { ...c, _artistMatch: artistName },
           })
         }
       }
