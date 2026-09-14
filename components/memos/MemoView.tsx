@@ -19,7 +19,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { RichNoteView } from '@/components/shared/RichNote'
-import { type Memo, type MemoReceipt, AUDIENCE_LABEL, hardAt } from '@/lib/memos'
+import { type Memo, type MemoReceipt, AUDIENCE_LABEL, hardAt, showMemoIntro, HARD_AFTER_HOURS } from '@/lib/memos'
 
 function fmtWhen(iso: string | null | undefined): string {
   if (!iso) return ''
@@ -94,6 +94,24 @@ export function MemoView({
       </div>
 
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {/* THE EXPLAINER, while memos are new (Eli: "in big bold at the top of
+            the memo what this is"). Pop-up only — the archive is for people
+            who already know. Retires itself on MEMO_INTRO_UNTIL. */}
+        {position && showMemoIntro() && (
+          <div style={{ background: 'var(--c-wash)', borderLeft: '3px solid var(--c-st-booked)', borderRadius: '0 12px 12px 0', padding: '10px 14px', marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 14, letterSpacing: '-0.01em', color: 'var(--c-fg)', marginBottom: 4 }}>
+              This is a memo. It's how the office tells you something that matters.
+            </div>
+            <div style={{ fontSize: 11.5, fontFamily: 'Inter', lineHeight: 1.55, color: 'var(--c-fg-2)' }}>
+              Company updates, app changes, things that keep going wrong — they come here now, not in a text you have to find later.
+              <b style={{ color: 'var(--c-fg)' }}> Read it, then sign it with your initials at the bottom.</b>
+              {memo.requires_ack
+                ? <> Can't right now? "I'll read it later" puts it off — it comes back next time you open the app, and after {HARD_AFTER_HOURS} hours it needs your signature to go on.</>
+                : <> This one just needs reading — tap Got it when you have.</>}
+              {' '}Every memo you've been sent is on your <b style={{ color: 'var(--c-fg)' }}>Memos</b> page.
+            </div>
+          </div>
+        )}
         {memo.kind === 'page'
           ? <PageFrame html={memo.body_html} />
           : <RichNoteView html={memo.body_html} style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--c-fg)' }} />}

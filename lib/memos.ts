@@ -46,6 +46,16 @@ export type MemoReceipt = {
 /** Hours after the one "later" before the memo blocks the app. */
 export const HARD_AFTER_HOURS = 48
 
+/**
+ * WHILE MEMOS ARE NEW (Eli, 2026-09-14): every pop-up opens with a bold
+ * explainer of what a memo is and how it works. Dated, not toggled, so it
+ * retires itself — move the date to keep it, or set it in the past to stop.
+ */
+export const MEMO_INTRO_UNTIL = '2026-11-01'
+export function showMemoIntro(now = new Date()): boolean {
+  return now.toISOString().slice(0, 10) < MEMO_INTRO_UNTIL
+}
+
 export const AUDIENCE_LABEL: Record<MemoAudience, string> = {
   admin: 'Admin', runners: 'Runners', everyone: 'Everyone',
 }
