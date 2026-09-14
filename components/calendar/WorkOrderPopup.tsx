@@ -1727,8 +1727,13 @@ export function WorkOrderPopup({
         }
       }
 
-      // OT charge = OT hrs × OT rate (both rate types)
-      if ('ot_hours' in updates || 'ot_rate' in updates || 'from_time' in updates || 'to_time' in updates || 'rate' in updates || 'rate_daily' in updates || 'row_rate_type' in updates) {
+      // OT charge = OT hrs × OT rate.
+      // `included_hours` MUST be in this list. It was missing on the first cut
+      // (WO-1076, 2026-09-14): typing 9 re-derived ot_hours to 1 but never
+      // re-ran this, so the sheet read "OT 1h × 325/hr" next to $0.00 and the
+      // day total stayed at the un-overtimed figure. Any input that can move OT
+      // HOURS has to appear here too, or the hours and the money disagree.
+      if ('ot_hours' in updates || 'ot_rate' in updates || 'included_hours' in updates || 'from_time' in updates || 'to_time' in updates || 'rate' in updates || 'rate_daily' in updates || 'row_rate_type' in updates) {
         const h = parseFloat(u.ot_hours ?? '0') || 0
         const rn = parseFloat((u.ot_rate ?? '').replace(/[^0-9.]/g, '')) || 0
         u.ot_charge = h > 0 && rn > 0 ? parseFloat((h * rn).toFixed(2)) : null
@@ -7018,7 +7023,11 @@ export function WorkOrderPopup({
                     {otHrsDay > 0 ? (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
                         <span>
-                          Ran <b style={{ color: 'var(--c-fg)' }}>{otHrsDay}h</b> past the agreed {isDayRate ? '12h' : 'end'}
+                          Ran <b style={{ color: 'var(--c-fg)' }}>{otHrsDay}h</b> past the agreed {isDayRate
+                            /* Reads the row — the last hard-coded 12 (WO-1076).
+                               It said "the agreed 12h" on a 9h day. */
+                            ? `${includedHoursFor(sheetStudioRows.find(r => r.row_rate_type === 'day') ?? { included_hours: '' })}h`
+                            : 'end'}
                           {sheetStudioRows[0]?.ot_rate ? ` × ${sheetStudioRows[0].ot_rate}` : ''}
                         </span>
                         <span style={{ fontFamily: 'DM Mono, ui-monospace, monospace', fontWeight: 700, color: 'var(--c-fg)' }}>
