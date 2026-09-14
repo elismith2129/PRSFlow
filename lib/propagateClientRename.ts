@@ -14,8 +14,11 @@
 //   • Contact details (email/phone) are NOT propagated — a booking records who
 //     was reachable at the time it was made.
 //
-// Work orders need no pass of their own: they read the client through the
-// booking, so a booking update carries into the WO and its printed invoice.
+// WORK ORDERS DO NEED A PASS (2026-09-14, WO-1184). The line that used to sit
+// here said they read the client through the booking. They don't: work_orders
+// carries its own `label` / `client` copies, and the billing hub, the invoice
+// PDF and the WO header all read THOSE. Fixing "Julia Calvo-Junkin" on the
+// profile corrected the calendar card and left the invoice misspelled.
 import { supabase, Client, ClientContact } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
@@ -78,7 +81,24 @@ export async function propagateClientRename(after: Client, changed: Partial<Clie
     }
   }
 
+  // The WO's own copies: `label` is the label, `client` is the person (the A&R
+  // for a label, the individual for COD) — the same mapping the WO's projection
+  // writes onto its cards.
+  const woPatch: Record<string, string> = {}
+  if (bookingPatch.label) woPatch.label = bookingPatch.label
+  if (bookingPatch.client_name) woPatch.client = bookingPatch.client_name
+
   let updated = 0
+
+  if (Object.keys(woPatch).length > 0) {
+    const { data, error } = await supabase
+      .from('work_orders')
+      .update(woPatch)
+      .eq('client_id', after.id)
+      .select('id')
+    if (!dbResult('Updating linked work orders', error)) return
+    updated += (data || []).length
+  }
 
   if (Object.keys(bookingPatch).length > 0) {
     const { data, error } = await supabase

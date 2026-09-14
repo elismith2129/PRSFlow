@@ -6,6 +6,7 @@ import { dbResult } from '@/lib/db'
 import { addArtistToLabel } from '@/lib/roster'
 import { ClientProfile } from '@/components/clients/ClientProfile'
 import { PAYMENT_METHODS } from '@/lib/payments'
+import { propagateClientRename } from '@/lib/propagateClientRename'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ClientPanel — the unified client identity + contact block.
@@ -381,6 +382,60 @@ export function ClientPanel({
 
   const nameColor = 'var(--c-fg)'
   const badgeLabel = isBilling ? 'LABEL/BILLING' : 'COD'
+
+  // ── FIX THE NAME IN PLACE (Eli, 2026-09-14, WO-1184: "Julia Calvo-Junkin"
+  // typed as a label while the database is still being filled — "I need to
+  // fix it without deleting the booking"). The ✕ was the only edit, and it
+  // meant clear-and-search, which for a misspelled NEW client offered to
+  // create a second profile with the right spelling next to the wrong one.
+  //
+  // The pencil edits the hero name where it sits. Linked to a profile → the
+  // PROFILE is renamed and propagateClientRename carries it to every booking,
+  // lead and work order that points at it (the same path as the CRM). Not
+  // linked → the name is saved as a new profile and this record is linked to
+  // it, so the next booking autofills. Either way the value on THIS surface
+  // changes too, and the WO's own save/projection writes it onto its cards.
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const [nameBusy, setNameBusy] = useState(false)
+  const heroField: 'label' | 'client_name' = isBilling ? 'label' : 'client_name'
+  function startEditName() {
+    setNameDraft((isBilling ? value.label : value.client_name) || '')
+    setEditingName(true)
+  }
+  async function saveName() {
+    const q = nameDraft.trim()
+    if (!q || nameBusy) { setEditingName(false); return }
+    setNameBusy(true)
+    try {
+      if (value.client_db_id) {
+        const { data: curRows, error: readErr } = await supabase.from('clients').select('*').eq('id', value.client_db_id).limit(1)
+        const cur = curRows?.[0]
+        if (!dbResult('Loading client', readErr) || !cur) return
+        const parts = q.split(/\s+/).filter(Boolean)
+        const fields: Partial<Client> = cur.type === 'label'
+          ? { name: q }
+          : { name: q, fname: parts[0] || null, lname: parts.slice(1).join(' ') || null }
+        const { error } = await supabase.from('clients').update(fields).eq('id', cur.id)
+        if (!dbResult('Renaming client', error)) return
+        await propagateClientRename({ ...(cur as Client), ...fields } as Client, fields)
+      } else {
+        const parts = q.split(/\s+/).filter(Boolean)
+        const { data, error } = await supabase.from('clients').insert({
+          type: isBilling ? 'label' : 'individual',
+          name: q,
+          fname: isBilling ? null : (parts[0] || null),
+          lname: isBilling ? null : (parts.slice(1).join(' ') || null),
+        }).select('id').single()
+        if (!dbResult('Saving client', error) || !data) return
+        onChange({ client_db_id: data.id })
+      }
+      onChange({ [heroField]: q } as Partial<ClientPanelValue>)
+      setEditingName(false)
+    } finally {
+      setNameBusy(false)
+    }
+  }
   // LABEL IS HERO in the wide card. In the stack card the hero has always been
   // the person (A&R) with the label as a sub-line; on the work order the payer
   // is the label, so the two swap. COD is unaffected — there is no label, the
@@ -507,7 +562,30 @@ export function ClientPanel({
           <div style={{ padding: '12px 14px 10px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: wide ? 15 : 17, lineHeight: 1.2, color: nameColor, wordBreak: 'break-word' }}>{displayName}</div>
+                {editingName ? (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      autoFocus
+                      value={nameDraft}
+                      onChange={e => setNameDraft(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditingName(false) }}
+                      className="c-input c-inset2"
+                      style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 14, flex: 1, minWidth: 160 }}
+                    />
+                    <button type="button" onClick={saveName} disabled={nameBusy} className="c-control c-pill c-fill-booked c-raised-chip" style={{ fontSize: 10 }}>{nameBusy ? 'Saving…' : 'Save'}</button>
+                    <button type="button" onClick={() => setEditingName(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', textDecoration: 'underline' }}>Cancel</button>
+                    <span style={{ width: '100%', fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
+                      {value.client_db_id ? 'Renames the client profile — every session, lead and work order linked to it updates.' : 'Saves this name as a client profile and links this record to it.'}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: wide ? 15 : 17, lineHeight: 1.2, color: nameColor, wordBreak: 'break-word' }}>{displayName}</div>
+                    {!readOnly && (
+                      <button type="button" onClick={startEditName} title="Fix this name — on the profile and everywhere it's used" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--c-fg-3)', padding: '0 2px' }}>✎</button>
+                    )}
+                  </div>
+                )}
                 {subName && subName !== displayName && (
                   <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>{subName}</div>
                 )}

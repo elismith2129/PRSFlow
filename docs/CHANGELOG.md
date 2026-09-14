@@ -61,6 +61,22 @@ refuses edits to a sent memo; realtime on both tables.
 > app" is only as fresh as the last time a surface with `MemoGate` loaded. Both layouts
 > mount it; a new layout that doesn't will read as "never".
 
+### Fix a client's name where it sits (WO-1184)
+
+"Julia Calvo-Junkin" was typed as a label while the database is still being filled; the
+only edit on the WO's client card was ✕ (clear and search), which for a misspelled NEW
+client offered to create a second profile beside the wrong one. And `propagateClientRename`
+**never touched `work_orders`** — its comment claimed WOs read the client through the
+booking, but `work_orders.label|client` are their own copies and the billing hub, the
+invoice PDF and the WO header read those. Fixing the profile fixed the calendar card and
+left the invoice misspelled.
+
+- **✎ on the client card** (`ClientPanel`, every surface that uses it): edit the hero name in
+  place. Linked to a profile → the profile is renamed and `propagateClientRename` carries
+  it to every booking, lead **and work order** linked by `client_id`. Not linked → the name
+  is saved as a new profile and this record is linked, so the next booking autofills.
+- `propagateClientRename` now patches `work_orders` (`label` ← label, `client` ← person).
+
 **Files:** `lib/memos.ts`, `hooks/useMyMemos.ts`, `components/memos/MemoView.tsx`,
 `components/memos/MemoGate.tsx`, `app/(main)/memos/page.tsx`,
 `app/runner/[studio]/memos/page.tsx`, `app/runner/[studio]/page.tsx`, `app/(main)/layout.tsx`,

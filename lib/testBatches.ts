@@ -133,6 +133,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open a tab with more than 15 rows. Scroll the list: the strip at the bottom stays pinned to the screen and reads "Page 1 of N · 1–15 of X · Y more". Click 2 — it updates. On a tab with 15 rows or fewer the strip is not pinned and just shows the count.',
       },
       {
+        id: 'v129-fix-name', area: 'Work order', device: 'desktop',
+        what: 'A misspelled client name is fixed on the WO and everywhere it is used',
+        how: 'Open WO-1184 (or any WO whose client card shows a wrong name). Next to the big name there is a small ✎. Click it, correct the spelling, Save. The card updates. Save the WO. Now check: the calendar card for that session, the Billing hub row, the client in CRM → Clients, and the WO PDF all show the corrected name. If the client had no profile before, CRM → Clients now has one with the corrected name.',
+      },
+      {
         id: 'v129-memo-send', area: 'Memos', device: 'desktop',
         what: 'An owner can send a typed memo and a designed page memo',
         how: 'Rail → Operations → Memos. + New memo. Title, To = Runners, Must acknowledge, Typed note — type two lines, bold one. Preview shows it as the runner will see it. Send. It appears in the sent list as "0 / N". Now + New memo again, Kind = Designed page, choose the file docs/staff/wo-one-sheet-2026-09.html, To = Admin, Send. Open the sent row: the scoreboard lists every admin user as "Hasn’t opened the app" or "Opened".',
