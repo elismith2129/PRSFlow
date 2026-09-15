@@ -83,6 +83,32 @@ left the invoice misspelled.
   the card, so email and phone stayed blank. The A&R whose name matches the record wins;
   a label with exactly one A&R needs no choice. Contact details fill only where empty.
 
+### Late-session fixes (Sep 14–15, from using it)
+
+- **Artist on the label's own roster is searchable.** Artist matches only read each A&R
+  card's `artists[]`; a roster artist on the label profile (`clients.artists`) was invisible.
+  Matched client-side like the contacts; picking it links the matching A&R.
+- **A&R artists save on add/remove**, like tags. The card's own Save sat under the profile's
+  big Save and was easy to miss, and any refetch reset the chips. A name typed but not
+  "+ Add"ed still counts on Save. (`app_errors` showed no failed save — the artist was
+  lost on screen before Save was ever pressed.)
+- **A designed memo takes the app's theme.** In a srcdoc frame `prefers-color-scheme`
+  follows the OS and the app's `<html data-theme>` is invisible; the frame is stamped
+  with the app's theme at render (`themedSrcDoc`), so sent memos pick it up too.
+- **Memo explainer** at the top of every pop-up while memos are new (`MEMO_INTRO_UNTIL`,
+  2026-11-01, self-retiring).
+- **Wall displays: today is Los Angeles' today.** `app/display/[room]/route.ts` runs on
+  Vercel (UTC); from 5 PM Pacific the displays flipped to tomorrow. `now` rebuilt from LA
+  wall-clock parts; the clock stamp reads the real instant so it is not shifted twice.
+
+> ⚠ **WATCH-OUT — any server route that does date math must convert to LA first.** The
+> displays were the only server-rendered calendar; the cron endpoints already use
+> `opsToday()`-style logic. A `new Date()` on Vercel is UTC.
+
+**Seen in `app_errors`, not fixed:** "Flo briefing (cron)" returned malformed JSON on Sep
+10 and Sep 13 (`lib/server/floBriefing.ts`) — the model's output needs a tolerant parse
+or a retry. Separate session.
+
 **Files:** `lib/memos.ts`, `hooks/useMyMemos.ts`, `components/memos/MemoView.tsx`,
 `components/memos/MemoGate.tsx`, `app/(main)/memos/page.tsx`,
 `app/runner/[studio]/memos/page.tsx`, `app/runner/[studio]/page.tsx`, `app/(main)/layout.tsx`,

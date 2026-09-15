@@ -655,6 +655,7 @@ const VERSIONS=[
       'Every memo you’ve been sent is on your Memos page: on the rail under Operations for the office, a Memos tile on the Runner Hub for runners. Unread ones are counted on the badge.',
       'Owners and Fernando can send memos: type one, or drop in a designed page like the work-order one-sheet — it shows inside the memo, no attachment to open. They also see who has signed, who put it off, and who hasn’t opened the app since when.',
       'A sent memo can’t be edited — it can be archived and replaced. Your signature always means the words you actually read.',
+      'Also fixed tonight: a misspelled client name can be corrected right on the work order (the small ✎ next to the name) and it updates everywhere, including the invoice. Searching a label shows the label with its A&R underneath, and picking it fills the A&R’s email and phone. An artist added to an A&R card saves the moment you press + Add. And the wall displays no longer flip to tomorrow at 5 PM.',
     ],
     affects:'When a memo pops up, read it. If you truly can’t right now, put it off once — and come back to it from the Memos tile before it comes back on its own.',
     dev:[
@@ -664,6 +665,8 @@ const VERSIONS=[
       'Soft then hard: one deferral; HARD_AFTER_HOURS (48) after it the gate blocks. MemoGate mounted in both layouts, shows on landing surfaces only (/ and /runner/[studio]).',
       'WATCH-OUT: ONE shared channel (hooks/useMyMemos.ts, memos-shared) for memos + receipts — gate, rail badge, hub tile, both boards. Never open another.',
       'Scoreboard states: signed · put it off (with when it blocks) · opened, not signed · hasn’t opened the app (last_seen_at, stamped by the gate on mount).',
+      'A designed memo takes the app’s theme (themedSrcDoc stamps data-theme into the frame). Explainer block on every pop-up until MEMO_INTRO_UNTIL (2026-11-01).',
+      'Late fixes: ✎ rename on the client card (propagateClientRename now reaches work_orders); label search shows the label with its A&R under it; picking a label links the matching A&R card; roster artists searchable; A&R artists save on add/remove; wall displays compute today in LA (the route runs on Vercel, UTC).',
     ],
   },
   {

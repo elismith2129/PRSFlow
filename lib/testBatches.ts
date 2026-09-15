@@ -143,6 +143,16 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'On a new booking (or a WO with the client cleared), search "BMG". The row reads "BMG" with "A&R · Julia Calvo-Junkin" under it — not Julia’s name on its own. Pick it: the card shows BMG as the hero, Julia as the A&R, and her email and phone are filled from her A&R card. Email/Call/Text are live.',
       },
       {
+        id: 'v129-anr-artist', area: 'CRM', device: 'desktop',
+        what: 'An artist added to an A&R card is saved the moment it is added',
+        how: 'CRM → Clients → BMG (or any label) → expand an A&R card. Type an artist in the Artists box and press + Add (or Enter). Do NOT press Save. Reload the page: the artist is still on the card. Now on a new booking, search that artist’s name: it comes up as "Artist · Label" and picking it fills the A&R.',
+      },
+      {
+        id: 'v129-display-today', area: 'Displays', device: 'desktop',
+        what: 'The wall display’s today square is today in Los Angeles after 5 PM',
+        how: 'After 5 PM Pacific, open a display URL (/display/<room>) in a browser. The highlighted today square is today’s date, not tomorrow’s, and the clock at the foot shows the correct Pacific time.',
+      },
+      {
         id: 'v129-memo-send', area: 'Memos', device: 'desktop',
         what: 'An owner can send a typed memo and a designed page memo',
         how: 'Rail → Operations → Memos. + New memo. Title, To = Runners, Must acknowledge, Typed note — type two lines, bold one. Preview shows it as the runner will see it. Send. It appears in the sent list as "0 / N". Now + New memo again, Kind = Designed page, choose the file docs/staff/wo-one-sheet-2026-09.html, To = Admin, Send. Open the sent row: the scoreboard lists every admin user as "Hasn’t opened the app" or "Opened".',

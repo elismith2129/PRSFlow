@@ -566,8 +566,29 @@ would have popped for Eli on his own dashboard.
   it was built straight from B. The Collect display got its options page because it had
   none.
 
+#### From using it, the same night
+
+Eli built WO-1184 and a BMG booking by hand and found five things in an hour that no
+test batch would have: the client card had no way to fix a name (✎ now, and the rename
+finally reaches `work_orders`); the search showed a label as its A&R's name; picking a
+label filled the A&R's name but never her card; a roster artist was unsearchable; and an
+A&R's artists silently didn't save. The last one is the one to keep: `app_errors` had NO
+failed save, which meant the data never left the screen — the card's own Save under the
+profile's big Save, and a refetch resetting the chips. **A save that requires a second,
+smaller button below a bigger one is a save that doesn't happen.** Artists save on tap now.
+
+Then the wall displays: at 5:30 PM Pacific the "today" square said the 15th. The display
+route renders on Vercel, in UTC — the foot clock had been told the timezone, the date math
+had not. Every other calendar surface is client-rendered and was fine.
+
 #### Open
 
+- **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
+  tolerant parse or a retry in `lib/server/floBriefing.ts`.
+- **The client rate sheet** (prs-rate-sheet skill) still carries its own copy of the rates;
+  it should read `room_rates` or be regenerated from it.
+- **WO-1156 (Concord)** conversion to a real bundle — offered, not run.
+- **Cancelled sessions excluded from the missing-WO alarm** — unchanged.
 - ~~**Blanket calendar card**~~ — **CLOSED (Eli, 2026-09-14 evening): "we dont need a
   special card… leave as separate cards."** Cards are written from the WO's rows, so a
   blanket day draws one card per room, same as any multi-room day. No reminder owed.
