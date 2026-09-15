@@ -1,0 +1,198 @@
+<title>Runner app update, September 15</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#1b1a17; --srf:#242320; --fg:#d9d6cd; --fg2:rgba(217,214,205,.74); --fg3:rgba(217,214,205,.5);
+  --wash:rgba(217,214,205,.08); --wash2:rgba(217,214,205,.14);
+  --ink:#d9d6cd; --ivory:#1b1a17;
+  --green:#43dfae; --warm:#ffa94d; --hot:#ff5a4d; --cold:#7fb2e5;
+  --sh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  color-scheme:dark;
+}
+/* Dark, full stop — light only when the app stamps data-theme="light". */
+:root[data-theme="light"]{
+  --bg:#f5f3ee; --srf:#ffffff; --fg:#2a2722; --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.48);
+  --wash:rgba(42,39,34,.06); --wash2:rgba(42,39,34,.11);
+  --ink:#2a2722; --ivory:#f5f3ee;
+  --green:#2fbf93; --warm:#e08a2e; --hot:#e0483c; --cold:#4d8fd0;
+  --sh:0 1px 2px rgba(42,39,34,.06), 0 6px 18px rgba(42,39,34,.07);
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 18px 40px}
+.sheet{max-width:1040px;margin:0 auto}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid var(--fg)}
+.brand{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.02em}
+.brand span{opacity:.45}
+h1{font-family:'Archivo Black',sans-serif;font-size:28px;letter-spacing:-.025em;line-height:1.05;text-wrap:balance;margin-top:6px}
+.lede{font-size:13px;color:var(--fg2);max-width:560px;line-height:1.55;margin-top:8px}
+.lede b{color:var(--fg)}
+.meta{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);text-align:right}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--srf);box-shadow:var(--sh);border-radius:16px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:11px;break-inside:avoid}
+.card.wide{grid-column:1/-1}
+.eyebrow{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3)}
+.card h2{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.015em;line-height:1.2;text-wrap:balance}
+.card p{font-size:12.5px;color:var(--fg2);line-height:1.55;max-width:62ch}
+.card p b{color:var(--fg);font-weight:700}
+.rule{font-size:11.5px;color:var(--fg);background:var(--wash);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:7px 10px;line-height:1.5}
+.rule.hot{border-color:var(--hot)}
+.rule.warm{border-color:var(--warm)}
+.rule.cold{border-color:var(--cold)}
+.ui{background:var(--wash);border-radius:12px;padding:10px 12px;font-size:11px;line-height:1.45}
+.ui .k{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:block;margin-bottom:5px}
+/* chat bits */
+.msg{display:flex;gap:8px;align-items:flex-start;margin-top:6px}
+.av{width:24px;height:24px;border-radius:99px;background:var(--wash2);display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:8.5px;font-weight:600;flex-shrink:0}
+.av.off{background:var(--ink);color:var(--ivory)}
+.bub{flex:1;min-width:0}
+.who{font-size:10px;font-weight:700;display:flex;gap:6px;align-items:baseline}
+.who .tm{font-family:'DM Mono',monospace;font-size:8.5px;color:var(--fg3);font-weight:400;margin-left:auto}
+.tx{background:var(--srf);border-radius:4px 12px 12px 12px;padding:7px 10px;font-size:11.5px;line-height:1.5;margin-top:3px;box-shadow:var(--sh)}
+.tx.me{box-shadow:var(--sh),inset 3px 0 0 var(--warm)}
+.at{font-weight:800;color:var(--cold)}
+.at.me{color:var(--warm)}
+.task{margin-top:6px;background:var(--bg);border-radius:10px;padding:6px 9px;display:flex;align-items:center;gap:8px;border:1px dashed color-mix(in srgb,var(--warm) 55%,transparent)}
+.task .cb{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--fg3);flex-shrink:0}
+.task .tt{font-size:10.5px;font-weight:700;flex:1;min-width:0}
+.task .tt small{display:block;font-size:8px;color:var(--fg3);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.task .tm{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:var(--warm)}
+.door{background:var(--srf);box-shadow:var(--sh);border-radius:12px;padding:9px 11px;margin-top:6px}
+.door .dh{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700}
+.door .cnt{margin-left:auto;font-size:9.5px;font-weight:800;color:var(--warm)}
+.door .go{margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.tabs{display:flex;gap:5px;margin-top:6px}
+.tab{font-size:9.5px;font-weight:800;padding:5px 10px;border-radius:99px;background:var(--wash2);color:var(--fg2)}
+.tab.on{background:var(--ink);color:var(--ivory)}
+.tab i{font-style:normal;font-family:'DM Mono',monospace;font-size:8px;background:var(--warm);color:#1c2626;border-radius:99px;padding:1px 5px;margin-left:4px}
+.comp{display:flex;gap:5px;align-items:center;margin-top:8px}
+.ic{width:28px;height:28px;border-radius:99px;background:var(--wash2);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.ic.on{background:var(--ink);color:var(--ivory)}
+.cin{flex:1;background:var(--srf);border-radius:12px;padding:6px 10px;font-size:11px;color:var(--fg3)}
+/* stock bits */
+.srow{display:flex;align-items:center;gap:8px;background:var(--srf);border-radius:8px;padding:6px 9px;margin-top:4px;font-size:11.5px;font-weight:600}
+.srow small{font-size:9px;opacity:.5;font-weight:400;margin-left:4px}
+.srow .q{margin-left:auto;font-family:'DM Mono',monospace;background:var(--wash2);border-radius:6px;padding:2px 8px;font-size:11px;white-space:nowrap;flex-shrink:0}
+.srow .pill{flex-shrink:0}
+.srow > span:first-child{min-width:0}
+.pill{font-size:8.5px;font-weight:800;letter-spacing:.04em;border-radius:99px;padding:4px 8px;line-height:1.1;text-align:center}
+.pill.low{background:var(--warm);color:#1c2626}
+.pill.inh{background:transparent;color:var(--warm);border:1.5px dashed var(--warm)}
+.pill.inh small{display:block;font-size:6.5px;font-weight:600;letter-spacing:0}
+.pill.ok{background:var(--wash2);color:var(--fg2)}
+.fine{font-size:10.5px;color:var(--fg3);margin-top:4px}
+.fine b{font-family:'DM Mono',monospace;color:var(--warm)}
+.mic{display:inline-block;border-radius:8px;padding:6px 9px;min-width:120px;background:var(--wash2);font-size:10.5px;font-weight:600;position:relative;margin:4px 4px 0 0;vertical-align:top}
+.mic small{display:block;font-size:8px;opacity:.5;font-weight:400;margin-top:1px}
+.mic.away{background:color-mix(in srgb,var(--cold) 22%,var(--wash));outline:1.5px dashed color-mix(in srgb,var(--cold) 60%,transparent);outline-offset:-1.5px}
+.mic.away small{color:var(--cold);opacity:1;font-weight:700}
+.mic .st{position:absolute;top:5px;right:7px;font-size:7.5px;font-weight:800;color:var(--cold)}
+.bal{display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0}
+.bal .m{font-family:'DM Mono',monospace;font-weight:700}
+.bal.in{border-top:1px solid var(--wash2);margin-top:4px;padding-top:7px}
+.bal .inp{background:var(--srf);border-radius:7px;padding:3px 9px;font-family:'DM Mono',monospace;font-size:11px;font-weight:700}
+.diff{text-align:right;font-size:10px;font-weight:800;color:var(--warm);margin-top:3px}
+ul{padding-left:18px;font-size:12px;color:var(--fg2);line-height:1.6}
+ul b{color:var(--fg)}
+</style>
+
+<div class="sheet">
+<header>
+  <div>
+    <div class="brand">PRSFlo <span>· Runner app</span></div>
+    <h1>You asked. Here's what changed.</h1>
+    <p class="lede">Almost everything below came from the ERS report this week. Keep them coming — the <b>Report something</b> card on the runner home and the new <b>Missing an item?</b> line on the stock list both go straight to Eli.</p>
+  </div>
+  <div class="meta">Sep 15, 2026<br>v1.30 · v1.31<br>Read once, sign</div>
+</header>
+
+<div class="grid">
+
+  <div class="card wide">
+    <div class="eyebrow">The big one</div>
+    <h2>Notes is a room now. Tag people. A tag plus a time makes a task.</h2>
+    <p>Notes used to be a box on the hub. It's its own page — tap the <b>Notes</b> card on the hub to go in. Two tabs: <b>your studio</b> and <b>General</b>, which every studio and the office can see. Newest messages are at the bottom, like Messages.</p>
+    <div class="grid" style="gap:12px">
+      <div class="ui">
+        <span class="k">On the hub — the doorway</span>
+        <div class="door">
+          <div class="dh">ERS · General <span class="cnt">3 new · 1 for you</span></div>
+          <div class="msg"><span class="av off">F</span><div class="bub"><div class="who">Fernando <span class="tm">4:12 PM</span></div><div style="font-size:11px;color:var(--fg2)"><span class="at me">@Hunter</span> 3pm set up B for Lainey, the C800 is back from PRS</div></div></div>
+          <div class="go">Open notes ›</div>
+        </div>
+        <p style="margin-top:8px;font-size:11px">"3 new" is since you last looked. "1 for you" means someone tagged you.</p>
+      </div>
+      <div class="ui">
+        <span class="k">In the room — tagging</span>
+        <div class="tabs"><span class="tab on">ERS</span><span class="tab">General <i>1</i></span></div>
+        <div class="msg"><span class="av off">F</span><div class="bub"><div class="who">Fernando <span class="tm">4:12 PM</span></div><div class="tx me"><span class="at me">@Hunter</span> 3pm set up B for Lainey
+          <div class="task"><span class="cb"></span><span class="tt"><small>task for Hunter</small>Set up B for Lainey</span><span class="tm">3:00 PM</span></div>
+        </div></div></div>
+        <div class="comp"><span class="ic">📷</span><span class="ic on">@</span><span class="cin">Message ERS…</span></div>
+        <p style="margin-top:8px;font-size:11px">Tap <b>@</b> and pick a name — runners and office are both there — or just type <b>@Hunter</b>. If you're tagged, the message gets an orange edge.</p>
+      </div>
+    </div>
+    <div class="rule warm"><b>A tag + a time = a task.</b> "@Hunter 3pm set up B for Lainey" posts the message AND puts "Set up B for Lainey · 3:00 PM" on Hunter's hub under <b>From the office</b>. Hunter checks it off there and the room shows it done. Only in a studio channel — General has no hub to land on.</div>
+    <div class="rule">Phone pings when you're tagged are the next piece. For now the hub tells you what's new the moment you open it.</div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Stock</div>
+    <h2>Search it, see what's left, and stop adding items.</h2>
+    <div class="ui">
+      <span class="k">Title fine print</span>
+      <div class="fine">Encore · 2 low · <b>40/113 counted</b></div>
+      <div class="srow" style="margin-top:8px">Search stock…<small>type "glove"</small></div>
+      <div class="srow">Chunky Peanut Butter<small>1 Tub per room</small><span class="q">1</span><span class="pill inh">LOW<small>since 9/12</small></span></div>
+      <div class="srow">Crystal Geyser Waters<small>3 Sm / 3 Large</small><span class="q">2 / 3</span><span class="pill ok">OK</span></div>
+    </div>
+    <ul>
+      <li><b>Search box</b> at the top. Type a word, every group opens to the hits.</li>
+      <li><b>"40/113 counted"</b> in the title — so you don't close a tab and forget one you skipped. Orange until it's all counted.</li>
+      <li>A <b>dashed LOW · since 9/12</b> means it was low last night, not tonight. Tap once to confirm it's still low, twice if it's been restocked.</li>
+      <li>Waters, bagels, cups and lids open the <b>full keyboard</b> so you can type "3 / 3" and "5+". Everything else keeps the number pad.</li>
+      <li><b>No more "+ Add item".</b> If something's on the shelf but not on the list, tap <b>Missing an item?</b> at the bottom — it goes to Eli and the office adds it. (Two people adding the same water made a mess at ARS.)</li>
+    </ul>
+    <div class="rule">ERS: the list was corrected from your notes — teas, gloves, mop heads, dryer sheets, detergent, D batteries in; Earl Grey, Silk, Poms, 2450s out; ice is "2 bags per room".</div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Petty cash</div>
+    <h2>Closers: count the box and type it.</h2>
+    <div class="ui">
+      <div class="bal"><span>Opening balance</span><span class="m">$200.00</span></div>
+      <div class="bal"><span>Cash out</span><span class="m" style="color:var(--hot)">-$34.50</span></div>
+      <div class="bal"><span>Closing balance</span><span class="m">$165.50</span></div>
+      <div class="bal in"><span>Counted at close</span><span class="inp">160.00</span></div>
+      <div class="diff">Short by $5.50 vs the ledger</div>
+    </div>
+    <p>The opener's count used to make the tile say "Submitted" all day, so nobody could tell if the closer had counted. Now there's a <b>Counted at close</b> box. Count the cash, type what you find, and the line under it says whether it matches the ledger.</p>
+    <div class="rule warm">A mismatch is not something to fix on the spot. Type what's really there — the office sees the difference in the morning.</div>
+    <p>On the hub the Petty cash tile reads <b>"Opened · count at close"</b> until the closer types a count.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Mic inventory</div>
+    <h2>A mic that moved isn't missing.</h2>
+    <div class="ui">
+      <span class="k">PRS closer's view</span>
+      <span class="mic">Neumann U87 #1<small>last: HERE · 9/14</small></span><span class="mic away">Sony C800G<span class="st">AT ERS</span><small>at ERS · 9/14</small></span>
+      <p style="margin-top:8px;font-size:11px">The C800 is on loan at Encore. It shows <b>"at ERS"</b>, drops out of the count, and stays out of the missing alert.</p>
+    </div>
+    <div class="rule cold"><b>Rule:</b> a mic from another studio — tap it HERE on <b>that studio's tab</b> the night it arrives. From then on it shows under <b>"Also here · from PRS"</b> on your own tab, and the home studio sees "at ERS" instead of missing.</div>
+    <p>When it goes back, the home closer taps it HERE and the loan ends.</p>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow">Small fixes</div>
+    <h2>Also this week</h2>
+    <ul>
+      <li>The hub's duty tiles update <b>live</b> now — when Hunter submits mics on the iPad, your phone flips to Submitted without a reopen.</li>
+      <li>Closing checklist: the office run is <b>Thursday</b> (from Wednesday night's office count). The line said Wednesday.</li>
+      <li>ERS: peanut butter reads "1 tub per room" — that's the A/B count, not back stock.</li>
+    </ul>
+  </div>
+
+</div>
+</div>

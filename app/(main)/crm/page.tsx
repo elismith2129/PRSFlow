@@ -834,9 +834,11 @@ function CampaignsPanel({ leads, allTags, profile }: {
     setSending(true)
     setSendResult(null)
     try {
+      // Gated since 2026-09-15: the route verifies the session and the role.
+      const { data: sess } = await supabase.auth.getSession()
       const res = await fetch('/api/send-campaign', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sess.session?.access_token ?? ''}` },
         body: JSON.stringify({
           subject: subject.trim(),
           body: body.trim(),

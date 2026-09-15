@@ -32,6 +32,10 @@ export type Memo = {
   sent_by_name: string | null
   sent_at: string
   archived_at: string | null
+  /** Newsletter copy (2026-09-15): set once mailed to the office. */
+  emailed_at?: string | null
+  email_to?: string[] | null
+  email_token?: string | null
 }
 
 export type MemoReceipt = {
@@ -179,6 +183,31 @@ export async function sendMemo(input: {
     .single()
   if (!dbResult('Sending memo', error)) return null
   return data as Memo
+}
+
+/**
+ * Mail the memo to owners + office admin as a newsletter (/api/memo-email —
+ * Resend, one mail per office profile, a login-free link to the full page).
+ * Eli, 2026-09-15: "owners aren't on the app as much." Soft failure: the memo
+ * is already sent in-app; a mail problem is a toast, not a lost memo.
+ */
+export async function emailMemo(memoId: string): Promise<{ sent: number; failed: number; link?: string } | null> {
+  const { data: sess } = await supabase.auth.getSession()
+  const token = sess.session?.access_token
+  if (!token) { dbResult('Emailing memo', { message: 'Not signed in' } as any); return null }
+  try {
+    const res = await fetch('/api/memo-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ memo_id: memoId }),
+    })
+    const j = await res.json().catch(() => ({}))
+    if (!res.ok) { dbResult('Emailing memo', { message: j.error || `HTTP ${res.status}` } as any); return null }
+    return { sent: (j.sent ?? []).length, failed: (j.failed ?? []).length, link: j.link }
+  } catch (e) {
+    dbResult('Emailing memo', { message: e instanceof Error ? e.message : String(e) } as any)
+    return null
+  }
 }
 
 export async function archiveMemo(memoId: string): Promise<boolean> {

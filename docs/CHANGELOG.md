@@ -19,6 +19,37 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.32.0 — Memos go out as a newsletter too; the campaign route gets a lock — Sep 15, 2026 (late)
+
+Eli: "for these I'd also like it to be an email, like a newsletter, just for the owners and
+office admin… owners aren't on the app as much." Migration `20260915130000`.
+
+**Every memo can be emailed.** Composer gains an **Email** toggle — "Also email the office"
+(default) / "App only". On send, after the in-app memo lands, `/api/memo-email` mails
+every active `owner / manager / billing / asst_manager` profile (by `user_profiles.email`)
+through Resend. Runners are never mailed — they sign in the app. Any sent memo also has an
+**Email the office** / **Email again** button on its scoreboard; the header shows "emailed
+Sep 15 to 6".
+
+**The email is a newsletter, not the page.** Mail clients strip CSS variables, `color-mix`,
+grid — everything the designed pages are made of — so `lib/server/memoEmail.buildMemoEmail`
+builds a light, table-based mail: PRSFlo · Memo, the date, "From Eli · to runners", the title,
+the page's own `<h1>` + first paragraph (`pageExcerpt`), and one button, **Read the full
+memo**. A typed note rides inline in full (`sanitizeNoteServer`, the DOMParser-free twin of
+`sanitizeNote`). Footer says signatures are collected in the app.
+
+**The login-free copy.** `/m/<token>` (`app/m/[token]/route.ts`) renders the memo with the
+service role — the designed page stamped dark, a note in a plain shell. The token is 48 hex
+chars minted once per memo on first send (`memos.email_token`) and never listed; it is the
+whole gate, like a newsletter's "view in browser". `noindex`, `no-store`, no referrer.
+Archived memos still open, so an old email keeps working.
+
+**Also: `/api/send-campaign` was open.** It sent mail from the studio's domain to arbitrary
+addresses with no auth at all (found while auditing after the prober). Gated now — session +
+owner/manager — and the CRM sends the bearer token.
+
+`NEXT_PUBLIC_APP_URL` is optional; the route falls back to the request origin for links.
+
 ## v1.31.0 — Notes: a room you go to, @mentions, General, mention + time = task — Sep 15, 2026 (late)
 
 Runner report: "@ people like Slack… notify them when tagged and given a start time… a

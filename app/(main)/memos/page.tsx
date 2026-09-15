@@ -21,7 +21,7 @@ import { RichNoteEditor, noteIsEmpty } from '@/components/shared/RichNote'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useMemosVersion, useMyMemos } from '@/hooks/useMyMemos'
 import {
-  canSendMemos, sendMemo, archiveMemo, fetchAllMemos, fetchScoreboard, ackMemo, markSeen,
+  canSendMemos, sendMemo, archiveMemo, fetchAllMemos, fetchScoreboard, ackMemo, markSeen, emailMemo,
   isDone, isHard, hardAt, AUDIENCE_LABEL,
   type Memo, type MemoAudience, type MemoKind, type MyMemo, type Scoreboard,
 } from '@/lib/memos'
@@ -77,6 +77,17 @@ export default function MemosPage() {
   const [kind, setKind] = useState<MemoKind>('note')
   const [audience, setAudience] = useState<MemoAudience>('everyone')
   const [requiresAck, setRequiresAck] = useState(true)
+  // Newsletter copy to owners + office admin (Eli, 2026-09-15). On by default:
+  // "build that into every memo."
+  const [alsoEmail, setAlsoEmail] = useState(true)
+  const [emailing, setEmailing] = useState<string | null>(null)
+  async function mailIt(m: Memo) {
+    setEmailing(m.id)
+    const r = await emailMemo(m.id)
+    setEmailing(null)
+    if (r) toast(r.failed ? `Emailed ${r.sent} · ${r.failed} failed` : `Emailed to ${r.sent} in the office`)
+    await loadAll()
+  }
   const [noteHtml, setNoteHtml] = useState('')
   const [pageHtml, setPageHtml] = useState('')
   const [pageName, setPageName] = useState('')
@@ -100,7 +111,7 @@ export default function MemosPage() {
   }
   function resetCompose() {
     setTitle(''); setKind('note'); setAudience('everyone'); setRequiresAck(true)
-    setNoteHtml(''); setPageHtml(''); setPageName(''); setPreview(false)
+    setNoteHtml(''); setPageHtml(''); setPageName(''); setPreview(false); setAlsoEmail(true)
   }
   async function send() {
     if (!canSend || !profile) return
@@ -113,8 +124,10 @@ export default function MemosPage() {
     setSending(false)
     if (m) {
       toast(`Sent to ${AUDIENCE_LABEL[audience].toLowerCase()}`)
+      const wantMail = alsoEmail
       resetCompose(); setComposing(false)
       await loadAll()
+      if (wantMail) await mailIt(m)
     }
   }
 
@@ -183,6 +196,16 @@ export default function MemosPage() {
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={kLabel}>Email</span>
+                  <span style={{ display: 'inline-flex', borderRadius: 99, overflow: 'hidden', background: 'var(--c-wash2)' }}>
+                    {([true, false] as const).map(v => (
+                      <button key={String(v)} type="button" onClick={() => setAlsoEmail(v)} title="A newsletter copy to owners and office admin, with a login-free link to the full memo" style={{ padding: '5px 11px', fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, cursor: 'pointer', background: alsoEmail === v ? 'var(--c-fg)' : 'transparent', color: alsoEmail === v ? 'var(--c-bg)' : 'var(--c-fg-2)', border: 'none' }}>
+                        {v ? 'Also email the office' : 'App only'}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={kLabel}>Kind</span>
                   <span style={{ display: 'inline-flex', borderRadius: 99, overflow: 'hidden', background: 'var(--c-wash2)' }}>
                     {(['note', 'page'] as MemoKind[]).map(k => (
@@ -246,10 +269,13 @@ export default function MemosPage() {
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 14, color: 'var(--c-fg)' }}>{scoreFor.title}</div>
-                  <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Sent {fmt(scoreFor.sent_at)} · to {score.total} {AUDIENCE_LABEL[scoreFor.audience].toLowerCase()} · {scoreFor.requires_ack ? 'must acknowledge' : 'just read'}</div>
+                  <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Sent {fmt(scoreFor.sent_at)} · to {score.total} {AUDIENCE_LABEL[scoreFor.audience].toLowerCase()} · {scoreFor.requires_ack ? 'must acknowledge' : 'just read'}{scoreFor.emailed_at ? ` · emailed ${fmt(scoreFor.emailed_at, false)} to ${(scoreFor.email_to ?? []).length}` : ''}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button type="button" className="c-control c-soft c-raised-chip" onClick={() => { const mm = mine.find(x => x.id === scoreFor.id); setOpen(mm ?? { ...scoreFor, receipt: null }) }}>Read it</button>
+                  <button type="button" className="c-control c-soft c-raised-chip" disabled={emailing === scoreFor.id} onClick={() => mailIt(scoreFor)} title={scoreFor.emailed_at ? `Emailed ${fmt(scoreFor.emailed_at)} to ${(scoreFor.email_to ?? []).length}` : 'Newsletter copy to owners + office admin'}>
+                    {emailing === scoreFor.id ? 'Emailing…' : scoreFor.emailed_at ? 'Email again' : 'Email the office'}
+                  </button>
                   {!scoreFor.archived_at && <button type="button" className="c-control c-soft c-raised-chip" onClick={() => archive(scoreFor)}>Archive</button>}
                 </div>
               </div>

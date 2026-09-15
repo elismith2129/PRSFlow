@@ -19,7 +19,24 @@ interface SendCampaignBody {
   sent_by: string
 }
 
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } },
+)
+
 export async function POST(req: NextRequest) {
+  // ── Gate (2026-09-15, found during the prober audit): this route sends mail
+  // from the studio's domain to arbitrary addresses and had no check at all.
+  // Owner / manager, by session — the same people who see the CAMPAIGNS tab.
+  const bearer = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
+  if (!bearer) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(bearer)
+  if (userErr || !userData?.user) return NextResponse.json({ error: 'Not signed in.' }, { status: 401 })
+  const { data: me } = await supabaseAdmin.from('user_profiles').select('role').eq('auth_user_id', userData.user.id).limit(1)
+  const myRole = me?.[0]?.role
+  if (myRole !== 'owner' && myRole !== 'manager') return NextResponse.json({ error: 'Not allowed.' }, { status: 403 })
+
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'Resend API key not configured — add RESEND_API_KEY to environment variables.' }, { status: 503 })
