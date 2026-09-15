@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
 import type { Booking } from '@/lib/supabase'
 import { opsToday, dayPartLabel } from '@/lib/time'
-import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
+import { type ChannelKey, type ChannelUnread, CHANNEL_SHORT, fetchChannelUnread, isChannel } from '@/lib/runnerChannel'
+import { noteText } from '@/components/shared/RichNote'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
@@ -37,6 +38,9 @@ type StudioTask = {
   created_by_name: string | null
   created_at: string
   done_at: string | null
+  /** From a note's mention + time (2026-09-15) — who it's for and when. */
+  assigned_to_name?: string | null
+  due_time?: string | null
 }
 
 export default function StudioDailyOpsPage() {
@@ -53,6 +57,10 @@ export default function StudioDailyOpsPage() {
   // count marks it submitted, so the closer's tile read "Submitted" before
   // they'd counted (ERS, 2026-09-15). The closing count is the closer's act.
   const [pettyCounted, setPettyCounted] = useState(false)
+  // The notes doorway (option A, runner-channel-options.html): unread / for
+  // you / last message per channel. The room is /runner/<studio>/notes.
+  const [notes, setNotes] = useState<ChannelUnread[]>([])
+  const notesChannels: ChannelKey[] = isChannel(studio) && studio !== 'general' ? [studio, 'general'] : ['general']
   const [tasks, setTasks] = useState<StudioTask[]>([])
 
   // THE OPERATIONAL DAY, not the calendar's (2026-08-28): rolls at 8:50 AM,
@@ -60,6 +68,21 @@ export default function StudioDailyOpsPage() {
   // math and hour edits, and submissions file under the night they belong to.
   const today = opsToday()
   const { profile: hubProfile } = useUserProfile()
+  const loadNotes = useCallback(async () => {
+    if (!hubProfile) return
+    setNotes(await fetchChannelUnread(hubProfile, notesChannels))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hubProfile, studio])
+  useEffect(() => { loadNotes() }, [loadNotes])
+  useReloadOnReturn(loadNotes)
+  useEffect(() => {
+    const ch = supabase
+      .channel(`runner-notes-door-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_note_posts' }, () => loadNotes())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_note_reads' }, () => loadNotes())
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [studio, loadNotes])
 
   // The quiet register (punch / guide / manual / report-a-bug) MOVED to the
   // /runner landing (Eli, 2026-09-02): those things are studio-agnostic, and
@@ -476,8 +499,11 @@ export default function StudioDailyOpsPage() {
                   <span style={{ fontSize: 10.5, opacity: 0.45, marginLeft: 7 }}>
                     {t.done_at
                       ? `done ${new Date(t.done_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                      : t.created_by_name ?? ''}
+                      : [t.assigned_to_name ? `for ${t.assigned_to_name.split(' ')[0]}` : null, t.created_by_name ? `from ${t.created_by_name}` : null].filter(Boolean).join(' · ')}
                   </span>
+                  {!t.done_at && t.due_time && (
+                    <span className="c-mono" style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--c-st-warm)', marginLeft: 8 }}>{t.due_time}</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -618,11 +644,47 @@ export default function StudioDailyOpsPage() {
             notes tile + page. */}
         <div>
           <div className="c-label" style={{ marginBottom: 9 }}>
-            Runner notes
-            <Hint tip="One running channel for this studio — like the old Slack. Every note ever posted lives here, newest first. Type, pick your shift, add a photo if it helps, Send. Your typing and photos are kept even if the app closes before you send." />
+            Notes
+            <Hint tip="The notes room — this studio's channel and General (every studio). Tag people with @; a tag plus a time makes a task for them. Tap to open." />
           </div>
-          <RunnerNotesChannel studio={studio} />
+          {(() => {
+            const totalUnread = notes.reduce((n, u) => n + u.unread, 0)
+            const totalForMe = notes.reduce((n, u) => n + u.forMe, 0)
+            const latest = notes.map(u => u.latest).filter(Boolean).sort((a, b) => (a!.created_at < b!.created_at ? 1 : -1))[0] ?? null
+            const latestChannel = latest ? notes.find(u => u.latest?.id === latest.id)?.channel : undefined
+            const preview = latest ? (noteText(latest.text).trim() || ((latest.photo_urls ?? []).length > 0 ? '📷 Photo' : '')) : ''
+            return (
+              <button
+                type="button"
+                onClick={() => router.push(`/runner/${studio}/notes${totalForMe > 0 && latestChannel ? `?c=${latestChannel}` : ''}`)}
+                style={{ ...surface, width: '100%', textAlign: 'left', border: 'none', font: 'inherit', cursor: 'pointer', color: 'var(--c-fg)', display: 'flex', flexDirection: 'column', gap: 7 }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{notesChannels.map(c => CHANNEL_SHORT[c]).join(' · ')}</span>
+                  {totalUnread > 0
+                    ? <span style={{ marginLeft: 'auto', fontSize: 9.5, fontWeight: 800, color: 'var(--c-st-warm)' }}>{totalUnread > 30 ? '30+' : totalUnread} new{totalForMe > 0 ? ` · ${totalForMe} for you` : ''}</span>
+                    : <span style={{ marginLeft: 'auto', fontSize: 9.5, opacity: 0.45 }}>You&rsquo;re caught up</span>}
+                </span>
+                {latest && (
+                  <span style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 11, lineHeight: 1.45, opacity: 0.85 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: 99, flexShrink: 0, background: latest.source === 'office' ? 'var(--c-fg)' : 'var(--c-wash2)', color: latest.source === 'office' ? 'var(--c-bg)' : 'var(--c-fg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 8 }}>
+                      {latest.author_name.trim().split(/\s+/).map(w => w[0] ?? '').join('').slice(0, 2).toUpperCase() || '—'}
+                    </span>
+                    <span style={{ minWidth: 0, flex: 1, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                      <b style={{ fontSize: 10 }}>{latest.author_name}</b>
+                      <span style={{ fontSize: 9.5, opacity: 0.5 }}> · {latestChannel ? CHANNEL_SHORT[latestChannel] : ''} · {new Date(latest.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                      <br />{preview}
+                    </span>
+                  </span>
+                )}
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.6, display: 'flex', alignItems: 'center' }}>
+                  Open notes <span style={{ marginLeft: 'auto', opacity: 0.6 }}>›</span>
+                </span>
+              </button>
+            )
+          })()}
         </div>
+
 
         {/* The quiet register (punch / guide / manual / report-a-bug) lives on
             the /runner landing now (2026-09-02) — studio-agnostic things left

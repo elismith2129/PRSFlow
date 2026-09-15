@@ -32,6 +32,7 @@ import {
   type MyDayNotePost,
 } from '@/lib/myday'
 import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
+import type { ChannelKey } from '@/lib/runnerChannel'
 import { OPS_STUDIOS } from '@/lib/dailyOps'
 
 // 'Billing Ops' → 'Billing' (Eli, 2026-09-07): the seat reads as the plain
@@ -274,7 +275,7 @@ export default function ShiftNotesPage() {
       {tab === 'runner' && (
         <div style={{ maxWidth: 720 }}>
           <div style={{ display: 'flex', gap: 6, margin: '2px 0 10px' }}>
-            {OPS_STUDIOS.map(s => (
+            {[...OPS_STUDIOS.map(s => ({ key: s.key, abbr: s.abbr })), { key: 'general', abbr: 'General' }].map(s => (
               <button
                 key={s.key}
                 onClick={() => setRunnerStudio(s.key)}
@@ -283,7 +284,7 @@ export default function ShiftNotesPage() {
               >{s.abbr}</button>
             ))}
           </div>
-          <RunnerNotesChannel studio={runnerStudio} maxHeight={620} />
+          <RunnerNotesChannel channel={runnerStudio as ChannelKey} maxHeight={620} />
         </div>
       )}
 

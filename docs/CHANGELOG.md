@@ -19,6 +19,51 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.31.0 — Notes: a room you go to, @mentions, General, mention + time = task — Sep 15, 2026 (late)
+
+Runner report: "@ people like Slack… notify them when tagged and given a start time… a
+General chat." Eli: "spaces you want to live in — easy nav, easy understand, easy input."
+Mock `docs/design-refs/runner-channel-options.html`, option A. Migration `20260915120000`.
+
+**The room.** `/runner/<studio>/notes` — full screen, tabs for the studio and General
+(unread count on the tab you're not on, warm when something's for you), feed with avatars
+and date rulers, composer pinned at the bottom. **Newest at the bottom** — this supersedes
+the Sep 1 "newest at the top" ruling, which was made for a window on the hub where you
+wrote and read under your thumbs; in a room the thumbs are at the bottom. The hub keeps a
+**doorway**: last message, "3 new · 1 for you", tap to enter (lands on the channel with
+the mention when there is one). `RunnerNotesChannel` grew a `variant`: `'room'` for the
+page, `'panel'` for the admin Runner-notes tab (newest first, composer above, as before).
+
+**@mentions.** The @ button opens the roster — runners and office together, via
+`mention_roster()` (SECURITY DEFINER, names only: runners can't SELECT other profiles
+since the Jul 2 hardening). Picking someone inserts `@Handle` (first name; first name +
+last initial when two people share one). Handles are parsed at send from the plain text,
+so a hand-typed `@Hunter` resolves too; unresolvable ones are ignored. Stored as
+`runner_note_posts.mentions uuid[]`. A tagged person sees a warm edge on the message;
+`@Handle` renders bold (`<b>` survives `sanitizeNote`; a chip span would not).
+
+**Mention + time = task.** Exactly one mention and a time token ("3pm", "3:30", "15:00")
+in a **studio** channel makes a `studio_tasks` row for that person: `assigned_to`,
+`assigned_to_name`, `due_time`, `post_id`; the post carries `task_id`. The task card shows
+under the message and under "From the office" on the hub ("for Hunter · from Fernando ·
+3:00 PM"); checking it off on the hub shows done in the room. A time in General makes no
+task (a task needs a hub to land on) — the composer says so. The composer previews what
+the message will do before Send.
+
+**Reads.** `runner_note_reads (user_id, channel, last_read_at)` via `channel_read()`.
+Unread = posts after my stamp that aren't mine; "for you" = those that mention me.
+Opening the room stamps it; "New since you looked" anchors on the stamp as it stood on
+open and stays put for the visit. 30-day window, "30+" cap.
+
+**Channels.** `runner_note_posts.channel` (`paramount|ameraycan|encore|track|general`),
+backfilled from `studio`; `studio` is now nullable (General has none). The runner home's
+studio picker and the admin Runner-notes tab both gained General.
+
+**Not in this build:** push. The badge answers "what's new" when the hub opens; push
+(mentions, tasks, memos — never every note) is its own night: service worker, a
+device-subscriptions table, one send route, a VAPID key pair in Vercel. Office-side
+mention badge on the rail — next.
+
 ## v1.30.0 — Runner app, ERS report batch 1: stock search, closing count, mics that moved — Sep 15, 2026
 
 The ERS runners sent a list. Most of it was the ERS stock list itself (edited in SQL,

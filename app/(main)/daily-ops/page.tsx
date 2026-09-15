@@ -22,7 +22,6 @@ import { dbResult } from '@/lib/db'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { Hint } from '@/components/ui/Hint'
 import { RichNoteView, noteText } from '@/components/shared/RichNote'
-import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
 import {
   OPS_STUDIOS, isDormantStudio, QueueItem, StudioNight, loadNight, markReviewed,
   opsDate, prettyDate, unmarkReviewed,

@@ -32,6 +32,7 @@ import { Wordmark } from '@/components/layout/Wordmark'
 import { opsToday, dayPartLabel } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
+import type { ChannelKey } from '@/lib/runnerChannel'
 import { Hint } from '@/components/ui/Hint'
 import { dbResult } from '@/lib/db'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
@@ -267,7 +268,7 @@ export default function RunnerPage() {
           <Hint tip="Each studio has one running channel — pick the studio to read or post. Your typing and photos are kept even if the app closes before you send." />
         </div>
         <div style={{ display: 'flex', gap: 7, marginBottom: 9 }}>
-          {STUDIOS.map(s => (
+          {[...STUDIOS, { key: 'general', label: 'General', abbr: 'General' }].map(s => (
             <button
               key={s.key}
               onClick={() => setNotesStudio(notesStudio === s.key ? null : s.key)}
@@ -282,10 +283,10 @@ export default function RunnerPage() {
           ))}
         </div>
         {notesStudio ? (
-          <RunnerNotesChannel studio={notesStudio} />
+          <RunnerNotesChannel channel={notesStudio as ChannelKey} />
         ) : (
           <div style={{ ...surface, fontSize: 12, opacity: 0.5, textAlign: 'center', padding: '18px 15px' }}>
-            Pick a studio to read or post its notes.
+            Pick a studio — or General, which every studio sees.
           </div>
         )}
       </div>

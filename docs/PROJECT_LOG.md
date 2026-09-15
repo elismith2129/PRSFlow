@@ -607,6 +607,26 @@ were removed from Needs Action.
 The check is `select tablename, policyname, cmd from pg_policies where 'anon' =
 any(roles::text[])`; run it after any dashboard policy work.
 
+#### Sep 15 (evening) — the ERS runner report, and Notes became a room
+
+The ERS runners sent a list; most of it was their stock list (data), the rest is
+CHANGELOG v1.30.0: stock search + counted/total + per-item full keyboard, petty cash
+closing count (the closer's act, distinct from the opener's), an inherited Low that says
+so, a mic that moved reads "at ERS" not missing, the hub tile that didn't flip (no realtime
+on daily_ops_submissions). Two rulings worth keeping:
+
+- **Runners don't add stock items.** "Maybe we shouldn't have runners add." The list is
+  the office's document; on-the-spot adds made a duplicate Crystal Geyser at ARS. They
+  suggest ("Missing an item?") into the dev bin, the office edits in SQL.
+- **Newest at the bottom, in the room.** Sep 1 ruled "newest at the top" for the channel
+  window on the hub. Notes is now its own page (v1.31.0, runner-channel-options.html A)
+  and the room reads like Messages — thumbs at the bottom. The admin panel keeps the old
+  direction. Not a reversal; the ruling was about the container, and the container changed.
+
+Notes v1.31.0: @mentions (office taggable), General channel, mention + time = a studio
+task on that person's hub, per-person reads → "3 new · 1 for you" on the hub doorway.
+**Push is the next project** — mentions, tasks, memos only; never every note.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
@@ -614,6 +634,9 @@ any(roles::text[])`; run it after any dashboard policy work.
 - **The client rate sheet** (prs-rate-sheet skill) still carries its own copy of the rates;
   it should read `room_rates` or be regenerated from it.
 - **WO-1156 (Concord)** conversion to a real bundle — offered, not run.
+- **Push notifications** for the notes room (service worker + subscriptions + VAPID) — designed, not built.
+- **Office-side mention badge** on the rail — runners can tag Fernando now; he has no badge yet.
+- **Admin stock-list editor** — the office edits stock lists in SQL; three edits tonight.
 - **Cancelled sessions excluded from the missing-WO alarm** — unchanged.
 - ~~**Blanket calendar card**~~ — **CLOSED (Eli, 2026-09-14 evening): "we dont need a
   special card… leave as separate cards."** Cards are written from the WO's rows, so a
