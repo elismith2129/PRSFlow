@@ -29,6 +29,9 @@ export default function PettyCashPage() {
 
   const [entries, setEntries] = useState<Entry[]>([])
   const [openingBalance, setOpeningBalance] = useState('')
+  // What's physically in the box at close (ERS, 2026-09-15). Typed, never
+  // derived — the point is comparing it against the computed closing balance.
+  const [countedClose, setCountedClose] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -49,20 +52,25 @@ export default function PettyCashPage() {
     // Check opening balance
     const { data: ob } = await supabase.from('petty_cash_balances').select('amount').eq('studio', studio).order('date', { ascending: false }).limit(1).maybeSingle()
     let balance = ob?.amount != null ? String(ob.amount) : ''
+    // Today's count only — yesterday's count is yesterday's.
+    const { data: tc } = await supabase.from('petty_cash_balances').select('counted_close').eq('studio', studio).eq('date', today).limit(1)
+    let counted = tc?.[0]?.counted_close != null ? String(tc[0].counted_close) : ''
     dirtyRef.current = false
 
     // Unsaved draft from a previous visit (lib/draft): unsaved entries come
     // back, a typed balance wins, and the page counts as dirty so realtime
     // doesn't clobber it. Cleared on successful save.
-    const draft = readDraft<{ newEntries: Entry[]; openingBalance: string | null }>(draftKey('petty', studio, today))
-    if (draft && (draft.newEntries.length > 0 || draft.openingBalance != null)) {
+    const draft = readDraft<{ newEntries: Entry[]; openingBalance: string | null; countedClose?: string | null }>(draftKey('petty', studio, today))
+    if (draft && (draft.newEntries.length > 0 || draft.openingBalance != null || draft.countedClose != null)) {
       loaded = [...loaded, ...draft.newEntries]
       if (draft.openingBalance != null) balance = draft.openingBalance
+      if (draft.countedClose != null) counted = draft.countedClose
       dirtyRef.current = true
     }
 
     setEntries(loaded)
     setOpeningBalance(balance)
+    setCountedClose(counted)
     setLoading(false)
   }, [studio, today])
 
@@ -72,8 +80,9 @@ export default function PettyCashPage() {
     writeDraft(draftKey('petty', studio, today), {
       newEntries: entries.filter(e => !e.id && (e.description || e.amount)),
       openingBalance,
+      countedClose,
     })
-  }, [entries, openingBalance, loading, studio, today])
+  }, [entries, openingBalance, countedClose, loading, studio, today])
 
   useEffect(() => { load() }, [load])
   // Same dirty-guard as the realtime channel: never clobber a half-typed entry.
@@ -98,10 +107,13 @@ export default function PettyCashPage() {
     setSaving(true)
     setSaveError(null)
 
-    // Save opening balance
-    if (openingBalance) {
+    // Save opening balance + tonight's count on the same day row.
+    if (openingBalance || countedClose) {
       const { error: balErr } = await supabase.from('petty_cash_balances').upsert(
-        { studio, date: today, amount: parseFloat(openingBalance) || 0 },
+        {
+          studio, date: today, amount: parseFloat(openingBalance) || 0,
+          counted_close: countedClose.trim() === '' ? null : (parseFloat(countedClose) || 0),
+        },
         { onConflict: 'studio,date' }
       )
       if (balErr) { setSaveError(`Balance save failed: ${balErr.message}`); setSaving(false); return }
@@ -154,6 +166,8 @@ export default function PettyCashPage() {
   const totalIn = entries.filter(e => e.type === 'in').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const totalOut = entries.filter(e => e.type === 'out').reduce((s, e) => s + (parseFloat(e.amount) || 0), 0)
   const closing = (parseFloat(openingBalance) || 0) + totalIn - totalOut
+  const countedNum = countedClose.trim() === '' ? null : (parseFloat(countedClose) || 0)
+  const diff = countedNum == null ? null : Math.round((countedNum - closing) * 100) / 100
 
   const surface: React.CSSProperties = {
     background: 'var(--c-srf, var(--c-bg))',
@@ -227,6 +241,32 @@ export default function PettyCashPage() {
               <span className="c-mono" style={{ fontSize: 13, fontWeight: 700, color: c }}>{v}</span>
             </div>
           ))}
+          {/* COUNTED AT CLOSE (ERS, 2026-09-15): the closer counts the box and
+              types it; the line under it says whether the box agrees with
+              the ledger. A mismatch is information, not a block — the office
+              reads it in the daily-ops modal. */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--c-wash2)' }}>
+            <span style={{ fontSize: 12.5, opacity: 0.6 }}>Counted at close</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={countedClose}
+              onChange={e => setCountedClose(e.target.value)}
+              placeholder="0.00"
+              className="c-mono"
+              style={{ ...input, width: 92, textAlign: 'right', minHeight: 36, padding: '6px 10px' }}
+            />
+          </div>
+          {diff != null && (
+            <div style={{
+              marginTop: 7, fontSize: 11, fontWeight: 700, textAlign: 'right',
+              color: diff === 0 ? 'var(--c-st-booked)' : 'var(--c-st-warm)',
+            }}>
+              {diff === 0
+                ? 'Matches the ledger'
+                : `${diff > 0 ? 'Over' : 'Short'} by $${Math.abs(diff).toFixed(2)} vs the ledger`}
+            </div>
+          )}
         </div>
 
         {/* Entries */}

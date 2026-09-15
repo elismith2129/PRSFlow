@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Mic inventory: a mic that moved is not a mic that's missing</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  MIC TRANSFERS (ERS runner report, 2026-09-15).
+
+  "PRS/ERS/ARS/TRS tab for mic items for adding if something is transferred
+  so it doesn't look like it was missed or is missing on mic inventory list."
+
+  ── WHAT ACTUALLY HAPPENS TODAY ─────────────────────────────────────────────
+  The tabs already exist: an ERS closer can open the PRS tab and tap a PRS
+  mic HERE. That writes a checkin (studio=encore, mic=PRS mic). The gap is on
+  the OTHER end: the PRS page's last-night reference reads the latest checkin
+  from ANY studio and prints "last: HERE · 9/14" — indistinguishable from a
+  mic that was here. So the PRS closer looks, can't find it, marks MISSING.
+  Now the same mic is HERE at ERS and MISSING at PRS on the same night, the
+  missing streak starts, and the alert nags every night it's on loan.
+
+  The information already exists in mic_checkins.studio. Nothing is missing
+  from the data; the PRS page just doesn't say where the mic was seen.
+
+  ── OPTION A (recommended): say WHERE it was last seen — no schema change ──
+  · Home page (PRS): a PRS mic whose latest checkin came from another
+    studio renders as AWAY — "at ERS · 9/14", cool tint, not counted in the
+    tab's expected total ("62/84 · 2 at ERS"), never in the missing alert.
+    Tap → popover has "Back at PRS" (= HERE) beside Room / Missing.
+  · Receiving page (ERS): its HOME tab gains an "Also here · from PRS" strip
+    listing mics last seen at ERS whose home is elsewhere, so the closer
+    counts them nightly without hunting through the PRS tab. Marking one
+    MISSING at ERS is the honest state — it went missing while on loan.
+  · The loan ends when someone taps it HERE at PRS again.
+  · Admin Mic Inventory shows "at ERS" in the same words.
+  Data: the reference query gains one column (studio). One migration: none.
+
+  ── OPTION B: an explicit TRANSFERRED status with a destination ────────────
+  New checkin status 'transferred' + to_studio. Either end can mark it. It
+  says the same thing as A ("this mic is at ERS") with a check-constraint
+  change, a second popover option, and a question A never asks: who is
+  supposed to mark it — the sender, the receiver, or both?
+
+  ── OPTION C: move it (already exists) ──────────────────────────────────────
+  Admin → Mic Inventory → Manage Mics → change home_studio. For a PERMANENT
+  move. Kept; not the answer to a two-week loan.
+
+  Recommendation: A, plus a line in the runner one-sheet: "a mic from another
+  studio: tap it HERE on THAT studio's tab the night it arrives."
+-->
+<style>
+:root{--bg:#f5f3ee;--fg:#2a2722;--wash:rgba(42,39,34,.05);--wash2:rgba(42,39,34,.095);--fg2:rgba(42,39,34,.72);--fg3:rgba(42,39,34,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--cold:#7fb2e5;--chip-ink:#1c2626;--srf:#ffffff;--softsh:0 1px 3px rgba(42,39,34,.08),0 5px 16px rgba(42,39,34,.07)}
+[data-theme="dark"]{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1100px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:820px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:36px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:820px;line-height:1.6;margin-bottom:14px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cmp{border-left:2px solid var(--warm);padding-left:12px;margin:10px 0 20px;font-size:11.5px;color:var(--fg2);line-height:1.6;max-width:840px}.cmp b{color:var(--warm)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.cap{font-size:10.5px;color:var(--fg3);text-align:center;margin-top:8px;line-height:1.5}
+.phone{width:320px;background:var(--bg);border-radius:28px;padding:12px;box-shadow:var(--softsh);margin:0 auto}
+.scr{background:var(--srf);border-radius:20px;padding:14px 13px;min-height:470px}
+.t{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.02em}.ts{font-size:10.5px;color:var(--fg3);margin-bottom:9px}
+.tabs{display:flex;gap:4px;margin-bottom:8px}.tab{font-size:9.5px;font-weight:800;padding:5px 9px;border-radius:99px;background:var(--wash2);color:var(--fg2)}.tab.on{background:var(--fg);color:var(--bg)}
+.tab i{font-style:normal;font-family:'DM Mono',monospace;font-weight:500;opacity:.7;margin-left:4px}
+.srch{background:var(--wash);border-radius:9px;padding:7px 10px;font-size:11px;color:var(--fg3);margin-bottom:8px}
+.alert{display:flex;align-items:center;gap:7px;background:color-mix(in srgb,var(--hot) 13%,transparent);border-radius:9px;padding:6px 10px;font-size:10px;font-weight:600;color:var(--hot);margin-bottom:8px}.alert:before{content:"";width:6px;height:6px;border-radius:99px;background:var(--hot)}
+.strip{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin:10px 0 5px;display:flex;align-items:center;gap:6px}.strip b{color:var(--cold)}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.c{position:relative;border-radius:9px;padding:7px 9px 6px;min-height:46px;background:var(--wash)}
+.c .n{display:block;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:30px}
+.c .r{display:block;font-size:8.5px;opacity:.4;margin-top:2px}
+.c .st{position:absolute;top:6px;right:8px;font-size:8px;font-weight:800;letter-spacing:.05em}
+.c.here{background:var(--booked);color:var(--chip-ink)}.c.here .r{opacity:.55}
+.c.miss{background:var(--hot);color:#fff}.c.miss .r{opacity:.7}
+.c.bad .r{opacity:1;color:var(--hot);font-weight:700}
+.c.away{background:color-mix(in srgb,var(--cold) 22%,var(--wash));outline:1.5px dashed color-mix(in srgb,var(--cold) 60%,transparent);outline-offset:-1.5px}
+.c.away .r{opacity:1;color:var(--cold);font-weight:700}
+.c.away .st{color:var(--cold)}
+.pop{position:absolute;right:14px;bottom:86px;background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:10px;width:170px;z-index:2}
+.pop .pn{font-size:10px;font-weight:700;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop .o{display:block;font-size:10.5px;font-weight:700;padding:7px 10px;border-radius:9px;background:var(--wash);margin-bottom:4px}
+.pop .o.home{background:var(--booked);color:var(--chip-ink)}.pop .o.miss{color:var(--hot)}
+.rel{position:relative}
+.note{font-size:10.5px;opacity:.55;margin-top:12px;line-height:1.65;max-width:840px}
+.strike{text-decoration:line-through;opacity:.5}
+</style>
+</head>
+<body>
+<h1>Mic inventory — a mic that moved is not a mic that's missing</h1>
+<p class="lede">ERS report, Sep 15: <b>"if something is transferred, it shouldn't look like it was missed or is missing."</b> Today the ERS closer can already tap a PRS mic HERE on the PRS tab. The problem is at PRS: the reference line just says <b>last: HERE · 9/14</b> without saying where, so the PRS closer marks it missing and the streak alert runs every night it's on loan.</p>
+<div class="cmp"><b>Nothing new to store.</b> Every checkin already records which studio made it. Option A changes what the home page <i>says</i> about it, not what's saved.</div>
+
+<h2><span class="n">A</span>Say where it was last seen <span class="rec">Recommended</span></h2>
+<p class="sub">Home page: an away mic gets a cool dashed cell, "at ERS · 9/14", drops out of the expected count and the missing alert. Receiving page: an "Also here" strip on the home tab so the closer counts loaners with their own mics. The loan ends when someone taps it HERE at home.</p>
+<div class="grid2">
+  <div>
+    <div class="phone"><div class="scr rel">
+      <div class="t">Mic inventory</div><div class="ts">Paramount · Mon Sep 15</div>
+      <div class="tabs"><span class="tab on">PRS <i>61/84</i></span><span class="tab">ARS</span><span class="tab">ERS</span><span class="tab">TRK</span><span class="tab">Floating</span></div>
+      <div class="srch">Search mics…</div>
+      <div class="alert">1 missing · AKG C414 #2 since 9/9</div>
+      <div class="g">
+        <div class="c here"><span class="n">Neumann U87 #1</span><span class="st">HERE</span><span class="r">last: HERE · 9/14</span></div>
+        <div class="c here"><span class="n">Neumann U87 #2</span><span class="st">HERE</span><span class="r">last: HERE · 9/14</span></div>
+        <div class="c away"><span class="n">Sony C800G</span><span class="st">AT ERS</span><span class="r">at ERS since 9/12</span></div>
+        <div class="c"><span class="n">Telefunken ELA M 251</span><span class="r">last: Rm A · 9/14</span></div>
+        <div class="c away"><span class="n">Neumann M49</span><span class="st">AT ERS</span><span class="r">at ERS since 9/12</span></div>
+        <div class="c bad"><span class="n">AKG C414 #2</span><span class="r">missing since 9/9</span></div>
+        <div class="c"><span class="n">Shure SM7B #1</span><span class="r">last: HERE · 9/14</span></div>
+        <div class="c"><span class="n">Shure SM7B #2</span><span class="r">last: HERE · 9/14</span></div>
+      </div>
+      <div class="strip">2 at ERS · not counted here</div>
+      <div class="pop"><div class="pn">Sony C800G</div><span class="o home">Back at PRS</span><span class="o">In a room…</span><span class="o miss">Missing</span></div>
+    </div></div>
+    <div class="cap">PRS closer's view. The C800G and M49 are on loan — dashed, blue, "at ERS since 9/12". The tab reads 61/<b>84</b>, not 86. The missing alert shows the C414 only.<br>Tap an away cell → "Back at PRS" is the first option.</div>
+  </div>
+  <div>
+    <div class="phone"><div class="scr">
+      <div class="t">Mic inventory</div><div class="ts">Encore · Mon Sep 15</div>
+      <div class="tabs"><span class="tab on">ERS <i>24/26</i></span><span class="tab">PRS</span><span class="tab">ARS</span><span class="tab">TRK</span><span class="tab">Floating</span></div>
+      <div class="srch">Search mics…</div>
+      <div class="g">
+        <div class="c here"><span class="n">Neumann U87</span><span class="st">HERE</span><span class="r">last: HERE · 9/14</span></div>
+        <div class="c here"><span class="n">AKG C12 VR</span><span class="st">HERE</span><span class="r">last: HERE · 9/14</span></div>
+        <div class="c here"><span class="n">Shure SM7B</span><span class="st">RM B</span><span class="r">last: Rm B · 9/14</span></div>
+        <div class="c"><span class="n">Sennheiser MD421 #3</span><span class="r">last: HERE · 9/14</span></div>
+      </div>
+      <div class="strip">Also here · <b>from PRS</b></div>
+      <div class="g">
+        <div class="c here"><span class="n">Sony C800G</span><span class="st">HERE</span><span class="r">PRS mic · here since 9/12</span></div>
+        <div class="c"><span class="n">Neumann M49</span><span class="r">PRS mic · here since 9/12</span></div>
+      </div>
+      <div class="note" style="margin-top:14px">The strip is the PRS tab's loaners surfaced on the ERS home tab. They still write checkins under <span style="font-family:'DM Mono',monospace">studio=encore</span> — nothing about the save changes. Marking one MISSING here is the truth: it went missing while at ERS.</div>
+    </div></div>
+    <div class="cap">ERS closer's view. Loaners sit under their own mics; the count (24/26) includes them. The night one arrives, the closer taps it HERE on the PRS tab once — from then on it's in the strip.</div>
+  </div>
+</div>
+<p class="note"><b>What changes in code.</b> The reference query on the mics page selects <span style="font-family:'DM Mono',monospace">studio</span> alongside status/room/date. <span style="font-family:'DM Mono',monospace">refLine</span> says "at ERS since …" when the prior studio ≠ this page's studio and the status was here/room. Away mics leave <span style="font-family:'DM Mono',monospace">doneCount</span>'s denominator and <span style="font-family:'DM Mono',monospace">missingMics</span>. The popover's first option reads "Back at PRS" for an away mic (it is HERE — same write). The home tab appends the "Also here" list: mics with home ≠ this studio whose latest prior checkin was made by this studio. Admin Mic Inventory's status column gets the same "at ERS" wording. Missing streak in admin ignores checkins from a studio other than the one that saw it last.</p>
+
+<h2><span class="n">B</span>An explicit TRANSFERRED status</h2>
+<p class="sub">A fourth checkin status with a destination: the popover gains "Transferred → ARS / ERS / PRS / TRK". Either end can mark it.</p>
+<div class="cmp"><b>Same sentence, more ceremony.</b> "Transferred to ERS" and "last seen HERE by the ERS closer" carry identical information. B adds a check-constraint change, a destination picker, admin history that mixes two ways of saying one thing, and a question A never has to ask: who marks it — the sender, the receiver, or both, and what if they disagree? It also fails the moment nobody marks it, which is exactly the night it matters. A works off the tap the receiving closer already makes.</div>
+
+<h2><span class="n">C</span>Move it — change the mic's home (exists today)</h2>
+<p class="sub">Admin → Mic Inventory → Manage Mics → home studio. The right tool for a mic that has <i>permanently</i> moved. Not for a loan.</p>
+</body>
+</html>

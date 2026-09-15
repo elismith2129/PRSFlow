@@ -31,6 +31,8 @@ type StockItem = {
   id?: string; item: string; qty: string; notes: string; low: boolean
   section: StockSection; target: string; sort_order: number; category: string | null
   location: string
+  /** Full keyboard instead of the number pad — items counted as "3 Sm / 3 Large". */
+  free_qty: boolean
 }
 type CheckRow = { date: string; qty: string; low: boolean }
 
@@ -71,6 +73,10 @@ export default function StockPage() {
   const [groupMode, setGroupMode] = useState<GroupMode>('location')
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const [openItems, setOpenItems] = useState<Set<string>>(new Set())
+  // Search (ERS runner report, 2026-09-15) — the mics page's always-visible
+  // box, same placement. Matches name, target, category and location, and a
+  // non-empty query opens every group so a hit can't hide behind a header.
+  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   // Edits are batched locally until Save — a realtime reload mid-typing would
@@ -120,6 +126,7 @@ export default function StockPage() {
           target: r.target ?? '', sort_order: r.sort_order ?? 0,
           category: r.category ?? null,
           location: r.location ?? '',
+          free_qty: !!r.free_qty,
         }
       })
     } else {
@@ -188,7 +195,7 @@ export default function StockPage() {
     dirtyRef.current = true
     setItems(prev => {
       const maxSort = Math.max(0, ...prev.filter(x => x.section === section).map(x => x.sort_order))
-      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category, location }]
+      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category, location, free_qty: false }]
     })
   }
 
@@ -256,7 +263,11 @@ export default function StockPage() {
 
   const lowCount = items.filter(i => i.low).length
 
-  const indexed = items.map((it, idx) => ({ it, idx }))
+  const q = query.trim().toLowerCase()
+  const indexed = items
+    .map((it, idx) => ({ it, idx }))
+    .filter(r => !q || !r.it.id
+      || [r.it.item, r.it.target, r.it.category ?? '', r.it.location].some(v => v.toLowerCase().includes(q)))
   const stockRows = indexed.filter(r => r.it.section === 'stock')
   const officeRows = indexed.filter(r => r.it.section === 'office')
   const hasOffice = officeRows.length > 0
@@ -378,7 +389,9 @@ export default function StockPage() {
             // column on purpose — the sheet says "0.5", "IFAK", "✓" — and the
             // decimal pad keeps the ABC key one tap away, where a strict
             // numeric pad would make those impossible to type.
-            inputMode="decimal"
+            // free_qty (ERS, 2026-09-15): a few items are counted "3 Sm / 3
+            // Large" and the pad has no slash — those open the full keyboard.
+            inputMode={it.free_qty ? 'text' : 'decimal'}
             autoCapitalize="off"
             autoCorrect="off"
             style={{ ...input, width: 46, textAlign: 'center', flexShrink: 0, padding: '6px 4px' }}
@@ -442,10 +455,10 @@ export default function StockPage() {
       background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 110,
     }}>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 11,
         padding: '14px 16px 10px', position: 'sticky', top: 0, zIndex: 10,
         background: 'var(--c-bg)',
       }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
         <button
           onClick={() => {
             // In a list with a landing behind it: back = the landing.
@@ -471,6 +484,21 @@ export default function StockPage() {
             {activeView === 'office' && !isWednesday && <span style={{ fontWeight: 700 }}> · Wednesdays only</span>}
           </div>
         </div>
+      </div>
+        {activeView !== null && items.length > 0 && (
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search stock…"
+            autoCapitalize="off"
+            autoCorrect="off"
+            style={{
+              width: '100%', boxSizing: 'border-box', background: 'var(--c-wash)',
+              border: 'none', borderRadius: 10, padding: '9px 12px', marginTop: 10,
+              color: 'var(--c-fg)', font: 'inherit', fontSize: 12.5, outline: 'none',
+            }}
+          />
+        )}
       </div>
 
       {/* ── LANDING: two big buttons (Eli 2026-08-24) ──────────────────────── */}
@@ -559,10 +587,15 @@ export default function StockPage() {
           No stock list is set up for {meta.label} yet.<br />The office adds one — nothing for you to do here.
         </div>
       )}
+      {activeView !== null && items.length > 0 && q !== '' && rowsForView.length === 0 && (
+        <div style={{ padding: '22px 20px', fontSize: 12.5, opacity: 0.5, textAlign: 'center' }}>
+          Nothing matches “{query.trim()}”.
+        </div>
+      )}
       {activeView !== null && (
       <div style={{ padding: '4px 12px' }}>
         {groups.map(g => {
-          const open = flatOnly || openGroups.has(g.key)
+          const open = flatOnly || q !== '' || openGroups.has(g.key)
           const gLow = g.rows.filter(r => r.it.low).length
           return (
             <div key={g.key} style={{ marginBottom: 6, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 14, overflow: 'hidden' }}>

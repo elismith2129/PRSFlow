@@ -96,6 +96,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
   // Petty cash
   const [cashEntries, setCashEntries] = useState<any[]>([])
   const [openingBalance, setOpeningBalance] = useState<number | null>(null)
+  const [countedClose, setCountedClose] = useState<number | null>(null)
 
   // Stock
   const [stockItems, setStockItems] = useState<any[]>([])
@@ -136,6 +137,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
       ])
       setCashEntries(entries ?? [])
       setOpeningBalance(bal?.amount ?? null)
+      setCountedClose(bal?.counted_close ?? null)
     }
 
     if (category === 'stock_list') {
@@ -304,6 +306,8 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
     const totalIn  = cashEntries.filter(e => e.type === 'in').reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0)
     const totalOut = cashEntries.filter(e => e.type === 'out').reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0)
     const closing  = (openingBalance ?? 0) + totalIn - totalOut
+    // The closer's count vs the ledger (2026-09-15) — shown only when counted.
+    const diff = countedClose == null ? null : Math.round((Number(countedClose) - closing) * 100) / 100
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -314,6 +318,12 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
             ['Cash In', `+$${totalIn.toFixed(2)}`, 'var(--c-fg)'],
             ['Cash Out', `-$${totalOut.toFixed(2)}`, 'var(--c-fg)'],
             ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--c-fg)'],
+            ...(countedClose != null ? [
+              ['Counted at Close', `$${Number(countedClose).toFixed(2)}`, 'var(--c-fg)'],
+              [diff === 0 ? 'Box matches' : diff! > 0 ? 'Over' : 'Short',
+               diff === 0 ? '✓' : `$${Math.abs(diff!).toFixed(2)}`,
+               diff === 0 ? 'var(--c-st-booked)' : 'var(--c-st-warm)'],
+            ] : []),
           ] as [string, string, string][]).map(([l, v, c], i, arr) => (
             <div key={l} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
