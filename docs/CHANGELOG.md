@@ -56,6 +56,15 @@ the closer's petty-cash duty is pending/missing without a closing count even whe
 opener submitted. The opener's side is unchanged. "Counted — no change" still exists for
 the opener's nothing-happened night.
 
+**Stock — runners no longer add items.** Eli: "maybe we shouldn't have runners add." The
+list is the office's document; a runner adding on the spot produced a second "Crystal
+Geyser" at ARS with counts split across two rows for weeks. "+ Add item" is gone; in its
+place, "Missing an item? Tell the office ›" files a suggestion into `app_feedback` (the
+same dev bin the runner-home "Report something" card writes to) with the studio and list
+named. The office edits the list in SQL — an admin stock-list editor is the obvious next
+step if that keeps happening. `addItem()` and the custom-row save path remain for rows
+already added that way.
+
 **Petty cash.** "Counted at close" beside the computed closing balance, with "Matches
 the ledger" / "Short by $X" under it. Saved on the day's `petty_cash_balances` row
 (`counted_close`, migration `20260915110000`); the daily-ops modal shows computed vs

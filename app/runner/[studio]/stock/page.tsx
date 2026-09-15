@@ -18,6 +18,8 @@ import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { opsToday } from '@/lib/time'
 import { SectionNotes } from '@/components/runner/SectionNotes'
 import { useRouter, useParams } from 'next/navigation'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { dbResult } from '@/lib/db'
 
 const STUDIO_META: Record<string, { label: string; short: string }> = {
   paramount: { label: 'Paramount', short: 'PRS' },
@@ -82,6 +84,27 @@ export default function StockPage() {
   // box, same placement. Matches name, target, category and location, and a
   // non-empty query opens every group so a hit can't hide behind a header.
   const [query, setQuery] = useState('')
+  const { profile } = useUserProfile()
+  const [missOpen, setMissOpen] = useState(false)
+  const [missText, setMissText] = useState('')
+  const [missBusy, setMissBusy] = useState(false)
+  const [missSent, setMissSent] = useState(false)
+  async function sendMissing() {
+    const text = missText.trim()
+    if (!text || missBusy) return
+    setMissBusy(true)
+    const { error } = await supabase.from('app_feedback').insert({
+      source: 'runner',
+      studio,
+      type: 'suggestion',
+      note: `Stock list (${meta.short} ${activeView === 'office' ? 'Office' : 'Stock'}) — missing item: ${text}`,
+      author_name: profile?.display_name || profile?.initials || 'Runner',
+    })
+    setMissBusy(false)
+    if (!dbResult('Sending the missing item', error)) return
+    setMissText(''); setMissOpen(false); setMissSent(true)
+    setTimeout(() => setMissSent(false), 4000)
+  }
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   // Edits are batched locally until Save — a realtime reload mid-typing would
@@ -649,24 +672,51 @@ export default function StockPage() {
               {open && (
                 <div style={{ padding: flatOnly ? '8px 6px' : '0 6px 8px' }}>
                   {g.rows.map(renderRow)}
-                  <button
-                    onClick={() => (byLocation
-                      ? addItem(activeView, null, g.key === UNASSIGNED_KEY ? '' : g.title)
-                      : addItem(activeView, g.key === FLAT_KEY || g.key === OFFICE_KEY ? null : g.title))}
-                    style={{
-                      marginTop: 6, width: '100%', minHeight: 38,
-                      background: 'var(--c-wash)', border: 'none', borderRadius: 10,
-                      color: 'var(--c-fg)', opacity: 0.6, fontSize: 12, fontWeight: 700,
-                      cursor: 'pointer', font: 'inherit',
-                    }}
-                  >
-                    + Add item
-                  </button>
                 </div>
               )}
             </div>
           )
         })}
+        {/* MISSING AN ITEM? (Eli, 2026-09-15: "maybe we shouldn't have runners
+            add"). The list is the office's document — a runner adding on the
+            spot made a second "Crystal Geyser" nobody noticed for weeks. This
+            files a suggestion into app_feedback (the dev bin the runner-home
+            "Report something" card writes to) with the studio + list named,
+            and the office edits the list. addItem() stays for the rows already
+            added that way. */}
+        <div style={{ marginTop: 10, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 14, padding: '10px 12px' }}>
+          {!missOpen ? (
+            <button
+              onClick={() => setMissOpen(true)}
+              style={{ background: 'none', border: 'none', font: 'inherit', cursor: 'pointer', color: 'var(--c-fg)', opacity: 0.6, fontSize: 12, fontWeight: 700, padding: 2, width: '100%', textAlign: 'left' }}
+            >
+              Missing an item? Tell the office ›
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={{ fontSize: 11, opacity: 0.6 }}>What's on the shelf that isn't on this list? (goes to the dev bin, the office edits the list)</div>
+              <input
+                value={missText}
+                onChange={e => setMissText(e.target.value)}
+                placeholder="e.g. Charmin Ultra Soft, 1 box"
+                autoFocus
+                style={{ ...input, width: '100%', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={sendMissing}
+                  disabled={missBusy || !missText.trim()}
+                  className="c-control c-raised-chip"
+                  style={{ flex: 1, minHeight: 36, borderRadius: 10, border: 'none', font: 'inherit', fontSize: 12, fontWeight: 800, background: 'var(--c-wash2)', color: 'var(--c-fg)', opacity: missBusy || !missText.trim() ? 0.5 : 1, cursor: 'pointer' }}
+                >
+                  {missBusy ? 'Sending…' : 'Send'}
+                </button>
+                <button onClick={() => { setMissOpen(false); setMissText('') }} style={{ background: 'none', border: 'none', font: 'inherit', fontSize: 11, color: 'var(--c-fg)', opacity: 0.5, cursor: 'pointer', padding: '0 10px' }}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {missSent && <div style={{ marginTop: 6, fontSize: 10.5, color: 'var(--c-st-booked)', fontWeight: 700 }}>Sent — thank you. The office will add it.</div>}
+        </div>
       </div>
       )}
 
