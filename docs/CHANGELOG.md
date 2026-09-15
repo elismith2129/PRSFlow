@@ -19,6 +19,50 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.30.0 — Runner app, ERS report batch 1: stock search, closing count, mics that moved — Sep 15, 2026
+
+The ERS runners sent a list. Most of it was the ERS stock list itself (edited in SQL,
+no code — teas, gloves, mop heads, dryer sheets, detergent, D batteries in; Earl Grey,
+Silk, Poms, 2450s out; ice reads "2 bags per room"). The rest:
+
+**Stock page.** An always-visible search box under the title (the mics page's pattern)
+matching name, target, category and location; a non-empty query opens every group.
+`stock_items.free_qty` (migration `20260915100000`) flips one item's Qty input to the
+full keyboard — for counts written "3 Sm / 3 Large". Everything else keeps the Aug 31
+number pad. Flag an item in SQL; there's no UI for it yet.
+
+**Petty cash.** "Counted at close" beside the computed closing balance, with "Matches
+the ledger" / "Short by $X" under it. Saved on the day's `petty_cash_balances` row
+(`counted_close`, migration `20260915110000`); the daily-ops modal shows computed vs
+counted and the difference. A mismatch is information, not a block. **The count does not
+roll into tomorrow's opening** — the page is a running ledger (every entry, all time,
+against one typed float), so pre-filling would double-count. Watch-out for whoever
+touches this next: `DailyOpsModal.renderPettyCash` computes closing from *today's*
+entries against *today's* balance row; the runner page sums *all* entries against the
+*latest* balance row. They agree only when the float is re-typed each day. Pre-existing;
+not changed tonight.
+
+**Mic inventory — a mic that moved is not a mic that's missing** (mock
+`docs/design-refs/mic-transfer-options.html`, option A; Eli: "sure do A"). No schema
+change: `mic_checkins.studio` already says who saw it. Runner page: a home mic whose
+latest prior checkin came from another studio renders AWAY — dashed cool cell, "AT ERS",
+"at ERS · 9/14" — leaves the tab's expected count ("61/84"), and can't be in the missing
+alert (away means found). Tapping it HERE ends the loan. The home tab also gets an
+"Also here · from PRS" strip: other studios' mics this studio saw last (or tapped
+tonight), counted with its own. Admin Mic Inventory shows the same "At ERS" chip in the
+status column, and an away mic isn't flagged missing there. Rejected: an explicit
+"transferred" status (same sentence, more ceremony, and it fails the night nobody marks
+it); changing `home_studio` for a loan (that's a permanent move — Manage Mics already
+does it). Rule for the one-sheet: **a mic from another studio — tap it HERE on THAT
+studio's tab the night it arrives.**
+
+**Checklists.** "Complete office run (Wednesdays)" → "(Thursdays — from Wednesday
+night's office count)" in all four studios. The count is Wednesday; the run was always
+Thursday; the line said otherwise.
+
+Also tonight, no code: two self-registered auth users deleted, public sign-up disabled,
+a stray anon SELECT policy on `flags` dropped (PROJECT_LOG, "a prober").
+
 ## v1.29.0 — MEMOS: write it once, everyone reads it, you can see who did — Sep 14, 2026 (late)
 
 Eli: "a company memo — type into it and send to admin, runners or both. They each get

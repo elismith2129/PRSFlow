@@ -64,7 +64,10 @@ type CheckinState = {
 }
 
 // Latest PRIOR checkin (any studio, before today) — the display-only reference.
-type Prior = { status: 'here' | 'room' | 'missing'; room: string | null; date: string; missingSince?: string }
+// `studio` is WHO saw it — a PRS mic last tapped HERE by the ERS closer is
+// at ERS, not missing (ERS report, 2026-09-15; docs/design-refs/
+// mic-transfer-options.html, option A).
+type Prior = { status: 'here' | 'room' | 'missing'; room: string | null; date: string; studio: string; missingSince?: string }
 
 // "2026-08-24" → "8/24"
 const fmtD = (iso: string) => `${parseInt(iso.slice(5, 7))}/${parseInt(iso.slice(8, 10))}`
@@ -124,7 +127,7 @@ export default function MicsPage() {
       // Last-night reference: latest prior checkin per mic, ANY studio. A
       // 4-day window keeps this well under PostgREST's 1,000-row cap
       // (~270 checkin rows land per night across all studios).
-      supabase.from('mic_checkins').select('mic_id, date, status, room')
+      supabase.from('mic_checkins').select('mic_id, date, status, room, studio')
         .lt('date', today).gte('date', dAgo(4))
         .order('date', { ascending: false }).limit(1000),
       // Missing streaks reach further back — missing rows are few.
@@ -147,7 +150,7 @@ export default function MicsPage() {
     const pr: Record<string, Prior> = {}
     for (const c of recent ?? []) {
       if (pr[c.mic_id]) continue
-      pr[c.mic_id] = { status: c.status, room: c.room ?? null, date: c.date }
+      pr[c.mic_id] = { status: c.status, room: c.room ?? null, date: c.date, studio: c.studio }
     }
     for (const [id, p] of Object.entries(pr)) {
       if (p.status !== 'missing') continue
@@ -322,13 +325,33 @@ export default function MicsPage() {
     { key: 'floating', label: 'Floating', kind: 'mic' },
     { key: 'odds', label: 'Odds', kind: 'qty' },
   ]
+  // AWAY (option A): one of THIS studio's mics whose latest checkin was made
+  // by another studio and found it — it is there, not missing here. Tapping
+  // it HERE tonight ends the loan; until then it leaves the expected count.
+  const isAway = (m: Mic): boolean => {
+    if (m.home_studio !== studio) return false
+    if ((checkins[m.id]?.status ?? 'not_checked') !== 'not_checked') return false
+    const p = prior[m.id]
+    return !!p && p.studio !== studio && p.status !== 'missing'
+  }
+  // LOANERS: other studios' mics that THIS studio saw last (or tapped tonight)
+  // — surfaced on the home tab so the closer counts them with their own.
+  const loaners: Mic[] = mics.filter(m => {
+    if (m.category !== 'mic' || m.home_studio === studio || !STUDIO_KEYS.includes(m.home_studio)) return false
+    if ((checkins[m.id]?.status ?? 'not_checked') !== 'not_checked') return true
+    const p = prior[m.id]
+    return !!p && p.studio === studio && p.status !== 'missing'
+  })
   const listFor = (key: string): Mic[] =>
     key === 'floating' ? mics.filter(m => m.category === 'floating_gear')
     : key === 'odds'   ? mics.filter(m => m.category === 'odds_ends')
     : mics.filter(m => m.home_studio === key && m.category === 'mic')
+  // What the tab EXPECTS tonight: the home tab minus away mics, plus loaners.
+  const expectedFor = (key: string): Mic[] =>
+    key === studio ? [...listFor(key).filter(m => !isAway(m)), ...loaners] : listFor(key)
   const doneCount = (key: string) => key === 'odds'
     ? listFor(key).filter(m => (quantities[m.id] ?? 0) > 0).length
-    : listFor(key).filter(m => (checkins[m.id]?.status ?? 'not_checked') !== 'not_checked').length
+    : expectedFor(key).filter(m => (checkins[m.id]?.status ?? 'not_checked') !== 'not_checked').length
 
   const activeDef = tabDefs.find(t => t.key === tab) ?? tabDefs[0]
   const q = query.trim().toLowerCase()
@@ -337,10 +360,12 @@ export default function MicsPage() {
   // Missing-streak alert: every mic whose latest prior checkin is missing.
   const missingMics = mics.filter(m => prior[m.id]?.status === 'missing')
 
-  const refLine = (m: Mic): { text: string; bad: boolean } | null => {
+  const refLine = (m: Mic): { text: string; bad: boolean; away?: boolean } | null => {
     const p = prior[m.id]
     if (!p) return null
     if (p.status === 'missing') return { text: `missing since ${fmtD(p.missingSince ?? p.date)}`, bad: true }
+    if (p.studio !== studio && m.home_studio === studio) return { text: `at ${STUDIO_SHORT[p.studio] ?? p.studio} · ${fmtD(p.date)}`, bad: false, away: true }
+    if (m.home_studio !== studio && p.studio === studio) return { text: `${STUDIO_SHORT[m.home_studio] ?? m.home_studio} mic · here ${fmtD(p.date)}`, bad: false }
     if (p.status === 'room') return { text: `last: ${(p.room ?? '').replace('Studio ', 'Rm ')} · ${fmtD(p.date)}`, bad: false }
     return { text: `last: HERE · ${fmtD(p.date)}`, bad: false }
   }
@@ -350,6 +375,80 @@ export default function MicsPage() {
     : st === 'room'    ? { background: 'var(--c-st-cold)', color: 'var(--c-chip-ink)' }
     : st === 'missing' ? { background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' }
     : { background: 'var(--c-wash)', color: 'var(--c-fg)' }
+
+  const renderCell = (m: Mic) => {
+    const st = checkins[m.id]?.status ?? 'not_checked'
+    const room = checkins[m.id]?.room ?? ''
+    const ref = refLine(m)
+    return (
+      // A div, not a <button>: has_qty cells carry an <input>, and
+      // interactive content inside a button is invalid HTML.
+      <div
+        key={m.id}
+        role="button"
+        onClick={e => onCellTap(m, e)}
+        style={{
+          position: 'relative', font: 'inherit', textAlign: 'left',
+          cursor: 'pointer', borderRadius: 9, padding: '7px 9px 6px', minHeight: 46,
+          WebkitTapHighlightColor: 'transparent', userSelect: 'none',
+          ...cellColors(st),
+          // Away (option A): a cool dashed cell — it's at another studio.
+          ...(st === 'not_checked' && ref?.away ? {
+            background: 'color-mix(in srgb, var(--c-st-cold) 22%, var(--c-wash))',
+            outline: '1.5px dashed color-mix(in srgb, var(--c-st-cold) 60%, transparent)', outlineOffset: -1.5,
+          } : {}),
+        }}
+      >
+        <span style={{ display: 'block', fontSize: 11, fontWeight: 600, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: st !== 'not_checked' || ref?.away ? 34 : 0 }}>
+          {m.name}
+        </span>
+        {st !== 'not_checked' && (
+          <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em' }}>
+            {st === 'here' ? 'HERE' : st === 'room' ? room.replace('Studio ', 'RM ').toUpperCase() : 'MISS'}
+          </span>
+        )}
+        {st === 'not_checked' && ref?.away && (
+          <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em', color: 'var(--c-st-cold)' }}>
+            AT {STUDIO_SHORT[prior[m.id]?.studio] ?? '…'}
+          </span>
+        )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+          <span style={{
+            flex: 1, minWidth: 0, fontSize: 8.5,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            opacity: st !== 'not_checked' ? 0.55 : (ref?.bad || ref?.away) ? 1 : 0.4,
+            color: st === 'not_checked' && ref?.bad ? 'var(--c-st-hot)' : st === 'not_checked' && ref?.away ? 'var(--c-st-cold)' : undefined,
+            fontWeight: st === 'not_checked' && (ref?.bad || ref?.away) ? 700 : 400,
+          }}>
+            {ref?.text ?? ' '}
+          </span>
+          {m.has_qty && (
+            // Counted item (Genelecs): qty box in the cell; the cell
+            // around it still taps for HERE/ROOM/MISS.
+            <input
+              value={(quantities[m.id] ?? 0) === 0 ? '' : String(quantities[m.id])}
+              onChange={e => setQty(m.id, e.target.value)}
+              onClick={e => e.stopPropagation()}
+              placeholder="qty"
+              inputMode="numeric"
+              className="c-mono"
+              style={{
+                width: 38, minHeight: 24, textAlign: 'center', flexShrink: 0,
+                background: 'rgba(0,0,0,0.14)', border: 'none', borderRadius: 7,
+                color: 'inherit', font: 'inherit', fontSize: 11, fontWeight: 700, outline: 'none',
+              }}
+            />
+          )}
+        </span>
+      </div>
+    )
+  }
+
+  const awayMics = listFor(studio).filter(isAway)
+  const awayCount = awayMics.length
+  const awayWhere = [...new Set(awayMics.map(m => STUDIO_SHORT[prior[m.id]?.studio] ?? prior[m.id]?.studio))].join(' / ')
+  const loanerList = loaners.filter(m => !q || m.name.toLowerCase().includes(q))
+  const loanerFrom = [...new Set(loaners.map(m => STUDIO_SHORT[m.home_studio] ?? m.home_studio))].join(' / ')
 
   const popMic = pop ? mics.find(m => m.id === pop.micId) : null
 
@@ -401,7 +500,7 @@ export default function MicsPage() {
               >
                 {t.label}
                 <span className="c-mono" style={{ fontWeight: 400, opacity: 0.6, marginLeft: 5, fontSize: 9.5 }}>
-                  {doneCount(t.key)}/{listFor(t.key).length}
+                  {doneCount(t.key)}/{expectedFor(t.key).length}
                 </span>
               </button>
             )
@@ -463,64 +562,27 @@ export default function MicsPage() {
           })
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 5 }}>
-            {activeList.map(m => {
-              const st = checkins[m.id]?.status ?? 'not_checked'
-              const room = checkins[m.id]?.room ?? ''
-              const ref = refLine(m)
-              return (
-                // A div, not a <button>: has_qty cells carry an <input>, and
-                // interactive content inside a button is invalid HTML.
-                <div
-                  key={m.id}
-                  role="button"
-                  onClick={e => onCellTap(m, e)}
-                  style={{
-                    position: 'relative', font: 'inherit', textAlign: 'left',
-                    cursor: 'pointer', borderRadius: 9, padding: '7px 9px 6px', minHeight: 46,
-                    WebkitTapHighlightColor: 'transparent', userSelect: 'none',
-                    ...cellColors(st),
-                  }}
-                >
-                  <span style={{ display: 'block', fontSize: 11, fontWeight: 600, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: st !== 'not_checked' ? 34 : 0 }}>
-                    {m.name}
-                  </span>
-                  {st !== 'not_checked' && (
-                    <span style={{ position: 'absolute', top: 6, right: 8, fontSize: 8, fontWeight: 800, letterSpacing: '0.05em' }}>
-                      {st === 'here' ? 'HERE' : st === 'room' ? room.replace('Studio ', 'RM ').toUpperCase() : 'MISS'}
-                    </span>
-                  )}
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    <span style={{
-                      flex: 1, minWidth: 0, fontSize: 8.5,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      opacity: st !== 'not_checked' ? 0.55 : ref?.bad ? 1 : 0.4,
-                      color: st === 'not_checked' && ref?.bad ? 'var(--c-st-hot)' : undefined,
-                      fontWeight: st === 'not_checked' && ref?.bad ? 700 : 400,
-                    }}>
-                      {ref?.text ?? ' '}
-                    </span>
-                    {m.has_qty && (
-                      // Counted item (Genelecs): qty box in the cell; the cell
-                      // around it still taps for HERE/ROOM/MISS.
-                      <input
-                        value={(quantities[m.id] ?? 0) === 0 ? '' : String(quantities[m.id])}
-                        onChange={e => setQty(m.id, e.target.value)}
-                        onClick={e => e.stopPropagation()}
-                        placeholder="qty"
-                        inputMode="numeric"
-                        className="c-mono"
-                        style={{
-                          width: 38, minHeight: 24, textAlign: 'center', flexShrink: 0,
-                          background: 'rgba(0,0,0,0.14)', border: 'none', borderRadius: 7,
-                          color: 'inherit', font: 'inherit', fontSize: 11, fontWeight: 700, outline: 'none',
-                        }}
-                      />
-                    )}
-                  </span>
-                </div>
-              )
-            })}
+            {activeList.map(renderCell)}
           </div>
+        )}
+        {/* Away mics (option A): out of tonight's count, named so nobody
+            hunts for them. Tap one HERE the night it comes back. */}
+        {activeDef.key === studio && awayCount > 0 && (
+          <div style={{ marginTop: 8, fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-st-cold)' }}>
+            {awayCount} at {awayWhere} · not counted here
+          </div>
+        )}
+        {/* Loaners: other studios' mics this studio saw last — counted with
+            our own so a skipped one shows in the tab count. */}
+        {activeDef.key === studio && loanerList.length > 0 && (
+          <>
+            <div style={{ margin: '12px 0 5px', fontSize: 8.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
+              Also here · from <span style={{ color: 'var(--c-st-cold)' }}>{loanerFrom}</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 5 }}>
+              {loanerList.map(renderCell)}
+            </div>
+          </>
         )}
         {activeList.length === 0 && (
           <div style={{ padding: '18px 4px', fontSize: 12.5, opacity: 0.5 }}>

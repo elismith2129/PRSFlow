@@ -44,6 +44,8 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   missing: { label: 'Missing', color: 'var(--hot)' },
 }
 const NONE_COLOR = 'var(--text3)'
+const AWAY_COLOR = 'var(--cold, #7fb2e5)'
+const STUDIO_SHORT: Record<string, string> = { paramount: 'PRS', ameraycan: 'ARS', encore: 'ERS', track: 'TRK' }
 const ADMIN_TEAL = 'var(--booked)'
 
 // Missing first, then Room, then Here, then no-data.
@@ -576,7 +578,13 @@ export function MicInventorySection() {
                 {/* Rows */}
                 {sorted.map((mic, idx) => {
                   const c = resolveStatus(group, mic)
-                  const status = c?.status
+                  // AWAY (runner mics page, option A, 2026-09-15): another
+                  // studio saw this mic more recently than its home did and
+                  // found it. It's there, not missing here.
+                  const any = latestAnyByMic[mic.id]
+                  const away = group.isStudio && any && any.studio !== group.key && any.status !== 'missing' && (!c || any.date >= c.date)
+                    ? any : null
+                  const status = away ? undefined : c?.status
                   const statusMeta = status ? STATUS_META[status] : null
                   const qty = resolveQty(group, mic)
                   const sub = c ? submitterBy[`${c.studio}|${c.date}`] : undefined
@@ -609,6 +617,10 @@ export function MicInventorySection() {
                               <option value="room">Room</option>
                               <option value="missing">Missing</option>
                             </select>
+                          ) : away ? (
+                            <span title={`Last seen at ${studioLabel(away.studio)} on ${away.date}`} style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, color: AWAY_COLOR, background: 'color-mix(in srgb, ' + AWAY_COLOR + ' 10%, transparent)', border: `1px dashed color-mix(in srgb, ${AWAY_COLOR} 40%, transparent)`, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                              At {STUDIO_SHORT[away.studio] ?? away.studio}
+                            </span>
                           ) : statusMeta ? (
                             <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 700, color: statusMeta.color, background: statusMeta.color + '18', border: `1px solid ${statusMeta.color}33`, borderRadius: 3, padding: '2px 7px', textTransform: 'uppercase' }}>
                               {statusMeta.label}
