@@ -27,6 +27,28 @@ function fmtWhen(iso: string | null | undefined): string {
   return d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+/**
+ * A designed page gets the APP's theme, not the OS's (2026-09-14 — the
+ * one-sheet memo rendered white inside a dark app). Inside a srcdoc frame
+ * `prefers-color-scheme` follows the operating system, and the app's own
+ * theme lives on <html data-theme> which the frame cannot see. So the frame
+ * is handed the same stamp: an existing <html> tag gets data-theme set on
+ * it; a fragment (the artifact format — starts at <title>) is wrapped in a
+ * stamped document. Pages that define :root[data-theme="dark"] tokens (all
+ * of ours do) follow along; a page with no dark tokens still renders.
+ */
+function themedSrcDoc(html: string): string {
+  const theme = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
+  const bg = theme === 'dark' ? '#1b1a17' : '#f5f3ee'
+  if (/<html[\s>]/i.test(html)) {
+    return html.replace(/<html([^>]*)>/i, (m, attrs) => {
+      const stripped = String(attrs).replace(/\sdata-theme="[^"]*"/i, '')
+      return `<html${stripped} data-theme="${theme}">`
+    })
+  }
+  return `<!doctype html><html data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>html{background:${bg};color-scheme:${theme}}</style></head><body>${html}</body></html>`
+}
+
 function PageFrame({ html }: { html: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [h, setH] = useState(480)
@@ -51,7 +73,7 @@ function PageFrame({ html }: { html: string }) {
       ref={ref}
       title="Memo"
       sandbox="allow-same-origin"
-      srcDoc={html}
+      srcDoc={themedSrcDoc(html)}
       style={{ width: '100%', height: h, border: 'none', borderRadius: 12, background: 'var(--c-bg)', display: 'block' }}
     />
   )

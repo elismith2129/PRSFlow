@@ -140,6 +140,23 @@ function ContactRow({ contact, onSave, onDelete }: {
   const [localArtists, setLocalArtists] = useState<string[]>(contact.artists || [])
   const [newArtistInput, setNewArtistInput] = useState('')
   useEffect(() => { setDraft({ ...contact }); setLocalArtists(contact.artists || []) }, [contact])
+  // ARTISTS SAVE THE MOMENT THEY CHANGE (2026-09-14, BMG / Lainey Wilson).
+  // They used to wait for the row's own Save button — which sits inside the
+  // expanded card, under the profile's big Save, and is easy to miss; and
+  // any refetch in between (the contacts channel, the shared clients
+  // channel) reset the chips to what the database had, silently losing the
+  // artist just added. Tags already save on tap; artists now do the same.
+  // Name/email/phone still go through Save — they are typed, not tapped.
+  const commitArtists = (next: string[]) => {
+    setLocalArtists(next)
+    onSave(contact.id, { artists: next })
+  }
+  const addArtist = () => {
+    const n = newArtistInput.trim()
+    if (!n || localArtists.some(a => a.toLowerCase() === n.toLowerCase())) { setNewArtistInput(''); return }
+    commitArtists([...localArtists, n])
+    setNewArtistInput('')
+  }
 
   return (
     <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
@@ -202,7 +219,7 @@ function ContactRow({ contact, onSave, onDelete }: {
             {localArtists.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
                 {localArtists.map((a, i) => (
-                  <ArtistChip key={i} name={a} onRemove={() => setLocalArtists(prev => prev.filter((_, j) => j !== i))} />
+                  <ArtistChip key={i} name={a} onRemove={() => commitArtists(localArtists.filter((_, j) => j !== i))} />
                 ))}
               </div>
             )}
@@ -210,10 +227,10 @@ function ContactRow({ contact, onSave, onDelete }: {
               <input
                 type="text" placeholder="Artist name" value={newArtistInput}
                 onChange={e => setNewArtistInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } } }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addArtist() } }}
                 style={{ flex: 1, background: 'var(--c-wash)', borderRadius: 4, padding: '4px 8px', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, outline: 'none' }}
               />
-              <button onClick={() => { const n = newArtistInput.trim(); if (n) { setLocalArtists(p => [...p, n]); setNewArtistInput('') } }} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>+ Add</button>
+              <button type="button" onClick={addArtist} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>+ Add</button>
             </div>
           </div>
 
@@ -227,7 +244,9 @@ function ContactRow({ contact, onSave, onDelete }: {
             ) : (
               <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
             )}
-            <button onClick={() => { onSave(contact.id, { ...draft, artists: localArtists }); setExpanded(false) }} style={primaryBtn}>Save</button>
+            {/* An artist typed but never "+ Add"ed still counts when Save is
+                pressed — the text in the box is the intent. */}
+            <button type="button" onClick={() => { const n = newArtistInput.trim(); const arts = n && !localArtists.some(a => a.toLowerCase() === n.toLowerCase()) ? [...localArtists, n] : localArtists; onSave(contact.id, { ...draft, artists: arts }); setNewArtistInput(''); setExpanded(false) }} style={primaryBtn}>Save</button>
           </div>
         </div>
       )}
