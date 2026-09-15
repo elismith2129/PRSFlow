@@ -581,6 +581,32 @@ Then the wall displays: at 5:30 PM Pacific the "today" square said the 15th. The
 route renders on Vercel, in UTC — the foot clock had been told the timezone, the date math
 had not. Every other calendar surface is client-rendered and was fine.
 
+#### Late: a prober, and what it found (Sep 15, ~06:40 UTC)
+
+Supabase warned about bounced email. The only mail the app sends is the password reset,
+so the bounces had to be confirmation mail to addresses nobody here typed. Two
+`auth.users` rows, created 90 seconds apart through the public sign-up endpoint
+(`researcher.bounty.qx7@gmail.com`, `matt.alter@proton.me`), never confirmed, never signed
+in, no `user_profiles` row. The same person then hit the website inquiry form four times
+("Realtime Calibration", "Calib2 Probe", "realtime RLS calibration test — authorized
+engagement"). Nothing was authorized.
+
+What they could reach, checked with `pg_policies` for the anon role:
+`leads` is INSERT-only for anon — the form drops a row in and can't read anything back.
+`flags` had a stray **"flags: anon read"** SELECT policy from the dashboard days that the
+August policy cleanup missed: anyone with the website's public key could read every runner
+flag (studio, note, photo URL). No client or money table was reachable.
+
+Done in the dashboard, no code: both auth users deleted; **Allow new users to sign up**
+turned off (Authentication → Sign In / Providers) — staff are created by us, resets still
+work; `drop policy "flags: anon read" on public.flags;` (the five `{authenticated}` flag
+policies are untouched — server readers use the service-role key). The four fake leads
+were removed from Needs Action.
+
+**Standing rule:** anon may hold exactly one policy in this project — `leads_ins_anon`.
+The check is `select tablename, policyname, cmd from pg_policies where 'anon' =
+any(roles::text[])`; run it after any dashboard policy work.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
