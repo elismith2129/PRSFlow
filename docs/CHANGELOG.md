@@ -31,6 +31,13 @@ matching name, target, category and location; a non-empty query opens every grou
 full keyboard — for counts written "3 Sm / 3 Large". Everything else keeps the Aug 31
 number pad. Flag an item in SQL; there's no UI for it yet.
 
+**Low carries over — and now says so.** Runner: "it shows an item as low from the day
+prior… not sure if this will be confusing." The carry-over stays (Low is a state of the
+shelf, not an observation — a blank slate would zero the office's low count every night
+and hide what nobody bought). An inherited Low is now a dashed outline pill reading
+"LOW · since 9/12" instead of a filled LOW; one tap confirms it (filled, tonight's call),
+a second clears it. `lowSince` walks the held check history for the run's first night.
+
 **Petty cash.** "Counted at close" beside the computed closing balance, with "Matches
 the ledger" / "Short by $X" under it. Saved on the day's `petty_cash_balances` row
 (`counted_close`, migration `20260915110000`); the daily-ops modal shows computed vs

@@ -33,6 +33,11 @@ type StockItem = {
   location: string
   /** Full keyboard instead of the number pad — items counted as "3 Sm / 3 Large". */
   free_qty: boolean
+  /** Low carried over from a prior night, not set tonight (ERS, 2026-09-15:
+      "not sure if this will be confusing"). Shown as "LOW · since 9/12";
+      one tap confirms it (plain LOW), a second clears it. */
+  lowInherited: boolean
+  lowSince: string | null
 }
 type CheckRow = { date: string; qty: string; low: boolean }
 
@@ -122,6 +127,14 @@ export default function StockPage() {
           qty: t ? (t.qty ?? '') : '',
           notes: t ? (t.notes ?? '') : '',
           low: t ? !!t.low : (r.low ?? false),
+          lowInherited: !t && !!r.low,
+          // Earliest night of the current low run, from the checks we hold.
+          lowSince: (() => {
+            if (t || !r.low) return null
+            let since: string | null = null
+            for (const c of past[r.id] ?? []) { if (!c.low) break; since = c.date }
+            return since
+          })(),
           section: (r.section === 'office' ? 'office' : 'stock') as StockSection,
           target: r.target ?? '', sort_order: r.sort_order ?? 0,
           category: r.category ?? null,
@@ -142,7 +155,7 @@ export default function StockPage() {
     if (draft?.length) {
       next = next.map(it => {
         const d = draft.find(x => x.id && x.id === it.id)
-        return d ? { ...it, qty: d.qty, notes: d.notes, low: d.low } : it
+        return d ? { ...it, qty: d.qty, notes: d.notes, low: d.low, lowInherited: d.lowInherited ?? it.lowInherited } : it
       })
       for (const d of draft.filter(x => !x.id && x.item.trim() !== '')) next.push(d)
       dirtyRef.current = true
@@ -188,14 +201,16 @@ export default function StockPage() {
 
   function edit(idx: number, patch: Partial<StockItem>) {
     dirtyRef.current = true
-    setItems(prev => prev.map((x, j) => j === idx ? { ...x, ...patch } : x))
+    // Touching Low tonight makes it tonight's call, not last night's.
+    const p = 'low' in patch ? { ...patch, lowInherited: false } : patch
+    setItems(prev => prev.map((x, j) => j === idx ? { ...x, ...p } : x))
   }
 
   function addItem(section: StockSection, category: string | null, location = '') {
     dirtyRef.current = true
     setItems(prev => {
       const maxSort = Math.max(0, ...prev.filter(x => x.section === section).map(x => x.sort_order))
-      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category, location, free_qty: false }]
+      return [...prev, { item: '', qty: '', notes: '', low: false, section, target: '', sort_order: maxSort + 1, category, location, free_qty: false, lowInherited: false, lowSince: null }]
     })
   }
 
@@ -397,17 +412,23 @@ export default function StockPage() {
             style={{ ...input, width: 46, textAlign: 'center', flexShrink: 0, padding: '6px 4px' }}
           />
           <button
-            onClick={() => edit(idx, { low: !it.low })}
+            // Inherited LOW: first tap confirms it (still low, now tonight's),
+            // second tap clears it. A fresh pill toggles as before.
+            onClick={() => (it.low && it.lowInherited ? edit(idx, { low: true }) : edit(idx, { low: !it.low }))}
+            title={it.low && it.lowInherited ? 'Low from a previous night — tap to confirm, tap again if it\'s been restocked' : undefined}
             style={{
-              border: 'none', font: 'inherit', cursor: 'pointer', flexShrink: 0,
-              minWidth: 42, minHeight: 28, borderRadius: 99,
-              fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
-              background: it.low ? 'var(--c-st-warm)' : 'var(--c-wash2)',
-              color: it.low ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+              border: it.low && it.lowInherited ? '1.5px dashed var(--c-st-warm)' : 'none',
+              font: 'inherit', cursor: 'pointer', flexShrink: 0,
+              minWidth: 42, minHeight: 28, borderRadius: 99, padding: '0 8px',
+              fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1.1,
+              background: it.low ? (it.lowInherited ? 'transparent' : 'var(--c-st-warm)') : 'var(--c-wash2)',
+              color: it.low ? (it.lowInherited ? 'var(--c-st-warm)' : 'var(--c-chip-ink)') : 'var(--c-fg)',
               opacity: it.low ? 1 : 0.6,
             }}
           >
-            {it.low ? 'LOW' : 'OK'}
+            {it.low
+              ? (it.lowInherited ? <>LOW<span style={{ display: 'block', fontSize: 7, fontWeight: 600, letterSpacing: 0, opacity: 0.85 }}>since {it.lowSince ? shortRefDate(it.lowSince) : 'earlier'}</span></> : 'LOW')
+              : 'OK'}
           </button>
           {!it.id && (
             <button
