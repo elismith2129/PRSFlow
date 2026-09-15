@@ -381,7 +381,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
     )
   }
 
-  const now = new Date()
+  // TODAY IS LOS ANGELES' TODAY (2026-09-14). This route runs on Vercel, where
+  // `new Date()` is UTC — so from 5 PM Pacific the wall displays flipped to
+  // tomorrow while every phone in the building still said today. The clock
+  // stamp at the foot already used timeZone; the DATE math did not. `now` is
+  // rebuilt from LA wall-clock parts so getDate()/getDay() below answer in LA.
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
   // Anchor on TODAY's week (see PAST_WEEKS/FUTURE_WEEKS), not on the 1st.
   const gridStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   gridStart.setDate(gridStart.getDate() - gridStart.getDay() - PAST_WEEKS * 7)
@@ -488,7 +493,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   ).join('')
 
   // The clock is load-bearing: a frozen page is only obvious if it shows a time.
-  const stamp = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
+  // From the REAL instant, not the LA-shifted `now` — shifting twice would
+  // print a clock seven hours off.
+  const stamp = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
 
   // The window is rolling, so a single month name would be a lie two weeks out
   // of three. Label what is actually on screen.
