@@ -277,12 +277,18 @@ export default function StockPage() {
   }
 
   const lowCount = items.filter(i => i.low).length
+  // "did I skip one?" (ERS, 2026-09-15): counted/total for the open list,
+  // in the title's fine print and on the landing buttons. Unsaved custom
+  // rows don't count until they have a name.
+  const countedOf = (rows: { it: StockItem }[]) => rows.filter(r => r.it.qty.trim() !== '').length
 
   const q = query.trim().toLowerCase()
-  const indexed = items
-    .map((it, idx) => ({ it, idx }))
+  const indexedAll = items.map((it, idx) => ({ it, idx }))
+  const indexed = indexedAll
     .filter(r => !q || !r.it.id
       || [r.it.item, r.it.target, r.it.category ?? '', r.it.location].some(v => v.toLowerCase().includes(q)))
+  const stockRowsAll = indexedAll.filter(r => r.it.section === 'stock' && r.it.item.trim() !== '')
+  const officeRowsAll = indexedAll.filter(r => r.it.section === 'office' && r.it.item.trim() !== '')
   const stockRows = indexed.filter(r => r.it.section === 'stock')
   const officeRows = indexed.filter(r => r.it.section === 'office')
   const hasOffice = officeRows.length > 0
@@ -502,6 +508,12 @@ export default function StockPage() {
           <div style={{ fontSize: 11.5, opacity: 0.5 }}>
             {meta.label}
             {lowCount > 0 && <span style={{ color: 'var(--c-st-warm)', opacity: 1, fontWeight: 700 }}> · {lowCount} low</span>}
+            {activeView !== null && items.length > 0 && (() => {
+              const all = activeView === 'office' ? officeRowsAll : stockRowsAll
+              const n = countedOf(all)
+              const complete = n === all.length
+              return <span className="c-mono" style={{ color: complete ? 'var(--c-st-booked)' : 'var(--c-st-warm)', opacity: 1, fontWeight: 700 }}> · {n}/{all.length} counted</span>
+            })()}
             {activeView === 'office' && !isWednesday && <span style={{ fontWeight: 700 }}> · Wednesdays only</span>}
           </div>
         </div>
@@ -527,8 +539,8 @@ export default function StockPage() {
         <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {([
             // The check-daily marker set only exists on Paramount's sheet.
-            { key: 'stock' as StockSection, title: `${meta.short} Stock`, sub: studio === 'paramount' ? 'Nightly · check PRS-X items daily' : 'Nightly', rows: stockRows },
-            { key: 'office' as StockSection, title: 'Office', sub: 'Wednesdays only', rows: officeRows },
+            { key: 'stock' as StockSection, title: `${meta.short} Stock`, sub: studio === 'paramount' ? 'Nightly · check PRS-X items daily' : 'Nightly', rows: stockRowsAll },
+            { key: 'office' as StockSection, title: 'Office', sub: 'Wednesdays only', rows: officeRowsAll },
           ]).map(b => {
             const bLow = b.rows.filter(r => r.it.low).length
             const office = b.key === 'office'
@@ -550,7 +562,7 @@ export default function StockPage() {
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span className="c-arch" style={{ display: 'block', fontSize: 20, letterSpacing: '-0.02em', lineHeight: 1.2 }}>{b.title}</span>
                   <span style={{ display: 'block', fontSize: 11, opacity: 0.55, marginTop: 3 }}>
-                    {b.sub} · {b.rows.length} items{bLow > 0 ? ` · ${bLow} low` : ''}
+                    {b.sub} · {countedOf(b.rows)}/{b.rows.length} counted{bLow > 0 ? ` · ${bLow} low` : ''}
                   </span>
                 </span>
                 {office && isWednesday && (

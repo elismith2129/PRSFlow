@@ -49,6 +49,10 @@ export default function StudioDailyOpsPage() {
   const [woMap, setWoMap] = useState<Record<string, WOStatus>>({})
   const [loading, setLoading] = useState(true)
   const [submittedCategories, setSubmittedCategories] = useState<Set<string>>(new Set())
+  // Petty cash is one duty both shifts touch (lib/dailyOps). The opener's
+  // count marks it submitted, so the closer's tile read "Submitted" before
+  // they'd counted (ERS, 2026-09-15). The closing count is the closer's act.
+  const [pettyCounted, setPettyCounted] = useState(false)
   const [tasks, setTasks] = useState<StudioTask[]>([])
 
   // THE OPERATIONAL DAY, not the calendar's (2026-08-28): rolls at 8:50 AM,
@@ -163,7 +167,7 @@ export default function StudioDailyOpsPage() {
 
     setLoading(false)
 
-    const [{ data: checklistData }, { data: opsData }] = await Promise.all([
+    const [{ data: checklistData }, { data: opsData }, { data: balData }] = await Promise.all([
       supabase
         .from('checklists')
         .select('type, completed_at')
@@ -174,7 +178,14 @@ export default function StudioDailyOpsPage() {
         .select('category, submitted_at')
         .eq('studio', studio)
         .eq('date', today),
+      supabase
+        .from('petty_cash_balances')
+        .select('counted_close')
+        .eq('studio', studio)
+        .eq('date', today)
+        .limit(1),
     ])
+    setPettyCounted((balData ?? []).some((b: { counted_close: number | null }) => b.counted_close != null))
     const submitted = new Set([
       ...(checklistData ?? [])
         .filter((s: { type: string; completed_at: string | null }) => s.completed_at !== null)
@@ -217,6 +228,18 @@ export default function StudioDailyOpsPage() {
     const channel = supabase
       .channel(`runner-tasks-${studio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => { load() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [studio, load])
+
+  // Real-time: the duty tiles. Hunter submits mic inventory on the iPad; the
+  // tile on Eli's phone flipped only after a reopen (ERS report, 2026-09-15)
+  // — every table the hub reads was on a channel except this one.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`runner-subs-${studio}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions', filter: `studio=eq.${studio}` }, () => { load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_balances', filter: `studio=eq.${studio}` }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [studio, load])
@@ -547,10 +570,15 @@ export default function StudioDailyOpsPage() {
             {TILES.map(t => {
               const soon = 'soon' in t && t.soon
               const isMemos = t.category === 'memos'
-              const done = !soon && (isMemos ? memosUnread === 0 : submittedCategories.has(t.category))
+              const isPetty = t.category === 'petty_cash'
+              // Petty cash: opened-but-not-closed is its own state, so the
+              // closer never mistakes the opener's count for their own.
+              const pettyOpenOnly = isPetty && submittedCategories.has('petty_cash') && !pettyCounted
+              const done = !soon && (isMemos ? memosUnread === 0 : isPetty ? pettyCounted : submittedCategories.has(t.category))
               const statusText = soon ? 'Coming soon'
                 : isMemos ? (memosUnread > 0 ? `${memosUnread} unread` : 'All read')
-                : done ? 'Submitted' : 'Not started'
+                : pettyOpenOnly ? 'Opened · count at close'
+                : done ? (isPetty ? 'Counted at close' : 'Submitted') : 'Not started'
               return (
                 <button
                   key={t.route}
@@ -572,9 +600,9 @@ export default function StudioDailyOpsPage() {
                       booked-green, everything else is just quiet text. */}
                   <span style={{
                     fontSize: 10, marginTop: 4,
-                    color: done ? 'var(--c-st-booked)' : (isMemos ? (memosHard ? 'var(--c-st-hot)' : 'var(--c-st-warm)') : 'var(--c-fg)'),
-                    opacity: done || isMemos ? 1 : 0.45,
-                    fontWeight: done || isMemos ? 700 : 400,
+                    color: done ? 'var(--c-st-booked)' : pettyOpenOnly ? 'var(--c-st-warm)' : (isMemos ? (memosHard ? 'var(--c-st-hot)' : 'var(--c-st-warm)') : 'var(--c-fg)'),
+                    opacity: done || isMemos || pettyOpenOnly ? 1 : 0.45,
+                    fontWeight: done || isMemos || pettyOpenOnly ? 700 : 400,
                   }}>
                     {statusText}
                   </span>

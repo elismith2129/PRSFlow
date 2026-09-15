@@ -38,6 +38,24 @@ and hide what nobody bought). An inherited Low is now a dashed outline pill read
 "LOW · since 9/12" instead of a filled LOW; one tap confirms it (filled, tonight's call),
 a second clears it. `lowSince` walks the held check history for the run's first night.
 
+**Runner hub — the tile that didn't flip.** "Mic inventory didn't appear on my phone
+after Hunter did it." Every table the hub reads was on a realtime channel except
+`daily_ops_submissions`, the one the duty tiles read. Channel added (+ `petty_cash_balances`
+for the count below). Reopening the app worked before because `useReloadOnReturn` refetches
+on focus — that's why it "populated after a few tries".
+
+**Stock — "did I skip one?"** Title fine print and the landing buttons read `40/113
+counted` (green when complete, warm until then). Counts the unfiltered list, so a search
+can't make it lie.
+
+**Petty cash — the closer's half.** Petty cash is one duty both shifts touch; the opener's
+count marked it submitted, so the closer's tile read "Submitted" before they'd done
+anything. Now the closing count IS the closer's act: the hub tile reads "Opened · count at
+close" (warm) until `counted_close` lands, then "Counted at close"; in the daily-ops sweep
+the closer's petty-cash duty is pending/missing without a closing count even when the
+opener submitted. The opener's side is unchanged. "Counted — no change" still exists for
+the opener's nothing-happened night.
+
 **Petty cash.** "Counted at close" beside the computed closing balance, with "Matches
 the ledger" / "Short by $X" under it. Saved on the day's `petty_cash_balances` row
 (`counted_close`, migration `20260915110000`); the daily-ops modal shows computed vs

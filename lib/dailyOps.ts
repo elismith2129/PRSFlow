@@ -149,6 +149,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     { data: subs },
     { data: checklists },
     { data: cash },
+    { data: cashBal },
     { data: stock },
     { data: micRows },
     { data: mics },
@@ -161,6 +162,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
     supabase.from('daily_ops_submissions').select('*').eq('date', date),
     supabase.from('checklists').select('*').eq('date', date),
     supabase.from('petty_cash_entries').select('studio, amount, type').eq('date', date),
+    supabase.from('petty_cash_balances').select('studio, counted_close').eq('date', date),
     supabase.from('stock_items').select('studio, item, low'),
     supabase.from('mic_checkins').select('mic_id, studio, status, room').eq('date', date),
     supabase.from('mics').select('id, name').eq('is_active', true),
@@ -317,7 +319,17 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       who: sh.key === 'opener'
         ? shiftWho([openCl?.staff_name, (subs ?? []).find((r: any) => r.studio === s.key && (r.category === 'opening_checklist' || r.category === 'opening'))?.staff_name])
         : shiftWho([closeCl?.staff_name, (subs ?? []).find((r: any) => r.studio === s.key && (r.category === 'closing_checklist' || r.category === 'closing'))?.staff_name, sMicSub?.submitted_by]),
-      duties: sh.duties.map(dutyBy),
+      // Petty cash is one duty, but the CLOSER's half is the closing count
+      // (petty_cash_balances.counted_close, 2026-09-15): the opener's count
+      // marks it submitted, and that alone used to satisfy both shifts.
+      duties: sh.duties.map(k => {
+        if (k !== 'petty_cash' || sh.key !== 'closer') return dutyBy(k)
+        const d = dutyBy(k)
+        if (d.state !== 'done' && d.state !== 'flagged') return d
+        const bal = (cashBal ?? []).find((r: any) => r.studio === s.key)
+        if (bal?.counted_close != null) return { ...d, detail: `counted $${Number(bal.counted_close).toFixed(0)} · ${d.detail}` }
+        return { ...d, state: dormant ? 'dormant' : isToday ? 'pending' : 'missing', detail: dormant ? 'not staffed' : isToday ? 'opened · no closing count yet' : 'no closing count' }
+      }),
     }))
 
     studios.push({
