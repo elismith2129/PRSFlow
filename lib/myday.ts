@@ -797,16 +797,30 @@ export async function fetchNeedsWoQueue(opts?: {
   // bookings.work_order_id is the fast path, but it is written by the WO on save
   // and can lag a WO created by another route — so confirm against work_orders
   // rather than trusting the denormalised column alone.
-  const { data: wos, error: woErr } = await supabase
-    .from('work_orders')
-    .select('booking_id')
-    .in('booking_id', candidates.map(b => b.id))
-  if (!dbResult('Checking existing work orders', woErr)) return []
+  // A booking HAS a work order when EITHER direction resolves (2026-09-16):
+  //   · a work_orders row points at it (booking_id = b.id), or
+  //   · its own work_order_id names a work_orders row that exists.
+  // The second is the multi-booking WO — Concord's four rooms on one WO,
+  // Omari Clark's six dates on one — where the WO's booking_id names the
+  // first booking and the siblings only carry work_order_id. Checking
+  // booking_id alone counted every sibling as an orphan: "13 sessions
+  // missing a work order" on a morning when none were. Neither column is
+  // trusted alone; both are confirmed against work_orders.
+  const ids = candidates.map(b => b.id)
+  const woIds = Array.from(new Set(candidates.map(b => (b as any).work_order_id).filter(Boolean))) as string[]
+  const [{ data: byBooking, error: e1 }, { data: byId, error: e2 }] = await Promise.all([
+    supabase.from('work_orders').select('booking_id').in('booking_id', ids),
+    woIds.length
+      ? supabase.from('work_orders').select('id').in('id', woIds)
+      : Promise.resolve({ data: [] as { id: string }[], error: null }),
+  ])
+  if (!dbResult('Checking existing work orders', e1) || !dbResult('Checking linked work orders', e2)) return []
 
-  const haveWo = new Set((wos ?? []).map(w => w.booking_id))
+  const haveWo = new Set((byBooking ?? []).map(w => w.booking_id))
+  const woExists = new Set((byId ?? []).map(w => w.id))
 
   return candidates
-    .filter(b => !haveWo.has(b.id))
+    .filter(b => !haveWo.has(b.id) && !((b as any).work_order_id && woExists.has((b as any).work_order_id)))
     .map(b => ({
       bookingId: b.id,
       date: b.start_date,

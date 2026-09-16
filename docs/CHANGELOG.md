@@ -92,6 +92,30 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.2 — The missing-WO alarm counted multi-booking siblings; anomalies always show — Sep 16, 2026
+
+Eli, comparing his dashboard to Sierra's: the missing-WO and roomless alarms showed for a
+tech and not for him. Two things.
+
+**The statement's cap hid data alarms.** Red lines were capped at three; three duty misses
+filled the slots and cut "13 sessions missing a work order" and "4 bookings with no room" —
+for the owner, on the morning they mattered. `FloBullet.anomaly` marks those two; the
+statement shows every anomaly first, then up to three of the rest. A data failure outranks
+queue pressure.
+
+**The 13 were a false alarm.** `fetchNeedsWoQueue` confirmed a WO only by
+`work_orders.booking_id = booking.id`. A multi-booking WO (Concord's four rooms on Sep 2,
+Omari Clark's six Studio E dates, Epic/Umi, two Guitar Centers) names its *first* booking
+there; the siblings carry `bookings.work_order_id` and nothing points back — so every sibling
+counted as an orphan. Now a booking has a WO when either direction resolves, both confirmed
+against `work_orders`. Eli's rule stands: a session cannot exist without a work order. The
+alarm was half a check.
+
+**The 4 roomless were real, and small:** tentative holds with blank location/studio from Sep 6
+and Sep 10, before v1.27.0 shut those entry points — including Philippe Havelange twice
+(WO-1131 / WO-1132, four minutes apart). Fix by hand: set the studio or cancel; delete the
+duplicate.
+
 ## v1.32.1 — Techs: calendar back, CRM and money gone, flags in their place — Sep 16, 2026
 
 Tom and Sierra's first login: both calendars blank. The July 2 migration that gave `tech`
