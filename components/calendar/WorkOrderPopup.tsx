@@ -3566,6 +3566,63 @@ export function WorkOrderPopup({
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
+  // ── MOVE A DAY (Eli, 2026-09-16; mock docs/design-refs/wo-day-date-options
+  //    .html — the card-size chip, on the card AND the sheet). The old sheet
+  //    header had ‹ › (which step BETWEEN days — dead on a one-day WO) and an
+  //    invisible native date input laid over the text that iPad Safari often
+  //    refused to open. Now the date is a small chip: − / + move this day one
+  //    day, and the date itself is a REAL, visible date input (Inter, no
+  //    chrome) so the platform picker opens on every device. Every row of the
+  //    day moves together (room + staff), and the day's blanket-rate bundle
+  //    moves with it. Approved days show the date plain.
+  function addDays(iso: string, n: number): string {
+    const d = new Date(iso + 'T12:00:00')
+    d.setDate(d.getDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  function moveDay(from: string, to: string) {
+    if (!from || !to || from === to) return
+    stRows.filter(r => (r.date || '') === from).forEach(r => updateStRow(r.id, { date: to }))
+    setBundles(prev => prev.map(b => b.date === from ? { ...b, date: to } : b))
+    if (daySheetDate === from) setDaySheetDate(to)
+  }
+  function renderDateChip(date: string, locked: boolean, size: 'card' | 'sheet') {
+    const big = size === 'sheet'
+    const btn: React.CSSProperties = {
+      width: big ? 30 : 26, height: big ? 30 : 26, borderRadius: 99, border: 'none', font: 'inherit',
+      fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: big ? 14 : 13, fontWeight: 600,
+      background: 'transparent', color: 'var(--c-fg-2)', cursor: 'pointer', display: 'inline-flex',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0,
+    }
+    if (locked || readOnly || runner) {
+      return <span style={{ fontSize: big ? 15 : 11.5, fontFamily: big ? undefined : 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(date)}</span>
+    }
+    return (
+      <span
+        onClick={e => e.stopPropagation()}
+        style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--c-wash2)', borderRadius: 99, flexShrink: 0 }}
+      >
+        <button type="button" aria-label="A day earlier" onClick={() => moveDay(date, addDays(date, -1))} style={btn}>−</button>
+        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', padding: '0 4px' }}>
+          <span style={{ fontSize: big ? 13 : 11.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', whiteSpace: 'nowrap' }}>
+            {weekdayDate(date)}<span style={{ fontSize: 8, color: 'var(--c-fg-3)', marginLeft: 4 }}>▾</span>
+          </span>
+          {/* A real date input, sized to the label, transparent text — the
+              tap lands on the native control itself, not an overlay. */}
+          <input
+            type="date"
+            value={date}
+            aria-label="Change the date"
+            onChange={e => moveDay(date, e.target.value)}
+            onClick={e => { try { (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.() } catch { /* not every browser */ } }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.001, cursor: 'pointer', border: 'none', background: 'transparent', color: 'transparent', font: 'inherit', padding: 0, margin: 0, minWidth: 0, WebkitAppearance: 'none', appearance: 'none' }}
+          />
+        </span>
+        <button type="button" aria-label="A day later" onClick={() => moveDay(date, addDays(date, 1))} style={btn}>+</button>
+      </span>
+    )
+  }
+
   // ── Card-view helpers (Eli, 2026-08-15) ───────────────────────────────────
   // The equipment pills + Not-OK note, shared by the day cards and the day
   // sheet. The LIST view keeps its own §18 in-row copy untouched — these exist
@@ -6471,7 +6528,7 @@ export function WorkOrderPopup({
                             </span>
                           )}
                           <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1, fontSize: 11.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {weekdayDate(g.date)}
+                            {renderDateChip(g.date, cardLocked, 'card')}
                             {dotColor && <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor, display: 'inline-block', flexShrink: 0 }} />}
                           </span>
                           {/* The signpost (Eli, 2026-08-16): the whole card
@@ -7266,38 +7323,17 @@ export function WorkOrderPopup({
                 {isMobile && <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 10px', flexShrink: 0 }} />}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                   <span className="c-arch" style={{ fontSize: 17, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button type="button" disabled={dayIdx <= 0} onClick={() => goDay(-1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx > 0 ? 'pointer' : 'default', opacity: dayIdx > 0 ? 1 : 0.25, padding: '4px 6px' }}>‹</button>
-                    {weekdayDate(daySheetDate)}
-                    <button type="button" disabled={dayIdx >= allDates.length - 1} onClick={() => goDay(1)} style={{ fontSize: 15, color: 'var(--c-fg-3)', background: 'none', cursor: dayIdx < allDates.length - 1 ? 'pointer' : 'default', opacity: dayIdx < allDates.length - 1 ? 1 : 0.25, padding: '4px 6px' }}>›</button>
-                    {/* THE DAY'S DATE IS EDITABLE AGAIN (Eli, 2026-08-20: "we
-                        made it so no way to change date on studio time card").
-                        The list view has always had a date cell; card view only
-                        had ‹ › — which MOVES between days rather than changing
-                        one, so a session booked on the wrong day could not be
-                        corrected without switching views. Same transparent
-                        native-picker overlay the list uses: click the date, get
-                        the calendar. Moves EVERY row of this day together
-                        (room + its staff), then follows the day so the sheet
-                        stays on what you were editing. Approved days are
-                        locked, like every other edit here. */}
-                    {!readOnly && !runner && !dayLocked && (
-                      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                        <span style={{ ...fldK, fontSize: 8, cursor: 'pointer', opacity: 0.5 }}>✎ date</span>
-                        <input
-                          type="date"
-                          value={daySheetDate}
-                          onChange={e => {
-                            const nd = e.target.value
-                            if (!nd || nd === daySheetDate) return
-                            stRows
-                              .filter(r => (r.date || '') === daySheetDate)
-                              .forEach(r => updateStRow(r.id, { date: nd }))
-                            setDaySheetDate(nd)
-                          }}
-                          style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                        />
-                      </span>
+                    {/* ‹ › step BETWEEN the WO's days — only drawn when there
+                        are days to step between (they read as dead otherwise).
+                        The date itself is the chip: − / + / picker. */}
+                    {allDates.length > 1 && (
+                      <button type="button" disabled={dayIdx <= 0} onClick={() => goDay(-1)} aria-label="Previous day of this work order" style={{ width: 30, height: 30, borderRadius: 99, fontSize: 15, color: 'var(--c-fg-2)', background: 'var(--c-wash)', border: 'none', cursor: dayIdx > 0 ? 'pointer' : 'default', opacity: dayIdx > 0 ? 1 : 0.3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
                     )}
+                    {renderDateChip(daySheetDate, dayLocked, 'sheet')}
+                    {allDates.length > 1 && (
+                      <button type="button" disabled={dayIdx >= allDates.length - 1} onClick={() => goDay(1)} aria-label="Next day of this work order" style={{ width: 30, height: 30, borderRadius: 99, fontSize: 15, color: 'var(--c-fg-2)', background: 'var(--c-wash)', border: 'none', cursor: dayIdx < allDates.length - 1 ? 'pointer' : 'default', opacity: dayIdx < allDates.length - 1 ? 1 : 0.3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                    )}
+                    {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>{dayIdx + 1} of {allDates.length}</span>}
                     {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
                   </span>
                   <span style={fldK}>

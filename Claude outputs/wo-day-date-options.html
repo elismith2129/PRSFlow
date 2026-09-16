@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Moving a day: the date is a control, not a caption</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  MOVE A DAY (Eli, 2026-09-16): "it doesn't work to change the date on a day
+  card. little arrows around the oct 15th are so small and they do nothing,
+  and there's nothing on the card view. need very easy method — drop down,
+  + a day or − a day."
+
+  ── WHAT'S THERE TODAY ──────────────────────────────────────────────────────
+  Day sheet header:  ‹ Thu, Oct 15 ›  ✎ date
+    · ‹ › step BETWEEN the WO's days. On a one-day WO both are disabled —
+      they look dead because they are.
+    · "✎ date" is an <input type=date> with opacity 0 laid over the text.
+      Safari on iPad often won't open a picker from an invisible overlay,
+      and nothing on screen says it's tappable.
+  Card view: nothing. EDIT opens the sheet.
+  Under the hood the move already works: every row of the day (room + its
+  staff) takes the new date and the sheet follows. Only the control is bad.
+
+  ── OPTION A (recommended): the date IS the control — everywhere ───────────
+  Sheet: the title becomes a DATE BAR — [ − day ] [ Thu, Oct 15 ▾ ] [ + day ].
+    Big targets. −/+ move this day's rows one day. Tapping the date opens a
+    real picker (a month grid in our own sheet, not the browser's).
+  Card: the date next to the room name gets the same − / + and the
+    dropdown, small, so a wrong day is fixed in two taps without opening
+    EDIT. Approved days show the date plain (locked, like every edit).
+  ‹ › keep their job — stepping between days — but only render when there
+    is more than one day, and grow to a real tap size.
+
+  ── OPTION B: a "Move this day" sheet ──────────────────────────────────────
+  One tap on the date opens a bottom sheet: −1 / +1 / a mini month. Cleaner
+  header, one more tap for the 90% case (off by one day).
+
+  Recommendation: A. The correction is nearly always ± one day; those two
+  buttons should be the first thing the thumb finds.
+
+  ── DATA ───────────────────────────────────────────────────────────────────
+  No schema change. Same updateStRow(date) on every row of the day, same
+  follow-the-day; the card's control calls the same function. The bundle
+  (blanket-rate day) moves with the rows — wo_rate_bundles.date updated
+  alongside, same as today's picker path.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--srf:#242320;--ivory:#f5f3ee;--ink:#1b1a17;--warm:#ffa94d;--booked:#43dfae;--hot:#ff5a4d;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1120px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:820px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:36px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:820px;line-height:1.6;margin-bottom:14px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:#1c2626;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cmp{border-left:2px solid var(--warm);padding-left:12px;margin:10px 0 20px;font-size:11.5px;color:var(--fg2);line-height:1.6;max-width:840px}.cmp b{color:var(--warm)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55}.cap b{color:var(--fg2)}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+/* the sheet */
+.sheet{background:#141311;border-radius:22px;padding:22px 22px 18px;box-shadow:var(--softsh);max-width:520px}
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.step{width:44px;height:44px;border-radius:99px;background:var(--wash2);display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:var(--fg);flex-shrink:0}
+.step small{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);margin-left:3px;font-family:Inter}
+.date{flex:1;min-height:44px;border-radius:14px;background:var(--wash);display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em}
+.date .dd{font-size:11px;color:var(--fg3);font-family:Inter;font-weight:800}
+.between{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--fg3);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.between i{font-style:normal;width:30px;height:30px;border-radius:99px;background:var(--wash);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:var(--fg2)}
+.between b{color:var(--fg2)}
+.agreed{font-size:12px;color:var(--fg3);margin-bottom:14px}.agreed b{color:var(--fg2)}
+.room{background:var(--srf);border-radius:16px;padding:14px 16px;box-shadow:var(--softsh)}
+.room .rh{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:600;margin-bottom:10px}
+.room .rh .pill{background:var(--wash2);border-radius:99px;padding:5px 12px;font-size:12px;font-weight:700}
+.tm{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tm div{background:var(--wash);border-radius:12px;padding:10px 14px}
+.tm .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:4px}
+.tm .v{font-family:'DM Mono',monospace;font-size:18px;font-weight:600}
+/* picker */
+.pick{position:relative}
+.pop{background:var(--srf);border-radius:16px;padding:12px 12px 10px;box-shadow:var(--softsh),0 12px 36px rgba(0,0,0,.45);max-width:300px;margin:10px 0 0 54px}
+.pop .ph{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:8px;padding:0 4px}
+.pop .ph i{font-style:normal;color:var(--fg3);padding:0 6px}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);font-size:8.5px;font-weight:800;letter-spacing:.05em;color:var(--fg3);text-align:center;margin-bottom:4px}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.days span{height:32px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-family:'DM Mono',monospace;font-size:12px;color:var(--fg2)}
+.days span.o{opacity:.25}
+.days span.on{background:var(--ivory);color:var(--ink);font-weight:700}
+.days span.has{box-shadow:inset 0 -3px 0 var(--booked)}
+.pop .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:10px;color:var(--fg3);padding:0 4px}
+.pop .foot b{color:var(--fg2)}
+/* card */
+.card{background:var(--srf);border-radius:18px;padding:18px 20px;box-shadow:var(--softsh);display:grid;grid-template-columns:1.2fr 1fr;gap:18px;max-width:640px}
+.card .l .t{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card .l .t b{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.dchip{display:inline-flex;align-items:center;gap:0;background:var(--wash);border-radius:99px;overflow:hidden}
+.dchip i{font-style:normal;font-family:'DM Mono',monospace;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;color:var(--fg2);font-size:14px}
+.dchip span{font-size:12.5px;font-weight:700;padding:0 6px}
+.dchip span small{color:var(--fg3);font-size:9px;font-weight:800;margin-left:4px}
+.card .time{font-family:'DM Mono',monospace;font-size:20px;font-weight:600;margin:12px 0 6px}
+.card .time small{font-family:Inter;font-size:12px;color:var(--fg3);font-weight:400;margin-left:8px}
+.card .staff{font-size:12px;color:var(--fg3);font-family:'DM Mono',monospace}
+.card .staff b{color:var(--warm);font-family:Inter;font-size:9px;font-weight:800;margin-right:6px}
+.card .r{border-left:1px solid var(--wash2);padding-left:16px;display:flex;flex-direction:column}
+.card .r .k{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:flex;justify-content:space-between}
+.card .r .tot{margin-top:auto;text-align:right}
+.card .r .tot .k{justify-content:flex-end}
+.card .r .tot .m{font-family:'DM Mono',monospace;font-size:22px;font-weight:700}
+.lock{font-size:10px;color:var(--fg3)}
+.lock b{color:var(--booked)}
+</style>
+</head>
+<body>
+<h1>Moving a day — the date is a control, not a caption</h1>
+<p class="lede">Today the day sheet shows <b>‹ Thu, Oct 15 ›</b> with a tiny <b>✎ date</b>. The arrows step between the WO's days, so on a one-day WO they're disabled and look dead; the pencil is an invisible browser date field that iPad Safari often won't open. The card view has nothing. Under the hood the move already works — every row of the day (room + staff) takes the new date. Only the control is bad.</p>
+<div class="cmp"><b>The correction is almost always off by one day.</b> So the two buttons the thumb finds first should be − day and + day, with a real picker behind the date for anything further.</div>
+
+<h2><span class="n">A</span>The date bar — on the sheet and on the card <span class="rec">Recommended</span></h2>
+<p class="sub">Big targets. − / + move this day's rows one day. Tapping the date opens our own month grid (not the browser's). The card gets the same control small, so a wrong day is fixed without opening EDIT. Approved days show the date plain — locked, like every other edit.</p>
+<div class="grid2">
+  <div>
+    <div class="sheet">
+      <div class="bar">
+        <span class="step">−<small>day</small></span>
+        <span class="date">Thu, Oct 15 <span class="dd">▾</span></span>
+        <span class="step">+<small>day</small></span>
+      </div>
+      <div class="between"><i>‹</i><b>Day 1 of 1</b><i>›</i><span style="margin-left:6px;opacity:.7">— shown only when the WO has more than one day</span></div>
+      <div class="agreed">Agreed with client: <b>12:00 PM – 6:00 PM</b></div>
+      <div class="room">
+        <div class="rh">ARS A <span class="pill">6h</span></div>
+        <div class="tm"><div><div class="k">Start</div><div class="v">12:00 PM</div></div><div><div class="k">End</div><div class="v">6:00 PM</div></div></div>
+      </div>
+      <div class="pick">
+        <div class="pop">
+          <div class="ph"><i>‹</i>October 2026<i>›</i></div>
+          <div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+          <div class="days">
+            <span class="o">27</span><span class="o">28</span><span class="o">29</span><span class="o">30</span><span>1</span><span>2</span><span>3</span>
+            <span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+            <span>11</span><span>12</span><span>13</span><span class="has">14</span><span class="on">15</span><span>16</span><span>17</span>
+            <span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
+            <span>25</span><span>26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span>
+          </div>
+          <div class="foot"><span>Green mark = <b>ARS A already booked</b></span><span>Today ›</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>The sheet.</b> The date bar replaces the title. Tap − or + and the whole day (room rows, engineer, assistant, the blanket-rate bundle if there is one) moves; the sheet follows. Tap the date for the month grid — days this room is already booked wear a green underline, so you see the collision before you land on it. ‹ › keep stepping between days, but only appear when there are days to step between.</div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="l">
+        <div class="t"><b>ARS A</b>
+          <span class="dchip"><i>−</i><span>Thu, Oct 15<small>▾</small></span><i>+</i></span>
+        </div>
+        <div class="time">12:00 PM – 6:00 PM <small>6h · $175/hr</small></div>
+        <div class="staff"><b>2ND</b>TBD 12:00 PM – 6:00 PM · 6h ×</div>
+      </div>
+      <div class="r">
+        <div class="k"><span>Song / session notes · 10-15</span><span>✎ Edit &nbsp; ×</span></div>
+        <div style="font-size:12px;color:var(--fg3);margin-top:6px">—</div>
+        <div class="tot"><div class="k">Day total</div><div class="m">$1050.00</div></div>
+      </div>
+    </div>
+    <div class="cap"><b>The card.</b> The same control, small, where the date already sits. Two taps fixes an off-by-one without opening EDIT. Tapping the date itself opens the same month grid. An approved day shows <span class="lock">Thu, Oct 15 <b>· approved</b></span> with no buttons.</div>
+  </div>
+</div>
+
+<h2><span class="n">B</span>A "Move this day" sheet</h2>
+<p class="sub">The header stays as it is but the date becomes one big tappable pill. Tapping it slides up a sheet: <b>−1 day</b> · <b>+1 day</b> · the month grid. Same on the card.</p>
+<div class="cmp"><b>Cleaner header, one more tap.</b> Every move — including the 90% case of "it's tomorrow, not today" — costs a tap to open the sheet before the tap that does it. A puts −/+ on the surface for exactly that case, and keeps the grid one tap away for the rest. B is the right shape if the header ever gets crowded; it isn't yet.</div>
+</body>
+</html>

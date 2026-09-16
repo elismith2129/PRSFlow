@@ -92,6 +92,22 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.3 — Moving a day: the date is a chip, on the card and the sheet — Sep 16, 2026
+
+Eli: "it doesn't work to change the date on a day card — little arrows do nothing, nothing
+on the card view." The sheet's ‹ › step *between* the WO's days (dead on a one-day WO) and
+"✎ date" was an invisible native input laid over the text that iPad Safari often wouldn't
+open. Mock `docs/design-refs/wo-day-date-options.html`; Eli picked the card-size chip for
+both surfaces ("don't like the big +−").
+
+`renderDateChip`: a small pill — **−** · **Thu, Oct 15 ▾** · **+** — on the card header
+(where the date already sat, no EDIT needed) and in the sheet header. − / + move the day
+by one; the date is a real `<input type=date>` sized to the label (`showPicker()` where
+supported) so the platform picker opens everywhere. `moveDay` moves every row of the day
+and the day's `wo_rate_bundles` row, then follows the day. Locked / read-only / runner
+show the date plain. ‹ › survive only on multi-day WOs, at a real tap size, with
+"2 of 4" beside them.
+
 ## v1.32.2 — The missing-WO alarm counted multi-booking siblings; anomalies always show — Sep 16, 2026
 
 Eli, comparing his dashboard to Sierra's: the missing-WO and roomless alarms showed for a
