@@ -101,7 +101,7 @@ begin
 
   select id into existing
     from dashboard_tasks
-   where source = new.source and source_id = new.id
+   where source = new.source and source_id = new.id::text
    order by created_at limit 1;
 
   if existing is null then
@@ -109,7 +109,7 @@ begin
       (text, assigned_role, source, source_id, source_label, studio, kind,
        photo_url, created_by_name, completed, completed_at, completed_note)
     values
-      (task_text, 'admin', new.source, new.id, new.source_label, new.studio,
+      (task_text, 'admin', new.source, new.id::text, new.source_label, new.studio,
        case when new.source = 'wo_flag' then 'office' else 'facility' end,
        new.photo_url, new.created_by_name,
        new.status = 'resolved',
@@ -157,7 +157,11 @@ declare
   fid uuid;
 begin
   if new.source not in ('runner_flag','wo_flag') or new.source_id is null then return new; end if;
-  fid := new.source_id;   -- source_id is uuid; for runner_flag / wo_flag it is flags.id
+  begin
+    fid := new.source_id::uuid;
+  exception when others then
+    return new;   -- a pre-merge task whose source_id is not a flags id
+  end;
 
   if new.completed and not coalesce(old.completed, false) then
     update flags
@@ -193,7 +197,7 @@ insert into dashboard_tasks
    done_vendor, done_cost, deleted_at, created_at)
 select
   coalesce(nullif(btrim(f.runner_note), ''), f.source_label, 'Flag'),
-  'admin', f.source, f.id, f.source_label, f.studio,
+  'admin', f.source, f.id::text, f.source_label, f.studio,
   case when f.source = 'wo_flag' then 'office' else 'facility' end,
   f.photo_url, f.created_by_name,
   f.status = 'resolved',
@@ -201,7 +205,7 @@ select
   f.resolved_note, f.resolved_vendor, f.resolved_cost, f.deleted_at, f.created_at
 from flags f
 where not exists (
-  select 1 from dashboard_tasks t where t.source = f.source and t.source_id = f.id
+  select 1 from dashboard_tasks t where t.source = f.source and t.source_id = f.id::text
 );
 
 -- ── 7. Visibility ──────────────────────────────────────────────────────────
