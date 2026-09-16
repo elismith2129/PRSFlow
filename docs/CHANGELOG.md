@@ -92,6 +92,22 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.4 — Delete a work order from the billing hub (Eli only) — Sep 16, 2026
+
+Eli: "make a delete WO button, only me, from the billing hub." The row's ⋯ menu gains
+**Delete this work order — and its calendar cards, rows and log** (rendered only when the
+signed-in email is Eli's; the prop is absent for everyone else). A typed confirmation —
+the WO number — then `deleteWorkOrderEverywhere` (lib/deleteSession): studio time, equipment
+rows and notes, rentals, payments, the SRS log and every booking card that points at the
+WO, then the WO row itself (`wo_expenses` / `wo_activity` / `wo_rate_bundles` cascade). In
+order, stopping at the first failure, WO row last — a failed child delete never leaves a
+headless set behind. No archive, no undo; the toast says which step failed if one does.
+
+Also answered: deleting a session from the calendar (`deleteSessionAndWO`) takes the WO and
+every sibling card with it, and `bookings.work_order_id` cascades from the WO — so it is not
+how a WO ends up without a room. The four roomless bookings were roomless at creation (the
+old CRM path, shut in v1.27.0).
+
 ## v1.32.3 — Moving a day: the date is a chip, on the card and the sheet — Sep 16, 2026
 
 Eli: "it doesn't work to change the date on a day card — little arrows do nothing, nothing

@@ -59,6 +59,7 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
+import { deleteWorkOrderEverywhere } from '@/lib/deleteSession'
 import { Hint } from '@/components/ui/Hint'
 import { FinancialsView } from '@/components/billing/FinancialsView'
 import { TenantsView } from '@/components/billing/TenantsView'
@@ -128,6 +129,19 @@ export default function BillingPage() {
   const [poNum, setPoNum] = useState('')
   const [poFile, setPoFile] = useState<File | null>(null)
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
+  // DELETE WO (Eli only, 2026-09-16): the one place a work order can be
+  // removed outright — with its cards, rows and log. Typed confirmation.
+  const [deleting, setDeleting] = useState<InvoiceRow | null>(null)
+  const [deleteTyped, setDeleteTyped] = useState('')
+  async function confirmDelete() {
+    if (!deleting || busy) return
+    const r = deleting
+    setBusy(r.workOrderId)
+    const res = await deleteWorkOrderEverywhere(r.workOrderId)
+    setBusy(null)
+    if (res.ok) { toast(`${r.woNumber || 'Work order'} deleted`); setDeleting(null); setDeleteTyped(''); await load() }
+    else toast(`Could not delete — ${res.reason ?? 'unknown error'}`)
+  }
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
   // AP submission card (2026-09-08). Reference only — it gates nothing.
   // The row carries apProfileId so the chip can render without a lookup; the
@@ -878,6 +892,7 @@ export default function BillingPage() {
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
           onAp={() => { const r = moreFor; setMoreFor(null); setApFor(r) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
+          onDelete={isEli ? () => { const r = moreFor; setMoreFor(null); setDeleteTyped(''); setDeleting(r) } : undefined}
           onRedownload={() => { downloadPackage(moreFor.workOrderId); setMoreFor(null) }}
           onNoPo={() => {
             const r = moreFor
@@ -933,6 +948,35 @@ export default function BillingPage() {
         </div>
       )}
 
+      {deleting && (
+        <div className="c-bmodal-wrap" onClick={() => setDeleting(null)}>
+          <div className="c-bmodal" onClick={e => e.stopPropagation()}>
+            <div className="c-lozenge"><b>Delete {deleting.woNumber || 'this work order'}</b></div>
+            <div style={{ fontSize: 12.5, marginBottom: 6 }}>{deleting.client}{deleting.sessionDate ? ` · ${deleting.sessionDate}` : ''}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--c-fg-2)', lineHeight: 1.55, marginBottom: 12 }}>
+              This removes the work order, every calendar card that belongs to it, all of its studio time, staff, equipment, rental and payment rows, and its activity log. Nothing is archived. There is no undo.
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginBottom: 6 }}>Type <b style={{ color: 'var(--c-fg)', fontFamily: "'DM Mono', ui-monospace, monospace" }}>{deleting.woNumber || 'DELETE'}</b> to confirm.</div>
+            <input
+              autoFocus
+              value={deleteTyped}
+              onChange={e => setDeleteTyped(e.target.value)}
+              placeholder={deleting.woNumber || 'DELETE'}
+              className="c-input"
+              style={{ width: '100%', boxSizing: 'border-box', marginBottom: 10, fontFamily: "'DM Mono', ui-monospace, monospace" }}
+            />
+            <button
+              className="c-bact c-bblock"
+              disabled={busy === deleting.workOrderId || deleteTyped.trim().toUpperCase() !== (deleting.woNumber || 'DELETE').toUpperCase()}
+              onClick={confirmDelete}
+              style={{ color: 'var(--c-st-hot)', opacity: deleteTyped.trim().toUpperCase() === (deleting.woNumber || 'DELETE').toUpperCase() ? 1 : 0.45 }}
+            >
+              {busy === deleting.workOrderId ? 'Deleting…' : 'Delete it'}
+            </button>
+            <button className="c-bact c-bblock" onClick={() => setDeleting(null)}>Keep it</button>
+          </div>
+        </div>
+      )}
       {closing && (
         <CloseModal
           row={closing}
@@ -1271,9 +1315,11 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo, onAddPo, onAp }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo, onAddPo, onAp, onDelete }: {
   row: InvoiceRow
   onCancel: () => void
+  /** Eli only — absent for everyone else, so the button never renders. */
+  onDelete?: () => void
   onOpenDoc: () => void
   onAp: () => void
   onClose: () => void
@@ -1333,6 +1379,11 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
         {row.step >= 3 && (
           <button className="c-bact c-bblock" onClick={onPullBack}>
             Pull it back — removes the invoice and the approval, back to the start
+          </button>
+        )}
+        {onDelete && (
+          <button className="c-bact c-bblock" onClick={onDelete} style={{ color: 'var(--c-st-hot)' }}>
+            Delete this work order — and its calendar cards, rows and log
           </button>
         )}
         {canClose && (
