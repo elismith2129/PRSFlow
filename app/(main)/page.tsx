@@ -50,6 +50,7 @@ import {
 } from '@/lib/home'
 import { FLO_GO_ROUTES, FLO_GO_LABELS, type FloLine } from '@/lib/floLines'
 import { daysSince, isParked, isDue } from '@/lib/crm'
+import { fetchOpenFlags, isHot as flagIsHot, ageLabel as flagAge, studioCode, KIND_LABEL, type Flag } from '@/lib/flags'
 
 /** Per-device "I saw today's briefing" marker (Eli 2026-09-07 — the popup is
  *  the shift-start tap on the shoulder; forced 8:50 logout was rejected as
@@ -211,6 +212,18 @@ export default function DashboardPage() {
   useEffect(() => {
     if (profile?.id) fetchMyTasks(profile.id).then(setTasks)
   }, [profile?.id, dashDataVersion])
+  // ── Tech (Eli, 2026-09-16: "they don't need much but cal and flags") ──────
+  // Row 1 for a tech is the open Tech flags, not CRM + money. RLS already
+  // scopes dashboard_tasks to department = 'tech' for them.
+  const isTech = profile?.role === 'tech'
+  const [techFlags, setTechFlags] = useState<Flag[]>([])
+  useEffect(() => {
+    if (!isTech) { setTechFlags([]); return }
+    let live = true
+    fetchOpenFlags().then(f => { if (live) setTechFlags(f) })
+    return () => { live = false }
+  }, [isTech, dashDataVersion])
+
   const [approvals, setApprovals] = useState<InvoiceRow[]>([])
   useEffect(() => {
     if (!isOwnerHere) { setApprovals([]); return }
@@ -692,6 +705,35 @@ export default function DashboardPage() {
       )}
 
       {/* ── ROW 1 (Eli 2026-09-07): CRM + Money LEAD — the business numbers outrank the day view. Slimmed to ~1/4 of the page. ── */}
+      {/* Tech sees neither (2026-09-16): one portal, the open Tech flags. */}
+      {isTech ? (
+      <div className="n-row2">
+        <div className="n-portal" onClick={() => router.push('/flags')}>
+          <div className="n-pt"><b>Flags — tech</b><span className="n-arrow">→</span></div>
+          <div className="n-pbody">
+            <div className="n-pleft">
+              <div>
+                <div className="n-pipebig">{techFlags.length}</div>
+                <div className="n-pipesub">open</div>
+              </div>
+              <div className="n-pstat">
+                <span className="n-chip n-h">{techFlags.filter(f => flagIsHot(f)).length} over 72h</span>
+              </div>
+            </div>
+            <div className={`n-inqblock${techFlags.length === 0 ? ' n-quietblock' : ''}`}>
+              {techFlags.length === 0 ? (
+                <div className="n-inqk">Nothing open — the buildings are quiet</div>
+              ) : techFlags.slice(0, 3).map(f => (
+                <div key={f.id} className="n-who" style={{ color: flagIsHot(f) ? 'var(--c-st-hot)' : undefined }}>
+                  {f.text}
+                  <span className="n-src"> · {[studioCode(f.studio), f.kind ? KIND_LABEL[f.kind] : null, flagAge(f.created_at)].filter(Boolean).join(' · ')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      ) : (
       <div className="n-row2">
 
         <div className="n-portal" onClick={() => router.push('/crm')}>
@@ -751,6 +793,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── ROW 2: Tonight · Your list · Landed & in the air ── */}
       <div className="n-row1">

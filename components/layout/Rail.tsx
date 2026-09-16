@@ -123,6 +123,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const isRunner = profile?.role === 'runner'
   const filterItems = (items: RailItem[]) => items.filter(item => {
     if (profile?.role === 'tech' && item.href === '/crm') return false
+    // Tech gets neither the money nor the CRM (Eli, 2026-09-16: "they don't
+    // need much but cal and flags"). The billing group and its children go.
+    if (profile?.role === 'tech' && (item.href.startsWith('/billing') || item.href === '/ap-protocols')) return false
     if (item.href === '/nadines' && !isEli) return false
     if (item.href === '/rates'
       && profile?.role !== 'owner'
