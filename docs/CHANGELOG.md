@@ -92,6 +92,26 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.1 — Techs: calendar back, CRM and money gone, flags in their place — Sep 16, 2026
+
+Tom and Sierra's first login: both calendars blank. The July 2 migration that gave `tech`
+SELECT on `bookings` / `clients` / `client_contacts` (`20260702183452`) had never run on the
+live DB — techs could read work orders but not the sessions they hang off. Re-applied in
+SQL; no code. Standing lesson: **a migration file in the repo is not a migration that ran** —
+`pg_policies` is the truth.
+
+Then, Eli: "they don't need much but cal and flags." Dashboard row 1 for `tech` is one
+portal — **Flags — tech**: open count, how many are over 72h, the three newest with
+studio · kind · age — instead of CRM + The money. The rail drops the Billing group and AP
+Protocols for techs (CRM was already gone). RLS already scopes `dashboard_tasks` to the tech
+department, so the portal reads `fetchOpenFlags()` as-is.
+
+The statement at the top read the whole business to a tech (billing alarms, landed clients,
+Flo's synopsis) and "Full briefing" opened the company briefing. For `tech` the statement is
+now computed locally — aging tech flags in red, sessions today across N rooms, open-tech-list
+count — with no Flo prose and no briefing affordance. The 8:50 briefing has no tech slice by
+design; it reads the seats, not the buildings.
+
 ## v1.32.0 — Memos go out as a newsletter too; the campaign route gets a lock — Sep 15, 2026 (late)
 
 Eli: "for these I'd also like it to be an email, like a newsletter, just for the owners and

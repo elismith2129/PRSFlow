@@ -590,6 +590,29 @@ export default function DashboardPage() {
           <span className="n-fname">Flo</span>
           <span className="n-label">· Your briefing · {clockNow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         </div>
+        {/* TECH (Eli, 2026-09-16: "just bookings and tech stuff"): the
+            statement is sessions + open tech flags, computed here. No Flo
+            prose — the company briefing reads the whole business. */}
+        {isTech ? (() => {
+          const live = bookings.filter(b => !['cancelled'].includes(b.status ?? ''))
+          const hot = techFlags.filter(f => flagIsHot(f))
+          const rooms = Array.from(new Set(live.map(b => `${b.location ?? ''} ${b.studio ?? ''}`.trim()).filter(Boolean)))
+          return (
+            <>
+              {hot.length > 0 && (
+                <span className="n-ln n-red" style={{ fontSize: isMobile ? 17 : undefined }}>
+                  {hot.length} tech flag{hot.length === 1 ? '' : 's'} open past 72h — {hot[0].text}{hot.length > 1 ? ` and ${hot.length - 1} more` : ''}.
+                </span>
+              )}
+              <span className="n-ln" style={{ fontSize: isMobile ? 17 : undefined }}>
+                {live.length === 0 ? 'No sessions on the books today.' : <>{live.length} session{live.length === 1 ? '' : 's'} today across <span className="n-grad">{rooms.length} room{rooms.length === 1 ? '' : 's'}</span>.</>}
+              </span>
+              <span className="n-ln n-dim">
+                {techFlags.length === 0 ? 'Nothing open on the tech list.' : `${techFlags.length} open on the tech list${hot.length ? `, ${hot.length} aging` : ''}.`}
+              </span>
+            </>
+          )
+        })() : (<>
         {alertLines.map((b, i) => (
           <span key={i} className="n-ln n-red" style={{ fontSize: isMobile ? 17 : undefined }}>{b.text}</span>
         ))}
@@ -605,13 +628,14 @@ export default function DashboardPage() {
           <span className="n-ln" style={{ fontSize: isMobile ? 17 : undefined }}>{calmLine.text}</span>
         )}
         <span className="n-ln n-dim">{myDay?.briefing.synopsis ?? '…'}</span>
+        </>)}
         {/* THE 8:50 BRIEFING (2026-09-07) — Flo's first real AI: the cron
             reads the night's notes, flags, holds and the duty/task record and
             writes today's briefing. The affordance only exists when a briefing
             does; the statement above stays deterministic and authoritative for
             numbers. ("Ask Flo" chat is phase 2 — this repurposes its slot.) */}
         <div style={{ display: 'flex', gap: 18, alignItems: 'baseline' }}>
-          {briefing && (
+          {briefing && !isTech && (
             <div className="n-askflo" style={{ cursor: 'pointer' }} onClick={() => setBriefOpen(true)}>
               Full briefing →
             </div>
