@@ -403,7 +403,10 @@ export const PAST_DUE_DAYS = 31
  */
 export const PAGE_SIZE = 15
 export const PROGRESS_PAGE_SIZE = 15
-export function pageSizeFor(bucket: BucketKey): number {
+/** COD pages at 15 (Eli, 2026-09-16) — the list is shorter and hotter. */
+export const COD_PAGE_SIZE = 15
+export function pageSizeFor(bucket: BucketKey, pipeline: 'billing' | 'cod' = 'billing'): number {
+  if (pipeline === 'cod') return COD_PAGE_SIZE
   return bucket === 'progress' ? PROGRESS_PAGE_SIZE : PAGE_SIZE
 }
 
@@ -879,7 +882,8 @@ export type SortCol = 'date' | 'wo' | 'client' | 'status' | 'balance' | 'age' | 
  * still gives the dated list with its day dividers.
  */
 export const QUEUE_RANK: Partial<Record<StageKey, number>> = {
-  review: 0, invoice: 1, approval: 2, not_approved: 3, approved: 4, po: 5, progress: 6,
+  // balance (COD's hot stage) outranks everything — collection was missed.
+  balance: -1, review: 0, invoice: 1, approval: 2, not_approved: 3, approved: 4, po: 5, progress: 6,
 }
 export function queueRank(row: InvoiceRow): number {
   return QUEUE_RANK[billingStage(row).key] ?? 9

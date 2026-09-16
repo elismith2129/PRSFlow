@@ -244,7 +244,7 @@ export default function BillingPage() {
   // queue with its sections named, which is what makes a second page safe.
   const stageDividers = staged && !searching && sortCol === 'queue'
 
-  const perPage = pageSizeFor(pipeline === 'cod' ? 'progress' : activeBucket)
+  const perPage = pageSizeFor(activeBucket, pipeline)
   const pages = pageCount(visible.length, perPage)
   const safePage = Math.min(page, pages)
   const pageRows = paginate(visible, safePage, perPage)
@@ -265,7 +265,10 @@ export default function BillingPage() {
   // top); Awaiting PO oldest-approved first (the chase list) — sortBucket
   // already orders it, so the column sort is date asc to match.
   useEffect(() => {
-    setSortCol(tab === 'awaiting' ? 'age' : tab === 'progress' && pipeline === 'billing' ? 'queue' : 'date')
+    // QUEUE ORDER ON BOTH SIDES (Eli, 2026-09-16: "needs review invoices were
+    // buried" in COD — the Sep 14 default only covered billing's tab).
+    // Balance due leads, then review, invoice, approval — see QUEUE_RANK.
+    setSortCol(tab === 'awaiting' ? 'age' : (tab === 'progress' || tab === 'balance') ? 'queue' : 'date')
     setSortDir(tab === 'notstarted' || tab === 'po' ? 'asc' : 'desc')
   }, [tab, pipeline])
 

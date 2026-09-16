@@ -92,6 +92,15 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.5 — COD gets the queue order too — Sep 16, 2026
+
+Eli: "we didn't fix up the order for needs review in COD like we did for billing — needs
+review invoices were buried." The Sep 14 queue-order default (`sortCol = 'queue'`) was
+gated on `pipeline === 'billing'`; COD's In progress still opened newest-first. Now In
+progress and Balance due open in queue order on both sides, and `QUEUE_RANK` gains
+`balance: -1` so a combined COD view leads with balance due, then review, invoice,
+approval. Stage dividers follow, as on the billing side.
+
 ## v1.32.4 — Delete a work order from the billing hub (Eli only) — Sep 16, 2026
 
 Eli: "make a delete WO button, only me, from the billing hub." The row's ⋯ menu gains
