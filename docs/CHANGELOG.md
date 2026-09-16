@@ -31,7 +31,7 @@ Mock `docs/design-refs/flags-options.html` (round 3). Migration `20260915140000`
 row: `dashboard_tasks` (it already had source/source_id/photo/comments/RLS). A flag is
 never nobody's — its KIND decides its DEPARTMENT by trigger the moment it exists:
 Facility · Gear (mics are gear) → **Tech**; Clients & billing · Office → **Admin**.
-Runner checklist flags land as Facility; WO needs-attention flags land as Office.
+EVERY intake flag (runner checklist, WO needs-attention) lands as Office → Admin; Admin triages it to Tech by changing the kind (round 4: runner flags defaulting to Tech put far too much on the tech list).
 Admin can change a kind, which moves the flag, and can put a person's name on one;
 that is the only assignment step. No grab, no unassigned pile, no acknowledge.
 
@@ -65,6 +65,13 @@ taps. Detail is a sticky right panel on desktop, a bottom sheet on mobile: photo
 (signed), assign / kind / due (Admin), notes with photos, Done, Reopen, Remove (Admin).
 Realtime via one shared `flags-shared` channel over `dashboard_tasks` +
 `dashboard_task_comments`. Deep link `/flags?item=<id>` from the dashboard's Your List.
+
+**Flags are for unusual things.** Runners had been using the checklist's "Needs
+attention / runner notes" box as shift chat, so every shift note became a flag. The
+box is now "Raise a flag" with a red "Unusual things only" line (broken, missing,
+damaged, unsafe, client problem, couldn't finish) and points everything else to Notes;
+the WO needs-attention placeholder says the same in runner mode. Initials now show on
+WO flags too (they were already stored; the source line dropped them).
 
 **Retired.** `/tasks` → redirect stub (do not delete); the Tasks rail item; the
 name-tab roster page. `lib/tasks.ts` is untouched — the dashboard's Your List and

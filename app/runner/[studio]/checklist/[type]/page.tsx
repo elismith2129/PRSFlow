@@ -376,7 +376,15 @@ export default function ChecklistPage() {
             color: hasAttentionNow ? 'var(--c-st-warm)' : undefined,
             opacity: hasAttentionNow ? 1 : undefined,
           }}>
-            Needs attention / runner notes
+            Raise a flag
+          </div>
+          {/* Flags were being used as shift chat (Eli, 2026-09-16: "they are
+              using flags as general notes"). The label and the placeholder
+              now say what a flag IS — an unusual thing the office or a tech
+              must act on — and point everything else to Notes. */}
+          <div style={{ fontSize: 11, color: 'var(--c-fg-2)', lineHeight: 1.5, marginBottom: 10 }}>
+            <b style={{ color: 'var(--c-st-hot)' }}>Unusual things only.</b> Something broken, missing, damaged or unsafe, a client problem, or a task you couldn't finish. It becomes a flag the office has to act on.
+            {' '}<span style={{ opacity: 0.7 }}>How the shift went, questions, general updates — put those in <b>Notes</b>, not here.</span>
           </div>
 
           {hasAttentionNow && (
@@ -386,14 +394,14 @@ export default function ChecklistPage() {
             }}>
               <span style={{ width: 8, height: 8, borderRadius: 99, background: 'var(--c-st-warm)', flexShrink: 0 }} />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-st-warm)' }}>Flagged for management attention</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--c-st-warm)' }}>This raises a flag for the office</div>
                 <div style={{ fontSize: 10.5, opacity: 0.5, marginTop: 1 }}>Management will be notified when you submit</div>
               </div>
             </div>
           )}
 
           <textarea
-            placeholder="Notes / issues / incomplete items — anything you couldn't complete, found damaged, or needs attention…"
+            placeholder="What's wrong, and where? (Leave empty if nothing needs the office.)"
             value={notes}
             onChange={e => { attentionChangedRef.current = true; setNotes(e.target.value) }}
             rows={4}

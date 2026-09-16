@@ -73,7 +73,7 @@ export function ageLabel(iso: string, now = Date.now()): string {
 /** "runner checklist · Hunter" / "work order · PRS · Lainey Wilson" / "Fernando". */
 export function sourceLine(f: Flag, nameOf: (id: string | null) => string): string {
   if (f.source === 'runner_flag') return ['runner checklist', f.created_by_name].filter(Boolean).join(' · ')
-  if (f.source === 'wo_flag') return ['work order', f.source_label].filter(Boolean).join(' · ')
+  if (f.source === 'wo_flag') return ['work order', f.source_label, f.created_by_name].filter(Boolean).join(' · ')
   return f.assigned_by ? nameOf(f.assigned_by) : (f.created_by_name || '')
 }
 

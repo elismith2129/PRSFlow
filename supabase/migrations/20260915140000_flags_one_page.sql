@@ -84,9 +84,11 @@ update dashboard_tasks set kind = kind;   -- fires the department trigger for ev
 
 -- ── 4. flags → dashboard_tasks mirror ──────────────────────────────────────
 -- One task per flags row, keyed on (source, source_id = flags.id).
--- runner checklist flags land as Facility (→ Tech); WO needs-attention flags
--- land as Office (→ Admin). Admin can change the kind afterwards; that moves
--- the flag. Text is the runner's note, falling back to the source label.
+-- EVERY intake flag lands as Office (→ Admin). Admin triages: changing the
+-- kind to Facility or Gear moves it to Tech. (Round 4, 2026-09-16 — runner
+-- flags defaulting to Tech put "way too many things" on the tech list; a
+-- runner's note is not a tech's job until the office says it is.)
+-- Text is the runner's note, falling back to the source label.
 create or replace function mirror_flag_to_task()
 returns trigger
 language plpgsql
@@ -110,7 +112,7 @@ begin
        photo_url, created_by_name, completed, completed_at, completed_note)
     values
       (task_text, 'admin', new.source, new.id, new.source_label, new.studio,
-       case when new.source = 'wo_flag' then 'office' else 'facility' end,
+       'office',
        new.photo_url, new.created_by_name,
        new.status = 'resolved',
        case when new.status = 'resolved' then coalesce(new.resolved_at, now()) end,
@@ -194,7 +196,7 @@ insert into dashboard_tasks
 select
   coalesce(nullif(btrim(f.runner_note), ''), f.source_label, 'Flag'),
   'admin', f.source, f.id, f.source_label, f.studio,
-  case when f.source = 'wo_flag' then 'office' else 'facility' end,
+  'office',
   f.photo_url, f.created_by_name,
   f.status = 'resolved',
   case when f.status = 'resolved' then coalesce(f.resolved_at, f.updated_at) end,
