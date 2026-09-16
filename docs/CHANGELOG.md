@@ -19,7 +19,7 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.33.0 — FLAGS: one page, two departments (flags + tasks merged) — Sep 15–16, 2026 (UNRELEASED, branch `feature/flags-one-page`)
+## v1.33.0 — FLAGS: one page, two departments (flags + tasks merged) — Sep 15–16, 2026
 
 Eli: "the first-iteration builds kinda suck… really rethink these to make them meaningful,
 and we can probably combine to one page. Flags + Tasks." Then, on the round-1 mock's
@@ -56,7 +56,11 @@ Header with open / over-72h / done-today counts and a search. Composer is one li
 ("Add a flag…") that opens inline: text, kind (tech seats see only Facility/Gear),
 studio, assign-to (Admin only), due, photo. Chips: All · Mine · I assigned (Admin) ·
 kinds · PRS/ARS/ERS/TRK; the scope chip is remembered per person in localStorage.
-Admin sees two sections, Admin then Tech; tech sees one list. Oldest first. Age is the
+Admin sees Admin and Tech as two columns BESIDE each other (round 5 — stacked
+sections shoved Tech to the bottom of a long Admin list); tech sees one column. Every
+column is one designed height — 8 rows of 52px plus a pager — and the detail card that
+opens beside them is exactly that height (the CRM's list ⇄ profile pattern, the
+dashboard's fixed-geometry law). Selecting a flag pages its column to it. Oldest first. Age is the
 only red (open > 72h). Row: kind dot · text · studio code · source line ("runner
 checklist · Hunter" / "work order · …" / who added it) · due · age · name-or-department
 · done circle. Done on an Admin flag is the tap; on a Tech flag it opens the sheet

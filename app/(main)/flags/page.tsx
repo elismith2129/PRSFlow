@@ -9,7 +9,8 @@
 // unassigned pile, no acknowledge ("if it's tech, it becomes tech").
 //     Facility · Gear (mics are gear)  → Tech    (Sierra, Tom)
 //     Clients & billing · Office       → Admin   (owner, manager, billing, asst)
-// Tech sees the Tech list only. Admin sees both, plus Mine / I assigned.
+// Tech sees the Tech list only. Admin sees both — beside each other, paged,
+// one designed height (round 5, 2026-09-16), the detail card that same height.
 // Age is the only red: open past 72h is hot on every list it appears on.
 // Done asks for vendor + cost on Tech flags only.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,19 +154,33 @@ export default function FlagsPage() {
   }
 
   // ── grouping ───────────────────────────────────────────────────────────────
-  // Admin: two sections, Admin then Tech. Tech: one list. Oldest first inside.
-  const sections: { key: string; title: string; rows: Flag[] }[] = admin
+  // Admin: two columns beside each other, Admin | Tech. Tech: one column.
+  // Oldest first inside. FIXED GEOMETRY (the dashboard's law, 2026-09-16 —
+  // Eli: "admin list gets long, tech gets shoved to the bottom… one long
+  // thing on one side and a bunch of empty space"): every column is one
+  // designed height — PAGE rows of ROW_H — with a pager, and the detail
+  // card beside them is that same height. The CRM's list ⇄ profile pattern.
+  const columns: { key: string; title: string; rows: Flag[] }[] = admin
     ? [
         { key: 'admin', title: 'Admin', rows: filtered.open.filter(f => (f.department ?? departmentOf(f.kind ?? 'office')) === 'admin') },
         { key: 'tech',  title: 'Tech',  rows: filtered.open.filter(f => (f.department ?? departmentOf(f.kind ?? 'office')) === 'tech') },
       ]
-    : [{ key: 'open', title: 'Open', rows: filtered.open }]
+    : [{ key: 'tech', title: 'Tech', rows: filtered.open }]
 
-  const rowsForSelected = selected ? [selected] : []
+  const detail = selected && (
+    <FlagDetail f={selected} admin={admin} roster={roster} nameOf={nameOf} profile={profile} onChanged={load} onClose={() => setSelectedId(null)} />
+  )
+
+  // Desktop grid: columns + (detail when open). Tech alone: list | detail.
+  const gridCols = isMobile
+    ? '1fr'
+    : selected
+      ? (admin ? 'minmax(0,1fr) minmax(0,1fr) minmax(300px,1.05fr)' : 'minmax(0,1.2fr) minmax(300px,1fr)')
+      : (admin ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)')
 
   return (
-    <div style={{ maxWidth: 1100, display: 'grid', gridTemplateColumns: isMobile || !selected ? '1fr' : 'minmax(0, 1.55fr) minmax(300px, 1fr)', gap: 16, alignItems: 'start' }}>
-      <div className="c-panel" style={{ background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: '16px 18px', minWidth: 0 }}>
+    <div style={{ maxWidth: 1180, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="c-panel" style={{ background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: '14px 18px', minWidth: 0 }}>
         {/* ── header ── */}
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
@@ -181,12 +196,12 @@ export default function FlagsPage() {
 
         {/* ── composer: one line, opens inline ── */}
         {!composing ? (
-          <button type="button" onClick={() => setComposing(true)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', marginBottom: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+          <button type="button" onClick={() => setComposing(true)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 12px', marginBottom: 10, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
             <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-fg)', color: 'var(--c-bg)', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 14, lineHeight: 1 }}>+</span>
             <span style={{ flex: 1, color: 'var(--c-fg-3)', fontSize: 12.5, fontFamily: 'Inter' }}>Add a flag…</span>
           </button>
         ) : (
-          <div style={{ background: 'var(--c-wash)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+          <div style={{ background: 'var(--c-wash)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
             <input autoFocus value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitFlag() } if (e.key === 'Escape') { resetCompose(); setComposing(false) } }}
               placeholder="What needs doing, in one line" className="c-input c-inset2" style={{ fontSize: 13, fontWeight: 600 }} />
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
@@ -231,7 +246,7 @@ export default function FlagsPage() {
         )}
 
         {/* ── chips ── */}
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" style={chip(scope === 'all')} onClick={() => pickScope('all')}>All<span style={count}>{open.length}</span></button>
           <button type="button" style={chip(scope === 'mine')} onClick={() => pickScope('mine')}>Mine<span style={count}>{open.filter(f => f.assigned_to === profile?.id).length}</span></button>
           {admin && <button type="button" style={chip(scope === 'assigned')} onClick={() => pickScope('assigned')}>I assigned<span style={count}>{open.filter(f => f.assigned_by === profile?.id).length}</span></button>}
@@ -242,66 +257,98 @@ export default function FlagsPage() {
           <span style={{ width: 1, height: 14, background: 'var(--c-wash2)', margin: '0 4px' }} />
           {STUDIOS.map(s => <button key={s.key} type="button" style={chip(studioF === s.key)} onClick={() => setStudioF(studioF === s.key ? null : s.key)}>{s.code}</button>)}
         </div>
+      </div>
 
-        {/* ── sections ── */}
-        {loading ? (
-          <div style={{ ...meta, padding: '12px 0' }}>Loading…</div>
-        ) : sections.map(sec => {
-          const hot = sec.rows.filter(f => isHot(f)).length
-          return (
-            <div key={sec.key}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '14px 0 6px' }}>
-                {admin
-                  ? <span style={{ fontFamily: "'Bebas Neue', 'Archivo Black', sans-serif", fontSize: 20, letterSpacing: '0.04em', color: 'var(--c-fg)' }}>{sec.title}</span>
-                  : <span style={kLabel}>{sec.title}</span>}
-                <span style={meta}>{sec.rows.length} open{hot > 0 && <> · <b style={{ color: 'var(--c-st-hot)' }}>{hot} over 72h</b></>}</span>
-              </div>
-              {sec.rows.length === 0 ? (
-                <div style={{ ...meta, padding: '4px 0 6px' }}>Nothing open.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {sec.rows.map(f => (
-                    <FlagRow key={f.id} f={f} selected={f.id === selectedId} nameOf={nameOf} onOpen={() => setSelectedId(f.id)}
-                      onDone={async () => {
-                        // Tech flags collect vendor + cost on the sheet; everything else is done on the tap.
-                        if ((f.department ?? departmentOf(f.kind ?? 'office')) === 'tech') { setSelectedId(f.id); return }
-                        if (await doneFlag(f.id, { note: null, vendor: null, cost: null })) { toast('Done'); load() }
-                      }} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        {/* ── done this week ── */}
-        {!loading && (
-          <div style={{ marginTop: 16 }}>
-            <button type="button" onClick={() => setShowDone(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={kLabel}>Done this week</span><span style={meta}>{filtered.done.length} {showDone ? '▾' : '▸'}</span>
-            </button>
-            {showDone && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
-                {filtered.done.length === 0 && <div style={meta}>Nothing done this week.</div>}
-                {filtered.done.map(f => <FlagRow key={f.id} f={f} selected={f.id === selectedId} nameOf={nameOf} onOpen={() => setSelectedId(f.id)} onDone={async () => { if (await reopenFlag(f.id)) load() }} />)}
-              </div>
-            )}
+      {/* ── the columns (+ detail) — one designed height ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 14, alignItems: 'start' }}>
+        {columns.map(col => (
+          <FlagColumn key={col.key} title={col.title} rows={col.rows} loading={loading} selectedId={selectedId} nameOf={nameOf}
+            isMobile={isMobile}
+            onOpen={id => setSelectedId(id)}
+            onDone={async f => {
+              // Tech flags collect vendor + cost on the card; everything else is done on the tap.
+              if ((f.department ?? departmentOf(f.kind ?? 'office')) === 'tech') { setSelectedId(f.id); return }
+              if (await doneFlag(f.id, { note: null, vendor: null, cost: null })) { toast('Done'); load() }
+            }} />
+        ))}
+        {selected && !isMobile && (
+          <div className="c-panel" style={{ background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: '14px 16px', height: COL_H, overflowY: 'auto', minWidth: 0, boxSizing: 'border-box' }}>
+            {detail}
           </div>
         )}
       </div>
 
-      {/* ── detail ── */}
-      {selected && (isMobile ? (
+      {/* ── done this week ── */}
+      {!loading && (
+        <div className="c-panel" style={{ background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: '12px 18px' }}>
+          <button type="button" onClick={() => setShowDone(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={kLabel}>Done this week</span><span style={meta}>{filtered.done.length} {showDone ? '▾' : '▸'}</span>
+          </button>
+          {showDone && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 8 }}>
+              {filtered.done.length === 0 && <div style={meta}>Nothing done this week.</div>}
+              {filtered.done.map(f => <FlagRow key={f.id} f={f} selected={f.id === selectedId} nameOf={nameOf} onOpen={() => setSelectedId(f.id)} onDone={async () => { if (await reopenFlag(f.id)) load() }} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── mobile: detail as a bottom sheet ── */}
+      {selected && isMobile && (
         <div onClick={() => setSelectedId(null)} style={{ position: 'fixed', inset: 0, zIndex: 10030, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxHeight: '92vh', overflowY: 'auto', background: 'var(--c-srf)', borderRadius: '20px 20px 0 0', padding: '16px 16px 24px' }}>
-            {rowsForSelected.map(f => <FlagDetail key={f.id} f={f} admin={admin} roster={roster} nameOf={nameOf} profile={profile} onChanged={load} onClose={() => setSelectedId(null)} />)}
+            {detail}
           </div>
         </div>
-      ) : (
-        <div className="c-panel" style={{ background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: '14px 16px', position: 'sticky', top: 14, minWidth: 0 }}>
-          {rowsForSelected.map(f => <FlagDetail key={f.id} f={f} admin={admin} roster={roster} nameOf={nameOf} profile={profile} onChanged={load} onClose={() => setSelectedId(null)} />)}
-        </div>
-      ))}
+      )}
+    </div>
+  )
+}
+
+// ── a column: PAGE rows of ROW_H, a pager, one designed height ──────────────
+const PAGE = 8
+const ROW_H = 52
+const ROW_GAP = 5
+const COL_HEAD = 34
+const COL_FOOT = 30
+const COL_PAD = 12
+/** Column height = head + rows + pager. The detail card matches it exactly. */
+const COL_H = COL_PAD * 2 + COL_HEAD + PAGE * ROW_H + (PAGE - 1) * ROW_GAP + COL_FOOT
+
+function FlagColumn({ title, rows, loading, selectedId, nameOf, isMobile, onOpen, onDone }: {
+  title: string; rows: Flag[]; loading: boolean; selectedId: string | null
+  nameOf: (id: string | null) => string; isMobile: boolean
+  onOpen: (id: string) => void; onDone: (f: Flag) => void
+}) {
+  const [page, setPage] = useState(1)
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE))
+  const safe = Math.min(page, pages)
+  useEffect(() => { if (page > pages) setPage(pages) }, [page, pages])
+  // Follow the selected flag onto its page (deep link, or a row that moved).
+  useEffect(() => {
+    if (!selectedId) return
+    const i = rows.findIndex(r => r.id === selectedId)
+    if (i >= 0) setPage(Math.floor(i / PAGE) + 1)
+  }, [selectedId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const start = (safe - 1) * PAGE
+  const slice = rows.slice(start, start + PAGE)
+  const hot = rows.filter(f => isHot(f)).length
+  return (
+    <div className="c-panel" style={{ background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: COL_PAD, height: isMobile ? 'auto' : COL_H, display: 'flex', flexDirection: 'column', minWidth: 0, boxSizing: 'border-box' }}>
+      <div style={{ height: COL_HEAD, display: 'flex', alignItems: 'baseline', gap: 8, padding: '0 4px' }}>
+        <span style={{ fontFamily: "'Bebas Neue', 'Archivo Black', sans-serif", fontSize: 20, letterSpacing: '0.04em', color: 'var(--c-fg)' }}>{title}</span>
+        <span style={meta}>{rows.length} open{hot > 0 && <> · <b style={{ color: 'var(--c-st-hot)' }}>{hot} over 72h</b></>}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: ROW_GAP, flex: 1, minHeight: 0 }}>
+        {loading ? <div style={{ ...meta, padding: '6px 4px' }}>Loading…</div>
+          : rows.length === 0 ? <div style={{ ...meta, padding: '6px 4px' }}>Nothing open.</div>
+          : slice.map(f => <FlagRow key={f.id} f={f} selected={f.id === selectedId} nameOf={nameOf} onOpen={() => onOpen(f.id)} onDone={() => onDone(f)} />)}
+      </div>
+      <div style={{ height: COL_FOOT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+        <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safe <= 1} style={{ background: 'none', border: 'none', cursor: safe <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safe <= 1 ? 'var(--c-fg-3)' : 'var(--c-fg-2)', padding: '2px 4px' }}>← Prev</button>
+        <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>{rows.length === 0 ? '—' : `${start + 1}–${Math.min(start + PAGE, rows.length)} of ${rows.length}`}</span>
+        <button type="button" onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={safe >= pages} style={{ background: 'none', border: 'none', cursor: safe >= pages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safe >= pages ? 'var(--c-fg-3)' : 'var(--c-fg-2)', padding: '2px 4px' }}>Next →</button>
+      </div>
     </div>
   )
 }
@@ -313,13 +360,13 @@ function FlagRow({ f, selected, nameOf, onOpen, onDone }: { f: Flag; selected: b
   const who = f.assigned_to ? nameOf(f.assigned_to) : ''
   const src = sourceLine(f, nameOf)
   return (
-    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: '8px minmax(0,1fr) auto', gap: 12, alignItems: 'center', background: 'var(--c-bg)', borderRadius: 12, padding: '9px 13px 9px 12px', cursor: 'pointer', outline: selected ? '1.5px solid var(--c-fg)' : 'none', opacity: f.completed ? 0.55 : 1 }}>
+    <div onClick={onOpen} style={{ display: 'grid', gridTemplateColumns: '8px minmax(0,1fr) auto', gap: 10, alignItems: 'center', background: 'var(--c-bg)', borderRadius: 12, padding: '0 12px', height: ROW_H, boxSizing: 'border-box', cursor: 'pointer', outline: selected ? '1.5px solid var(--c-fg)' : 'none', opacity: f.completed ? 0.55 : 1 }}>
       <i style={{ width: 8, height: 8, borderRadius: 99, background: KIND_COLOR[kind] }} />
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontFamily: 'Inter', fontWeight: 600, lineHeight: 1.3, color: 'var(--c-fg)', textDecoration: f.completed ? 'line-through' : 'none', textDecorationColor: 'var(--c-fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.text}</div>
-        <div style={{ ...meta, marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ ...meta, marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
           {f.studio && <span style={{ ...mono, fontWeight: 600, color: 'var(--c-fg-2)', letterSpacing: '0.04em' }}>{studioCode(f.studio)}</span>}
-          {src && <span>{src}</span>}
+          {src && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{src}</span>}
           {f.due_date && !f.completed && <span>· due {fmtDate(f.due_date)}</span>}
           {f.completed && <span>· done {fmtDate(f.completed_at)}{f.done_cost != null ? ` · $${Number(f.done_cost).toFixed(0)}` : ''}{f.done_vendor ? ` · ${f.done_vendor}` : ''}</span>}
           {f.photo_url && <span style={{ display: 'inline-block', width: 14, height: 11, borderRadius: 3, background: 'var(--c-wash2)' }} />}
