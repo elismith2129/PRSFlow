@@ -1320,7 +1320,9 @@ export async function fetchStaffGrid(days = 14): Promise<GridRow[]> {
 
 // ─── Briefing composer (§5) ──────────────────────────────────────────────────
 
-export type FloBullet = { color: string; alert?: boolean; text: string }
+/** `anomaly`: a data failure (missing WO, roomless booking), not queue
+ *  pressure — the statement never lets duty misses crowd these out. */
+export type FloBullet = { color: string; alert?: boolean; anomaly?: boolean; text: string }
 export type Briefing = { bullets: FloBullet[]; synopsis: string }
 
 export type BriefingInput = {
@@ -1424,6 +1426,7 @@ export function composeBriefing(input: BriefingInput): Briefing {
     bullets.push({
       color: C_HOT,
       alert: true,
+      anomaly: true,
       text: `${needsWo.length} session${needsWo.length === 1 ? '' : 's'} missing a work order — auto-create failed, open ${needsWo.length === 1 ? 'it' : 'each one'} to retry`,
     })
   }
@@ -1438,6 +1441,7 @@ export function composeBriefing(input: BriefingInput): Briefing {
     bullets.push({
       color: C_HOT,
       alert: true,
+      anomaly: true,
       text: `${roomless.length} booking${roomless.length === 1 ? '' : 's'} with no room — on no calendar, invisible to runners: ${handles.join(', ')}${more}. Open ${roomless.length === 1 ? 'it' : 'each'} and set the studio.`,
     })
   }

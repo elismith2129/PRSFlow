@@ -427,7 +427,13 @@ export default function DashboardPage() {
   //    Red bullets lead (max 2), the landed line follows when we landed
   //    anything, then the synopsis as the quiet coda. Same numbers as ever
   //    (composeBriefing); only the volume changed.
-  const alertLines = (myDay?.briefing.bullets ?? []).filter(b => b.alert).slice(0, 3)
+  // ANOMALIES FIRST, NEVER CUT (Eli, 2026-09-16): on a morning with three
+  // duty misses the cap hid "13 sessions missing a WO" and "4 bookings with
+  // no room" from the owner while a tech — who has no duty lines — saw them.
+  // A data failure outranks queue pressure: anomalies always show, then up
+  // to three of the rest.
+  const alertsAll = (myDay?.briefing.bullets ?? []).filter(b => b.alert)
+  const alertLines = [...alertsAll.filter(b => b.anomaly), ...alertsAll.filter(b => !b.anomaly).slice(0, 3)]
   // THE REVIEW LINE (Eli, 2026-09-07 — "Monday: he's got a ton from the
   // weekend; prioritize getting the WOs reviewed and ready for approval").
   // Same billingStage-derived count as the money tile, so Flo and the tile
