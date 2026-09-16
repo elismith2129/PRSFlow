@@ -444,7 +444,7 @@ export default function DashboardPage() {
         })
       }
       for (const t of tasks) {
-        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: '/tasks' })
+        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/flags?item=${t.id}` })
       }
       return rows
     }
@@ -465,7 +465,7 @@ export default function DashboardPage() {
     }
     if (qTab === effectiveView) {
       for (const t of tasks) {
-        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: '/tasks' })
+        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/flags?item=${t.id}` })
       }
     }
     return rows
@@ -770,7 +770,7 @@ export default function DashboardPage() {
               </span>
             )}
             <span className="n-prog">{qDone} of {qRows.length}</span>
-            <span className="n-arrow" style={{ marginLeft: 8 }} onClick={() => router.push('/tasks')}>→</span>
+            <span className="n-arrow" style={{ marginLeft: 8 }} onClick={() => router.push('/flags')}>→</span>
           </div>
           <div className="n-qscroll">
             {qRows.map(r => (

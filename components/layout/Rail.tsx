@@ -68,7 +68,8 @@ const OPERATIONS: RailItem[] = [
   // Engineers moved out of the retired Admin page (Eli, 2026-08-17) — the one
   // thing in there still used. Admin's rebuild is a later phase.
   { href: '/engineers', label: 'Engineers', ic: '◈' },
-  { href: '/tasks', label: 'Tasks', ic: '✓' },
+  // Tasks + Flags are ONE page (2026-09-15): a task is a flag someone typed.
+  // /tasks redirects here — do not re-add a Tasks item.
   { href: '/flags', label: 'Flags', ic: '⚑' },
   { href: '/nadines', label: "Nadine's", ic: '♫' },
 ]

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Flags: one page, two departments</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  FLAGS — flags + tasks become one page (Eli, 2026-09-15, round 2).
+
+  Round 1 (work-board-options.html) proposed one list with an "unassigned"
+  tray and a "pick up" button. Eli killed both:
+    "If people have an option to grab something, nobody will ever grab
+     anything. If it's billing, it just becomes billing. If it's tech, it
+     becomes tech. If it's manager, it becomes manager."
+    "I don't like the jargon. Work, needs a hand, seat. We need flags as a
+     minimum as a word — that's what's used all over the app."
+    "I don't want everybody seeing other people's lists — but we assign
+     things to other people, so you have to know what you've assigned and
+     where it's at."
+
+  ── THE MODEL ───────────────────────────────────────────────────────────────
+  A FLAG is anything that needs doing. A task is a flag someone typed by
+  hand. Same row.
+
+  A flag is NEVER nobody's. Its KIND decides its DEPARTMENT at creation.
+  Two departments (round 3 — "let's combine categories"):
+      Facility · Gear (mics are gear)   → Tech   (Sierra, Tom)
+      Clients & billing · Office        → Admin  (Eli, Adam-Mike, Fernando,
+                                                  Billing, Sam)
+  Admin also sees Tech's list. Tech sees only Tech's.
+  Sources and their default kind:
+      runner checklist (Needs Attention)   → Facility → Tech
+      work order needs-attention (wo_flag) → Office   → Admin
+      mic QC (bad / missing mic)           → Gear     → Tech
+      typed by a person                    → the kind they picked
+  Managers can change a flag's kind; changing it moves it. A manager can
+  also put a specific person's name on a flag (Fernando → Tom). Then it is
+  on Tom's list AND on Fernando's "I assigned".
+
+  ── WHO SEES WHAT (the enterprise pattern: the AREA decides visibility;
+     "mine" and "I assigned" are the only personal lists) ─────────────────
+      Tech        every open Facility / Gear flag, any assignee. Nothing
+                  in Clients & billing or Office. Shift Notes: the Runner
+                  tab only.
+      Admin       everything — the Admin list and the Tech list — plus
+                  "Mine" and "I assigned". Owner, manager, billing and
+                  asst_manager are all Admin.
+  Departments here are one or two people, so a department IS the list.
+  No grab. No unassigned. No acknowledge — being on the list is the
+  acknowledgment. "Resolve" becomes Done.
+
+  ── DATA: no new table ──────────────────────────────────────────────────────
+  dashboard_tasks is the flag row (it already has source / source_id /
+  photo_url / comments / seat-based RLS).
+    migration (idempotent): + studio, + kind, + department,
+                            + done_vendor, + done_cost
+    flags stays as the INTAKE table for the runner checklist and WO popup;
+    each flags row is mirrored into dashboard_tasks with department set by
+    the kind table above, and flags.status follows (pending→open,
+    acknowledged→open, resolved→done) so Admin's Flags tab keeps reading it.
+  RLS: tech SELECT/UPDATE widens from own-only to department='tech';
+  admin roles read all. The per-person visibility tiers from Jul 2 retire
+  for this table — department is the tier now.
+  Rail → Operations → FLAGS (replaces Flags + Tasks). /tasks → redirect stub.
+
+  ── ALARM ───────────────────────────────────────────────────────────────────
+  Age is the only red. An open flag older than 72h goes hot on every list
+  it appears on — the assignee's AND the assigner's — so handing something
+  off is not a way to forget it. Due dates are text.
+-->
+<style>
+:root{
+  --bg:#fdfcf9; --srf:#f1efe9; --srf2:#eae7de; --fg:#1a1712;
+  --fg2:rgba(26,23,18,.66); --fg3:rgba(26,23,18,.42);
+  --wash:rgba(26,23,18,.06); --wash2:rgba(26,23,18,.12);
+  --hot:#ff5a4d; --warm:#ffa94d; --cold:#5fc9e8; --ok:#43dfae; --uncon:#7fb2e5; --tech:#b5a3ef; --dead:#cfd6d4;
+  --chip-ink:#12100e;
+  --softsh:0 1px 3px rgba(26,23,18,.08), 0 6px 18px rgba(26,23,18,.07);
+}
+[data-theme="dark"]{
+  --bg:#0b0a09; --srf:#151412; --srf2:#1b1917; --fg:#f2efe7;
+  --fg2:rgba(242,239,231,.6); --fg3:rgba(242,239,231,.34);
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --softsh:0 2px 5px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 80px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;color:var(--fg2);max-width:860px;line-height:1.65;margin-bottom:8px}
+.lede b{color:var(--fg)}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:40px 0 4px;letter-spacing:-.01em}
+h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;color:var(--fg2);max-width:860px;line-height:1.6;margin-bottom:14px}
+.sub b{color:var(--fg)}
+.cmp{border-left:2px solid var(--fg3);padding-left:12px;margin:12px 0 22px;font-size:11.5px;color:var(--fg2);line-height:1.65;max-width:860px}
+.cmp b{color:var(--fg)}
+.tgl{position:fixed;top:14px;right:16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--fg);color:var(--bg);border-radius:99px;padding:6px 12px;cursor:pointer;z-index:9}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+.frame{background:var(--bg);border-radius:16px;box-shadow:var(--softsh);padding:18px 20px 22px;margin:14px 0 6px;border:1px solid var(--wash)}
+.frame .who{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin-bottom:10px}
+.frame .who b{color:var(--fg)}
+.ph{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+.ph .t{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.04em;line-height:1}
+.ph .c{font-size:11px;color:var(--fg3)}
+.ph .c b{color:var(--fg);font-weight:700}
+.ph .c i{color:var(--hot);font-style:normal;font-weight:700}
+.compose{display:flex;align-items:center;gap:10px;background:var(--srf);border-radius:12px;padding:9px 12px;margin-bottom:14px;box-shadow:var(--softsh)}
+.compose .plus{width:22px;height:22px;border-radius:99px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-weight:800;font-size:14px;line-height:1}
+.compose .in{flex:1;color:var(--fg3);font-size:12.5px}
+.compose .k{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);background:var(--wash);border-radius:99px;padding:4px 10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:10px;font-weight:700;border-radius:99px;padding:4px 11px;background:var(--wash);color:var(--fg2)}
+.chip.on{background:var(--fg);color:var(--bg)}
+.chip .ct{font-family:'DM Mono',monospace;font-weight:500;margin-left:5px;opacity:.7}
+.chips .sep{width:1px;height:14px;background:var(--wash2);margin:0 4px}
+.sec{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin:16px 0 6px;display:flex;align-items:baseline;gap:8px}
+.sec b{color:var(--fg);font-family:'DM Mono',monospace;font-weight:500;letter-spacing:0}
+.sec .dept{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.04em;color:var(--fg);text-transform:none;font-weight:400}
+.sec .sm{font-weight:500;letter-spacing:0;text-transform:none;color:var(--fg3)}
+.sec .sm i{font-style:normal;color:var(--hot);font-weight:700}
+.list{display:flex;flex-direction:column;gap:5px}
+.row{display:grid;grid-template-columns:8px 1fr auto;gap:12px;align-items:center;background:var(--srf);border-radius:12px;padding:9px 13px 9px 12px}
+.row.sel{outline:1.5px solid var(--fg)}
+.row .dot{width:8px;height:8px;border-radius:99px;background:var(--fg3)}
+.dot.bld{background:var(--uncon)}.dot.gear{background:var(--tech)}.dot.mic{background:var(--tech)}.dot.cli{background:var(--warm)}.dot.off{background:var(--dead)}
+.row .what{font-size:12.5px;font-weight:600;line-height:1.3}
+.row .meta{font-size:10.5px;color:var(--fg3);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.row .meta .st{font-family:'DM Mono',monospace;font-weight:600;color:var(--fg2);letter-spacing:.04em}
+.row .meta .pic{display:inline-block;width:14px;height:11px;border-radius:3px;background:var(--wash2);vertical-align:-1px}
+.row .right{display:flex;align-items:center;gap:10px;justify-self:end}
+.row .age{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--fg3)}
+.row .age.hot{color:var(--hot);font-weight:600}
+.row .nm{font-size:10.5px;color:var(--fg2);font-weight:600}
+.row .nm.dept{color:var(--fg3);font-weight:500}
+.row .done{width:18px;height:18px;border-radius:99px;border:1.5px solid var(--fg3)}
+.row.d{opacity:.55}
+.row.d .what{text-decoration:line-through;text-decoration-color:var(--fg3)}
+.row.d .done{background:var(--ok);border-color:var(--ok)}
+.split{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.det{background:var(--srf);border-radius:14px;padding:14px 15px;box-shadow:var(--softsh);position:sticky;top:14px}
+.det .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:block;margin-bottom:3px}
+.det .h{font-size:14.5px;font-weight:700;line-height:1.3;margin-bottom:6px}
+.det .m{font-size:11px;color:var(--fg2);line-height:1.6;margin-bottom:12px}
+.det .m b{color:var(--fg)}
+.det .photo{height:120px;border-radius:10px;background:linear-gradient(135deg,var(--srf2),var(--wash2));margin-bottom:12px;display:grid;place-items:center;font-size:10px;color:var(--fg3)}
+.det .field{background:var(--wash);border-radius:9px;padding:6px 10px;font-size:12px;margin-bottom:8px;display:flex;justify-content:space-between}
+.det .field span{color:var(--fg3)}
+.cm{font-size:11.5px;line-height:1.5;padding:7px 0;border-top:1px solid var(--wash)}
+.cm .who{font-family:'DM Mono',monospace;font-size:10px;color:var(--fg3);margin-right:6px}
+.btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{display:inline-block;background:var(--fg);color:var(--bg);border-radius:99px;padding:8px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.soft{display:inline-block;background:var(--wash2);color:var(--fg);border-radius:99px;padding:8px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.ghost{display:inline-block;color:var(--fg3);padding:8px 6px;font-size:10.5px;font-weight:700;text-decoration:underline}
+.phone{width:300px;background:var(--srf2);border-radius:28px;padding:12px;box-shadow:var(--softsh);margin:0 auto}
+.phone .scr{background:var(--bg);border-radius:20px;padding:16px 13px 14px;min-height:520px}
+.phone .ph .t{font-size:26px}
+.phone .row{padding:8px 10px;grid-template-columns:7px 1fr auto}
+.phone .row .what{font-size:12px}
+.phone .chips{margin-bottom:8px}
+.phone .compose{padding:8px 10px;margin-bottom:10px}
+.note{font-size:10.5px;color:var(--fg3);margin-top:12px;line-height:1.65;max-width:860px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.rules{font-size:11.5px;color:var(--fg2);line-height:1.7;max-width:860px}
+.rules li{margin:4px 0 4px 16px}
+.rules b{color:var(--fg)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--fg2);margin:8px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .dot{width:8px;height:8px;border-radius:99px}
+table.rt{border-collapse:collapse;font-size:11.5px;margin:10px 0 4px;max-width:860px}
+table.rt th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 22px 6px 0}
+table.rt td{padding:5px 22px 5px 0;border-top:1px solid var(--wash);color:var(--fg2)}
+table.rt td b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="tgl" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</div>
+
+<h1>Flags — one page, two departments</h1>
+<p class="lede">A flag is anything that needs doing. A task is a flag someone typed by hand. <b>A flag is never nobody's</b>: its kind decides its department the moment it exists, so there is no grabbing and no unassigned pile. Two departments: <b>Tech</b> (Facility, Gear) and <b>Admin</b> (Clients &amp; billing, Office). Tech sees only Tech's list; Admin sees everything, plus what they've handed out. Nothing on the page is red except age.</p>
+
+<table class="rt">
+  <tr><th>Kind</th><th>Goes to</th><th>Comes from</th></tr>
+  <tr><td><b>Facility</b></td><td>Tech</td><td>runner checklist (default) · typed</td></tr>
+  <tr><td><b>Gear</b> <span style="color:var(--fg3)">(mics are gear)</span></td><td>Tech</td><td>mic QC on the runner mics page · typed</td></tr>
+  <tr><td><b>Clients &amp; billing</b></td><td>Admin</td><td>typed</td></tr>
+  <tr><td><b>Office</b></td><td>Admin</td><td>work order needs-attention (default) · typed</td></tr>
+</table>
+<div class="legend">
+  <span><i class="dot bld"></i>facility</span><span><i class="dot gear"></i>gear (incl. mics)</span><span><i class="dot cli"></i>clients &amp; billing</span><span><i class="dot off"></i>office</span><span style="margin-left:auto">Tech sees the first two · Admin sees all four</span>
+</div>
+
+<!-- ═══════════════════════════ TECH VIEW ═══════════════════════════ -->
+<h2><span class="n">1</span>What Sierra sees — the Tech list</h2>
+<p class="sub">Every open Facility / Gear flag across all four studios, whoever's name is on it. <b>Mine</b> narrows to flags with her name. Nothing from Clients &amp; billing or Office exists on her screen. Sorted oldest first; anything over 72h is hot. Tap a row → the detail: photo, who raised it, notes, and Done — which asks what was done, the vendor and the cost, because these are the flags where that matters.</p>
+
+<div class="frame">
+  <div class="who">Signed in as <b>Sierra · Tech</b></div>
+  <div class="split">
+    <div>
+      <div class="ph"><div class="t">Flags</div><div class="c"><b>8</b> open · <i>2</i> over 72h · 3 done this week</div></div>
+      <div class="compose"><div class="plus">+</div><div class="in">Add a flag…</div><span class="k">kind</span><span class="k">studio</span><span class="k">photo</span></div>
+      <div class="chips">
+        <span class="chip on">All <span class="ct">8</span></span><span class="chip">Mine <span class="ct">3</span></span>
+        <span class="sep"></span>
+        <span class="chip">Facility <span class="ct">4</span></span><span class="chip">Gear <span class="ct">4</span></span>
+        <span class="sep"></span>
+        <span class="chip">PRS</span><span class="chip">ARS</span><span class="chip">ERS</span><span class="chip">TRK</span>
+      </div>
+
+      <div class="sec">Open <b>8</b></div>
+      <div class="list">
+        <div class="row sel"><i class="dot bld"></i><div><div class="what">Studio D bathroom fan — squealing, replace it</div><div class="meta"><span class="st">PRS</span><span>runner checklist · Marco</span><i class="pic"></i></div></div><div class="right"><span class="age hot">8d</span><span class="nm">Tom</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot bld"></i><div><div class="what">Lounge AC blowing warm — clients complained twice</div><div class="meta"><span class="st">ARS</span><span>runner checklist · Hunter</span><i class="pic"></i></div></div><div class="right"><span class="age hot">4d</span><span class="nm dept">Tech</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot mic"></i><div><div class="what">Quarterly mic QC — Encore locker (18 mics)</div><div class="meta"><span class="st">ERS</span><span>Eli</span><span>· due Sep 30</span></div></div><div class="right"><span class="age">5d</span><span class="nm">Sierra</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot gear"></i><div><div class="what">Patchbay row 3 dead in the B control room</div><div class="meta"><span class="st">ARS</span><span>Fernando</span></div></div><div class="right"><span class="age">2d</span><span class="nm">Sierra</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot bld"></i><div><div class="what">Parking-lot gate sensor — re-seat the loop wire</div><div class="meta"><span class="st">TRK</span><span>runner checklist · Dev</span><span>· due Thu</span></div></div><div class="right"><span class="age">2d</span><span class="nm dept">Tech</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot gear"></i><div><div class="what">Studio A talkback mic dead — swap SM58, test the loom</div><div class="meta"><span class="st">PRS</span><span>Fernando</span></div></div><div class="right"><span class="age">1d</span><span class="nm">Tom</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot mic"></i><div><div class="what">U87 #2 crackles on the low end — pulled from Studio B</div><div class="meta"><span class="st">PRS</span><span>mic QC · Hunter</span></div></div><div class="right"><span class="age">19h</span><span class="nm dept">Tech</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot bld"></i><div><div class="what">Track kitchen faucet drips</div><div class="meta"><span class="st">TRK</span><span>Sierra</span></div></div><div class="right"><span class="age">3h</span><span class="nm">Sierra</span><span class="done"></span></div></div>
+      </div>
+      <div class="sec">Done this week <b>3</b> <span class="sm">▸</span></div>
+    </div>
+
+    <div class="det">
+      <span class="k">Facility · PRS · Tom · 8 days</span>
+      <div class="h">Studio D bathroom fan — squealing, replace it</div>
+      <div class="m">Flagged by <b>Marco</b> on the closing checklist, Sep 7. Assigned to <b>Tom</b> by Fernando, Sep 8.</div>
+      <div class="photo">photo from the checklist</div>
+      <span class="k">Notes</span>
+      <div class="cm"><span class="who">TO · Sep 10</span>Ordered the Panasonic unit, arrives Friday.</div>
+      <div class="cm"><span class="who">FE · Sep 8</span>Client in D on the 12th — try to get it done before.</div>
+      <div class="field" style="margin-top:8px">Add a note or photo… <span>⌁</span></div>
+      <div style="margin-top:16px"><span class="k">Done</span>
+        <div class="field">What was done <span>…</span></div>
+        <div class="field">Vendor <span>…</span></div>
+        <div class="field">Cost <span class="mono">$ 0.00</span></div>
+        <div class="btnrow"><span class="btn">Mark done</span><span class="ghost">Not a real issue</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cmp"><b>The name column.</b> A flag shows a person's name when a manager put one on it, otherwise it shows the department. Both Sierra and Tom see the whole Tech list either way — the name is who's carrying it, not who's allowed to look. Tech can't change kind or assignee; that's an Admin move.</div>
+
+<!-- ═══════════════════════════ MANAGER VIEW ═══════════════════════════ -->
+<h2><span class="n">2</span>What Admin sees — everything, Tech list included</h2>
+<p class="sub">The same page with both departments as sections, oldest first inside each. Admin is Eli, Adam-Mike, Fernando, Billing and Sam — one department, because it's a handful of people and they cover each other. <b>I assigned</b> is each person's own tracking list: every flag they typed or put a name on, wherever it lives, so what was handed out is never out of sight. A flag they assigned that's gone hot is hot here too. Chips: Mine / I assigned, department, studio.</p>
+
+<div class="frame">
+  <div class="who">Signed in as <b>Fernando · Admin</b></div>
+  <div class="ph"><div class="t">Flags</div><div class="c"><b>16</b> open · <i>3</i> over 72h · 5 done this week</div></div>
+  <div class="compose"><div class="plus">+</div><div class="in">Add a flag…</div><span class="k">kind</span><span class="k">studio</span><span class="k">assign to</span><span class="k">due</span><span class="k">photo</span></div>
+  <div class="chips">
+    <span class="chip on">All <span class="ct">16</span></span><span class="chip">Mine <span class="ct">2</span></span><span class="chip">I assigned <span class="ct">5</span></span>
+    <span class="sep"></span>
+    <span class="chip">Admin <span class="ct">8</span></span><span class="chip">Tech <span class="ct">8</span></span>
+    <span class="sep"></span>
+    <span class="chip">PRS</span><span class="chip">ARS</span><span class="chip">ERS</span><span class="chip">TRK</span>
+  </div>
+
+  <div class="sec"><span class="dept">Tech</span><span class="sm">8 open · <i>2 over 72h</i></span></div>
+  <div class="list">
+    <div class="row"><i class="dot bld"></i><div><div class="what">Studio D bathroom fan — squealing, replace it</div><div class="meta"><span class="st">PRS</span><span>runner checklist · Marco</span><i class="pic"></i></div></div><div class="right"><span class="age hot">8d</span><span class="nm">Tom</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot bld"></i><div><div class="what">Lounge AC blowing warm — clients complained twice</div><div class="meta"><span class="st">ARS</span><span>runner checklist · Hunter</span><i class="pic"></i></div></div><div class="right"><span class="age hot">4d</span><span class="nm dept">Tech</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot mic"></i><div><div class="what">Quarterly mic QC — Encore locker (18 mics)</div><div class="meta"><span class="st">ERS</span><span>Eli</span><span>· due Sep 30</span></div></div><div class="right"><span class="age">5d</span><span class="nm">Sierra</span><span class="done"></span></div></div>
+    <div class="row" style="opacity:.5"><i class="dot"></i><div><div class="what" style="color:var(--fg3)">+ 5 more</div></div><div></div></div>
+  </div>
+
+  <div class="sec"><span class="dept">Admin</span><span class="sm">8 open · <i>1 over 72h</i></span></div>
+  <div class="list">
+    <div class="row"><i class="dot off"></i><div><div class="what">HVAC service contract renewal — three quotes</div><div class="meta"><span>Eli</span></div></div><div class="right"><span class="age hot">6d</span><span class="nm">Fernando</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot cli"></i><div><div class="what">BMG — chase the PO for the Julia session before the 30th</div><div class="meta"><span>Eli</span><span>· due Sep 25</span></div></div><div class="right"><span class="age">1d</span><span class="nm dept">Admin</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot cli"></i><div><div class="what">Concord blanket day — invoice as one work order</div><div class="meta"><span>Fernando</span></div></div><div class="right"><span class="age">1d</span><span class="nm dept">Admin</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot cli"></i><div><div class="what">Lainey Wilson — Neve module left in C, client wants it shipped</div><div class="meta"><span class="st">PRS</span><span>work order · WO-1184</span></div></div><div class="right"><span class="age">6h</span><span class="nm dept">Admin</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot off"></i><div><div class="what">Order 8 more USB-C to Lightning for the runner tablets</div><div class="meta"><span>Fernando</span></div></div><div class="right"><span class="age">3d</span><span class="nm">Sam</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot off"></i><div><div class="what">Session ran 2h over, client disputes the overtime — see WO</div><div class="meta"><span class="st">ARS</span><span>work order · WO-1191</span></div></div><div class="right"><span class="age">14h</span><span class="nm dept">Admin</span><span class="done"></span></div></div>
+    <div class="row" style="opacity:.5"><i class="dot"></i><div><div class="what" style="color:var(--fg3)">+ 2 more</div></div><div></div></div>
+  </div>
+
+  <div class="sec">Done this week <b>5</b> <span class="sm">▸</span></div>
+</div>
+<div class="cmp"><b>Every Admin seat gets this frame</b> — Billing and Sam included. If that turns out to be too much for Sam, "Mine" is one tap and is remembered per person; no separate tier needed.</div>
+
+<!-- ═══════════════════════════ PHONE ═══════════════════════════ -->
+<h2><span class="n">3</span>Tom, on his phone, in the building</h2>
+<div class="grid2">
+  <div class="phone"><div class="scr">
+    <div class="ph"><div class="t">Flags</div><div class="c"><b>8</b> open · <i>2</i> over 72h</div></div>
+    <div class="compose"><div class="plus">+</div><div class="in">Add a flag…</div></div>
+    <div class="chips"><span class="chip on">All 8</span><span class="chip">Mine 2</span><span class="chip">Facility</span><span class="chip">Gear</span></div>
+    <div class="sec">Open <b>8</b></div>
+    <div class="list">
+      <div class="row"><i class="dot bld"></i><div><div class="what">Studio D bathroom fan</div><div class="meta"><span class="st">PRS</span><span>Tom</span></div></div><div class="right"><span class="age hot">8d</span><span class="done"></span></div></div>
+      <div class="row"><i class="dot bld"></i><div><div class="what">Lounge AC blowing warm</div><div class="meta"><span class="st">ARS</span><span>Tech</span></div></div><div class="right"><span class="age hot">4d</span><span class="done"></span></div></div>
+      <div class="row"><i class="dot mic"></i><div><div class="what">Quarterly mic QC — Encore</div><div class="meta"><span class="st">ERS</span><span>Sierra · due Sep 30</span></div></div><div class="right"><span class="age">5d</span><span class="done"></span></div></div>
+      <div class="row"><i class="dot gear"></i><div><div class="what">Patchbay row 3 dead — B control</div><div class="meta"><span class="st">ARS</span><span>Sierra</span></div></div><div class="right"><span class="age">2d</span><span class="done"></span></div></div>
+      <div class="row"><i class="dot bld"></i><div><div class="what">Gate sensor — re-seat loop wire</div><div class="meta"><span class="st">TRK</span><span>Tech · due Thu</span></div></div><div class="right"><span class="age">2d</span><span class="done"></span></div></div>
+      <div class="row"><i class="dot gear"></i><div><div class="what">Studio A talkback mic dead</div><div class="meta"><span class="st">PRS</span><span>Tom</span></div></div><div class="right"><span class="age">1d</span><span class="done"></span></div></div>
+      <div class="row d"><i class="dot bld"></i><div><div class="what">ERS lobby light out</div><div class="meta"><span class="st">ERS</span><span>done · $12 · Home Depot</span></div></div><div class="right"><span class="done"></span></div></div>
+    </div>
+  </div></div>
+  <div>
+    <div class="rules">
+      <p style="font-family:'Archivo Black',sans-serif;font-size:13px;color:var(--fg);margin-bottom:6px">Rulings to confirm before CC touches anything</p>
+      <ol>
+        <li><b>Four kinds, two departments.</b> Facility and Gear (mics are gear) → Tech. Clients &amp; billing and Office → Admin. Kind is set at creation and decides the department. Runner checklist flags default to Facility; work-order flags default to Office. Admin can change a kind, which moves the flag.</li>
+        <li><b>No grab, no unassigned, no acknowledge.</b> Being on the department list is the acknowledgment. Admin may put a person's name on a flag; that's the only assignment step that exists.</li>
+        <li><b>Visibility is by department.</b> Tech (Sierra, Tom) sees all Tech flags, any name, and nothing else. Admin (owner, manager, billing, asst_manager) sees everything. Tech gets the Runner tab of Shift Notes, not the Manager tab.</li>
+        <li><b>I assigned</b> is each Admin person's tracking list — every flag they typed or named someone on. Hot at 72h on both lists.</li>
+        <li><b>Done asks for vendor + cost only on Tech flags.</b> Everything else is done with an optional note. "Not a real issue" closes with a note, no cost.</li>
+        <li><b>Mic QC becomes a source:</b> a bad or missing mic on the runner mics page makes a Gear flag for Tech. The Admin banner goes away.</li>
+        <li><b>Data:</b> <span class="mono">dashboard_tasks</span> is the flag row (+ studio, kind, department, done_vendor, done_cost). <span class="mono">flags</span> stays as intake for the runner checklist / WO popup and mirrors state, so Admin's Flags tab keeps working. Tech RLS widens from own-only to department = tech; Admin roles read all.</li>
+        <li><b>Rail:</b> one item, <b>Flags</b>, under Operations. Tasks item retired; <span class="mono">/tasks</span> becomes a redirect stub. Dashboard "Your List" rows link here.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
