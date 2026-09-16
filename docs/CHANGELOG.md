@@ -19,6 +19,79 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.33.0 — FLAGS: one page, two departments (flags + tasks merged) — Sep 15–16, 2026
+
+Eli: "the first-iteration builds kinda suck… really rethink these to make them meaningful,
+and we can probably combine to one page. Flags + Tasks." Then, on the round-1 mock's
+grab button: "If people have an option to grab something, nobody will ever grab
+anything. If it's billing, it just becomes billing. If it's tech, it becomes tech."
+Mock `docs/design-refs/flags-options.html` (round 3). Migration `20260915140000`.
+
+**The model.** A flag is anything that needs doing; a task is a flag someone typed. One
+row: `dashboard_tasks` (it already had source/source_id/photo/comments/RLS). A flag is
+never nobody's — its KIND decides its DEPARTMENT by trigger the moment it exists:
+Facility · Gear (mics are gear) → **Tech**; Clients & billing · Office → **Admin**.
+EVERY intake flag (runner checklist, WO needs-attention) lands as Office → Admin; Admin triages it to Tech by changing the kind (round 4: runner flags defaulting to Tech put far too much on the tech list).
+Admin can change a kind, which moves the flag, and can put a person's name on one;
+that is the only assignment step. No grab, no unassigned pile, no acknowledge.
+
+**Intake untouched.** `flags` stays the intake table — the runner checklist and the WO
+popup insert/update it exactly as before. `trg_mirror_flag_to_task` mirrors every flags
+row into `dashboard_tasks` (text = runner note, photo, initials, studio); a runner
+re-save follows through; "Needs attention cleared by runner" completes the task.
+`trg_mirror_task_to_flag` sends status the other way (done → resolved, reopen →
+pending, remove → deleted), so the Admin Flags tab keeps reading the same truth.
+Backfill creates a task for every existing flag.
+
+**Visibility (RLS rewritten for this table).** tech: every non-private row with
+`department = 'tech'`. owner/manager/billing/asst_manager: every non-private row.
+Everyone: rows they created or were assigned. Eli's `is_private` rows: unchanged. The
+July per-person tiers and the paired-role peer clause are superseded here
+(`is_task_peer()` is left in place, unused). INSERT: admin roles anything; tech only
+with `assigned_by = self`. New RPC `flag_roster()` (SECURITY DEFINER, names only) so
+tech can populate names without reading `user_profiles`.
+
+**The page** (`app/(main)/flags/page.tsx`, `lib/flags.ts`, `hooks/useFlagsVersion.ts`).
+Header with open / over-72h / done-today counts and a search. Composer is one line
+("Add a flag…") that opens inline: text, kind (tech seats see only Facility/Gear),
+studio, assign-to (Admin only), due, photo. Chips: All · Mine · I assigned (Admin) ·
+kinds · PRS/ARS/ERS/TRK; the scope chip is remembered per person in localStorage.
+Admin sees Admin and Tech as two columns BESIDE each other (round 5 — stacked
+sections shoved Tech to the bottom of a long Admin list); tech sees one column. Every
+column is one designed height — 8 rows of 52px plus a pager — and the detail card that
+opens beside them is exactly that height (the CRM's list ⇄ profile pattern, the
+dashboard's fixed-geometry law). Selecting a flag pages its column to it. Oldest first. Age is the
+only red (open > 72h). Row: kind dot · text · studio code · source line ("runner
+checklist · Hunter" / "work order · …" / who added it) · due · age · name-or-department
+· done circle. Done on an Admin flag is the tap; on a Tech flag it opens the sheet
+(what was done, vendor, cost). "Not a real issue" closes with a note, no cost, two
+taps. Detail is a sticky right panel on desktop, a bottom sheet on mobile: photo
+(signed), assign / kind / due (Admin), notes with photos, Done, Reopen, Remove (Admin).
+Realtime via one shared `flags-shared` channel over `dashboard_tasks` +
+`dashboard_task_comments`. Deep link `/flags?item=<id>` from the dashboard's Your List.
+
+**Flags are for unusual things.** Runners had been using the checklist's "Needs
+attention / runner notes" box as shift chat, so every shift note became a flag. The
+box is now "Raise a flag" with a red "Unusual things only" line (broken, missing,
+damaged, unsafe, client problem, couldn't finish) and points everything else to Notes;
+the WO needs-attention placeholder says the same in runner mode. Initials now show on
+WO flags too (they were already stored; the source line dropped them).
+
+**Retired.** `/tasks` → redirect stub (do not delete); the Tasks rail item; the
+name-tab roster page. `lib/tasks.ts` is untouched — the dashboard's Your List and
+Flo's briefing still read through it.
+
+**Migrations:** `20260915140000_flags_one_page.sql` — run by hand BEFORE this branch
+merges (the composer writes `kind`/`department`, which do not exist until it runs).
+
+**Watch-outs.** (1) The backfill assumes no pre-existing `dashboard_tasks` rows with
+`source in ('runner_flag','wo_flag')` — the audit found none; if the insert complains
+about duplicates, that assumption was wrong. (2) `assigned_role` is a legacy NOT NULL
+column; new rows write `'admin'` regardless of department — routing is `department`
+now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — separate
+change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
+mock and NOT built yet.
+
 ## v1.32.0 — Memos go out as a newsletter too; the campaign route gets a lock — Sep 15, 2026 (late)
 
 Eli: "for these I'd also like it to be an email, like a newsletter, just for the owners and

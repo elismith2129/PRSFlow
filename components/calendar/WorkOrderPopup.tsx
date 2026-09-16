@@ -5010,7 +5010,7 @@ export function WorkOrderPopup({
             <textarea
               value={wo.needs_attention_notes}
               onChange={e => { setDirtyFields(prev => new Set(prev).add('needs_attention_notes')); setWo(w => w ? { ...w, needs_attention_notes: e.target.value } : w) }}
-              placeholder="Internal notes only — never appears on the PDF export…"
+              placeholder={runner ? "Raise a flag — only if something's wrong: broken, missing, damaged, unsafe, a client problem. Internal; never on the PDF." : "Internal notes only — never appears on the PDF export…"}
               style={{ width: '100%', minHeight: wide ? 46 : 80, marginTop: wide ? 6 : 0, background: 'var(--c-wash)', borderRadius: 5, color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '8px 10px', outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box' }}
             />
             {wo.needs_attention_photos?.length > 0 && (

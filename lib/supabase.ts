@@ -376,7 +376,22 @@ export interface DashboardTask {
   deleted_at: string | null
   created_at: string
   updated_at: string
+  // Flags merge (2026-09-15, migration 20260915140000): a task IS a flag.
+  // kind decides department by trigger; studio is where it is; done_vendor /
+  // done_cost are what Done collects on tech flags; created_by_name carries
+  // the runner's initials through from the checklist.
+  studio?: FlagStudio | null
+  kind?: FlagKind
+  department?: FlagDepartment
+  done_vendor?: string | null
+  done_cost?: number | null
+  created_by_name?: string | null
+  is_private?: boolean
 }
+
+export type FlagKind = 'facility' | 'gear' | 'clients_billing' | 'office'
+export type FlagDepartment = 'tech' | 'admin'
+export type FlagStudio = 'paramount' | 'ameraycan' | 'encore' | 'track'
 
 export interface DashboardTaskComment {
   id: string

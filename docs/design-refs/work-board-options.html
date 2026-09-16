@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Work: flags + tasks become one list</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  WORK — flags + tasks merged (Eli, 2026-09-15).
+
+  "The first-iteration builds kinda suck. I want to really rethink these to
+  make them meaningful, and we can probably combine to one page. Flags +
+  Tasks." Ruling: ONE LIST — a flag is a task with a source. Audience: Eli
+  and Fernando manage; the TECHS (Sierra, Tom) are who this is really for —
+  building maintenance and mic-inventory QC live here.
+
+  ── WHAT IS WRONG TODAY ─────────────────────────────────────────────────────
+  /flags is a 9-line host for the Admin FlagsLogSection (June build, 85
+  inline styles). /tasks is the June name-tab page (51 inline styles). Both
+  predate carved, soft and noir. Since the noir dashboard retired the task
+  and flag modals, NOTHING in the app can create a task or a manual flag:
+  dashboard_tasks is read / complete / delete only. Flags are born only in
+  the runner checklist (Needs Attention) and the WO popup (wo_flag).
+
+  ── THE MODEL ───────────────────────────────────────────────────────────────
+  A WORK ITEM is one row shape whatever it came from:
+    what        text (+ photo, comments)
+    where       studio: PRS / ARS / ERS / TRK, or none (office / billing)
+    what kind   category: facility · gear · mics · client/billing · office
+    who         assigned_to (seat), or NOBODY YET
+    when        created (age), due_date (optional)
+    from        source: runner checklist · work order · mic QC · a person
+    state       open → in hand → done  (done keeps vendor + cost for
+                facility/gear, exactly what "resolve" collects today)
+
+  "Acknowledge" dies. A flag that nobody has picked up is simply an item with
+  no seat on it — the page's first section. Picking it up IS acknowledging.
+
+  ── DATA: no new table (recommended) ────────────────────────────────────────
+  dashboard_tasks already carries source ('manual'|'runner_flag'|'wo_flag')
+  + source_id + photo_url + comments + RLS by seat. It IS the work item.
+    migration (idempotent):
+      dashboard_tasks  + studio text null, + category text null,
+                       + resolved_vendor text, + resolved_cost numeric
+    flags stays as the INTAKE table: a runner/WO flag inserts as it does now;
+    a trigger (or the page, on first load) mirrors every flags row with no
+    task yet into dashboard_tasks(source, source_id, studio, text=runner_note,
+    photo_url, assigned_to=null). flags.status follows the task
+    (pending ↔ no seat, acknowledged ↔ seated, resolved ↔ completed) so the
+    runner checklist, WO popup and Admin tab keep working untouched.
+  Rejected: a new work_items table with a backfill — twice the RLS surface,
+  and the pairs-share-a-seat policy (20260728200000) would have to be
+  re-derived.
+
+  ── WHERE ───────────────────────────────────────────────────────────────────
+  Rail → Operations → WORK (one item replaces Flags + Tasks). /tasks and
+  /flags become redirect stubs (the /my-day precedent). Dashboard "Your List"
+  rows link here with ?item=<id>. Admin keeps its Flags tab reading the same
+  rows (it is the paper trail; leave it).
+
+  ── RULINGS TO CONFIRM ──────────────────────────────────────────────────────
+  1. Age is the only alarm colour. No seat after 72h = hot. Nothing else is
+     red. (Warm stays reserved for tentative — §5.)
+  2. Techs see EVERYTHING in facility · gear · mics, not only what's on
+     their seat — that is the whole point of them having the page. RLS
+     today gives tech own-only; the visibility policy widens to "any item
+     in a tech category" for the tech role. Client/billing and office items
+     stay seat-only.
+  3. The composer comes back, on this page, as a single line at the top
+     ("+ Leave an item") — not a modal.
+  4. Mic QC feeds in: a mic checked in as bad/missing on the runner mics
+     page makes an item in the mics category (source 'mic_qc'). Today it
+     only makes a banner in Admin that nobody owns.
+-->
+<style>
+:root{
+  --bg:#fdfcf9; --srf:#f1efe9; --srf2:#eae7de; --fg:#1a1712;
+  --fg2:rgba(26,23,18,.66); --fg3:rgba(26,23,18,.42);
+  --wash:rgba(26,23,18,.06); --wash2:rgba(26,23,18,.12);
+  --hot:#ff5a4d; --warm:#ffa94d; --cold:#5fc9e8; --ok:#43dfae; --uncon:#7fb2e5; --tech:#b5a3ef; --dead:#cfd6d4;
+  --chip-ink:#12100e;
+  --softsh:0 1px 3px rgba(26,23,18,.08), 0 6px 18px rgba(26,23,18,.07);
+}
+[data-theme="dark"]{
+  --bg:#0b0a09; --srf:#151412; --srf2:#1b1917; --fg:#f2efe7;
+  --fg2:rgba(242,239,231,.6); --fg3:rgba(242,239,231,.34);
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --softsh:0 2px 5px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 80px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;color:var(--fg2);max-width:860px;line-height:1.65;margin-bottom:8px}
+.lede b{color:var(--fg)}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:40px 0 4px;letter-spacing:-.01em}
+h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;color:var(--fg2);max-width:860px;line-height:1.6;margin-bottom:14px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--ok);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:7px;vertical-align:2px}
+.cmp{border-left:2px solid var(--fg3);padding-left:12px;margin:12px 0 22px;font-size:11.5px;color:var(--fg2);line-height:1.65;max-width:860px}
+.cmp b{color:var(--fg)}
+.tgl{position:fixed;top:14px;right:16px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--fg);color:var(--bg);border-radius:99px;padding:6px 12px;cursor:pointer;z-index:9}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+/* ── the page frame ── */
+.frame{background:var(--bg);border-radius:16px;box-shadow:var(--softsh);padding:18px 20px 22px;margin:14px 0 6px;border:1px solid var(--wash)}
+.ph{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+.ph .t{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.04em;line-height:1}
+.ph .c{font-size:11px;color:var(--fg3)}
+.ph .c b{color:var(--fg);font-weight:700}
+.ph .c i{color:var(--hot);font-style:normal;font-weight:700}
+.compose{display:flex;align-items:center;gap:10px;background:var(--srf);border-radius:12px;padding:9px 12px;margin-bottom:14px;box-shadow:var(--softsh)}
+.compose .plus{width:22px;height:22px;border-radius:99px;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-weight:800;font-size:14px;line-height:1}
+.compose .in{flex:1;color:var(--fg3);font-size:12.5px}
+.compose .k{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);background:var(--wash);border-radius:99px;padding:4px 10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.chip{font-size:10px;font-weight:700;border-radius:99px;padding:4px 11px;background:var(--wash);color:var(--fg2)}
+.chip.on{background:var(--fg);color:var(--bg)}
+.chip .ct{font-family:'DM Mono',monospace;font-weight:500;margin-left:5px;opacity:.7}
+.chips .sep{width:1px;height:14px;background:var(--wash2);margin:0 4px}
+.sec{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin:16px 0 6px;display:flex;align-items:baseline;gap:8px}
+.sec b{color:var(--fg);font-family:'DM Mono',monospace;font-weight:500;letter-spacing:0}
+.sec.hot{color:var(--hot)}.sec.hot b{color:var(--hot)}
+.list{display:flex;flex-direction:column;gap:5px}
+.row{display:grid;grid-template-columns:8px 1fr auto;gap:12px;align-items:center;background:var(--srf);border-radius:12px;padding:9px 13px 9px 12px}
+.row.sel{outline:1.5px solid var(--fg);outline-offset:0}
+.row .dot{width:8px;height:8px;border-radius:99px;background:var(--fg3)}
+.dot.fac{background:var(--uncon)}.dot.gear{background:var(--tech)}.dot.mic{background:var(--cold)}.dot.cli{background:var(--warm)}.dot.off{background:var(--dead)}
+.row .what{font-size:12.5px;font-weight:600;line-height:1.3}
+.row .meta{font-size:10.5px;color:var(--fg3);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.row .meta .st{font-family:'DM Mono',monospace;font-weight:600;color:var(--fg2);letter-spacing:.04em}
+.row .meta .src{color:var(--fg3)}
+.row .meta .pic{display:inline-block;width:14px;height:11px;border-radius:3px;background:var(--wash2);vertical-align:-1px}
+.row .right{display:flex;align-items:center;gap:10px;justify-self:end}
+.row .age{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--fg3)}
+.row .age.hot{color:var(--hot);font-weight:600}
+.row .seat{width:24px;height:24px;border-radius:99px;background:var(--wash2);font-family:'DM Mono',monospace;font-size:9.5px;font-weight:600;display:grid;place-items:center;color:var(--fg)}
+.row .seat.none{background:transparent;border:1.5px dashed var(--fg3);color:var(--fg3)}
+.row .pick{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--fg);color:var(--bg);border-radius:99px;padding:5px 11px}
+.row .done{width:18px;height:18px;border-radius:99px;border:1.5px solid var(--fg3)}
+.row.d{opacity:.55}
+.row.d .what{text-decoration:line-through;text-decoration-color:var(--fg3)}
+.row.d .done{background:var(--ok);border-color:var(--ok)}
+.split{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:start}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+/* detail */
+.det{background:var(--srf);border-radius:14px;padding:14px 15px;box-shadow:var(--softsh);position:sticky;top:14px}
+.det .k{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);display:block;margin-bottom:3px}
+.det .h{font-size:14.5px;font-weight:700;line-height:1.3;margin-bottom:6px}
+.det .m{font-size:11px;color:var(--fg2);line-height:1.6;margin-bottom:12px}
+.det .m b{color:var(--fg)}
+.det .photo{height:120px;border-radius:10px;background:linear-gradient(135deg,var(--srf2),var(--wash2));margin-bottom:12px;display:grid;place-items:center;font-size:10px;color:var(--fg3)}
+.det .field{background:var(--wash);border-radius:9px;padding:6px 10px;font-size:12px;margin-bottom:8px;display:flex;justify-content:space-between}
+.det .field span{color:var(--fg3)}
+.cm{font-size:11.5px;line-height:1.5;padding:7px 0;border-top:1px solid var(--wash)}
+.cm .who{font-family:'DM Mono',monospace;font-size:10px;color:var(--fg3);margin-right:6px}
+.btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{display:inline-block;background:var(--fg);color:var(--bg);border-radius:99px;padding:8px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.soft{display:inline-block;background:var(--wash2);color:var(--fg);border-radius:99px;padding:8px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.ghost{display:inline-block;color:var(--fg3);padding:8px 6px;font-size:10.5px;font-weight:700;text-decoration:underline}
+/* option B columns */
+.cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.col{background:var(--srf);border-radius:14px;padding:10px 11px;min-height:190px}
+.col .ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.col .ch .nm{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.04em}
+.col .ch .ct{font-family:'DM Mono',monospace;font-size:10px;color:var(--fg3)}
+.col .it{background:var(--bg);border-radius:9px;padding:7px 9px;font-size:11.5px;font-weight:600;margin-bottom:5px;display:flex;gap:7px;align-items:center;line-height:1.3}
+.col .it .dot{width:7px;height:7px;border-radius:99px;flex:none}
+.col .it .st{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--fg3);margin-left:auto;font-weight:500}
+.tray{background:var(--srf2);border-radius:14px;padding:10px 11px;margin-bottom:10px}
+.tray .ch{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--hot);margin-bottom:8px}
+.tray .items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tray .it{background:var(--bg);border-radius:9px;padding:7px 9px;font-size:11.5px;font-weight:600;display:flex;gap:7px;align-items:center;line-height:1.3}
+/* option C buildings */
+.bld{background:var(--srf);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.bld .bh{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+.bld .bh .nm{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:.04em}
+.bld .bh .sm{font-size:11px;color:var(--fg3)}
+.bld .bh .sm i{font-style:normal;color:var(--hot);font-weight:700}
+.bld .list .row{background:var(--bg)}
+/* phone */
+.phone{width:300px;background:var(--srf2);border-radius:28px;padding:12px;box-shadow:var(--softsh);margin:0 auto}
+.phone .scr{background:var(--bg);border-radius:20px;padding:16px 13px 14px;min-height:520px}
+.phone .ph .t{font-size:26px}
+.phone .row{padding:8px 10px;grid-template-columns:7px 1fr auto}
+.phone .row .what{font-size:12px}
+.phone .chips{margin-bottom:8px}
+.phone .compose{padding:8px 10px;margin-bottom:10px}
+.note{font-size:10.5px;color:var(--fg3);margin-top:12px;line-height:1.65;max-width:860px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.rules{font-size:11.5px;color:var(--fg2);line-height:1.7;max-width:860px}
+.rules li{margin:4px 0 4px 16px}
+.rules b{color:var(--fg)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--fg2);margin:8px 0 0}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .dot{width:8px;height:8px;border-radius:99px}
+</style>
+</head>
+<body>
+<div class="tgl" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</div>
+
+<h1>Work — flags and tasks become one list</h1>
+<p class="lede">One row shape for everything the building or a person asks of someone: what · where (studio) · what kind · who's on it · how old · where it came from. A runner flag is just an item that <b>nobody has picked up yet</b>. Picking it up is acknowledging it. The page is built for the techs first — building maintenance and mic QC live here — with Eli and Fernando managing from the same list.</p>
+<div class="legend">
+  <span><i class="dot fac"></i>facility</span><span><i class="dot gear"></i>gear</span><span><i class="dot mic"></i>mics</span><span><i class="dot cli"></i>client / billing</span><span><i class="dot off"></i>office</span><span style="margin-left:auto">age is the only alarm: no seat after 72h → <b style="color:var(--hot)">hot</b></span>
+</div>
+
+<!-- ═══════════════════════════════ OPTION A ═══════════════════════════════ -->
+<h2><span class="n">A</span>The Board — one list, grouped by state<span class="rec">Recommended</span></h2>
+<p class="sub">Three sections, always in this order: <b>Needs a hand</b> (no seat — this is the old Flags log, but it is the top of the page and it ages in red), <b>In hand</b> (seated, newest first), <b>Done this week</b> (collapsed). Filter chips narrow by category and studio; <b>Mine</b> is what a tech taps first. The composer is one line at the top, not a modal. Click a row → detail on the right: photo, source, comments, and the finish form — vendor + cost appear only for facility and gear.</p>
+
+<div class="frame">
+  <div class="split">
+    <div>
+      <div class="ph"><div class="t">Work</div><div class="c"><b>14</b> open · <i>3</i> need a hand · 2 done today</div></div>
+      <div class="compose"><div class="plus">+</div><div class="in">Leave an item… (who, where, and what kind come after)</div><span class="k">seat</span><span class="k">studio</span><span class="k">kind</span><span class="k">due</span><span class="k">photo</span></div>
+      <div class="chips">
+        <span class="chip on">All <span class="ct">14</span></span><span class="chip">Mine <span class="ct">4</span></span>
+        <span class="sep"></span>
+        <span class="chip">Facility <span class="ct">5</span></span><span class="chip">Gear <span class="ct">3</span></span><span class="chip">Mics <span class="ct">2</span></span><span class="chip">Client / billing <span class="ct">2</span></span><span class="chip">Office <span class="ct">2</span></span>
+        <span class="sep"></span>
+        <span class="chip">PRS</span><span class="chip">ARS</span><span class="chip">ERS</span><span class="chip">TRK</span>
+      </div>
+
+      <div class="sec hot">Needs a hand <b>3</b></div>
+      <div class="list">
+        <div class="row sel"><i class="dot fac"></i><div><div class="what">Lounge AC blowing warm — clients complained twice tonight</div><div class="meta"><span class="st">ARS</span><span class="src">runner · closing checklist · Hunter</span><i class="pic"></i></div></div><div class="right"><span class="age hot">4d</span><span class="seat none">?</span><span class="pick">Pick up</span></div></div>
+        <div class="row"><i class="dot mic"></i><div><div class="what">U87 #2 crackles on the low end — pulled from Studio B</div><div class="meta"><span class="st">PRS</span><span class="src">mic QC · Hunter</span></div></div><div class="right"><span class="age">19h</span><span class="seat none">?</span><span class="pick">Pick up</span></div></div>
+        <div class="row"><i class="dot cli"></i><div><div class="what">Client left a Neve module in C — wants it shipped, needs PO</div><div class="meta"><span class="st">PRS</span><span class="src">work order · WO-1184 · Lainey Wilson</span></div></div><div class="right"><span class="age">6h</span><span class="seat none">?</span><span class="pick">Pick up</span></div></div>
+      </div>
+
+      <div class="sec">In hand <b>11</b></div>
+      <div class="list">
+        <div class="row"><i class="dot fac"></i><div><div class="what">Parking-lot gate sensor — re-seat the loop wire</div><div class="meta"><span class="st">TRK</span><span class="src">runner · opening checklist</span><span>· due Thu</span></div></div><div class="right"><span class="age">2d</span><span class="seat">SI</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot gear"></i><div><div class="what">Studio A talkback mic dead — swap SM58, test the loom</div><div class="meta"><span class="st">PRS</span><span class="src">Fernando</span></div></div><div class="right"><span class="age">1d</span><span class="seat">TO</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot mic"></i><div><div class="what">Quarterly mic QC — Encore locker (18 mics)</div><div class="meta"><span class="st">ERS</span><span class="src">Eli</span><span>· due Sep 30</span></div></div><div class="right"><span class="age">5d</span><span class="seat">SI</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot off"></i><div><div class="what">Order 8 more USB-C to Lightning for the runner tablets</div><div class="meta"><span class="src">Fernando</span></div></div><div class="right"><span class="age">3d</span><span class="seat">SA</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot cli"></i><div><div class="what">BMG — chase the PO for the Julia session before the 30th</div><div class="meta"><span class="src">Eli</span><span>· due Sep 25</span></div></div><div class="right"><span class="age">1d</span><span class="seat">BI</span><span class="done"></span></div></div>
+        <div class="row"><i class="dot fac"></i><div><div class="what">Studio D bathroom fan — replace, it's been squealing for a month</div><div class="meta"><span class="st">PRS</span><span class="src">runner · closing checklist · Marco</span><i class="pic"></i></div></div><div class="right"><span class="age">8d</span><span class="seat">TO</span><span class="done"></span></div></div>
+        <div class="row" style="opacity:.5"><i class="dot"></i><div><div class="what" style="color:var(--fg3)">+ 5 more</div></div><div></div></div>
+      </div>
+
+      <div class="sec">Done this week <b>9</b> <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--fg3)">▸</span></div>
+    </div>
+
+    <div class="det">
+      <span class="k">Facility · ARS · needs a hand · 4 days</span>
+      <div class="h">Lounge AC blowing warm — clients complained twice tonight</div>
+      <div class="m">Flagged by <b>Hunter</b> on the closing checklist, Thu 11:42 PM. Not picked up yet.</div>
+      <div class="photo">photo from the checklist</div>
+      <span class="k">Pick up as</span>
+      <div class="field">Tech — Sierra / Tom <span>▾</span></div>
+      <div class="field">Due <span>no date</span></div>
+      <div class="btnrow"><span class="btn">Pick up</span><span class="soft">Hand to…</span><span class="ghost">Not a real issue</span></div>
+      <div style="margin-top:16px"><span class="k">Notes</span>
+        <div class="cm"><span class="who">FE · Fri</span>Called the HVAC guy, earliest is Monday.</div>
+        <div class="cm"><span class="who">HU · Thu</span>Thermostat says 68 but the vents are warm.</div>
+        <div class="field" style="margin-top:8px">Add a note or photo… <span>⌁</span></div>
+      </div>
+      <div style="margin-top:16px;opacity:.55"><span class="k">When it's done (facility · gear only)</span>
+        <div class="field">What was done <span>…</span></div>
+        <div class="field">Vendor <span>…</span></div>
+        <div class="field">Cost <span class="mono">$ 0.00</span></div>
+        <div class="btnrow"><span class="soft">Mark done</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="cmp"><b>Why this one.</b> The tech's day is "what's broken, where, and is it mine" — that is exactly the row. State-first grouping means the red section is the same place for every seat, and a page with nothing red is visibly healthy (the dashboard's data-emptiness law). The old Flags log survives as the top section, the old Tasks page as the middle; neither needs its own screen. Vendor + cost stay because the resolve flow already collects them and the money matters — but only where they mean something.</div>
+
+<!-- ═══════════════════════════════ OPTION B ═══════════════════════════════ -->
+<h2><span class="n">B</span>Seats — a column per seat, an unassigned tray on top</h2>
+<p class="sub">Eli and Fernando's view of the world: who is carrying what. The tray holds everything with no seat; dragging (or tapping <b>→</b>) puts it in a column. Techs get one column — theirs — which is why this is not the recommendation: the person the page is for sees a quarter of it.</p>
+<div class="frame">
+  <div class="ph"><div class="t">Work</div><div class="c"><b>14</b> open · <i>3</i> unassigned</div></div>
+  <div class="tray"><div class="ch">Unassigned · 3</div><div class="items">
+    <div class="it"><i class="dot fac"></i>Lounge AC blowing warm<span class="st mono" style="margin-left:auto;color:var(--hot)">4d</span></div>
+    <div class="it"><i class="dot mic"></i>U87 #2 crackles<span class="st mono" style="margin-left:auto;color:var(--fg3)">19h</span></div>
+    <div class="it"><i class="dot cli"></i>Neve module — ship, needs PO<span class="st mono" style="margin-left:auto;color:var(--fg3)">6h</span></div>
+  </div></div>
+  <div class="cols">
+    <div class="col"><div class="ch"><span class="nm">Tech</span><span class="ct">5 open</span></div>
+      <div class="it"><i class="dot fac"></i>Gate sensor loop<span class="st">TRK</span></div><div class="it"><i class="dot gear"></i>Talkback mic A<span class="st">PRS</span></div><div class="it"><i class="dot mic"></i>Quarterly QC — Encore<span class="st">ERS</span></div><div class="it"><i class="dot fac"></i>Studio D fan<span class="st">PRS</span></div><div class="it"><i class="dot gear"></i>Patchbay row 3 dead<span class="st">ARS</span></div></div>
+    <div class="col"><div class="ch"><span class="nm">Asst Mgr</span><span class="ct">2 open</span></div>
+      <div class="it"><i class="dot off"></i>USB-C cables</div><div class="it"><i class="dot off"></i>Restock ERS kitchen</div></div>
+    <div class="col"><div class="ch"><span class="nm">Billing</span><span class="ct">2 open</span></div>
+      <div class="it"><i class="dot cli"></i>BMG PO — Julia</div><div class="it"><i class="dot cli"></i>Concord blanket invoice</div></div>
+    <div class="col"><div class="ch"><span class="nm">Fernando</span><span class="ct">2 open</span></div>
+      <div class="it"><i class="dot off"></i>Runner schedule Oct</div><div class="it"><i class="dot fac"></i>HVAC contract renewal</div></div>
+  </div>
+</div>
+<div class="cmp"><b>Where it wins:</b> load-balancing at a glance. <b>Where it loses:</b> the category and the building — the two things a tech sorts by — become a dot and a three-letter code inside a card. Could return later as a manager lens, not as the page.</div>
+
+<!-- ═══════════════════════════════ OPTION C ═══════════════════════════════ -->
+<h2><span class="n">C</span>Buildings — grouped by studio, the way a tech walks</h2>
+<p class="sub">Four buildings, each a section, open items inside, oldest first. Office and billing items (no studio) sit in a fifth section at the bottom. A tech starting at Track sees Track's list and nothing else on screen. Honest and physical — but the unassigned alarm is scattered across four sections instead of one.</p>
+<div class="frame">
+  <div class="ph"><div class="t">Work</div><div class="c"><b>14</b> open across 4 buildings · <i>3</i> need a hand</div></div>
+  <div class="chips" style="margin-bottom:12px"><span class="chip on">All kinds</span><span class="chip">Facility</span><span class="chip">Gear</span><span class="chip">Mics</span><span class="sep"></span><span class="chip">Mine</span></div>
+  <div class="bld"><div class="bh"><span class="nm">Paramount</span><span class="sm">4 open · <i>1 needs a hand</i></span></div><div class="list">
+    <div class="row"><i class="dot mic"></i><div><div class="what">U87 #2 crackles on the low end — pulled from Studio B</div><div class="meta"><span class="src">mic QC · Hunter</span></div></div><div class="right"><span class="age">19h</span><span class="seat none">?</span></div></div>
+    <div class="row"><i class="dot gear"></i><div><div class="what">Studio A talkback mic dead — swap SM58, test the loom</div><div class="meta"><span class="src">Fernando</span></div></div><div class="right"><span class="age">1d</span><span class="seat">TO</span><span class="done"></span></div></div>
+    <div class="row"><i class="dot fac"></i><div><div class="what">Studio D bathroom fan — replace</div><div class="meta"><span class="src">runner · closing checklist · Marco</span></div></div><div class="right"><span class="age">8d</span><span class="seat">TO</span><span class="done"></span></div></div>
+  </div></div>
+  <div class="bld"><div class="bh"><span class="nm">Ameraycan</span><span class="sm">2 open · <i>1 needs a hand</i></span></div><div class="list">
+    <div class="row"><i class="dot fac"></i><div><div class="what">Lounge AC blowing warm — clients complained twice tonight</div><div class="meta"><span class="src">runner · closing checklist · Hunter</span><i class="pic"></i></div></div><div class="right"><span class="age hot">4d</span><span class="seat none">?</span></div></div>
+    <div class="row"><i class="dot gear"></i><div><div class="what">Patchbay row 3 dead in the B control room</div><div class="meta"><span class="src">Sierra</span></div></div><div class="right"><span class="age">2d</span><span class="seat">SI</span><span class="done"></span></div></div>
+  </div></div>
+  <div class="bld"><div class="bh"><span class="nm">Encore</span><span class="sm">1 open</span></div><div class="list">
+    <div class="row"><i class="dot mic"></i><div><div class="what">Quarterly mic QC — Encore locker (18 mics)</div><div class="meta"><span class="src">Eli</span><span>· due Sep 30</span></div></div><div class="right"><span class="age">5d</span><span class="seat">SI</span><span class="done"></span></div></div>
+  </div></div>
+  <div class="bld" style="opacity:.6"><div class="bh"><span class="nm">Track</span><span class="sm">1 open</span></div></div>
+  <div class="bld" style="opacity:.6"><div class="bh"><span class="nm">Office &amp; billing</span><span class="sm">4 open · <i>1 needs a hand</i></span></div></div>
+</div>
+<div class="cmp"><b>Keep from C:</b> the studio code on every row, and "group by building" as the tech's natural sort <i>inside</i> A's sections (A's "In hand" list can sort PRS → ARS → ERS → TRK → none). Don't take the page structure.</div>
+
+<!-- ═══════════════════════════════ PHONE ═══════════════════════════════ -->
+<h2><span class="n">A·</span>On the phone — the tech in the building</h2>
+<p class="sub">Techs will open this standing in a hallway. Same page, one column; the detail opens as a full-screen sheet. <b>Mine</b> is the default chip on tech seats. Done is a tap on the circle; finishing a facility/gear item asks for what-was-done, vendor, cost on the sheet.</p>
+<div class="grid2">
+  <div class="phone"><div class="scr">
+    <div class="ph"><div class="t">Work</div><div class="c"><i>1</i> needs a hand</div></div>
+    <div class="compose"><div class="plus">+</div><div class="in">Leave an item…</div></div>
+    <div class="chips"><span class="chip on">Mine 4</span><span class="chip">All</span><span class="chip">Facility</span><span class="chip">Gear</span><span class="chip">Mics</span></div>
+    <div class="sec hot">Needs a hand <b>1</b></div>
+    <div class="list">
+      <div class="row"><i class="dot fac"></i><div><div class="what">Lounge AC blowing warm</div><div class="meta"><span class="st">ARS</span><span class="src">runner · Hunter</span></div></div><div class="right"><span class="age hot">4d</span><span class="pick">Pick up</span></div></div>
+    </div>
+    <div class="sec">Mine <b>4</b></div>
+    <div class="list">
+      <div class="row"><i class="dot fac"></i><div><div class="what">Gate sensor — re-seat loop wire</div><div class="meta"><span class="st">TRK</span><span>due Thu</span></div></div><div class="right"><span class="done"></span></div></div>
+      <div class="row"><i class="dot gear"></i><div><div class="what">Studio A talkback mic dead</div><div class="meta"><span class="st">PRS</span></div></div><div class="right"><span class="done"></span></div></div>
+      <div class="row"><i class="dot mic"></i><div><div class="what">Quarterly mic QC — Encore</div><div class="meta"><span class="st">ERS</span><span>due Sep 30</span></div></div><div class="right"><span class="done"></span></div></div>
+      <div class="row d"><i class="dot fac"></i><div><div class="what">Studio D bathroom fan</div><div class="meta"><span class="st">PRS</span><span>done · $140 · Mike's HVAC</span></div></div><div class="right"><span class="done"></span></div></div>
+    </div>
+  </div></div>
+  <div>
+    <div class="rules">
+      <p style="font-family:'Archivo Black',sans-serif;font-size:13px;color:var(--fg);margin-bottom:6px">Rulings to confirm before CC touches anything</p>
+      <ol>
+        <li><b>Techs see every facility / gear / mics item</b>, not only their seat's. Today's RLS is own-only for tech; it widens to "any item in a tech category". Client/billing and office stay seat-only.</li>
+        <li><b>Age is the only alarm.</b> No seat after 72h → hot. Nothing else on the page is red. Due dates show as text.</li>
+        <li><b>"Acknowledge" retires.</b> Picking up = acknowledged. "Not a real issue" closes with a note, no vendor/cost.</li>
+        <li><b>Vendor + cost only for facility and gear.</b> Everything else is done with an optional note.</li>
+        <li><b>Mic QC becomes a source.</b> A bad/missing mic on the runner mics page makes a mics item (source <span class="mono">mic_qc</span>). The Admin banner nobody owns goes away.</li>
+        <li><b>Data stays in <span class="mono">dashboard_tasks</span></b> (+ studio, category, resolved_vendor, resolved_cost). <span class="mono">flags</span> remains the intake table and mirrors state, so the runner checklist, WO popup and Admin Flags tab keep working untouched.</li>
+        <li><b>Rail:</b> one item, <b>Work</b>, under Operations, replacing Flags and Tasks. Both old routes become redirect stubs.</li>
+        <li><b>Name:</b> "Work" is a placeholder. Alternatives: <i>The Board</i>, <i>Fix It</i>, <i>Open Items</i>.</li>
+      </ol>
+    </div>
+    <p class="note">Seats shown as initials: SI Sierra · TO Tom · SA Sam · BI Billing · FE Fernando. The Asst Mgr / Tech pair-sharing rule (migration 20260728200000) is untouched — picking up as "Tech" stores Sierra's id and Tom sees it, as today.</p>
+  </div>
+</div>
+
+</body>
+</html>
