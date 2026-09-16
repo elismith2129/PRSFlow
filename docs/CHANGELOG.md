@@ -100,6 +100,9 @@ gated on `pipeline === 'billing'`; COD's In progress still opened newest-first. 
 progress and Balance due open in queue order on both sides, and `QUEUE_RANK` gains
 `balance: -1` so a combined COD view leads with balance due, then review, invoice,
 approval. Stage dividers follow, as on the billing side.
+COD now **lands on Balance due + Needs review** (was Balance due + In progress — sessions
+still running, nothing to do). The remembered-bins key was bumped so everyone gets the new
+default once; their next choice sticks as before.
 
 ## v1.32.4 — Delete a work order from the billing hub (Eli only) — Sep 16, 2026
 

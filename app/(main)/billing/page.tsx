@@ -106,15 +106,17 @@ export default function BillingPage() {
   // per-row bin badges. Billing keeps plain single tabs — its buckets are
   // sequential stages, not parallel queues. Same family as the CRM
   // multi-select status tabs: persisted, last latch can't turn off.
-  const [codBins, setCodBins] = useState<Set<BucketKey>>(new Set(['balance', 'progress']))
+  // COD lands on Balance due + Needs review (Eli, 2026-09-16) — the two bins
+  // with work in them. In progress is sessions still running; nothing to do.
+  const [codBins, setCodBins] = useState<Set<BucketKey>>(new Set(['balance', 'review']))
   useEffect(() => {
     try {
-      const s = sessionStorage.getItem('prsflo-billing-cod-bins')
+      const s = sessionStorage.getItem('prsflo-billing-cod-bins-v2')
       if (s) { const arr = JSON.parse(s) as BucketKey[]; if (Array.isArray(arr) && arr.length) setCodBins(new Set(arr)) }
     } catch { /* first visit */ }
   }, [])
   useEffect(() => {
-    try { sessionStorage.setItem('prsflo-billing-cod-bins', JSON.stringify([...codBins])) } catch { /* private mode */ }
+    try { sessionStorage.setItem('prsflo-billing-cod-bins-v2', JSON.stringify([...codBins])) } catch { /* private mode */ }
   }, [codBins])
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)

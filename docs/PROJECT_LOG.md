@@ -627,6 +627,31 @@ Notes v1.31.0: @mentions (office taggable), General channel, mention + time = a 
 task on that person's hub, per-person reads → "3 new · 1 for you" on the hub doorway.
 **Push is the next project** — mentions, tasks, memos only; never every note.
 
+#### Sep 16 — the techs log in, and two alarms turn out to be one bug and one half-check
+
+Tom and Sierra's first login: blank calendars. `pg_policies` showed the July 2 migration
+granting tech SELECT on bookings/clients/contacts had never run live. Re-applied in SQL.
+**Rule from it: a migration file in the repo is not a migration that ran — `pg_policies` is
+the truth.** Then, per Eli, the tech dashboard became bookings + tech flags only (row 1 is
+a Flags — tech portal; the statement is computed locally, no Flo prose; Billing off the
+rail).
+
+Comparing his dashboard to Sierra's, Eli caught something better: the "13 sessions missing
+a WO" and "4 bookings with no room" alarms showed for a tech and not for him. Two causes.
+The statement capped red lines at three and his three duty misses pushed the data alarms
+off — anomalies now always show first. And the 13 were a false alarm: multi-booking WOs
+(Concord's four rooms, Omari Clark's six dates) name only their first booking in
+`work_orders.booking_id`; the siblings carry `bookings.work_order_id` and the check only
+looked one way. **Eli's rule stands: a session cannot exist without a work order.** The four
+roomless were real — tentative holds saved with no room by the old CRM path before v1.27.0,
+including a Havelange double-save (WO-1131/1132). Hand-fixed.
+
+Also: memos email the office as a newsletter (login-free page at /m/<token>; Resend; found
+and gated the open `/api/send-campaign` on the way), the WO day date is a small chip on card
+and sheet (− / date / +; the old ‹ › stepped between days and the pencil was an invisible
+input iPad wouldn't open), a Delete WO for Eli only in the billing hub's ⋯ menu (typed
+confirm, WO row deleted last), and COD opens in queue order with balance due leading.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
@@ -634,7 +659,9 @@ task on that person's hub, per-person reads → "3 new · 1 for you" on the hub 
 - **The client rate sheet** (prs-rate-sheet skill) still carries its own copy of the rates;
   it should read `room_rates` or be regenerated from it.
 - **WO-1156 (Concord)** conversion to a real bundle — offered, not run.
-- **Push notifications** for the notes room (service worker + subscriptions + VAPID) — designed, not built.
+- **Push notifications** for the notes room (service worker + subscriptions + VAPID) — designed, not built. Mentions, tasks, memos only.
+- **Roomless holds** — WO-1161, WO-1160, WO-1132 need a studio set or a Close; WO-1131 is the Havelange duplicate (Delete WO).
+- **Runner memo** (`docs/staff/runner-update-2026-09-15.html`) — send to Runners with Email on once v1.32.x is live.
 - **Office-side mention badge** on the rail — runners can tag Fernando now; he has no badge yet.
 - **Admin stock-list editor** — the office edits stock lists in SQL; three edits tonight.
 - **Cancelled sessions excluded from the missing-WO alarm** — unchanged.

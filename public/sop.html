@@ -645,6 +645,20 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.32', date:'Sep 16, 2026',
+    headline:'Memos can email the office. Techs get a tech dashboard. The day\'s date on a work order is a chip you can actually use.',
+    desc:'A day of fixes from real use: Tom and Sierra\'s first login, Eli\'s dashboard vs. a tech\'s, and the work-order card.',
+    changes:[
+      'Memos: an "Also email the office" toggle on every memo sends owners and office admin a newsletter copy with a link to the full page — no sign-in needed. Runners are never emailed.',
+      'Techs: the dashboard shows the calendar and tech flags — no CRM, no money, no company briefing. Calendars work for techs now (they didn\'t before).',
+      'Work orders: the date on each day card is a small chip — tap − or + to move the whole day, tap the date to pick one. Works on the card without opening Edit.',
+      'Billing hub: COD opens in the same queue order as billing — balance due, then needs review, invoice, approval. Needs-review rows were getting buried.',
+      'Dashboard: the "sessions missing a work order" alarm no longer counts multi-room and multi-date sessions as missing. Data alarms always show, even on a morning full of duty misses.',
+      'Owner only: a Delete work order in the billing hub\'s ⋯ menu, with a typed confirmation.',
+    ],
+    affects:'Office. Techs see a smaller app on purpose.',
+  },
+  {
     ver:'v1.31.0', date:'Sep 15, 2026',
     headline:'Notes is a room now: tap in from the hub, tag people with @, and a tag plus a time makes a task for them. There\'s a General channel every studio sees.',
     desc:'You asked for Slack. This is the first half — the room, tagging, General, and "what\'s new" when you open the hub. Phone pings are the second half and are coming.',
