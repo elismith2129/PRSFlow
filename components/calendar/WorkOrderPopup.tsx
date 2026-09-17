@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate, oneLine } from '@/lib/format'
-import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_RATE, foodServiceFee } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail, confirmStartProblem,
   findMissingEngRates, missingEngRatesMessage,
@@ -3516,6 +3516,9 @@ export function WorkOrderPopup({
   const foodSpent = expenses.reduce((s, e) => s + (parseFloat((e.amount || '').replace(/[^0-9.-]/g, '')) || 0), 0)
   const foodBudgetNum = wo ? (parseFloat((wo.food_amount || '').replace(/[^0-9.-]/g, '')) || 0) : 0
   const foodRemaining = foodBudgetNum - foodSpent
+  // The bill: receipts + 35% service fee (lib/woTotals). Budget stays vs receipts.
+  const foodFee = foodServiceFee(foodSpent)
+  const foodBilled = foodSpent + foodFee
 
   // ── Styles ────────────────────────────────────────────────────────────────
 
@@ -4405,6 +4408,16 @@ export function WorkOrderPopup({
                       {foodRemaining < 0 ? 'Over budget' : 'Remaining'}
                     </div>
                   </div>
+                </div>
+                {/* THE BILL (Eli, 2026-09-17): receipts + 35% service fee. The
+                    tiles above are the runner's view (budget vs spent); this
+                    line is what the label is charged, and what the package prints. */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', margin: '8px 2px 12px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
+                  <span>Receipts <b className="c-mono" style={{ color: 'var(--c-fg)' }}>${foodSpent.toFixed(2)}</b></span>
+                  <span style={{ opacity: 0.4 }}>+</span>
+                  <span>Service fee {Math.round(FOOD_SERVICE_FEE_RATE * 100)}% <b className="c-mono" style={{ color: 'var(--c-fg)' }}>${foodFee.toFixed(2)}</b></span>
+                  <span style={{ opacity: 0.4 }}>=</span>
+                  <span style={{ fontWeight: 800, color: 'var(--c-fg)' }}>Billed <b className="c-mono" style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 13, marginLeft: 2 }}>${foodBilled.toFixed(2)}</b></span>
                 </div>
 
                 {/* Rows — the sheet's columns */}

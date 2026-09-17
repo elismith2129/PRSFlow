@@ -64,7 +64,7 @@ function winAnsiSafe(s: string): string {
     .replace(/[^\x20-\xFFŒœŠšŸŽžƒˆ˜–—‘’‚“”„†‡•…‰‹›€™]/g, '')
 }
 import { calcHours } from '@/lib/time'
-import { engChargeForRow } from '@/lib/woTotals'
+import { engChargeForRow, FOOD_SERVICE_FEE_RATE, foodServiceFee } from '@/lib/woTotals'
 import { roomCode, STUDIO_SHORT } from '@/lib/studios'
 
 export type WoPdfRow = Record<string, any>
@@ -980,9 +980,18 @@ export async function renderExpenseReportPdf(input: {
     s.text(value, RIGHT, { size: 9, bold: isBold, align: 'right' })
     s.y -= 14
   }
-  if (budget > 0) totalLine('Budget', money(budget), false)
-  totalLine('Total spent', money(total), true)
-  if (budget > 0) totalLine(remaining < 0 ? 'Over budget' : 'Remaining', money(Math.abs(remaining)), true)
+  // The bill (2026-09-17): receipts + 35% service fee. Budget lines stay
+  // against receipts — that is what the runners were given to spend.
+  const fee = foodServiceFee(total)
+  s.need(80)
+  totalLine('Receipts', money(total), false)
+  totalLine(`Service fee (${Math.round(FOOD_SERVICE_FEE_RATE * 100)}%)`, money(fee), false)
+  totalLine('Total billed', money(total + fee), true)
+  if (budget > 0) {
+    s.y -= 4
+    totalLine('Budget', money(budget), false)
+    totalLine(remaining < 0 ? 'Over budget' : 'Remaining', money(Math.abs(remaining)), true)
+  }
 
   // Receipt photos — one captioned page each. A bad image is skipped rather
   // than fatal: a package missing one receipt photo still beats no package.

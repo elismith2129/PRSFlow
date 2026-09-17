@@ -92,6 +92,20 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.6 — Food expenses bill with a 35% service fee — Sep 17, 2026
+
+Eli: "there needs to be a 35% service fee added to the food expense — show it in the modal
+on the WO and in the PDF." `FOOD_SERVICE_FEE_RATE = 0.35` and `foodServiceFee()` live in
+`lib/woTotals` (one place). The expense modal keeps its three tiles (Budget · Spent ·
+Remaining — the runner's view) and adds a bill line under them: **Receipts + Service fee
+35% = Billed**. The Food Budget page of the package prints Receipts / Service fee (35%) /
+**Total billed**, then Budget / Remaining. The budget is still compared against receipts —
+that's what the runners were given to spend; the fee is what the label pays.
+
+Watch-out: food expenses have never been part of `computeWoTotals` — the expense report
+bills as its own page, so the fee does not move the work order's grand total. If that
+should change, it's a ruling, not a bug.
+
 ## v1.32.5 — COD gets the queue order too — Sep 16, 2026
 
 Eli: "we didn't fix up the order for needs review in COD like we did for billing — needs

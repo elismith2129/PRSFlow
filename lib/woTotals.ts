@@ -117,6 +117,18 @@ export const CARD_FEE_RATE = 0.03
  *  as exceptions here. */
 export const DAY_HOUR_RATIO = 10
 
+/**
+ * FOOD SERVICE FEE (Eli, 2026-09-17): the studio bills the label's food
+ * receipts plus 35%. Applied to the receipts SUBTOTAL, shown on the expense
+ * modal and on the Food Budget page of the package. The budget itself is
+ * compared against receipts (what the runners spent), not the billed total.
+ * Not part of computeWoTotals — the expense report bills separately.
+ */
+export const FOOD_SERVICE_FEE_RATE = 0.35
+export function foodServiceFee(receipts: number): number {
+  return Math.round(receipts * FOOD_SERVICE_FEE_RATE * 100) / 100
+}
+
 /** The fee slice of a card-charged total: charged − charged/1.03, in cents.
  *  Derives the fee FROM the charged amount so a runner can type exactly what
  *  the terminal charged and the base+fee split is always internally exact. */
