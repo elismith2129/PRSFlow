@@ -229,6 +229,10 @@ type StRow = {
   // deliberately NOT part of the save payload (stPayloads) — a save must never
   // clobber a status the runner or admin set through their own act.
   status: string
+  /** Who submitted the day and when (migration 20260917150000). Written by
+   *  handleRunnerSubmit with status; NOT in the save payload, same as status. */
+  submitted_by_name: string | null
+  submitted_at: string | null
 }
 
 type EquipRow = {
@@ -533,6 +537,8 @@ function normalizeStRow(d: any): StRow {
     admin_locked: d.admin_locked ?? false,
     eng_visible: d.eng_visible ?? true,
     status: d.status ?? 'in_progress',
+    submitted_by_name: d.submitted_by_name ?? null,
+    submitted_at: d.submitted_at ?? null,
     // Assistant is the default role everywhere — an engineer is the exception.
     // Stored rows keep whatever they were saved with; this only decides the
     // fallback for a row with no role recorded.
@@ -880,7 +886,7 @@ export function WorkOrderPopup({
         eng_visible: monthlyStaff,
         eng_role: 'assistant' as const,
         bundle_id: null,
-        status: 'in_progress' as const,
+        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null,
       }
     })
 
@@ -2422,7 +2428,7 @@ export function WorkOrderPopup({
       // Follow the row above (so a session staffed with an engineer keeps adding
       // engineers), otherwise fall back to assistant.
       eng_role: last?.eng_role || 'assistant',
-      status: 'in_progress',
+      status: 'in_progress', submitted_by_name: null, submitted_at: null,
     }))
 
     setStRows(prev => [...prev, ...rows])
@@ -2558,7 +2564,7 @@ export function WorkOrderPopup({
       eng_hours: null, eng_charge: null,
       actual_from_time: '', actual_to_time: '',
       admin_checked: false, admin_locked: false, eng_visible: true,
-      eng_role: role, status: 'in_progress', bundle_id: null,
+      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, bundle_id: null,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -2775,11 +2781,16 @@ export function WorkOrderPopup({
     const today = opsToday()
     const todayIds = stRows.filter(r => r.date === today).map(r => r.id)
     if (todayIds.length > 0) {
+      // WHO and WHEN ride along (Eli, 2026-09-17: "the runner name included
+      // in that tag"). The name is the profile's display name — the same one
+      // the activity log records below — so the tag and the history agree.
+      const submittedBy = (profile?.display_name || '').trim() || null
+      const submittedAt = new Date().toISOString()
       const { error } = await supabase.from('studio_time_rows')
-        .update({ status: 'submitted' }).in('id', todayIds)
+        .update({ status: 'submitted', submitted_by_name: submittedBy, submitted_at: submittedAt }).in('id', todayIds)
       if (!dbResult('Submitting today', error)) { setSubmittingRun(false); return }
       const mark = (rows: StRow[]) => rows.map(r =>
-        todayIds.includes(r.id) && r.status !== 'approved' ? { ...r, status: 'submitted' } : r)
+        todayIds.includes(r.id) && r.status !== 'approved' ? { ...r, status: 'submitted', submitted_by_name: submittedBy, submitted_at: submittedAt } : r)
       setStRows(mark)
       originalStRowsRef.current = mark(originalStRowsRef.current)
       // History: the runner's terminal act gets its own line (the save above
@@ -3561,6 +3572,40 @@ export function WorkOrderPopup({
     const parts = d.split('-')
     if (parts.length < 3) return d
     return `${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}`
+  }
+  /**
+   * THE DAY'S SUBMIT STATE, IN WORDS (Eli, 2026-09-17: "can we have the runner
+   * name included in that tag on the rows in the WO?"). Replaces the coloured
+   * dot on the day cards and the day sheet header. Approved wins; then
+   * "Submitted · Hunter · 12:14 AM" from the row that was submitted last; and
+   * for the office only, a past day nobody submitted reads "Not submitted" in
+   * hot — the same rule as the billing hub's flag (lib/unsubmitted).
+   */
+  function dayStateTag(rows: StRow[], date: string, small = false) {
+    if (rows.length === 0) return null
+    const allApproved = rows.every(r => r.status === 'approved')
+    const sub = rows.filter(r => r.status === 'submitted' || r.status === 'approved')
+      .sort((a, b) => (b.submitted_at ?? '').localeCompare(a.submitted_at ?? ''))[0]
+    const pill: React.CSSProperties = {
+      fontSize: small ? 8.5 : 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase',
+      borderRadius: 99, padding: small ? '2px 7px' : '3px 8px', whiteSpace: 'nowrap', flexShrink: 0, lineHeight: 1.4,
+    }
+    if (allApproved) return <span style={{ ...pill, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' }}>Approved</span>
+    if (sub) {
+      const who = (sub.submitted_by_name || '').trim()
+      const when = sub.submitted_at
+        ? new Date(sub.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
+        : ''
+      return (
+        <span style={{ ...pill, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' }}>
+          Submitted{who ? ` · ${who}` : ''}{when ? ` · ${when}` : ''}
+        </span>
+      )
+    }
+    if (!runner && date && date < opsToday() && rows.some(r => r.studio !== '')) {
+      return <span style={{ ...pill, background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' }}>Not submitted</span>
+    }
+    return null
   }
   const metaLabel: React.CSSProperties = {
     fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
@@ -5883,7 +5928,7 @@ export function WorkOrderPopup({
                           <span style={{ pointerEvents: 'none' }}>{shortDate(r.date)}</span>
                           {/* Submit-state dot: warm = submitted, booked = approved (§5). */}
                           {(r.status === 'submitted' || r.status === 'approved') && (
-                            <span style={{ position: 'absolute', top: 3, right: 2, width: 5, height: 5, borderRadius: 99, background: r.status === 'approved' ? 'var(--c-st-booked)' : 'var(--c-st-warm)', pointerEvents: 'none' }} />
+                            <span title={`${r.status === 'approved' ? 'Approved' : 'Submitted'}${r.submitted_by_name ? ` · ${r.submitted_by_name}` : ''}${r.submitted_at ? ` · ${new Date(r.submitted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}` : ''}`} style={{ position: 'absolute', top: 3, right: 2, width: 5, height: 5, borderRadius: 99, background: r.status === 'approved' ? 'var(--c-st-booked)' : 'var(--c-st-warm)' }} />
                           )}
                           {/* Moving a row's DATE is a schedule act — office only. */}
                           {!runner && <input
@@ -6274,9 +6319,6 @@ export function WorkOrderPopup({
                     // explicit "this day runs unstaffed" and stays hidden.
                     const staffRows = g.rows.filter(r => r.eng_visible !== false)
                     const cardLocked = runner && g.rows.length > 0 && g.rows.every(r => r.admin_locked)
-                    const allApproved = g.rows.length > 0 && g.rows.every(r => r.status === 'approved')
-                    const anySubmitted = g.rows.some(r => r.status === 'submitted')
-                    const dotColor = allApproved ? 'var(--c-st-booked)' : anySubmitted ? 'var(--c-st-warm)' : null
                     const first = studioRows[0] ?? g.rows[0]
                     // VENUE-QUALIFIED (Eli, 2026-09-08). "Studio A" alone is
                     // ambiguous now that a WO can span buildings — every venue
@@ -6336,7 +6378,7 @@ export function WorkOrderPopup({
                                 </span>
                               )}
                               <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
-                              {dotColor && <span style={{ width: 8, height: 8, borderRadius: 99, background: dotColor, display: 'inline-block', flexShrink: 0 }} />}
+                              {dayStateTag(g.rows, g.date)}
                             </div>
                             {/* 16px, NOT 22 (2026-08-18). At 22 the range wrapped
                                 onto two lines and pushed the hours onto a third —
@@ -6561,7 +6603,7 @@ export function WorkOrderPopup({
                           )}
                           <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, flex: 1, fontSize: 11.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {renderDateChip(g.date, cardLocked, 'card')}
-                            {dotColor && <span style={{ width: 7, height: 7, borderRadius: 99, background: dotColor, display: 'inline-block', flexShrink: 0 }} />}
+                            {dayStateTag(g.rows, g.date, true)}
                           </span>
                           {/* The signpost (Eli, 2026-08-16): the whole card
                               opens the sheet, but nothing SAID so. Not a
@@ -7245,9 +7287,6 @@ export function WorkOrderPopup({
           // Same rule as the card (2026-08-20): the slot exists whether or not
           // anyone is in it, so a day can be staffed from the day sheet.
           const sheetStaffRows = sheetRows.filter(r => r.eng_visible !== false)
-          const sheetDot = sheetRows.length > 0 && sheetRows.every(r => r.status === 'approved')
-            ? 'var(--c-st-booked)'
-            : sheetRows.some(r => r.status === 'submitted') ? 'var(--c-st-warm)' : null
           const dayLocked = runner && sheetRows.length > 0 && sheetRows.every(r => r.admin_locked)
           const isDayRate = sheetStudioRows.some(r => r.row_rate_type === 'day')
           // READS THE ROW NOW. This was the literal string '12h lockout' and
@@ -7366,7 +7405,7 @@ export function WorkOrderPopup({
                       <button type="button" disabled={dayIdx >= allDates.length - 1} onClick={() => goDay(1)} aria-label="Next day of this work order" style={{ width: 30, height: 30, borderRadius: 99, fontSize: 15, color: 'var(--c-fg-2)', background: 'var(--c-wash)', border: 'none', cursor: dayIdx < allDates.length - 1 ? 'pointer' : 'default', opacity: dayIdx < allDates.length - 1 ? 1 : 0.3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
                     )}
                     {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>{dayIdx + 1} of {allDates.length}</span>}
-                    {sheetDot && <span style={{ width: 7, height: 7, borderRadius: 99, background: sheetDot, display: 'inline-block' }} />}
+                    {dayStateTag(sheetRows, daySheetDate, true)}
                   </span>
                   <span style={fldK}>
                     {Array.from(new Set(sheetStudioRows.map(r => roomCode(toStudioLetter(r.studio), r.location || booking.location)).filter(Boolean))).join(' · ')}

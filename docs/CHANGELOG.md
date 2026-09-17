@@ -12,10 +12,28 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 | `CLAUDE.md` | "What are the rules I must not break?" | Topic (locked conventions, architecture rules) |
 | `docs/CHANGELOG.md` (this file) | "What changed in version X, and what should I watch out for?" | **Version** |
 | `docs/PROJECT_LOG.md` | "Why is it like this? What did we try and reject?" | **Session**, chronological |
+| `docs/TODO.md` | "What's still owed?" | One standing list, dated lines |
 | `docs/PRSFlow-Tech-Stack.md` | "Where does X live? What is Y for?" | Subsystem |
 | `public/sop.html` → `VERSIONS` | "What changed for me, the person using it?" | Version, plain English |
 
 **Convention:** newest first. Every entry records **migrations** (because those are run by hand and are the most common source of a broken deploy), **watch-outs** (the thing that will bite the next person), and **files touched** where it aids navigation. Detail lives here; narrative and rejected alternatives live in PROJECT_LOG.
+
+---
+
+## v1.33.2 — The day's submit state says who and when — Sep 17, 2026
+
+Eli: "can we have the runner name included in that tag on the rows in the WO?"
+The day cards and day sheet showed a coloured dot (warm = submitted, green =
+approved). Now a pill: **Approved** / **Submitted · Hunter · 12:14 AM** / and for
+the office only, **Not submitted** in hot on a past day (same rule as the billing
+flag). The table's tiny date-cell dot keeps its size but gets a hover title.
+
+**Migration (run first):** `20260917150000_st_rows_submitted_by.sql` —
+`studio_time_rows.submitted_by_name text`, `submitted_at timestamptz`, backfilled
+from `wo_activity` (kind `submitted`, `changes[].day`). `handleRunnerSubmit` writes
+both with `status`. **Watch-out:** like `status`, these are NOT in `stPayloads` —
+a save must never clobber them. `dayStateTag(rows, date, small)` in
+WorkOrderPopup is the one renderer; `dotColor` / `sheetDot` are gone.
 
 ---
 

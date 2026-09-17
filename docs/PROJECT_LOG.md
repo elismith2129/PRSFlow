@@ -2,6 +2,7 @@
 
 *Living document. Update as decisions are made.*
 *This file is read by every Claude session for context — keep it current.*
+*What's still owed lives in one place: **`docs/TODO.md`** — read it at the start of a session, add to it when something is parked.*
 
 ---
 
