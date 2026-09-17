@@ -64,7 +64,7 @@ function winAnsiSafe(s: string): string {
     .replace(/[^\x20-\xFFŒœŠšŸŽžƒˆ˜–—‘’‚“”„†‡•…‰‹›€™]/g, '')
 }
 import { calcHours } from '@/lib/time'
-import { engChargeForRow, FOOD_SERVICE_FEE_RATE, foodServiceFee } from '@/lib/woTotals'
+import { engChargeForRow, foodFeePct, foodServiceFee } from '@/lib/woTotals'
 import { roomCode, STUDIO_SHORT } from '@/lib/studios'
 
 export type WoPdfRow = Record<string, any>
@@ -982,10 +982,11 @@ export async function renderExpenseReportPdf(input: {
   }
   // The bill (2026-09-17): receipts + 35% service fee. Budget lines stay
   // against receipts — that is what the runners were given to spend.
-  const fee = foodServiceFee(total)
+  const pct = foodFeePct(input.wo.food_fee_pct)
+  const fee = foodServiceFee(total, pct)
   s.need(80)
   totalLine('Receipts', money(total), false)
-  totalLine(`Service fee (${Math.round(FOOD_SERVICE_FEE_RATE * 100)}%)`, money(fee), false)
+  totalLine(`Service fee (${pct}%)`, money(fee), false)
   totalLine('Total billed', money(total + fee), true)
   if (budget > 0) {
     s.y -= 4

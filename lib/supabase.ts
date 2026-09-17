@@ -255,6 +255,8 @@ export interface WorkOrder {
   payment_status: string | null
   food_budget: boolean
   food_amount: number | null
+  /** Food service fee percent, whole number as text; null = default (45). */
+  food_fee_pct?: string | null
   client: string | null
   artist: string | null
   label: string | null

@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate, oneLine } from '@/lib/format'
-import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_RATE, foodServiceFee } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_PCT, foodFeePct, foodServiceFee } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail, confirmStartProblem,
   findMissingEngRates, missingEngRatesMessage,
@@ -138,6 +138,8 @@ type WO = {
   payment_status: string
   food_budget: boolean
   food_amount: string
+  /** Service fee percent on food receipts; '' = default (lib/woTotals). */
+  food_fee_pct: string
   client: string
   artist: string
   label: string
@@ -390,6 +392,7 @@ function normalizeWO(d: any): WO {
     payment_status: d.payment_status ?? 'COD',
     food_budget: d.food_budget ?? false,
     food_amount: d.food_amount != null ? String(d.food_amount) : '',
+    food_fee_pct: d.food_fee_pct != null ? String(d.food_fee_pct) : '',
     client: d.client ?? '',
     artist: d.artist ?? '',
     label: d.label ?? '',
@@ -3163,6 +3166,7 @@ export function WorkOrderPopup({
       payment_status: wo.payment_status,
       food_budget: wo.food_budget,
       food_amount: wo.food_amount ? parseFloat(wo.food_amount) : null,
+      food_fee_pct: wo.food_fee_pct.trim() === '' ? null : wo.food_fee_pct.trim(),
       client: wo.client || null,
       artist: wo.artist || null,
       label: wo.label || null,
@@ -3517,7 +3521,8 @@ export function WorkOrderPopup({
   const foodBudgetNum = wo ? (parseFloat((wo.food_amount || '').replace(/[^0-9.-]/g, '')) || 0) : 0
   const foodRemaining = foodBudgetNum - foodSpent
   // The bill: receipts + 35% service fee (lib/woTotals). Budget stays vs receipts.
-  const foodFee = foodServiceFee(foodSpent)
+  const foodPct = foodFeePct(wo?.food_fee_pct)
+  const foodFee = foodServiceFee(foodSpent, foodPct)
   const foodBilled = foodSpent + foodFee
 
   // ── Styles ────────────────────────────────────────────────────────────────
@@ -4415,7 +4420,21 @@ export function WorkOrderPopup({
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', margin: '8px 2px 12px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
                   <span>Receipts <b className="c-mono" style={{ color: 'var(--c-fg)' }}>${foodSpent.toFixed(2)}</b></span>
                   <span style={{ opacity: 0.4 }}>+</span>
-                  <span>Service fee {Math.round(FOOD_SERVICE_FEE_RATE * 100)}% <b className="c-mono" style={{ color: 'var(--c-fg)' }}>${foodFee.toFixed(2)}</b></span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    Service fee
+                    {/* Adjustable per WO (Eli): whole percent, blank = default. */}
+                    <input
+                      value={wo?.food_fee_pct ?? ''}
+                      onChange={e => setWo(w => w ? { ...w, food_fee_pct: e.target.value.replace(/[^0-9.]/g, '') } : w)}
+                      placeholder={String(FOOD_SERVICE_FEE_PCT)}
+                      inputMode="decimal"
+                      disabled={readOnly}
+                      className="c-tin c-tin-mono"
+                      style={{ width: 40, textAlign: 'center', fontSize: 11, padding: '2px 4px' }}
+                      title={`Service fee percent — blank means ${FOOD_SERVICE_FEE_PCT}%`}
+                    />%
+                    <b className="c-mono" style={{ color: 'var(--c-fg)' }}>${foodFee.toFixed(2)}</b>
+                  </span>
                   <span style={{ opacity: 0.4 }}>=</span>
                   <span style={{ fontWeight: 800, color: 'var(--c-fg)' }}>Billed <b className="c-mono" style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 13, marginLeft: 2 }}>${foodBilled.toFixed(2)}</b></span>
                 </div>

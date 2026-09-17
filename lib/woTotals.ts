@@ -119,14 +119,21 @@ export const DAY_HOUR_RATIO = 10
 
 /**
  * FOOD SERVICE FEE (Eli, 2026-09-17): the studio bills the label's food
- * receipts plus 35%. Applied to the receipts SUBTOTAL, shown on the expense
- * modal and on the Food Budget page of the package. The budget itself is
- * compared against receipts (what the runners spent), not the billed total.
- * Not part of computeWoTotals — the expense report bills separately.
+ * receipts plus a service fee — 45% by default, adjustable per work order
+ * (work_orders.food_fee_pct, whole percent as text; NULL/blank = default).
+ * Applied to the receipts SUBTOTAL, shown on the expense modal and on the
+ * Food Budget page of the package. The budget itself is compared against
+ * receipts (what the runners spent), not the billed total. Not part of
+ * computeWoTotals — the expense report bills separately.
  */
-export const FOOD_SERVICE_FEE_RATE = 0.35
-export function foodServiceFee(receipts: number): number {
-  return Math.round(receipts * FOOD_SERVICE_FEE_RATE * 100) / 100
+export const FOOD_SERVICE_FEE_PCT = 45
+/** The WO's fee percent, or the default when unset / unparseable. */
+export function foodFeePct(raw: string | number | null | undefined): number {
+  const n = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').replace(/[^0-9.]/g, ''))
+  return isNaN(n) || n < 0 ? FOOD_SERVICE_FEE_PCT : n
+}
+export function foodServiceFee(receipts: number, pct: number = FOOD_SERVICE_FEE_PCT): number {
+  return Math.round(receipts * (pct / 100) * 100) / 100
 }
 
 /** The fee slice of a card-charged total: charged − charged/1.03, in cents.
