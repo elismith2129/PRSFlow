@@ -92,6 +92,26 @@ now. (3) Tech's Shift Notes access (Runner tab only) is NOT in this version — 
 change. (4) Mic QC as a source (a bad/missing mic making a Gear flag) is specced in the
 mock and NOT built yet.
 
+## v1.32.7 — WO day sheet fits a phone again — Sep 17, 2026
+
+Eli (WO-1150 on the phone): "have a ui issue on the phone for WO cards now since we
+added the ot… should all fit with no zoom or scrolling side to side." The v1.32-era
+rate row (/HR·/DAY toggle + Room rate + Hours included + OT rate) was four
+fixed-width tiles in one `nowrap` flex row — ~520px on a ~330px sheet — and it
+pushed the whole bottom sheet wider than the screen (START clipped on the left,
+side scroll).
+
+- Rate row now `flexWrap: 'wrap'`: toggle + room rate on line one, hours + OT on
+  line two on a phone; desktop is wide enough that nothing moves.
+- Tiles are `boxSizing: border-box` with `maxWidth: 100%` (widths bumped by the
+  28px padding so they look identical: 178 / 140 / 156).
+- Sheet scroll body gets `overflowX: hidden` so nothing inside it can ever widen
+  the sheet again.
+
+**Migrations:** none. **Files:** `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
 ## v1.32.6 — Food expenses bill with a service fee — 45%, adjustable per WO — Sep 17, 2026
 
 Eli: "there needs to be a service fee added to the food expense — show it in the modal on

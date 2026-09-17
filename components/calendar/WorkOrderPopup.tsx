@@ -7378,7 +7378,7 @@ export function WorkOrderPopup({
                   {allDates.length > 1 && <span style={{ float: 'right' }}>{isMobile ? 'swipe' : '‹ ›'} for other days · {dayIdx + 1}/{allDates.length}</span>}
                 </div>
 
-                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
 
                   {/* Studio pair block */}
                   {sheetStudioRows.map(r => {
@@ -7457,7 +7457,16 @@ export function WorkOrderPopup({
                              above it. Sized to its content rather than
                              stretched: three or four digits never need half the
                              sheet. */
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                            {/* WRAPS ON A PHONE (Eli, 2026-09-17: "have a ui
+                                issue on the phone for WO cards now since we
+                                added the ot… should all fit with no zoom or
+                                scrolling side to side"). Four fixed-width tiles
+                                in one row are ~520px; a phone sheet is ~330.
+                                The row was pushing the whole sheet wider than
+                                the screen. Now it wraps: toggle + room rate on
+                                one line, hours + OT on the next. Desktop is
+                                wide enough that nothing moves. */}
                             <div className="c-seg c-seg-tiny" style={{ flexShrink: 0 }}>
                               <button type="button" className={r.row_rate_type !== 'day' ? 'c-on' : ''}
                                 onClick={() => r.row_rate_type === 'day' && toggleRowRateType(r.id)}
@@ -7466,7 +7475,7 @@ export function WorkOrderPopup({
                                 onClick={() => r.row_rate_type !== 'day' && toggleRowRateType(r.id)}
                                 style={{ cursor: 'pointer' }}>/ DAY</button>
                             </div>
-                            <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 150, flexShrink: 0 }}>
+                            <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 178, maxWidth: '100%', boxSizing: 'border-box', flexShrink: 0 }}>
                               <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>
                                 {r.row_rate_type === 'day' ? 'Room rate / day' : 'Room rate / hr'}
                               </div>
@@ -7496,7 +7505,7 @@ export function WorkOrderPopup({
                                 (WO-1121), so neither field means anything there. */}
                             {r.row_rate_type === 'day' && (
                               <>
-                                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 112, flexShrink: 0 }}>
+                                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 140, maxWidth: '100%', boxSizing: 'border-box', flexShrink: 0 }}>
                                   <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>Hours included</div>
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
                                     <input
@@ -7512,7 +7521,7 @@ export function WorkOrderPopup({
                                     <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 13, fontWeight: 600, opacity: 0.45 }}>h</span>
                                   </div>
                                 </div>
-                                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 128, flexShrink: 0 }}>
+                                <div style={{ background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 14px', width: 156, maxWidth: '100%', boxSizing: 'border-box', flexShrink: 0 }}>
                                   <div style={{ ...fldK, fontSize: 8, marginBottom: 1 }}>OT rate / hr</div>
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
                                     <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 17, fontWeight: 600, opacity: 0.45 }}>$</span>
