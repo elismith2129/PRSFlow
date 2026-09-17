@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — "Submitted by" on the billing row, and multi-day without the bars</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ROUND 2 (Eli, 2026-09-17): "I don't think we need the bars for each day — a
+  20-day session would not fit. Think more simple. Fernando just needs
+  something on the WO row in the billing hub that says 'this WO was submitted
+  by bla bla'. Maybe Needs review just changes to Submitted. Still want another
+  set of ideas for the multi-day — could be as simple as the badge saying
+  Needs review / In progress."
+
+  Part 1 — where "submitted by" lives on the row (pick one):
+    1A  the flag cell, as text: "Submitted · Hunter · 12:14 AM"
+    1B  the stage badge says SUBMITTED instead of NEEDS REVIEW, name under it
+    1C  on the client line, after the dates: "· submitted by Hunter"
+  Part 2 — multi-day, no bars (pick one):
+    2A  two-word badge: NEEDS REVIEW over IN PROGRESS
+    2B  one badge + a counter: "NEEDS REVIEW · 2/4" (days submitted / total)
+    2C  the flag cell carries the day: "Day 2 submitted · Hunter · ends Sep 19"
+  Recommendation: 1A + 2B. The badge stays a single word (the bin system's
+  whole point), the flag cell says who, the counter says how far along.
+  The bucket rule tightens either way: Needs review only while a submitted
+  day is unreviewed; otherwise In progress.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--uncon:#9ec5ea;--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:840px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:30px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:840px;line-height:1.6;margin-bottom:12px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:6px;line-height:1.55;max-width:840px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:18px;padding:10px 12px 6px;box-shadow:var(--softsh);max-width:980px}
+.hd,.row{display:grid;grid-template-columns:110px 76px minmax(0,1fr) 124px 220px 84px 120px 26px;align-items:center;gap:10px}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 10px 6px}
+.hd .r{text-align:right}.hd .c{text-align:center}
+.row{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.bin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.bin.rev{background:var(--warm);color:var(--chip-ink)}.bin.prog{background:var(--wash2);color:var(--fg)}
+.bin.two{white-space:normal;padding:2px 6px}
+.bin small{display:block;font-size:7.5px;font-weight:700;opacity:.8;text-transform:none;letter-spacing:.02em}
+.inv{font-family:'DM Mono',monospace;font-size:11px;opacity:.6}
+.who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who b{font-weight:700}.who span{opacity:.5;font-size:11px}.who span.w{opacity:.9;color:var(--warm)}
+.amt{font-family:'DM Mono',monospace;font-size:11.5px;text-align:right}
+.flag{display:flex;justify-content:flex-end;min-width:0}
+.hint{font-size:9px;font-weight:700;letter-spacing:.03em;opacity:.45;white-space:nowrap}
+.sb{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--warm);white-space:nowrap}
+.sb small{font-weight:600;text-transform:none;letter-spacing:0;opacity:.8;font-family:'DM Mono',monospace;font-size:9px}
+.drift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--hot);white-space:nowrap}
+.acts{display:flex;justify-content:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg);opacity:.8;white-space:nowrap}
+.bact.m{background:transparent;opacity:.45}
+.more{text-align:right;opacity:.5}
+</style>
+</head>
+<body>
+<h1>"Submitted by" on the row, and multi-day without the bars</h1>
+<p class="lede">Two decisions, three small options each. All of them use the name and time already on the row since v1.33.2. Nothing here needs SQL.</p>
+
+<h2><span class="n">1</span>Where "submitted by" lives</h2>
+
+<p class="sub"><b>1A · The flag cell says it.</b> <span class="rec">Recommended</span> Same column that carries "Runner never submitted" — so that column reads as <i>the runner's line</i>: who did, or who didn't. Badge unchanged.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Total</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Next</span><span></span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1150</span><span class="who"><b>Havelange</b><span> · Sep 15 · ERS B</span></span><span class="amt">$2,500.00</span><span class="flag"><span class="sb">Submitted · Hunter <small>12:14 AM</small></span></span><span class="amt">$2,500.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1141</span><span class="who"><b>Sonic Ranch</b><span> · Sep 12 · ARS A</span></span><span class="amt">$6,300.00</span><span class="flag"><span class="drift">Runner never submitted</span></span><span class="amt">$6,300.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+</div>
+
+<p class="sub" style="margin-top:22px"><b>1B · The badge becomes SUBMITTED.</b> Needs review is renamed for this stage; the name sits under it. Honest about what happened, but the badge is now doing two jobs and gets taller.</p>
+<div class="panel">
+  <div class="row"><span class="bin rev two">Submitted<small>Hunter · 12:14 AM</small></span><span class="inv">WO-1150</span><span class="who"><b>Havelange</b><span> · Sep 15 · ERS B</span></span><span class="amt">$2,500.00</span><span class="flag"><span class="hint">Drop invoice here · or click</span></span><span class="amt">$2,500.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>not submitted</small></span><span class="inv">WO-1141</span><span class="who"><b>Sonic Ranch</b><span> · Sep 12 · ARS A</span></span><span class="amt">$6,300.00</span><span class="flag"><span class="drift">Runner never submitted</span></span><span class="amt">$6,300.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+</div>
+<p class="cap">Catch: "Submitted" is the runner's word for their act; "Needs review" is Fernando's word for his. Renaming the stage to the runner's act means the badge stops telling Fernando what <i>he</i> owes.</p>
+
+<p class="sub" style="margin-top:22px"><b>1C · On the client line.</b> After the dates and rooms: "· submitted by Hunter". Cheapest, but it's the quietest spot on the row and gets cut off first on a narrow screen.</p>
+<div class="panel">
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1150</span><span class="who"><b>Havelange</b><span> · Sep 15 · ERS B</span><span class="w"> · submitted by Hunter, 12:14 AM</span></span><span class="amt">$2,500.00</span><span class="flag"><span class="hint">Drop invoice here · or click</span></span><span class="amt">$2,500.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+</div>
+
+<h2><span class="n">2</span>Multi-day, no bars</h2>
+
+<p class="sub"><b>2A · Two words on the badge.</b> NEEDS REVIEW over IN PROGRESS when both are true. Exactly what you said; nothing to learn.</p>
+<div class="panel">
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–Oct 5 · PRS A</span></span><span class="amt">$63,000.00</span><span class="flag"><span class="sb">Submitted · Hunter <small>12:40 AM</small></span></span><span class="amt">$63,000.00</span><span class="acts"><span class="bact">Review</span></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin prog two">In progress<small>all reviewed</small></span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–Oct 5 · PRS A</span></span><span class="amt">$63,000.00</span><span class="flag"><span class="hint">Next day tonight</span></span><span class="amt">$63,000.00</span><span class="acts"><span class="bact m">Waiting on tonight</span></span><span class="more">⋯</span></div>
+</div>
+
+<p class="sub" style="margin-top:22px"><b>2B · One badge, a counter.</b> <span class="rec">Recommended</span> "NEEDS REVIEW · 2/20" — days submitted over days total. Fits a 20-day lockout in four characters, and the badge stays one word. Once everything submitted is reviewed: "IN PROGRESS · 2/20".</p>
+<div class="panel">
+  <div class="row"><span class="bin rev">Needs review · 2/20</span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–Oct 5 · PRS A</span></span><span class="amt">$63,000.00</span><span class="flag"><span class="sb">Day 2 · Hunter <small>12:40 AM</small></span></span><span class="amt">$63,000.00</span><span class="acts"><span class="bact">Review day 2</span></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin prog">In progress · 2/20</span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–Oct 5 · PRS A</span></span><span class="amt">$63,000.00</span><span class="flag"><span class="hint">Day 3 tonight</span></span><span class="amt">$63,000.00</span><span class="acts"><span class="bact m">Waiting on tonight</span></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review · 3/3</span><span class="inv">WO-1152</span><span class="who"><b>Def Jam · Rae</b><span> · Sep 15–17 · PRS C</span></span><span class="amt">$7,800.00</span><span class="flag"><span class="drift">Runner never submitted · Sep 16</span></span><span class="amt">$7,800.00</span><span class="acts"><span class="bact">Review day 3</span></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1150</span><span class="who"><b>Havelange</b><span> · Sep 15 · ERS B</span></span><span class="amt">$2,500.00</span><span class="flag"><span class="sb">Submitted · Hunter <small>12:14 AM</small></span></span><span class="amt">$2,500.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>Reading it:</b> "2/20" = two nights turned in out of twenty booked. The flag cell names the latest one. One-night sessions carry no counter. The red "never submitted" flag still wins the cell when a past day is missing.</p>
+
+<p class="sub" style="margin-top:22px"><b>2C · Badge stays plain, the flag cell carries the day.</b> Badge just says NEEDS REVIEW or IN PROGRESS; the flag says "Day 2 submitted · Hunter · ends Oct 5".</p>
+<div class="panel">
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–Oct 5 · PRS A</span></span><span class="amt">$63,000.00</span><span class="flag"><span class="sb">Day 2 · Hunter <small>· ends Oct 5</small></span></span><span class="amt">$63,000.00</span><span class="acts"><span class="bact">Review day 2</span></span><span class="more">⋯</span></div>
+</div>
+<p class="cap">Quietest option. Works, but "still running" is only readable if you notice the end date.</p>
+
+<h2><span class="n">3</span>Either way, the rule underneath</h2>
+<p class="sub">Needs review = at least one submitted day you haven't reviewed (or a past day nobody submitted). In progress = everything that's in is reviewed and there are nights still to come. Today a lockout sits in Needs review for its whole run; with this it only shows up when there's actually a day for Fernando to look at.</p>
+</body>
+</html>

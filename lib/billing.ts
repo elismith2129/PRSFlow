@@ -330,6 +330,32 @@ export type InvoiceRow = {
    * on billing) without re-deriving it.
    */
   arrived: boolean
+  /**
+   * Who submitted the latest day and when (v1.33.3 — Eli: "Fernando just
+   * needs something on the WO row that says this WO was submitted by…").
+   * From the studio rows' submitted_by_name / submitted_at (v1.33.2).
+   */
+  submittedBy: string | null
+  submittedAt: string | null
+  /** Distinct booked days on the work order (studio rows with a date). */
+  daysTotal: number
+  /** Days with at least one studio row submitted or approved. */
+  daysSubmitted: number
+  /**
+   * MULTI-DAY (Eli, 2026-09-17: "each day multi-day sessions need the WO
+   * reviewed for that day, but I want some indication that it needs review
+   * and is also still in progress"). True when nights are still to come —
+   * fewer days submitted than booked and the last day hasn't passed.
+   */
+  stillRunning: boolean
+  /**
+   * A submitted day the office hasn't reviewed (locked) yet, or a past day
+   * nobody submitted. THIS is what puts a running multi-day in Needs review;
+   * once everything that's in is reviewed it drops back to In progress until
+   * the next night lands. Before v1.33.3 any submission parked the whole WO
+   * in Needs review for its entire run.
+   */
+  needsReview: boolean
 }
 
 /**
@@ -592,7 +618,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
-      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status, studio, admin_locked')
+      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status, studio, admin_locked, submitted_by_name, submitted_at')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     // fee_amount IS REQUIRED (WO-1121, 2026-09-10). Without it computeWoTotals
@@ -662,9 +688,29 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // any submitted/approved day makes this work NOW. `ended` on the row stays
     // honest (it drives sorting); only the bucket gate treats submission as
     // arrival.
-    const anySubmitted = stRows.some(
-      (r: any) => r.status === 'submitted' || r.status === 'approved',
-    )
+    // Per-day facts for the multi-day rule (v1.33.3). Studio rows only —
+    // staff sub-rows follow their day.
+    const studioDated = stRows.filter((r: any) => (r.studio ?? '').trim() && r.date)
+    const byDay = new Map<string, any[]>()
+    for (const r of studioDated) (byDay.get(r.date) ?? byDay.set(r.date, []).get(r.date)!).push(r)
+    const daysTotal = byDay.size
+    let daysSubmitted = 0
+    let unreviewedSubmitted = false
+    for (const rows of byDay.values()) {
+      const sub = rows.some(r => r.status === 'submitted' || r.status === 'approved')
+      if (sub) daysSubmitted++
+      if (sub && rows.some(r => (r.status === 'submitted' || r.status === 'approved') && !r.admin_locked)) unreviewedSubmitted = true
+    }
+    const unsubmittedDays = unsubmittedDaysOf(stRows, today)
+    const stillRunning = !ended && daysSubmitted < daysTotal
+    const needsReview = unreviewedSubmitted || unsubmittedDays.length > 0
+    const latestSub = studioDated
+      .filter((r: any) => r.submitted_at)
+      .sort((a: any, b: any) => String(b.submitted_at).localeCompare(String(a.submitted_at)))[0]
+    // ARRIVED, refined (v1.33.3): a submission still ends In progress — but
+    // only while there is something for the office to look at. A running
+    // multi-day whose submitted nights are all reviewed is back In progress.
+    const arrived = ended || needsReview || (daysTotal > 0 && daysSubmitted >= daysTotal)
 
     // METADATA ON THE LINE (Eli, 2026-08-11). Free: these rows are already
     // loaded for the totals, so no extra query. Derived from the ROWS, not the
@@ -725,7 +771,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       pipeline: (isCod ? 'cod' : 'billing') as Pipeline,
       bucket: deriveBucket({
         state, isCod, step, balance: totals.balance, grand: totals.grand,
-        ended: ended || anySubmitted,
+        ended: arrived,
         notStarted,
         awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
       }),
@@ -769,12 +815,18 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       rejectedAt: (w as any).invoice_rejected_at ?? null,
       rejectNote: (w as any).invoice_reject_note ?? null,
       invoicedTotal,
-      unsubmittedDays: unsubmittedDaysOf(stRows, today),
+      unsubmittedDays,
       invoiceDrift,
       dateRange,
       rooms,
       ended,
-      arrived: ended || anySubmitted,
+      arrived,
+      submittedBy: latestSub?.submitted_by_name ?? null,
+      submittedAt: latestSub?.submitted_at ?? null,
+      daysTotal,
+      daysSubmitted,
+      stillRunning,
+      needsReview,
     }
   })
 }

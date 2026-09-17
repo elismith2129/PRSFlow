@@ -20,6 +20,34 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.33.3 — Billing row says who submitted; multi-day sessions say "needs review · in progress" — Sep 17, 2026
+
+Eli: "Fernando just needs something on the WO row in the billing hub that says
+'this WO was submitted by bla bla'… still want ideas for the multi-day — could be
+as simple as the badge saying needs review / in progress." Picked 1A + 2A from
+`docs/design-refs/submitted-row-options.html` (round 1, the per-day strip in
+`multiday-review-options.html`, rejected: "a 20-day session would not fit").
+
+- **Flag cell (1A):** step-0 rows read `Submitted · Hunter 12:14 AM` in warm —
+  same column as the hot "Runner never submitted", so it's the runner's line
+  either way. On a running multi-day it reads `Day 2 · Hunter 12:40 AM`.
+- **Stage badge (2A):** a running multi-day with a night waiting on review is
+  NEEDS REVIEW over *in progress*; with everything-in reviewed it's IN PROGRESS
+  over *all reviewed* (`.c-bbin-two`). One-night sessions unchanged.
+- **The rule underneath (the real fix):** `arrived` was `ended || anySubmitted`,
+  so day 1's submit parked a lockout in Needs review for its whole run. Now
+  `arrived = ended || needsReview || allDaysSubmitted`, where `needsReview` = a
+  submitted day not yet `admin_locked`, or a past day nobody submitted. Same
+  value feeds `deriveBucket` (COD's review bin) and `billingStage`.
+- `InvoiceRow` gains `submittedBy / submittedAt / daysTotal / daysSubmitted /
+  stillRunning / needsReview`. The studio_time_rows select list gained
+  `submitted_by_name, submitted_at` (explicit list — watch-out).
+
+**Migrations:** none (uses v1.33.2's columns). **Files:** `lib/billing.ts`,
+`app/(main)/billing/page.tsx`, `styles/globals.css`.
+
+---
+
 ## v1.33.2 — The day's submit state says who and when — Sep 17, 2026
 
 Eli: "can we have the runner name included in that tag on the rows in the WO?"

@@ -1171,7 +1171,16 @@ function Row({
           One word for the whole position; the lights are gone. A COD hit in
           search wears its bin in the same column so the grid stays aligned. */}
       {stage && (
-        <span className="c-bbin" style={STAGE_STYLE[stage.key]}>{stage.label}</span>
+        /* MULTI-DAY, TWO WORDS (Eli, 2026-09-17, option 2A of
+           docs/design-refs/submitted-row-options.html): a running session with
+           a night waiting on review says NEEDS REVIEW over "in progress"; a
+           running one with everything reviewed says IN PROGRESS over "all
+           reviewed". One-night sessions are one word, as before. */
+        <span className={`c-bbin${(stage.key === 'review' || stage.key === 'progress') && row.stillRunning && row.daysTotal > 1 ? ' c-bbin-two' : ''}`} style={STAGE_STYLE[stage.key]}>
+          {stage.label}
+          {stage.key === 'review' && row.stillRunning && row.daysTotal > 1 && <small>in progress</small>}
+          {stage.key === 'progress' && row.stillRunning && row.daysTotal > 1 && row.daysSubmitted > 0 && <small>all reviewed</small>}
+        </span>
       )}
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
       <span className="c-bwho">
@@ -1245,6 +1254,15 @@ function Row({
           <span className="c-bflag c-soon" title={row.closedNote || undefined}>
             {closedReasonLabel(row.closedReason)}
             {row.closedNote ? ` · ${row.closedNote}` : ''}
+          </span>
+        ) : row.step === 0 && row.submittedBy ? (
+          /* WHO TURNED IT IN (Eli, 2026-09-17, option 1A): the same column
+             that says "Runner never submitted" says who did — that column is
+             the runner's line. Step 0 only; once an invoice is on it the cell
+             has billing work to show. */
+          <span className="c-bflag c-bsub" title={row.stillRunning ? `Latest night submitted by ${row.submittedBy}` : `Submitted by ${row.submittedBy}`}>
+            {row.stillRunning && row.daysTotal > 1 ? `Day ${row.daysSubmitted} · ` : 'Submitted · '}{row.submittedBy}
+            {row.submittedAt ? <span className="c-bsubat"> {new Date(row.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}</span> : null}
           </span>
         ) : row.notStarted && row.bucket === 'progress' && !stage ? (
           /* The staged layout's In-progress badge already says it. */

@@ -645,13 +645,15 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
-    ver:'v1.33.1', date:'Sep 17, 2026',
+    ver:'v1.33', date:'Sep 17, 2026',
     headline:'Closing can\'t be submitted while a session isn\'t. The office sees unsubmitted work orders the next morning.',
     desc:'An unsubmitted work order means nobody said what happened in the room — and it\'s the only way the office knows what to collect.',
     changes:[
       'Runners: when you tap Submit closing, any session today that hasn\'t been submitted stops you — the list is right there, each one opens the work order. Submit them, come back, closing goes through. Submitted with a problem always beats never submitted.',
       'Office: the first dashboard visit each morning pops up any work order from the last two weeks that was never submitted, with who closed that studio that night. Each row opens the work order.',
-      'Billing hub: those rows carry a red "Runner never submitted" flag so nobody bills a night nobody looked at.',
+      'Billing hub: those rows carry a red "Runner never submitted" flag so nobody bills a night nobody looked at. Rows that were submitted say who and when — "Submitted · Hunter 12:14 AM" — in the same spot.',
+      'Multi-day sessions: the badge now says "Needs review / in progress" while nights are still to come, and a lockout only shows in Needs review when there\'s actually a night for you to look at — once you\'ve reviewed what\'s in, it goes back to In progress until the next night lands.',
+      'Work orders: each day card says who submitted it and when, instead of a coloured dot.',
       'Work order day cards fit the phone again — the rate row wraps instead of pushing the sheet off the screen.',
     ],
     affects:'Runners at closing. Office in the morning.',

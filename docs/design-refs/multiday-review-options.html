@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Multi-day sessions in the billing hub: needs review AND still running</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  MULTI-DAY SESSIONS (Eli, 2026-09-17): "there are sessions that are multi-day,
+  but they show up as 'Needs review'. Each day multi-day sessions need to have
+  the WO reviewed for that day, but I want some indication that it needs review
+  and is also still in progress."
+
+  ── WHY IT HAPPENS ──────────────────────────────────────────────────────────
+  lib/billing: `arrived = ended || anySubmitted`. The Aug 18 rule — a runner
+  submission ends "In progress" — was written for one-night sessions. On a
+  four-day lockout, day 1's submit flips the whole WO to Needs review and it
+  stays there for three more days, even after day 1 has been reviewed. The
+  badge says one thing when two are true.
+
+  ── THE DATA IS ALREADY THERE ───────────────────────────────────────────────
+  Every day is a studio_time_rows row with status (in_progress / submitted /
+  approved) and admin_locked (the office's per-day review). So per WO:
+    reviewed days · submitted-not-reviewed days · past days nobody submitted ·
+    days still ahead. Nothing new to record.
+
+  ── OPTION A (recommended): the day strip on the badge ──────────────────────
+  One badge, two facts. "Needs review · day 2 of 4" with a four-segment strip:
+  green = reviewed, amber = submitted, hot = past & unsubmitted, grey = ahead.
+  Bucket rule tightens: Needs review only while a submitted day is still
+  unreviewed; once you've reviewed everything that's in, the row drops back to
+  In progress ("2 of 4 reviewed") until the next night lands. Ended sessions
+  behave exactly as today.
+  ── OPTION B: stay In progress, count the days owed ─────────────────────────
+  Row stays in In progress until the last day; a warm "1 day to review" chip
+  on it. Needs review tab = ended sessions only. Rejected: the Needs review
+  count on the dashboard stops being "what I owe today".
+  ── OPTION C: both tabs ─────────────────────────────────────────────────────
+  Listed in Needs review AND In progress at once. Rejected: counts double,
+  and a row in two places is the thing the bins were built to stop.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--cold:#7fb2e5;--uncon:#9ec5ea;--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:840px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:34px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:840px;line-height:1.6;margin-bottom:14px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:840px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:18px;padding:12px 12px 8px;box-shadow:var(--softsh);max-width:980px}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{font-size:10px;font-weight:800;padding:6px 12px;border-radius:99px;background:var(--wash);color:var(--fg2)}
+.tab.on{background:var(--wash2);color:var(--fg)}
+.tab i{font-style:normal;font-family:'DM Mono',monospace;font-size:8.5px;margin-left:5px;opacity:.7}
+.hd,.row{display:grid;grid-template-columns:150px 76px minmax(0,1fr) 124px 210px 84px 120px 26px;align-items:center;gap:10px}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 10px 6px}
+.hd .r{text-align:right}.hd .c{text-align:center}
+.row{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.bin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bin.rev{background:var(--warm);color:var(--chip-ink)}.bin.prog{background:var(--wash2);color:var(--fg)}.bin.appr{background:var(--uncon);color:var(--chip-ink)}
+/* two-part badge with strip */
+.stg{display:flex;flex-direction:column;gap:3px}
+.stg .bin{display:flex;align-items:center;justify-content:center;gap:5px}
+.stg .bin small{font-weight:700;opacity:.75;letter-spacing:.03em;text-transform:none;font-size:8px}
+.strip{display:flex;gap:2px;height:4px}
+.strip i{flex:1;border-radius:2px;background:var(--wash2)}
+.strip i.g{background:var(--booked)}.strip i.a{background:var(--warm)}.strip i.h{background:var(--hot)}.strip i.now{outline:1px solid var(--fg3);outline-offset:1px}
+.inv{font-family:'DM Mono',monospace;font-size:11px;opacity:.6}
+.who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who b{font-weight:700}.who span{opacity:.5;font-size:11px}
+.amt{font-family:'DM Mono',monospace;font-size:11.5px;text-align:right}
+.flag{display:flex;justify-content:flex-end;min-width:0}
+.hint{font-size:9px;font-weight:700;letter-spacing:.03em;opacity:.45;white-space:nowrap}
+.drift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--hot);white-space:nowrap}
+.warmf{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--warm);white-space:nowrap}
+.acts{display:flex;justify-content:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg);opacity:.8;white-space:nowrap}
+.bact.m{background:transparent;opacity:.45}
+.more{text-align:right;opacity:.5}
+.legend{display:flex;gap:16px;font-size:10.5px;color:var(--fg3);margin-top:10px;flex-wrap:wrap}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--wash2)}
+.legend i.g{background:var(--booked)}.legend i.a{background:var(--warm)}.legend i.h{background:var(--hot)}
+table{width:100%;border-collapse:collapse;font-size:11.5px;max-width:900px}
+th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+/* WO day card */
+.card{background:var(--wash);border-radius:14px;padding:12px 14px;display:flex;gap:14px;align-items:center;max-width:560px;margin-top:6px}
+.card .st{font-family:'Archivo Black',sans-serif;font-size:15px}
+.card .d{font-size:12px;font-weight:700;color:var(--fg2)}
+.pill{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:3px 8px;white-space:nowrap}
+.pill.a{background:var(--warm);color:var(--chip-ink)}.pill.g{background:var(--booked);color:var(--chip-ink)}.pill.h{background:var(--hot);color:#fff}.pill.q{background:var(--wash2);color:var(--fg2)}
+.card .tm{font-family:'DM Mono',monospace;font-size:11px;opacity:.7;margin-left:auto}
+</style>
+</head>
+<body>
+<h1>Multi-day sessions — "needs review" and "still running" at the same time</h1>
+<p class="lede">Today a four-day session flips to <b>Needs review</b> the moment day 1 is submitted, and stays there — even after day 1 is reviewed — until the last night. The badge says one thing when two are true. Every day already carries its own submit and review state, so this is a display and bucket-rule change, no new data.</p>
+
+<h2><span class="n">A</span>The day strip on the badge <span class="rec">Recommended</span></h2>
+<p class="sub">One badge, two facts: the stage word plus <b>"day 2 of 4"</b>, and a strip under it — one segment per day. Green = reviewed, amber = submitted and waiting on you, red = a past day nobody submitted, grey = still ahead; today's segment has a ring. The bucket rule tightens to match: <b>Needs review only while a submitted day is unreviewed</b>. Review what's in and the row drops back to In progress until the next night lands.</p>
+<div class="panel">
+  <div class="tabs"><span class="tab">Not started</span><span class="tab on">Needs review<i>5</i></span><span class="tab">In progress<i>3</i></span><span class="tab">Invoice<i>3</i></span><span class="tab">Approval<i>2</i></span><span class="tab">Sent</span><span class="tab">Paid</span></div>
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Total</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Next</span><span></span></div>
+
+  <div class="row"><span class="stg"><span class="bin rev">Needs review <small>· day 2 of 4</small></span><span class="strip"><i class="g"></i><i class="a now"></i><i></i><i></i></span></span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–19 · PRS A</span></span><span class="amt">$12,600.00</span><span class="flag"><span class="hint">Day 2 submitted · Hunter · 12:40 AM</span></span><span class="amt">$12,600.00</span><span class="acts"><span class="bact">Review day 2</span></span><span class="more">⋯</span></div>
+
+  <div class="row"><span class="stg"><span class="bin rev">Needs review <small>· day 3 of 3</small></span><span class="strip"><i class="g"></i><i class="h"></i><i class="a now"></i></span></span><span class="inv">WO-1152</span><span class="who"><b>Def Jam · Rae</b><span> · Sep 15–17 · PRS C</span></span><span class="amt">$7,800.00</span><span class="flag"><span class="drift">Runner never submitted · Sep 16</span></span><span class="amt">$7,800.00</span><span class="acts"><span class="bact">Review day 3</span></span><span class="more">⋯</span></div>
+
+  <div class="row"><span class="stg"><span class="bin rev">Needs review</span></span><span class="inv">WO-1150</span><span class="who"><b>Havelange</b><span> · Sep 15 · ERS B</span></span><span class="amt">$2,500.00</span><span class="flag"><span class="hint">Submitted · Hunter · 12:14 AM</span></span><span class="amt">$2,500.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+
+  <div class="hd" style="padding-top:14px"><span>In progress, for contrast</span></div>
+
+  <div class="row"><span class="stg"><span class="bin prog">In progress <small>· 2 of 4 reviewed</small></span><span class="strip"><i class="g"></i><i class="g"></i><i class="now"></i><i></i></span></span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–19 · PRS A</span></span><span class="amt">$12,600.00</span><span class="flag"><span class="hint">Day 3 tonight</span></span><span class="amt">$12,600.00</span><span class="acts"><span class="bact m">Waiting on tonight</span></span><span class="more">⋯</span></div>
+
+  <div class="row"><span class="stg"><span class="bin prog">In progress <small>· day 1 of 2</small></span><span class="strip"><i class="now"></i><i></i></span></span><span class="inv">WO-1163</span><span class="who"><b>Warner · Kali</b><span> · Sep 17–18 · PRS A</span></span><span class="amt">$6,300.00</span><span class="flag"></span><span class="amt">$6,300.00</span><span class="acts"><span class="bact m">Waiting on tonight</span></span><span class="more">⋯</span></div>
+</div>
+<div class="legend"><span><i class="g"></i>reviewed</span><span><i class="a"></i>submitted · waiting on you</span><span><i class="h"></i>past day, never submitted</span><span><i></i>still ahead</span><span>ring = tonight</span></div>
+<p class="cap"><b>Same WO, two nights apart (WO-1158, rows 1 and 4):</b> Wednesday it's in Needs review because day 2 is in and unreviewed; review it and Thursday morning it sits in In progress, "2 of 4 reviewed," until Thursday night's submit lands. The Next button says which day. One-night sessions look exactly as they do now — no strip, no counter.</p>
+
+<h2><span class="n">B</span>Stay In progress, count the days owed</h2>
+<p class="sub">The row never leaves In progress until the last night. A warm chip on it says "1 day to review." Needs review becomes ended-sessions-only.</p>
+<div class="panel">
+  <div class="row"><span class="stg"><span class="bin prog">In progress <small>· day 2 of 4</small></span></span><span class="inv">WO-1158</span><span class="who"><b>Mustard · lockout</b><span> · Sep 16–19 · PRS A</span></span><span class="amt">$12,600.00</span><span class="flag"><span class="warmf">1 day to review</span></span><span class="amt">$12,600.00</span><span class="acts"><span class="bact">Review day 2</span></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>Why not:</b> the dashboard's Needs review number stops meaning "what I owe today" — a lockout's day 2 is real review work and it would be hiding under In progress. Also nothing changes for you visually except the chip.</p>
+
+<h2><span class="n">C</span>The day card in the WO agrees</h2>
+<p class="sub">Whichever option, the WO's day cards already carry the per-day pill from v1.33.2. With the office's review added to it, the card and the strip say the same thing.</p>
+<div class="card"><span class="st">PRS A</span><span class="d">Tue, Sep 16</span><span class="pill g">Reviewed · Fernando</span><span class="tm">12:00 PM – 12:00 AM</span></div>
+<div class="card"><span class="st">PRS A</span><span class="d">Wed, Sep 17</span><span class="pill a">Submitted · Hunter · 12:40 AM</span><span class="tm">12:00 PM – 12:00 AM</span></div>
+<div class="card"><span class="st">PRS A</span><span class="d">Thu, Sep 18</span><span class="pill q">Tonight</span><span class="tm">12:00 PM – 12:00 AM</span></div>
+<div class="card"><span class="st">PRS A</span><span class="d">Fri, Sep 19</span><span class="pill q">Ahead</span><span class="tm">12:00 PM – 12:00 AM</span></div>
+<p class="cap"><b>"Reviewed · Fernando"</b> needs one more pair of columns on the row (reviewed_by_name / reviewed_at, written when the office locks the day) — the same shape as v1.33.2's submitted_by. Without it the pill just says "Reviewed."</p>
+
+<h2><span class="n">D</span>Rules, in one place</h2>
+<table>
+  <tr><th>Question</th><th>Answer (option A)</th></tr>
+  <tr><td><b>When is a multi-day row in Needs review?</b></td><td>Any day is submitted and not yet reviewed (locked). Same for a past day nobody submitted — that's review work too, and it wears the red flag.</td></tr>
+  <tr><td><b>When is it In progress?</b></td><td>Every submitted day is reviewed and at least one day is still ahead (or tonight).</td></tr>
+  <tr><td><b>When does it move on to Needs invoice?</b></td><td>Unchanged — the last day has passed and everything's reviewed (or you attach early, as today).</td></tr>
+  <tr><td><b>What does "review a day" mean?</b></td><td>What it means today: open the WO, check the day, lock it. The Next button deep-links to that day's sheet instead of the top of the WO.</td></tr>
+  <tr><td><b>COD side?</b></td><td>Same strip on the stage badge. Balance due still beats everything.</td></tr>
+  <tr><td><b>One-night sessions?</b></td><td>Untouched. No strip, no counter.</td></tr>
+</table>
+</body>
+</html>

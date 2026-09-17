@@ -2072,6 +2072,13 @@ select.c-input {
   flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .c-bflag.c-po { color: var(--c-st-cold); }
+/* "Submitted · Hunter 12:14 AM" — the runner's line (v1.33.3). Warm like the
+   Needs-review badge it sits beside; the time drops to mono and quiets. */
+.c-bflag.c-bsub { color: var(--c-st-warm); }
+.c-bflag.c-bsub .c-bsubat { font-family: 'DM Mono', ui-monospace, monospace; font-weight: 600; letter-spacing: 0; text-transform: none; opacity: .75; }
+/* Two-word stage badge for a running multi-day (v1.33.3, option 2A). */
+.c-bbin.c-bbin-two { white-space: normal; line-height: 1.25; padding: 2px 6px; }
+.c-bbin.c-bbin-two small { display: block; font-size: 7px; font-weight: 700; letter-spacing: .03em; text-transform: none; opacity: .8; }
 .c-bflag.c-soon { opacity: .4; }
 
 .c-bacts { display: flex; gap: 6px; flex-shrink: 0; }
