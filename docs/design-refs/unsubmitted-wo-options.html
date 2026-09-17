@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Unsubmitted work orders: caught the night of</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  UNSUBMITTED WORK ORDERS (Eli, 2026-09-17): "some runners forget to submit
+  WOs. huge problem… this is like a fireable offense so very important.
+  unsubmitted WOs means a runner didn't even look at it and it's our only way
+  to know what to collect. would be great to incorporate something on the
+  runner side. 'did you forget to submit?' or something."
+
+  ── WHAT "SUBMITTED" IS TODAY ────────────────────────────────────────────
+  A runner's Submit marks that day's studio_time_rows status='submitted'
+  (WorkOrderPopup.handleRunnerSubmit, keyed on opsToday — the 8:50 AM
+  boundary). Rows are born 'in_progress'. So an UNSUBMITTED DAY is exactly:
+    a studio_time_rows row · date < opsToday · status still 'in_progress'
+    · on a WO that is not completed · for a confirmed booking.
+  Nothing new to record. The hub only ever asks about TODAY, which is why a
+  missed day disappears the next morning — for the runner AND the office.
+
+  ── ELI, round 2: "it's too late the day after. they need a reminder at
+  the end of the session the night of."  So the reminder moves to the two
+  moments the runner is actually still in the building:
+    1. THE SESSION ENDS — booked end time passes (or the runner types a
+       "Left" time): the hub card flips red, "Ended — submit now".
+    2. THE CLOSING CHECKLIST — its Submit is a hard stop while any of
+       today's sessions is unsubmitted. Closing is the last thing a closer
+       does; it cannot be turned in over an unsubmitted work order.
+  The morning-after strip stays as the backstop and the office bullet
+  stays as the audit. Push at session end is the later layer.
+
+  ── (round 1, kept for the record) OPTION A: the morning-after strip ─────
+  On the studio hub, above today's sessions: "Did you forget to submit?"
+  with one line per missed day (date · room · client · booked times). Tap a
+  line → that WO opens on that day, Submit is right there. The strip has no
+  dismiss — it leaves when the day is submitted. The studio picker gets a
+  red count on the studio so it is seen before the hub is even opened.
+  ── OPTION B: the gate ───────────────────────────────────────────────────
+  Opening the hub with a missed day shows a full-screen stop first: the
+  same list, and the only way through is "Open it" or "Not now" (which
+  drops you on the hub with Option A's strip anyway). Louder, matches
+  "fireable" — but a runner who genuinely can't fix it right now (a
+  yesterday-WO with a question for the office) gets nagged every open.
+  Recommend A first; B is an added layer if A doesn't move the numbers.
+
+  ── OFFICE SIDE (both options) ───────────────────────────────────────────
+  1. Dashboard statement: an ANOMALY bullet (always shows, red):
+     "2 work orders not submitted — ERS Tue 9/15 (Havelange), ARS Mon 9/14".
+     Each names who closed that studio that day (daily_ops_submissions
+     .staff_name) — the accountability line.
+  2. Billing hub → Awaiting: those WOs carry a "Not submitted" pill so the
+     office doesn't chase money on a day nobody looked at.
+  Lookback: 14 days. Older than that is a billing question, not a nag.
+
+  ── LATER (not v1) ───────────────────────────────────────────────────────
+  Push to the runner at 9:00 AM the next day (push isn't built yet — same
+  night as notes-room push). A 9:05 AM email to the office (needs the Flo
+  cron). Both are one function call once the query above exists.
+-->
+<style>
+:root{--bg:#f5f3ee;--fg:#2a2722;--wash:rgba(42,39,34,.05);--wash2:rgba(42,39,34,.095);--fg2:rgba(42,39,34,.72);--fg3:rgba(42,39,34,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--cold:#7fb2e5;--chip-ink:#1c2626;--srf:#ffffff;--softsh:0 1px 3px rgba(42,39,34,.08),0 5px 16px rgba(42,39,34,.07)}
+[data-theme="dark"]{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:820px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:36px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:820px;line-height:1.6;margin-bottom:14px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start}@media(max-width:980px){.grid3{grid-template-columns:1fr}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+.cap{font-size:10.5px;color:var(--fg3);text-align:center;margin-top:8px;line-height:1.55;padding:0 6px}.cap b{color:var(--fg2)}
+.phone{width:320px;background:var(--bg);border-radius:28px;padding:12px;box-shadow:var(--softsh);margin:0 auto}
+.scr{background:var(--bg);border-radius:20px;min-height:560px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.hub{padding:14px}
+.t{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.ts{font-size:10.5px;color:var(--fg3);margin-top:2px;margin-bottom:12px}
+.lab{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin:14px 0 8px}
+/* the strip */
+.strip{background:color-mix(in srgb,var(--hot) 16%,var(--srf));border:1.5px solid color-mix(in srgb,var(--hot) 55%,transparent);border-radius:16px;padding:11px 12px 9px;box-shadow:var(--softsh)}
+.strip .h{display:flex;align-items:center;gap:8px;font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em;color:var(--hot)}
+.strip .h .ex{width:20px;height:20px;border-radius:99px;background:var(--hot);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:Inter;font-weight:800;font-size:12px}
+.strip .s{font-size:10.5px;color:var(--fg2);line-height:1.5;margin:4px 0 8px}
+.row{display:flex;align-items:center;gap:9px;background:var(--srf);border-radius:11px;padding:8px 10px;margin-top:6px}
+.row .d{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:var(--hot);width:52px;flex-shrink:0;line-height:1.25}
+.row .d small{display:block;font-size:8.5px;color:var(--fg3);font-weight:500}
+.row .m{flex:1;min-width:0}
+.row .m b{font-size:11.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .m span{font-size:9.5px;color:var(--fg3)}
+.row .go{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--hot);color:#fff;border-radius:99px;padding:5px 9px;flex-shrink:0}
+/* session cards (today) */
+.sess{margin-top:12px}
+.sh{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px;margin-bottom:5px}
+.sh b{font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.02em}
+.pill{font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:3px 8px;background:var(--wash2);color:var(--fg);opacity:.7}
+.pill.warm{background:var(--warm);color:var(--chip-ink);opacity:1}
+.card{background:var(--booked);color:var(--chip-ink);border-radius:14px;min-height:78px;padding:9px 11px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:var(--softsh)}
+.card b{font-size:13px}.card span{font-size:10px;opacity:.8;font-family:'DM Mono',monospace}
+.card .who{display:flex;gap:4px}.card .who i{font-style:normal;font-size:8.5px;font-weight:800;background:rgba(0,0,0,.18);border-radius:99px;padding:2px 6px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:10px 11px;min-height:56px;display:flex;flex-direction:column;justify-content:space-between}
+.tile b{font-size:11.5px}.tile span{font-size:9.5px;color:var(--fg3)}
+/* picker */
+.pick{display:flex;flex-direction:column;gap:9px;padding:0 2px}
+.st{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 14px;display:flex;align-items:center;gap:10px;position:relative}
+.st b{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.02em}
+.st span{font-size:10px;color:var(--fg3);margin-left:auto}
+.st .badge{position:absolute;top:-6px;right:-4px;background:var(--hot);color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;border-radius:99px;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.st .sub2{font-size:9.5px;color:var(--hot);font-weight:700;display:block;margin-top:2px}
+/* gate */
+.gate{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;padding:12px;z-index:3}
+.gcard{background:var(--srf);border-radius:20px 20px 18px 18px;padding:16px 14px 14px;width:100%;box-shadow:var(--softsh),0 12px 40px rgba(0,0,0,.4)}
+.gcard .h{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.02em;color:var(--hot);display:flex;align-items:center;gap:8px}
+.gcard .h .ex{width:22px;height:22px;border-radius:99px;background:var(--hot);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:Inter;font-weight:800;font-size:13px}
+.gcard .s{font-size:11px;color:var(--fg2);line-height:1.5;margin:6px 0 4px}
+.gbtns{display:flex;gap:8px;margin-top:12px}
+.gb{flex:1;text-align:center;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:12px 8px;border-radius:99px;background:var(--wash2);color:var(--fg2)}
+.gb.pri{background:var(--hot);color:#fff;flex:2}
+/* office */
+.desk{background:var(--srf);border-radius:18px;padding:16px 18px;box-shadow:var(--softsh);max-width:520px}
+.desk .k{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px}
+.bul{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;padding:6px 0;border-top:1px solid var(--wash)}
+.bul:first-of-type{border-top:0}
+.bul .dot{width:8px;height:8px;border-radius:99px;background:var(--fg3);flex-shrink:0;margin-top:6px}
+.bul.hot .dot{background:var(--hot)}.bul.hot{color:var(--fg)}
+.bul small{display:block;font-size:10.5px;color:var(--fg3);margin-top:1px}
+.bul .who{color:var(--hot);font-weight:700}
+.bul .lnk{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--fg2);margin-left:auto;white-space:nowrap}
+.note{font-size:10.5px;opacity:.55;margin-top:12px;line-height:1.65;max-width:840px}
+table{width:100%;border-collapse:collapse;font-size:11.5px;max-width:840px}
+th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Unsubmitted work orders — caught the night of</h1>
+<p class="lede">The reminder lives in the two moments the runner is still in the building: <b>when the session ends</b> and <b>when they close the studio</b>. Nothing new to record — a day's rows are born <i>in progress</i> and Submit flips them; the app just starts reading that the same night instead of never.</p>
+
+<h2><span class="n">1</span>When the session ends <span class="rec">Night of</span></h2>
+<p class="sub">Once the booked end time passes (or the runner types a "Left" time), the hub card's grey "Not submitted" turns red and says so, and the red strip appears at the top of the hub — the same night, while they are still there. It clears the moment they submit.</p>
+<div class="grid3">
+  <div>
+    <div class="phone"><div class="scr"><div class="hub">
+      <div class="t">Encore</div>
+      <div class="ts">Tuesday, September 15 · 12:14 AM · closer</div>
+      <div class="strip">
+        <div class="h"><span class="ex">!</span>Session's over — submit it</div>
+        <div class="s">Havelange ended at 12:00 AM and the work order hasn't been turned in. Do it before you close.</div>
+        <div class="row"><div class="d">TODAY<small>Sep 15</small></div><div class="m"><b>Studio B · Havelange</b><span>12:00 PM – 12:00 AM · WO-1150</span></div><div class="go">Submit</div></div>
+      </div>
+      <div class="lab">Sessions today</div>
+      <div class="sess">
+        <div class="sh"><b>Studio B</b><span class="pill" style="background:var(--hot);color:#fff;opacity:1">Ended · not submitted</span></div>
+        <div class="card"><div><b>Havelange</b><br><span>12:00 PM – 12:00 AM</span></div><div class="who"><i>KH</i><i>JR</i></div></div>
+      </div>
+      <div class="lab">Daily ops</div>
+      <div class="tiles"><div class="tile"><b>Closing</b><span>Not started</span></div><div class="tile"><b>Petty cash</b><span>Not started</span></div></div>
+    </div></div></div>
+    <div class="cap"><b>12:14 AM, session over.</b> The pill goes red and the strip says it in one line. A session still running stays grey — nothing to nag about yet.</div>
+  </div>
+  <div>
+    <div class="phone"><div class="scr"><div class="hub">
+      <div class="t">Closing checklist</div>
+      <div class="ts">Encore · Tuesday, September 15</div>
+      <div class="tiles" style="grid-template-columns:1fr;gap:6px;opacity:.7">
+        <div class="tile" style="min-height:40px;flex-direction:row;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:5px;background:var(--booked);display:inline-block"></span><b>Lounge wiped, trash out</b></div>
+        <div class="tile" style="min-height:40px;flex-direction:row;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:5px;background:var(--booked);display:inline-block"></span><b>Console powered down</b></div>
+        <div class="tile" style="min-height:40px;flex-direction:row;align-items:center;gap:8px"><span style="width:16px;height:16px;border-radius:5px;background:var(--booked);display:inline-block"></span><b>Doors locked, alarm set</b></div>
+      </div>
+      <div style="flex:1"></div>
+      <div class="strip" style="margin-top:14px">
+        <div class="h"><span class="ex">!</span>Can't close yet</div>
+        <div class="s">1 session today hasn't been submitted. Turn it in first — submitted with a problem always beats never submitted.</div>
+        <div class="row"><div class="d">TODAY<small>Sep 15</small></div><div class="m"><b>Studio B · Havelange</b><span>WO-1150</span></div><div class="go">Submit</div></div>
+      </div>
+      <div class="gb" style="margin-top:10px;opacity:.4">Submit closing</div>
+    </div></div></div>
+    <div class="cap"><b>The hard stop.</b> Closing can't be turned in over an unsubmitted work order. "Submit" jumps to the WO; come back and closing goes through.</div>
+  </div>
+  <div>
+    <div class="phone"><div class="scr"><div class="hub">
+      <div class="t">Encore</div>
+      <div class="ts">Wednesday, September 16 · opener</div>
+      <div class="strip">
+        <div class="h"><span class="ex">!</span>Did you forget to submit?</div>
+        <div class="s">1 session from a past day was never turned in. The office can't collect on it.</div>
+        <div class="row"><div class="d">TUE<small>Sep 15</small></div><div class="m"><b>Studio B · Havelange</b><span>12:00 PM – 12:00 AM · WO-1150</span></div><div class="go">Open</div></div>
+      </div>
+      <div class="lab">Sessions today</div>
+      <div class="sess"><div class="sh"><b>Studio A</b><span class="pill">Not submitted</span></div><div class="card"><div><b>Sonic Ranch mix</b><br><span>10:00 AM – 8:00 PM</span></div></div></div>
+    </div></div></div>
+    <div class="cap"><b>The backstop, next morning.</b> If someone still walks out on it, the strip is there for whoever opens — and the office bullet below names who closed.</div>
+  </div>
+</div>
+
+<h2><span class="n">2</span>Hard stop or soft stop on closing?</h2>
+<div class="grid2">
+  <table>
+    <tr><th></th><th>Hard stop <span class="rec" style="margin-left:4px">Recommended</span></th><th>Soft stop</th></tr>
+    <tr><td><b>Closing Submit</b></td><td>Disabled until every one of today's sessions is submitted.</td><td>Warns, then a second tap goes through and logs "closed over WO-1150 unsubmitted".</td></tr>
+    <tr><td><b>Session still running at close</b></td><td>Not a case: the closer is the one there until it ends. If it truly runs past the shift, the runner submits what they have — Update submission exists for a reason.</td><td>Same.</td></tr>
+    <tr><td><b>Matches "fireable"</b></td><td>Yes — there is no path out of the building past it.</td><td>Leaves the door open; the office gets a log line instead of a WO.</td></tr>
+  </table>
+  <p class="note">"Ended" = the booked end time has passed, or a "Left" time was typed on the day sheet. Sessions with no WO at all (a booking the runner never opened) count the same — that is the worst case, and the card already says "No WO".<br><br><b>Later:</b> a push to the closer's phone at the booked end time ("Havelange is done — submit the work order") once push is built. It is the same query.</p>
+</div>
+
+<h2><span class="n">3</span>The office side (comes with it)</h2>
+
+<p class="sub">Your dashboard statement gets an anomaly bullet — always shows, red, names the studio, the day, the client, and <b>who closed that studio that day</b> (from their daily-ops submission). Billing → Awaiting gets a "Not submitted" pill on those WOs so nobody chases money on a day nobody looked at.</p>
+<div class="grid2">
+  <div class="desk">
+    <div class="k">Today · what needs you</div>
+    <div class="bul hot"><span class="dot"></span><div><b>2 work orders were never submitted by the runner.</b><small>ERS · Tue 9/15 · Havelange, Studio B — closed by <span class="who">Hunter</span> · WO-1150</small><small>ARS · Mon 9/14 · Sonic Ranch, Studio A — closed by <span class="who">Crystal</span> · WO-1141</small></div><span class="lnk">Open</span></div>
+    <div class="bul hot"><span class="dot"></span><div>1 booking has no room set.<small>Tentative hold · Thu 9/18</small></div></div>
+    <div class="bul"><span class="dot"></span><div>3 COD balances due today.</div></div>
+    <div class="bul"><span class="dot"></span><div>Petty cash not counted at close — TRS.</div></div>
+  </div>
+  <div>
+    <table>
+      <tr><th>Rule</th><th>What it means</th></tr>
+      <tr><td><b>Unsubmitted day</b></td><td>A day's studio rows still <i>in progress</i> once the day is past 8:50 AM the next morning, on a WO that isn't completed, for a confirmed booking.</td></tr>
+      <tr><td><b>Lookback</b></td><td>14 days. Older is a billing question, not a nag.</td></tr>
+      <tr><td><b>Who</b></td><td>Whoever submitted closing ops for that studio that day. No submission → "nobody closed out".</td></tr>
+      <tr><td><b>Clears when</b></td><td>The runner submits, the office approves the day, or the WO is completed/deleted.</td></tr>
+      <tr><td><b>Later</b></td><td>9 AM push to the runner and a 9:05 email to the office — one call each once push and the cron exist.</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>

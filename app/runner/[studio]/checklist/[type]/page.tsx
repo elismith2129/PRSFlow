@@ -12,6 +12,7 @@ import { SignedImage } from '@/components/shared/SignedImage'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { profileInitials } from '@/lib/format'
 import { opsToday } from '@/lib/time'
+import { fetchUnsubmittedSessions, type UnsubmittedSession } from '@/lib/unsubmitted'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -196,6 +197,30 @@ export default function ChecklistPage() {
       photo_urls: photos,
     }).eq('id', clId)
     router.push(`/runner/${studio}`)
+  }
+
+  // ── THE HARD STOP (Eli, 2026-09-17) ──────────────────────────────────────
+  // "some runners forget to submit WOs. huge problem… fireable… runners need
+  // to work on the closing checklist, so make the notification show when
+  // they go to submit the closing checklist."
+  //
+  // Closing is the last thing a closer does, so it is the last moment the
+  // runner is still in the building. Submit closing checks TODAY's sessions
+  // at this studio (lib/unsubmitted — the one rule, shared with the office
+  // side); any that aren't turned in are listed and closing does not go
+  // through. No bypass: a session still running is submitted with what it
+  // has ("Update submission" exists for exactly this), and submitted-with-a-
+  // problem always beats never-submitted. The morning-after backstop is the
+  // office's pop-up — by then it is already a conversation.
+  const [stopList, setStopList] = useState<UnsubmittedSession[] | null>(null)
+  const [stopBusy, setStopBusy] = useState(false)
+  async function submitClosingGuarded() {
+    if (isOpening) return handleSubmit()
+    setStopBusy(true)
+    const open = await fetchUnsubmittedSessions({ from: today, to: today, slug: studio })
+    setStopBusy(false)
+    if (open.length > 0) { setStopList(open); return }
+    return handleSubmit()
   }
 
   // ── Submit — marks shift complete, form stays editable ──────────────────────
@@ -514,8 +539,8 @@ export default function ChecklistPage() {
             Save
           </button>
           <button
-            onClick={() => { if (!staffName.trim()) { setShowInitialsHint(true); return } handleSubmit() }}
-            disabled={submitting}
+            onClick={() => { if (!staffName.trim()) { setShowInitialsHint(true); return } submitClosingGuarded() }}
+            disabled={submitting || stopBusy}
             className="c-control c-raised"
             style={{
               flex: 1, minHeight: 48, borderRadius: 14,
@@ -526,8 +551,43 @@ export default function ChecklistPage() {
               boxShadow: 'var(--c-softsh)',
             }}
           >
-            {submitting ? 'Submitting…' : `Submit ${isOpening ? 'opening' : 'closing'}`}
+            {submitting ? 'Submitting…' : stopBusy ? 'Checking sessions…' : `Submit ${isOpening ? 'opening' : 'closing'}`}
           </button>
+        </div>
+      )}
+
+      {/* The stop itself — red, in the runner's words, one row per session,
+          each a door straight to that work order. The only way past it is to
+          submit them. */}
+      {stopList && (
+        <div onClick={() => setStopList(null)} style={{ position: 'fixed', inset: 0, zIndex: 10040, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', padding: 12 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: 'var(--c-bg)', borderRadius: 20, padding: '16px 14px calc(14px + env(safe-area-inset-bottom))', boxShadow: 'var(--c-softsh)', boxSizing: 'border-box' }}>
+            <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', color: 'var(--c-st-hot)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-st-hot)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 800, fontSize: 13 }}>!</span>
+              Can&apos;t close yet
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.5, margin: '6px 0 4px' }}>
+              {stopList.length === 1 ? 'A session today hasn\u2019t been submitted.' : `${stopList.length} sessions today haven\u2019t been submitted.`} Turn {stopList.length === 1 ? 'it' : 'them'} in first — submitted with a problem always beats never submitted.
+            </div>
+            {stopList.map(o => (
+              <div
+                key={`${o.bookingId}-${o.date}`}
+                onClick={() => router.push(o.workOrderId ? `/runner/${studio}/wo/${o.workOrderId}` : `/runner/${studio}/wo/new?booking_id=${o.bookingId}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 11px', marginTop: 7, cursor: 'pointer' }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.room} · {o.client}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', fontFamily: 'DM Mono, ui-monospace, monospace' }}>
+                    {[o.fromTime && o.toTime ? `${o.fromTime} – ${o.toTime}` : null, o.woNumber ? o.woNumber : 'No work order yet'].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', background: 'var(--c-st-hot)', color: '#fff', borderRadius: 99, padding: '6px 10px', flexShrink: 0 }}>Submit</span>
+              </div>
+            ))}
+            <button onClick={() => setStopList(null)} style={{ marginTop: 12, width: '100%', minHeight: 44, borderRadius: 12, border: 'none', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+              Back to the checklist
+            </button>
+          </div>
         </div>
       )}
     </div>

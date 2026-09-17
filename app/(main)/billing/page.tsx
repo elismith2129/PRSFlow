@@ -1207,7 +1207,16 @@ function Row({
       {/* FLAG COLUMN — locked, so a row without a flag leaves the space empty
           rather than sliding everything else left. */}
       <span className="c-bflagcell">
-        {row.rejectedAt ? (
+        {row.unsubmittedDays.length > 0 ? (
+          // NEVER SUBMITTED (Eli, 2026-09-17): the runner never turned that
+          // night in, so nobody has said what happened in the room — check
+          // the work order before billing a number nobody looked at. Hot,
+          // and first: it outranks every other flag because every other
+          // flag assumes the day was real.
+          <span className="c-bdrift" title={`The runner never submitted ${row.unsubmittedDays.length === 1 ? 'this day' : 'these days'}: ${row.unsubmittedDays.map(fmtDayHeading).join(', ')} — open the work order and check the room before billing`}>
+            Runner never submitted{row.unsubmittedDays.length > 1 ? ` · ${row.unsubmittedDays.length} days` : ''}
+          </span>
+        ) : row.rejectedAt ? (
           // NOT APPROVED: the owner looked and bounced it. The badge says so;
           // the flag carries the note and the way back — dropping the
           // corrected invoice on the row re-queues it (2026-09-03).

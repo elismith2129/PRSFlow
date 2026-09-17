@@ -50,6 +50,8 @@ import {
 } from '@/lib/home'
 import { FLO_GO_ROUTES, FLO_GO_LABELS, type FloLine } from '@/lib/floLines'
 import { daysSince, isParked, isDue } from '@/lib/crm'
+import { fetchUnsubmittedSessions, type UnsubmittedSession } from '@/lib/unsubmitted'
+import { STUDIO_SHORT } from '@/lib/studios'
 import { fetchOpenFlags, isHot as flagIsHot, ageLabel as flagAge, studioCode, KIND_LABEL, type Flag } from '@/lib/flags'
 
 /** Per-device "I saw today's briefing" marker (Eli 2026-09-07 — the popup is
@@ -59,6 +61,9 @@ const BRIEF_SEEN_KEY = 'prsflo-brief-seen'
 
 /** Per-device "the owner saw the Owner's Page offer" marker (one-time popup). */
 const GUIDE_SEEN_KEY = 'prsflo-owner-guide-seen'
+/** Per-device "I saw this ops day's unsubmitted list" marker (Eli 2026-09-17). */
+const UNSUB_SEEN_KEY = 'prsflo-unsubmitted-seen'
+const UNSUB_LOOKBACK_DAYS = 14
 
 /** '2026-09-07' → 'Mon, Sep 7' — the briefing modal's date chip. */
 function fmtBriefDate(d: string): string {
@@ -286,6 +291,48 @@ export default function DashboardPage() {
     setGuidePop(false)
     if (read) router.push('/sop/owner')
   }
+  // ── UNSUBMITTED WORK ORDERS, the morning pop-up (Eli, 2026-09-17) ────────
+  // "what does office get… maybe a pop up when they log in in the morning as
+  // well as a little thing on the row in the billing hub." The runner's own
+  // stop is on the closing checklist; this is the office's backstop the next
+  // morning — a session nobody turned in is a session nobody can bill with
+  // confidence, and a runner conversation. Once per ops day per device, like
+  // the briefing; the list itself is lib/unsubmitted (the one rule). Office
+  // only — a tech never chases a work order. Rows open the work order here.
+  const [unsub, setUnsub] = useState<UnsubmittedSession[]>([])
+  const [unsubOpen, setUnsubOpen] = useState(false)
+  useEffect(() => {
+    if (!profile || isTech) return
+    const to = opsToday()
+    const d = new Date(to + 'T12:00:00'); d.setDate(d.getDate() - UNSUB_LOOKBACK_DAYS)
+    const from = d.toISOString().slice(0, 10)
+    const yesterday = new Date(to + 'T12:00:00'); yesterday.setDate(yesterday.getDate() - 1)
+    let live = true
+    fetchUnsubmittedSessions({ from, to: yesterday.toISOString().slice(0, 10) }).then(list => {
+      if (!live) return
+      setUnsub(list)
+      if (list.length === 0) return
+      try { if (localStorage.getItem(UNSUB_SEEN_KEY) === to) return } catch { return }
+      setUnsubOpen(true)
+    })
+    return () => { live = false }
+  }, [profile, isTech, dashDataVersion])
+  function dismissUnsub() {
+    try { localStorage.setItem(UNSUB_SEEN_KEY, opsToday()) } catch {}
+    setUnsubOpen(false)
+  }
+  async function openUnsub(o: UnsubmittedSession) {
+    const { data } = await supabase.from('bookings').select('*').eq('id', o.bookingId).limit(1)
+    const b = data?.[0] as Booking | undefined
+    if (!b) return
+    dismissUnsub()
+    setDashEditBooking(b)
+  }
+  const fmtUnsubDay = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  }
+
   // One briefing line: headline + optional jump chip (Eli 2026-09-07 — "a
   // bullet, and a button to the page they need"). The go→route map lives in
   // lib/floLines with the line shape itself.
@@ -658,6 +705,51 @@ export default function DashboardPage() {
           {briefErr && <div className="n-askflo" style={{ color: 'var(--n-hot)' }}>{briefErr}</div>}
         </div>
       </div>
+
+      {unsubOpen && unsub.length > 0 && (
+        <div className="n-bmwrap" style={{ zIndex: 10007 }} onClick={dismissUnsub}>
+          <div className="n-bmodal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="n-bmhead">
+              <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-st-hot)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>!</span>
+              <b>{unsub.length === 1 ? 'A work order was never submitted' : `${unsub.length} work orders were never submitted`}</b>
+              <span className="n-bmx" onClick={dismissUnsub}>✕</span>
+            </div>
+            <p className="n-bmln" style={{ fontSize: 13.5, lineHeight: 1.55, opacity: 0.8 }}>
+              The runner never turned {unsub.length === 1 ? 'this night' : 'these nights'} in, so nobody has said what happened in the room. Open each one and check it before it gets billed — and have the conversation.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+              {unsub.map(o => (
+                <div
+                  key={`${o.bookingId}-${o.date}`}
+                  onClick={() => openUnsub(o)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--n-wash)', borderRadius: 12, padding: '9px 12px', cursor: 'pointer' }}
+                >
+                  <span style={{ fontFamily: 'DM Mono, ui-monospace, monospace', fontSize: 11.5, fontWeight: 600, color: 'var(--c-st-hot)', width: 92, flexShrink: 0 }}>{fmtUnsubDay(o.date)}</span>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {STUDIO_SHORT[o.location] ?? o.location} {o.room} · {o.client}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 11, opacity: 0.6 }}>
+                      {o.woNumber ?? 'No work order'} · {o.closedBy ? `closed by ${o.closedBy}` : 'nobody closed out in the app'}
+                    </span>
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', opacity: 0.6, flexShrink: 0 }}>Open →</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button
+                onClick={() => { dismissUnsub(); router.push('/billing') }}
+                style={{ flex: 1, minHeight: 44, borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--n-ink)', color: 'var(--n-stage)', fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 13, letterSpacing: '0.03em' }}
+              >Billing hub →</button>
+              <button
+                onClick={dismissUnsub}
+                style={{ minHeight: 44, padding: '0 18px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--n-wash)', color: 'var(--n-ink2)', fontSize: 13, fontWeight: 700 }}
+              >Later today</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {guidePop && (
         <div className="n-bmwrap" style={{ zIndex: 10006 }} onClick={() => dismissGuide(false)}>

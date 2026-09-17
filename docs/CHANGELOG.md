@@ -19,6 +19,41 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.33.1 — Unsubmitted work orders: a hard stop at closing, a pop-up for the office — Sep 17, 2026
+
+Eli: "some runners forget to submit WOs. huge problem… this is like a fireable
+offense… unsubmitted WOs means a runner didn't even look at it and it's our only
+way to know what to collect." Round 1 (a morning-after strip on the hub) was
+rejected — "too late the day after" — and a session-end reminder was rejected too:
+"runners need to work on the closing checklist, so make the notification show
+when they go to submit the closing checklist." Office side: "a pop up when they
+log in in the morning as well as a little thing on the row in the billing hub."
+
+**The rule (`lib/unsubmitted.ts`, one function, three readers):** a confirmed
+booking's day is unsubmitted when it has no WO, or the WO has no studio row
+dated that day, or a studio row dated that day is still `in_progress` (not
+`admin_locked`). Completed WOs skipped. Lockouts never (no nightly submit).
+`closedBy` = `daily_ops_submissions.staff_name` for `closing_checklist` that
+studio/date.
+
+- Runner: `checklist/[type]` — `submitClosingGuarded()` runs the query for
+  today + this studio on Submit closing; any hit → bottom sheet "Can't close
+  yet" listing each session (tap → the WO, or `/wo/new?booking_id=` when there
+  is none). **No bypass.** Opening checklist untouched.
+- Office dashboard: once per ops day per device (`prsflo-unsubmitted-seen`),
+  14-day lookback to yesterday, not for techs. Rows open the WO in place
+  (`setDashEditBooking`); "Billing hub →" or "Later today" (= seen).
+- Billing hub: `InvoiceRow.unsubmittedDays` (`unsubmittedDaysOf(stRows, today)`)
+  → hot "Runner never submitted" in the flag cell, ranked above every other flag.
+  **Watch-out:** the billing `studio_time_rows` select list gained `studio,
+  admin_locked` — explicit list, would silently return nothing otherwise.
+
+**Migrations:** none. **Mock:** `docs/design-refs/unsubmitted-wo-options.html`
+(rounds 1–2 kept in the header comment). **Later:** push to the closer at the
+booked end time; 9:05 AM email to the office — one call each on the same query.
+
+---
+
 ## v1.33.0 — FLAGS: one page, two departments (flags + tasks merged) — Sep 15–16, 2026
 
 Eli: "the first-iteration builds kinda suck… really rethink these to make them meaningful,

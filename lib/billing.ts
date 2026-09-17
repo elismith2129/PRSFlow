@@ -31,6 +31,7 @@
 // a decent message before the round-trip; the database is what makes it true.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { unsubmittedDaysOf } from './unsubmitted'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { computeWoTotals } from '@/lib/woTotals'
@@ -305,6 +306,12 @@ export type InvoiceRow = {
    * expensive thing to find out from the client rather than from the app.
    */
   invoiceDrift: boolean
+  /**
+   * Days (< today) on which a studio row is still 'in_progress' — the runner
+   * never turned that night in (Eli, 2026-09-17: "our only way to know what
+   * to collect"). Same rule as lib/unsubmitted, from the rows already loaded.
+   */
+  unsubmittedDays: string[]
   /**
    * "Aug 5–8" — the REAL span, from the work order's own dated rows.
    * `sessionDate` alone made a four-day session look like a one-nighter, which
@@ -585,7 +592,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
-      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status')
+      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status, studio, admin_locked')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     // fee_amount IS REQUIRED (WO-1121, 2026-09-10). Without it computeWoTotals
@@ -762,6 +769,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       rejectedAt: (w as any).invoice_rejected_at ?? null,
       rejectNote: (w as any).invoice_reject_note ?? null,
       invoicedTotal,
+      unsubmittedDays: unsubmittedDaysOf(stRows, today),
       invoiceDrift,
       dateRange,
       rooms,

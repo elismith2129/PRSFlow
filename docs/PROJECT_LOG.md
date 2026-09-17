@@ -652,6 +652,30 @@ and sheet (− / date / +; the old ‹ › stepped between days and the pencil w
 input iPad wouldn't open), a Delete WO for Eli only in the billing hub's ⋯ menu (typed
 confirm, WO row deleted last), and COD opens in queue order with balance due leading.
 
+#### Sep 17 — the unsubmitted work order gets caught where the runner still is
+
+Phone fix first: the day sheet's rate row (four fixed tiles since the OT fields) was
+pushing the sheet off-screen; it wraps now (v1.32.7).
+
+Then the real one. Eli: runners forget to submit work orders — "fireable… it's our
+only way to know what to collect." No new data needed: Submit already flips the day's
+studio rows to `submitted`, rows are born `in_progress`, and the hub only ever asked
+about *today* — so a missed night simply vanished at 8:50 AM for everyone.
+
+Three rounds of design in one sitting. Round 1: a morning-after strip on the hub —
+rejected, "too late the day after." Round 2: flip the card red when the booked end
+time passes, plus a hard stop on closing — Eli narrowed it: "runners need to work on
+the closing checklist, so just make the notification show when they go to submit."
+So v1.33.1 is exactly that: Submit closing runs the query for today at this studio
+and refuses with the list (each row a door to the WO); no bypass, because a session
+still running is submitted with what it has and updated later. Office gets the
+morning pop-up (14 days, once per ops day, names who closed that studio that night)
+and a hot "Runner never submitted" flag on the billing row, ranked above every other
+flag because every other flag assumes the day was real.
+
+**Rejected:** a session-end push (push isn't built; same query, later). A soft stop
+with a log line (leaves the door open). Counting lockouts (no nightly submit).
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
