@@ -384,6 +384,13 @@ export function billingStage(row: InvoiceRow): { key: StageKey; label: string } 
     if (row.bucket === 'notstarted') return { key: 'not_started', label: 'Not started' }
     if (row.bucket === 'balance') return { key: 'balance', label: 'Balance due' }
     if (row.rejectedAt && row.step === 2) return { key: 'not_approved', label: 'Not approved' }
+    // APPROVED + NOTHING OWED = PAID (Eli, 2026-09-18: "COD approved and
+    // finished without a balance turns to paid"). The Sep 7 ladder ended at
+    // Approved so a paid session still owing approval couldn't look finished
+    // — that stays: step 2 in the Paid bin still reads Needs approval. But
+    // once the owner has approved AND the money is in, the row is done, and
+    // the badge should agree with the bin it sits in.
+    if (row.step >= 3 && row.bucket === 'paid') return { key: 'paid', label: 'Paid' }
     if (row.step >= 3) return { key: 'approved', label: 'Approved' }
     if (row.step === 2) return { key: 'approval', label: 'Needs approval' }
     if (row.step === 1) return { key: 'invoice', label: 'Needs invoice' }
