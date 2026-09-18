@@ -23,7 +23,9 @@
 // PINs avoid the guessable set (repeats, straights, and common patterns).
 //
 // Usage (Node 20.6+; bcryptjs must be installed — npm i -D bcryptjs):
-//   node --env-file=.env.local scripts/set-pins.mjs
+//   node --env-file=.env.local scripts/set-pins.mjs                       (EVERYONE — rotates all PINs)
+//   node --env-file=.env.local scripts/set-pins.mjs --only <email> [--name "Full Name" --initials XX]
+//                                                                          (one person; creates a runner profile if --name)
 //
 // AFTER RUNNING: hand PINs out in person. Nothing is emailed. Re-run any time
 // someone's PIN leaks — but that rotates EVERYONE, so re-print the table.
@@ -67,13 +69,44 @@ async function findAuthUserByEmail(email) {
   return null
 }
 
-const { data: profiles, error: pErr } = await supabase
+// ── ONE PERSON (2026-09-18, Cris Martinez): ─────────────────────────────────
+//   node --env-file=.env.local scripts/set-pins.mjs --only <email> [--name "Full Name" --initials XX]
+// Deals a PIN to that person only — nobody else's PIN moves. Uniqueness is
+// still guaranteed: the candidate is bcrypt-compared against EVERY existing
+// hash (service role can read them) and re-dealt on a hit. With --name, a
+// missing profile is created as a runner first, so a new hire is one command.
+const argv = process.argv.slice(2)
+const argOf = (flag) => { const i = argv.indexOf(flag); return i >= 0 && argv[i + 1] ? argv[i + 1] : null }
+const ONLY = (argOf('--only') || '').trim().toLowerCase()
+const NEW_NAME = argOf('--name')
+const NEW_INITIALS = argOf('--initials')
+
+if (ONLY && NEW_NAME) {
+  const { data: exists } = await supabase.from('user_profiles').select('id').eq('email', ONLY).limit(1)
+  if (!exists?.length) {
+    const initials = (NEW_INITIALS || NEW_NAME.split(/\s+/).map(w => w[0]).join('')).toUpperCase().slice(0, 3)
+    const { error: mkErr } = await supabase.from('user_profiles').insert({ email: ONLY, display_name: NEW_NAME.trim(), initials, role: 'runner' })
+    if (mkErr) { console.error(`create profile for ${ONLY}: ${mkErr.message}`); process.exit(1) }
+    console.log(`Created runner profile: ${NEW_NAME.trim()} (${initials}) · ${ONLY}`)
+  }
+}
+
+let q = supabase
   .from('user_profiles')
   .select('id, email, display_name, role, auth_user_id')
   .is('deleted_at', null)
   .order('role')
+if (ONLY) q = q.eq('email', ONLY)
+const { data: profiles, error: pErr } = await q
 if (pErr) { console.error(pErr.message); process.exit(1) }
-if (!profiles?.length) { console.error('No active profiles found.'); process.exit(1) }
+if (!profiles?.length) { console.error(ONLY ? `No active profile with email ${ONLY} (add --name "Full Name" --initials XX to create a runner).` : 'No active profiles found.'); process.exit(1) }
+
+// Existing hashes, for the --only path: a new PIN must not collide with any
+// PIN already in use, since verify_staff_pin returns the first match.
+const { data: existingPins } = ONLY
+  ? await supabase.from('staff_pins').select('user_profile_id, pin_hash')
+  : { data: [] }
+const otherHashes = (existingPins ?? []).filter(r => !profiles.some(p => p.id === r.user_profile_id)).map(r => r.pin_hash)
 
 // Deal unique PINs up front so uniqueness is guaranteed within the run.
 const dealt = new Set()
@@ -81,6 +114,7 @@ function dealPin() {
   for (;;) {
     const pin = String(randomInt(0, 1000000)).padStart(6, '0')
     if (BANNED.has(pin) || dealt.has(pin)) continue
+    if (otherHashes.some(h => { try { return bcrypt.compareSync(pin, h.replace('$2a$', '$2b$')) || bcrypt.compareSync(pin, h) } catch { return false } })) continue
     dealt.add(pin)
     return pin
   }
@@ -133,4 +167,6 @@ for (const p of profiles) {
 console.log('\n─── PIN HANDOUT — print, hand out in person, then destroy ───')
 console.log('Name'.padEnd(24) + 'Role'.padEnd(14) + 'PIN')
 for (const r of rows) console.log(String(r.name).padEnd(24) + String(r.role).padEnd(14) + r.pin)
-console.log(`\n${rows.length} PINs set. Everyone's old passwords were rotated — the PIN pad is now the way in.`)
+console.log(ONLY
+  ? `\n${rows.length} PIN set. Nobody else's PIN changed.`
+  : `\n${rows.length} PINs set. Everyone's old passwords were rotated — the PIN pad is now the way in.`)
