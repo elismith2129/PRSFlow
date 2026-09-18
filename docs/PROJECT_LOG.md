@@ -677,6 +677,43 @@ flag because every other flag assumes the day was real.
 **Rejected:** a session-end push (push isn't built; same query, later). A soft stop
 with a log line (leaves the door open). Counting lockouts (no nightly submit).
 
+#### Sep 18 — the billing row tells the truth, and the calendar stops making "mike"
+
+Morning polish on the unsubmitted work first. Fernando's ask, in Eli's words: "just
+something on the WO row that says this WO was submitted by bla bla." Three rounds
+of mocks (`submitted-row-options.html`, after `multiday-review-options.html` was
+rejected — "a 20-day session would not fit the bars"): the flag cell now reads
+"Submitted by Hunter 12:14 AM" (1A), and a running multi-day wears NEEDS REVIEW over
+*in progress* (2A). The real fix underneath: `arrived` was `ended || anySubmitted`,
+so day 1's submit parked a lockout in Needs review for its whole run; now a row is
+only there while a submitted night is unreviewed. Also: COD approved + nothing owed
+reads Paid (the Sep 7 ladder stopped at Approved; the badge now agrees with the bin).
+
+Then the big one — **client capture** (v1.34.0). Eli: "we are going straight to the
+calendar for a lot of bookings and not the CRM… people double-click a square and type
+a name (spelled wrong, first name only, nickname, name/name)… idiot proof." The hole
+was `ClientPanel`'s "+ New client: 'mike'" row: one tap, a profile from the raw
+string, no last name, no phone — and a WO saved fine with no client at all. Mock
+`wo-client-capture-options.html`, built as drawn: recognisable search results (type,
+phone tail, sessions, last date), new client is a CARD with first + last, phone or
+email required and a live "Looks like Mike Dean is already on file" catch, an
+On-file / Not-on-file line under the name with "Put on file →", and a hard stop on
+saving a confirmed session with no profile. And the CRM line written for you: a
+confirmed calendar booking with no lead behind it writes one Booked lead (source
+Calendar, linked both ways via `work_orders.lead_id`); cancel → dead. Tentative holds
+stay fast on purpose.
+
+**Rejected:** back-filling leads for old bookings (would inflate history with
+guesses); the stop on tentative sessions (holds are supposed to be fast); the old
+one-tap create anywhere (the pencil-rename on an unlinked name routed to the card too).
+
+**Ops:** Cris Martinez added as a runner via a new `set-pins.mjs --only` mode — the
+script used to rotate every PIN, and `create-runners.mjs` is the retired
+email/password path. Vercel bill read: 11 TV panels polling every 5 s are ~2M
+function calls a month, and Observability Plus (on by default) was the $9.88 line —
+turn it off; the shared-probe fix is parked in TODO.md because it means touching
+11 panel URLs. `docs/TODO.md` created as the one standing list.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a

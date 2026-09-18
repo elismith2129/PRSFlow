@@ -7,6 +7,8 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
+- [ ] **Hand Cris Martinez his PIN** (from `set-pins.mjs --only`). *(Sep 18)*
+
 - [ ] **Vercel: turn off Observability Plus** — Settings → Billing → Observability Plus → toggle off. It was on by default and is the $9.88 "Observability Events" line; the free tier covers everything we use. *(Sep 17)*
 - [ ] **Roomless holds:** WO-1161 / WO-1160 / WO-1132 — set the studio or Close; **WO-1131** is the Havelange duplicate — Delete WO from the billing hub ⋯ menu. *(Sep 16)*
 - [ ] **Send the runner update memo** (`docs/staff/runner-update-2026-09-15.html`) with the Email toggle on, now that memo email is live. *(Sep 15)*
@@ -17,6 +19,8 @@ Newest at the top of each group.*
 - [ ] **Flo cron JSON** — the 8:50 briefing cron's schedule file. *(Sep 16)*
 
 ## Features parked
+
+- [ ] **Tenants out of the billing hub** — its own page/rail entry, separate from regular billing (Eli, Sep 18). Today: a third view inside `app/(main)/billing/page.tsx` (`TenantsView`, `lib/tenants.ts`, roster is code). Next chat. *(Sep 18)*
 
 - [ ] **Unsubmitted WOs, later layers:** a push to the closer at the booked end time ("Havelange is done — submit the work order"), and a 9:05 AM email to the office. Both are one call on `lib/unsubmitted.fetchUnsubmittedSessions`; waiting on push (below) and the cron. Also possible: an "Unsubmitted" filter chip in the billing hub if the row flag isn't enough. *(Sep 17)*
 - [ ] **Push notifications for the notes room** — a mention, a task assigned to you, a memo. The second half of "you asked for Slack." *(Sep 15)*
