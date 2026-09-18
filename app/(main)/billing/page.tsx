@@ -1261,7 +1261,7 @@ function Row({
              the runner's line. Step 0 only; once an invoice is on it the cell
              has billing work to show. */
           <span className="c-bflag c-bsub" title={row.stillRunning ? `Latest night submitted by ${row.submittedBy}` : `Submitted by ${row.submittedBy}`}>
-            {row.stillRunning && row.daysTotal > 1 ? `Day ${row.daysSubmitted} · ` : 'Submitted · '}{row.submittedBy}
+            Submitted by {row.submittedBy}
             {row.submittedAt ? <span className="c-bsubat"> {new Date(row.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })}</span> : null}
           </span>
         ) : row.notStarted && row.bucket === 'progress' && !stage ? (
