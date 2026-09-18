@@ -1,4 +1,5 @@
 'use client'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType, StaffMode } from '@/lib/supabase'
@@ -468,6 +469,12 @@ export default function CRMPage() {
   }, [])
 
   useEffect(() => { load() }, [load, leadsVersion])
+  // PHONE ↔ DESKTOP SYNC (Eli, 2026-09-18: "the CRM on my computer and my
+  // phone are not really syncing in real time"). The channel keeps this live
+  // while the socket is open; the phone drops the socket every time the
+  // screen locks and missed events are never replayed. Same fix as the runner
+  // pages and the WO popup: reload on return to the foreground.
+  useReloadOnReturn(load)
 
   const hasAutoSelected = useRef(false)
   // Pre-select a lead passed via ?lead= (e.g. from the dashboard Needs Action panel).

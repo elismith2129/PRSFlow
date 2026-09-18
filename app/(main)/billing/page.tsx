@@ -50,6 +50,7 @@
 //   · PAGINATION: 20 on In progress (the daily working list), 10 elsewhere.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, type Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
@@ -191,6 +192,12 @@ export default function BillingPage() {
   // the initial load too.
   const woVersion = useWoInvoicesVersion()
   useEffect(() => { load() }, [load, woVersion])
+  // PHONE ↔ DESKTOP SYNC (Eli, 2026-09-18: "the billing hub on my computer and my
+  // phone are not really syncing in real time"). The channel keeps this live
+  // while the socket is open; the phone drops the socket every time the
+  // screen locks and missed events are never replayed. Same fix as the runner
+  // pages and the WO popup: reload on return to the foreground.
+  useReloadOnReturn(load)
 
   // ── Derived ────────────────────────────────────────────────────────────────
 

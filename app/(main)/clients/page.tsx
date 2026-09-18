@@ -1,4 +1,5 @@
 'use client'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase, Client, ClientContact } from '@/lib/supabase'
@@ -70,6 +71,12 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
   // re-fetches per change. client_contacts has only this one consumer, so it
   // keeps a local channel.
   useEffect(() => { load() }, [load, clientsVersion])
+  // PHONE ↔ DESKTOP SYNC (Eli, 2026-09-18: "the clients page on my computer and my
+  // phone are not really syncing in real time"). The channel keeps this live
+  // while the socket is open; the phone drops the socket every time the
+  // screen locks and missed events are never replayed. Same fix as the runner
+  // pages and the WO popup: reload on return to the foreground.
+  useReloadOnReturn(load)
 
   useEffect(() => {
     const channel = supabase

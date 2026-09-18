@@ -118,6 +118,17 @@ export function WebInquiryProvider({ children }: { children: React.ReactNode }) 
           else addUnacked(row.id)
         },
       )
+      // DELETE was never subscribed (2026-09-18): a lead deleted on one
+      // device stayed on every other screen until a manual refresh.
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'leads' },
+        payload => {
+          bumpVersion()
+          const row = payload.old as { id?: number }
+          if (row?.id != null) removeUnacked(row.id)
+        },
+      )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [addUnacked, removeUnacked, pushToast, bumpVersion])

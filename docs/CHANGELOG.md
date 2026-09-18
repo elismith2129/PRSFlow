@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.34.1 — Office pages reload when the phone wakes up — Sep 18, 2026
+
+Eli: "the CRM on my computer and my phone are not really syncing in real time."
+The realtime channels were fine while the socket was open; the phone drops the
+socket every time the screen locks and Supabase never replays missed events. The
+runner pages and the WO popup already had the fix (`hooks/useReloadOnReturn`,
+Aug 16) — the office pages didn't. Added to CRM, billing hub, clients and
+calendar: reload on `visibilitychange` → visible and window focus.
+
+Also: `WebInquiryProvider` never subscribed to `leads` DELETE, so a lead deleted
+on one device stayed on every other screen. **No migrations.**
+
+---
+
 ## v1.34.0 — Client capture on the work order: no more "mike" — Sep 18, 2026
 
 Eli: "we are going straight to the calendar for a lot of bookings and not the

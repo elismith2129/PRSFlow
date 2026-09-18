@@ -1,4 +1,5 @@
 'use client'
+import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -1021,6 +1022,12 @@ function CalendarPageInner() {
   }, [startDate, view])
 
   useEffect(() => { load() }, [load])
+  // PHONE ↔ DESKTOP SYNC (Eli, 2026-09-18: "the calendar on my computer and my
+  // phone are not really syncing in real time"). The channel keeps this live
+  // while the socket is open; the phone drops the socket every time the
+  // screen locks and missed events are never replayed. Same fix as the runner
+  // pages and the WO popup: reload on return to the foreground.
+  useReloadOnReturn(load)
 
   // On mobile, default to Day view (all rooms as rows, vertically scrollable).
   // Fires once when the breakpoint resolves to mobile; only overrides the initial
