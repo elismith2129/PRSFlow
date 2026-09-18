@@ -20,6 +20,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.34.2 — Calendar rows grow when a room has two sessions in a day — Sep 18, 2026
+
+Eli: "stretch the cal row like the TV displays so cards show fully." Desktop
+rows were fixed (Aug ruling: stacked cards share the cell and shed content);
+two sessions in one room on one day rendered as two slivers. Now the room row is
+`rowH × lanes` on every layout, the way mobile has been since Aug 26 and the TV
+walls always were. Applies in both Card and Rooms modes (in Rooms mode a
+doubled room means one row of scroll — Eli chose full cards over fit).
+`app/(main)/calendar/page.tsx`, no migrations.
+
+---
+
 ## v1.34.1 — Office pages reload when the phone wakes up — Sep 18, 2026
 
 Eli: "the CRM on my computer and my phone are not really syncing in real time."

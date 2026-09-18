@@ -1719,26 +1719,22 @@ function CalendarPageInner() {
                 b.start_date <= winEnd && b.end_date >= winStart
               )
               const laneMap = assignLanes(roomBookings)
-              // ROW HEIGHT IS FIXED — ON DESKTOP. Growing the row to fit stacked
-              // sessions was tried and rejected there: a doubled row is permanent
-              // visual damage to the grid's rhythm, paid every day of the year.
-              // Desktop stacked cards share the normal cell and shed content
-              // instead — see the tier ladder in BookingBlock.
-              //
-              // MOBILE IS THE EXCEPTION (Eli, 2026-08-26 — the overspill bug):
-              // phone chips carry minHeight 44 for tap targets, so they CANNOT
-              // shrink to share a cell; three stacked sessions rendered 44px
-              // chips into 26px slots and painted them over each other. On the
-              // phone the row grows by lane count — every chip gets a full slot.
-              // numLanes is PER-BOOKING (its own collision count) — reading it
-              // off roomBookings[0] was the bug that kept rows from growing: a
-              // random solo session in the window reports numLanes 1. The
-              // room's height needs the MAX across its bookings.
+              // THE ROW GROWS TO FIT STACKED SESSIONS — EVERYWHERE (Eli,
+              // 2026-09-18: "stretch the cal row like the TV displays so cards
+              // show fully"). This reverses the Aug ruling that desktop rows
+              // stay fixed and stacked cards share the cell by shedding content
+              // — in practice two sessions in one room on one day rendered as
+              // two unreadable slivers, and the TV walls (which grow the row)
+              // read better than the app. Same mechanic mobile has had since
+              // 2026-08-26: the row height is rowH × the room's lane count.
+              // numLanes is PER-BOOKING (its own collision count), so the room
+              // needs the MAX across its bookings — a random solo session in
+              // the window reports 1.
               const roomLanes = roomBookings.reduce(
                 (m, b) => Math.max(m, laneMap.get(b.id)?.numLanes ?? 1), 1)
               const roomRowH = isRoomCollapsed
                 ? COLLAPSED_ROOM_H
-                : (isMobile ? rowH * roomLanes : rowH)
+                : rowH * roomLanes
               return (
                 <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
                   display: 'flex',
