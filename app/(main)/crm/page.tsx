@@ -1542,6 +1542,14 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap', opacity: isActive ? 1 : 0.55 }}
               >
                 {f.label} ({filterMap[f.key].length})
+                {/* HOW MANY SKIPPED THE CRM (2026-09-18): bookings made straight
+                    on the calendar write their own Booked line, tagged
+                    source 'Calendar' — this is the count of them. */}
+                {f.key === 'booked' && filterMap.booked.some(l => l.source === 'Calendar') && (
+                  <span title="Booked straight on the calendar — the CRM line was written automatically" style={{ fontSize: 8.5, fontWeight: 700, opacity: 0.75, letterSpacing: '0.02em' }}>
+                    · {filterMap.booked.filter(l => l.source === 'Calendar').length} from calendar
+                  </span>
+                )}
               </button>
             )
           })}
@@ -1929,6 +1937,8 @@ const parsedLoc0 = parseLocation(lead.location || '')
 
   const creationLabel = lead.source === 'Web Inquiry'
     ? 'Inquiry · Lead Created'
+    : lead.source === 'Calendar'
+      ? `Booked on the calendar${lead.created_by_name ? ` · ${lead.created_by_name}` : ''}`
     : creatorInitials
       ? `${creatorInitials} · Lead Created`
       : 'Lead Created'

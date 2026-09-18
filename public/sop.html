@@ -645,6 +645,19 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.34', date:'Sep 18, 2026',
+    headline:'Booking from the calendar now builds the client profile properly — and writes the CRM line for you.',
+    desc:'Too many sessions were booked straight on the calendar with a first name and nothing else, so billing, COD and the CRM had nobody to chase.',
+    changes:[
+      'Client search on the work order shows who you\'re matching: type, phone or email, how many sessions they\'ve done and when the last one was. An exact name match is marked "on file".',
+      'New client is a short card, not a one-tap add: first and last name, phone or email required. If it looks like someone already on file, it asks — use them, or say it\'s a different person.',
+      'The client card says "On file" or "Not on file — just a name". A bare name gets a "Put on file" button that opens the card pre-filled.',
+      'A confirmed session can\'t be saved without a client on file. Tentative holds still save with just a name.',
+      'A confirmed booking made straight on the calendar writes its own Booked line in the CRM — linked to the client and the work order, marked "from calendar". Cancel the session and the line goes to DNB.',
+    ],
+    affects:'Office. Runners unchanged.',
+  },
+  {
     ver:'v1.33', date:'Sep 17, 2026',
     headline:'Closing can\'t be submitted while a session isn\'t. The office sees unsubmitted work orders the next morning.',
     desc:'An unsubmitted work order means nobody said what happened in the room — and it\'s the only way the office knows what to collect.',

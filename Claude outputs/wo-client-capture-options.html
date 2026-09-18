@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Client capture on the work order: no more "Mike"</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  CLIENT CAPTURE FROM THE CALENDAR (Eli, 2026-09-18): "we are going straight
+  to the calendar for a lot of bookings and not the CRM… missing the CRM data.
+  COD on the client part of the WO doesn't even have a last name field… the
+  auto-match dropdown is great but we need more indication that we are
+  creating a new client profile or matching. The biggest hurdle is people
+  double-clicking a square, typing a name (spelled wrong, first name only,
+  nickname, name/name). We need to prevent this. And tie any booking made
+  straight to the cal and confirmed to a booked line in the CRM so it plays
+  into the metrics. Idiot proof."
+
+  ── WHAT'S THERE TODAY (components/shared/ClientPanel.tsx) ──────────────────
+  · One search box. Type 2+ letters → matches (clients, A&Rs, artists) with
+    the name and, for labels, "A&R · name". The last row is "+ New client:
+    'whatever you typed'" — ONE TAP creates a profile from the raw string,
+    split on the first space (fname / lname). "Mike" → a client called Mike.
+    "mike/sarah" → fname "mike/sarah". No phone, no email, no last name.
+  · A WO saves with NO client at all, or with a name and no profile
+    (client_id null) — nothing stops it.
+  · The CRM's ConfirmClientModal (Start Booking from a lead) already does
+    this right: first + last, phone OR email required, COD/Label toggle.
+    The calendar path just never goes through it.
+
+  ── THE FIX, in four parts ──────────────────────────────────────────────────
+  1. The search result rows show ENOUGH TO RECOGNISE A PERSON: type, phone
+     tail, sessions count, last session. Existing clients are clearly
+     "on file". Picking one says "Matched · on file since Mar 2025".
+  2. "+ New client" opens a CARD, not a one-tap create: first + last name as
+     two fields, phone or email required, COD/Label. Live "Looks like…"
+     duplicate check as you type (same fuzzy: first-name + phone/email
+     tail / last-name similarity). "Mike" alone can't be saved.
+  3. A CONFIRMED session can't be saved without a client profile linked.
+     A tentative hold can (name only) — holds are fast by design — but it
+     carries a warm "No client on file" chip until it's fixed, and
+     confirming it forces the card.
+  4. Every confirmed session saved from the calendar with no lead behind it
+     writes ONE lead row: status booked, source "Calendar", linked to the
+     client and the work order (work_orders.lead_id). Re-saves don't
+     duplicate. The CRM's Booked count and conversion metrics see it; the
+     row is tagged "from calendar" so you can tell how many skipped the CRM.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--cold:#7fb2e5;--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:34px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:14px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55}.cap b{color:var(--fg2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:start}@media(max-width:1000px){.grid3{grid-template-columns:1fr}}
+/* WO client block */
+.blk{background:var(--srf);border-radius:14px;padding:12px 14px;box-shadow:var(--softsh)}
+.k{font-size:9px;font-family:'Archivo Black',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.k .tog{margin-left:auto;display:flex;gap:2px;background:var(--wash);border-radius:99px;padding:2px}
+.k .tog span{font-size:8px;padding:3px 8px;border-radius:99px;color:var(--fg3)}.k .tog span.on{background:var(--wash2);color:var(--fg)}
+.inp{background:var(--wash);border-radius:99px;padding:9px 14px;font-size:12.5px;color:var(--fg);display:flex;align-items:center;gap:8px}
+.inp i{font-style:normal;opacity:.45}.inp .cur{display:inline-block;width:1px;height:14px;background:var(--fg);margin-left:1px}
+.dd{margin-top:6px;background:var(--bg);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.45);overflow:hidden}
+.dd .h{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);padding:8px 12px 4px}
+.res{display:flex;align-items:center;gap:10px;padding:8px 12px}
+.res:hover{background:var(--wash)}
+.res .av{width:26px;height:26px;border-radius:99px;background:var(--wash2);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;flex-shrink:0}
+.res .m{flex:1;min-width:0}.res .m b{font-size:12px;display:block}.res .m span{font-size:10px;color:var(--fg3);display:block}
+.res .m span em{font-style:normal;font-family:'DM Mono',monospace}
+.res .t{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--wash2);color:var(--fg2);flex-shrink:0}
+.res .t.lab{background:var(--cold);color:var(--chip-ink)}
+.res.new{border-top:1px solid var(--wash2);background:color-mix(in srgb,var(--booked) 8%,transparent)}
+.res.new .av{background:var(--booked);color:var(--chip-ink);font-size:14px;font-family:Inter;font-weight:800}
+.res.new .m b{color:var(--booked)}
+/* new client card */
+.card{background:var(--wash);border-radius:12px;padding:12px 14px;margin-top:8px}
+.card .ch{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card .ch b{font-family:'Archivo Black',sans-serif;font-size:13px}
+.card .ch .x{margin-left:auto;font-size:10px;color:var(--fg3);text-decoration:underline}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.fl{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:3px;display:block}
+.fl.req:after{content:" · required";font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--warm)}
+.fi{background:var(--wash2);border-radius:99px;padding:8px 12px;font-size:12px;min-height:32px}
+.fi.err{box-shadow:inset 0 0 0 1.5px var(--hot)}
+.fi.ok{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--booked) 60%,transparent)}
+.fi i{font-style:normal;opacity:.4}
+.warn{display:flex;gap:9px;align-items:flex-start;background:color-mix(in srgb,var(--warm) 14%,transparent);border:1px solid color-mix(in srgb,var(--warm) 45%,transparent);border-radius:10px;padding:9px 11px;margin:6px 0 10px;font-size:11px;line-height:1.45}
+.warn .ex{width:18px;height:18px;border-radius:99px;background:var(--warm);color:var(--chip-ink);display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex-shrink:0}
+.warn b{display:block}.warn .use{display:inline-block;margin-top:5px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--fg);color:var(--bg);border-radius:99px;padding:4px 10px;margin-right:6px}
+.warn .no{display:inline-block;margin-top:5px;font-size:9px;font-weight:700;color:var(--fg3);text-decoration:underline}
+.btns{display:flex;gap:8px;margin-top:10px;align-items:center}
+.pb{font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:9px 16px;border-radius:99px;background:var(--fg);color:var(--bg)}
+.pb.dis{opacity:.35}
+.hint{font-size:10px;color:var(--fg3);margin-left:auto}
+/* linked card */
+.lk{background:var(--wash);border-radius:12px;padding:12px 14px}
+.lk .n{font-family:'Archivo Black',sans-serif;font-size:15px;display:flex;align-items:center;gap:8px}
+.lk .n .pen{font-size:11px;opacity:.5}
+.lk .n .b{margin-left:auto;font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--wash2);color:var(--fg2)}
+.lk .on{font-size:10px;color:var(--booked);font-weight:700;margin-top:3px;display:flex;align-items:center;gap:6px}
+.lk .on i{font-style:normal;width:12px;height:12px;border-radius:99px;background:var(--booked);color:var(--chip-ink);display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:900}
+.lk .on.no{color:var(--warm)}.lk .on.no i{background:var(--warm)}
+.lk .rows{margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:11px}
+.lk .rows span{color:var(--fg3);font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;display:block}
+.lk .fix{margin-top:8px;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--warm);color:var(--chip-ink);border-radius:99px;padding:5px 10px;display:inline-block}
+/* save block */
+.stop{background:color-mix(in srgb,var(--hot) 14%,var(--srf));border:1.5px solid color-mix(in srgb,var(--hot) 55%,transparent);border-radius:14px;padding:12px 14px}
+.stop .h{font-family:'Archivo Black',sans-serif;font-size:14px;color:var(--hot);display:flex;align-items:center;gap:8px}
+.stop .h .ex{width:20px;height:20px;border-radius:99px;background:var(--hot);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:Inter;font-weight:800;font-size:12px}
+.stop p{font-size:11.5px;color:var(--fg2);margin-top:5px;line-height:1.5}
+.stop .go{display:inline-block;margin-top:9px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--hot);color:#fff;border-radius:99px;padding:6px 12px}
+/* crm row */
+.crm{background:var(--srf);border-radius:14px;padding:10px 12px;box-shadow:var(--softsh)}
+.lr{display:grid;grid-template-columns:90px 1fr 120px 110px 90px;gap:10px;align-items:center;padding:7px 8px;border-radius:9px;font-size:12px}
+.lr:hover{background:var(--wash)}
+.lr .st{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--booked);color:var(--chip-ink);text-align:center}
+.lr .st.hot{background:var(--hot);color:#fff}.lr .st.warm{background:var(--warm)}
+.lr b{display:block}.lr small{color:var(--fg3);font-size:10px}
+.lr .src{font-size:9px;font-weight:700;color:var(--fg3)}.lr .src.cal{color:var(--cold)}
+.stat{display:flex;gap:18px;margin-bottom:10px}
+.stat div{background:var(--wash);border-radius:10px;padding:8px 12px;min-width:110px}
+.stat b{font-family:'DM Mono',monospace;font-size:18px;display:block}.stat span{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3)}
+.stat small{display:block;font-size:9.5px;color:var(--cold);margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:11.5px;max-width:900px}
+th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Client capture on the work order — no more "Mike"</h1>
+<p class="lede">Today the client box is one search field whose last row is <b>"+ New client: 'mike'"</b> — one tap and "mike" is a client profile with no last name, no phone, nothing. And a work order saves fine with no client at all. Four changes below, all on the same block, plus the CRM line. Everything shown is doable; the pieces (search, profile create, the CRM's confirm-client modal) already exist and just need to be wired to the calendar path.</p>
+
+<h2><span class="n">1</span>Search results you can actually recognise</h2>
+<p class="sub">Typing "mike" today lists names and nothing else. Now each row says what kind of client, a phone tail, how many sessions, and when the last one was — enough to know it's <i>that</i> Mike. The create row is separated, green, and says what it does.</p>
+<div class="grid2">
+  <div class="blk">
+    <div class="k">Client <span class="tog"><span class="on">COD</span><span>Label / Billing</span></span></div>
+    <div class="inp"><i>🔍</i>mike<span class="cur"></span></div>
+    <div class="dd">
+      <div class="h">On file · 3 matches</div>
+      <div class="res"><span class="av">MD</span><span class="m"><b>Mike Dean</b><span>COD · <em>(310) ··· 4412</em> · 6 sessions · last Aug 12</span></span><span class="t">COD</span></div>
+      <div class="res"><span class="av">MJ</span><span class="m"><b>Mike Jones</b><span>COD · <em>mike.j@···</em> · 1 session · Feb 2025</span></span><span class="t">COD</span></div>
+      <div class="res"><span class="av">RC</span><span class="m"><b>Mike Will Made-It</b><span>Artist · EarDrummers (label) · A&amp;R Rachel Cho</span></span><span class="t lab">Label</span></div>
+      <div class="res new"><span class="av">+</span><span class="m"><b>Not one of these? Add a new client</b><span>Opens a short card — name, phone or email. Takes 20 seconds.</span></span></div>
+    </div>
+  </div>
+  <div>
+    <p class="cap"><b>What changed:</b> the header says "On file" so it's obvious these are existing profiles. Phone/email tails and session history are the recognition cues — a runner who booked Mike Dean last month sees "6 sessions · last Aug 12" and knows. The green row no longer creates anything by itself; it opens the card in part 2.<br><br><b>Also:</b> typing a full name that's on file ("Mike Dean") puts the exact match first with a green "✓ on file" tag, and Enter picks it.</p>
+  </div>
+</div>
+
+<h2><span class="n">2</span>New client is a card, not a tap</h2>
+<p class="sub">First and last name are separate fields. Phone <i>or</i> email is required. A live "Looks like…" check catches the misspelled repeat before it becomes a second profile. The button stays grey until it's a real record.</p>
+<div class="grid3">
+  <div class="blk">
+    <div class="k">Client · new</div>
+    <div class="card">
+      <div class="ch"><b>New client</b><span class="x">← back to search</span></div>
+      <div class="f2">
+        <div><label class="fl req">First name</label><div class="fi ok">Mike</div></div>
+        <div><label class="fl req">Last name</label><div class="fi err"><i>Last name</i></div></div>
+      </div>
+      <div class="f2">
+        <div><label class="fl">Phone</label><div class="fi"><i>(310) 555-0100</i></div></div>
+        <div><label class="fl">Email</label><div class="fi"><i>name@email.com</i></div></div>
+      </div>
+      <div class="f2"><div><label class="fl">Artist / project</label><div class="fi"><i>—</i></div></div><div><label class="fl">Type</label><div class="fi">COD</div></div></div>
+      <div class="btns"><span class="pb dis">Add client</span><span class="hint">Needs a last name and a phone or email</span></div>
+    </div>
+  </div>
+  <div class="blk">
+    <div class="k">Client · new</div>
+    <div class="card">
+      <div class="ch"><b>New client</b><span class="x">← back to search</span></div>
+      <div class="f2">
+        <div><label class="fl req">First name</label><div class="fi ok">Mike</div></div>
+        <div><label class="fl req">Last name</label><div class="fi ok">Deen</div></div>
+      </div>
+      <div class="warn"><span class="ex">!</span><div><b>Looks like Mike Dean is already on file</b>COD · (310) ··· 4412 · 6 sessions · last Aug 12. Same person?<br><span class="use">Use Mike Dean</span><span class="no">No, different person</span></div></div>
+      <div class="f2">
+        <div><label class="fl">Phone</label><div class="fi ok">(310) 555-4412</div></div>
+        <div><label class="fl">Email</label><div class="fi"><i>name@email.com</i></div></div>
+      </div>
+      <div class="btns"><span class="pb dis">Add client</span><span class="hint">Answer the question above first</span></div>
+    </div>
+  </div>
+  <div class="blk">
+    <div class="k">Client · new</div>
+    <div class="card">
+      <div class="ch"><b>New client</b><span class="x">← back to search</span></div>
+      <div class="f2">
+        <div><label class="fl req">First name</label><div class="fi ok">Sarah</div></div>
+        <div><label class="fl req">Last name</label><div class="fi ok">Okafor</div></div>
+      </div>
+      <div class="f2">
+        <div><label class="fl">Phone</label><div class="fi ok">(213) 555-0187</div></div>
+        <div><label class="fl">Email</label><div class="fi"><i>name@email.com</i></div></div>
+      </div>
+      <div class="f2"><div><label class="fl">Artist / project</label><div class="fi">Sarah O</div></div><div><label class="fl">Type</label><div class="fi">COD</div></div></div>
+      <div class="btns"><span class="pb">Add client &amp; use</span><span class="hint">Creates the profile, links this session</span></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Left:</b> "Mike" alone can't go through — the button is grey and the hint says why. <b>Middle:</b> the duplicate catch. Same first name + same phone tail (or a last name one letter off) → "Looks like…" with a one-tap Use. You must answer it. <b>Right:</b> a clean new client — one tap creates the profile <i>and</i> links it to this session. "name/name" typed into first name is rejected the same way as a missing last name.</p>
+
+<h2><span class="n">3</span>The card says whether it's on file — and a confirmed session can't save without it</h2>
+<div class="grid3">
+  <div class="blk">
+    <div class="k">Client</div>
+    <div class="lk">
+      <div class="n">Mike Dean <span class="pen">✎</span><span class="b">COD</span></div>
+      <div class="on"><i>✓</i>On file · since Mar 2025 · 6 sessions</div>
+      <div class="rows"><div><span>Phone</span>(310) 555-4412</div><div><span>Email</span>mdean@gmail.com</div><div><span>Artist</span>Mike Dean</div><div><span>Last session</span>Aug 12 · PRS A</div></div>
+    </div>
+  </div>
+  <div class="blk">
+    <div class="k">Client</div>
+    <div class="lk">
+      <div class="n">mike <span class="pen">✎</span><span class="b">COD</span></div>
+      <div class="on no"><i>!</i>Not on file — just a name</div>
+      <div class="rows"><div><span>Phone</span>—</div><div><span>Email</span>—</div></div>
+      <span class="fix">Put on file →</span>
+    </div>
+    <p class="cap">Old work orders and quick holds. The chip stays until it's fixed; "Put on file" opens the card in part 2 with the name pre-filled.</p>
+  </div>
+  <div class="blk">
+    <div class="stop">
+      <div class="h"><span class="ex">!</span>Who's this session for?</div>
+      <p>A confirmed session needs a client on file — that's how billing, COD collection and the CRM know who to chase. Tentative holds can save with just a name.</p>
+      <span class="go">Find or add the client</span>
+    </div>
+    <p class="cap">Shown when Save is tapped on a <b>confirmed</b> session with no profile linked. Not a nag — it's the one thing that can't be skipped. Holds stay fast.</p>
+  </div>
+</div>
+
+<h2><span class="n">4</span>The CRM line, written for you</h2>
+<p class="sub">Every confirmed session saved from the calendar that didn't come from a lead writes one Booked line in the CRM — linked to the client and the work order, tagged <b>from calendar</b>. Re-saving doesn't duplicate it. Booked counts and conversion see it; you can also see how many bookings skipped the CRM.</p>
+<div class="crm">
+  <div class="stat"><div><b>31</b><span>Booked · Sep</span><small>9 from calendar</small></div><div><b>42%</b><span>Conversion</span></div><div><b>7</b><span>Hot</span></div></div>
+  <div class="lr"><span class="st">Booked</span><span><b>Mike Dean</b><small>COD · Sep 18 · PRS A · WO-1190</small></span><span class="src cal">FROM CALENDAR · ELI</span><span><small>Sep 18</small></span><span></span></div>
+  <div class="lr"><span class="st">Booked</span><span><b>Epic Records · DDG</b><small>Billing · Sep 16–22 · PRS A · WO-1172</small></span><span class="src">CRM · SIERRA</span><span><small>Sep 9</small></span><span></span></div>
+  <div class="lr"><span class="st hot">Hot</span><span><b>Sarah Okafor</b><small>COD · wants Oct 3</small></span><span class="src">Web inquiry</span><span><small>Sep 15</small></span><span></span></div>
+</div>
+<p class="cap"><b>Fields on the auto-written lead:</b> first/last name, email, phone, client link, COD/Billing, session date(s), location, booking type from the session type, quote from the room rate, source "Calendar", and who made the booking. Status Booked. Session cancelled later → the lead flips to Dead with the reason, same as a CRM lead would.</p>
+
+<h2><span class="n">5</span>Rules, in one place</h2>
+<table>
+  <tr><th>Question</th><th>Answer</th></tr>
+  <tr><td><b>Can a WO save with no client?</b></td><td>Tentative: yes, with a name (warm "Not on file" chip). Confirmed: no — the stop in part 3.</td></tr>
+  <tr><td><b>What makes a valid new client?</b></td><td>First + last name, and a phone or an email. Label/Billing: company name + an A&amp;R first/last + phone or email.</td></tr>
+  <tr><td><b>Duplicate check</b></td><td>Same phone or email anywhere on file → hard "Looks like". Same first name + last name within one letter → soft "Looks like". Must be answered.</td></tr>
+  <tr><td><b>Old sessions with "mike"</b></td><td>Untouched. They wear the warm chip; a "Put on file" button fixes each in 20 seconds. A one-time list of them can go on your dashboard if you want to clear them.</td></tr>
+  <tr><td><b>Runners?</b></td><td>Runners never touch the client block — this is office and owners only.</td></tr>
+  <tr><td><b>Data</b></td><td>One column: <code>work_orders.lead_id</code> (so re-saves don't write a second lead). Leads get <code>source = 'Calendar'</code> and <code>created_by_name</code>. Everything else exists.</td></tr>
+</table>
+</body>
+</html>

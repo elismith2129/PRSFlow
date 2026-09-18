@@ -61,6 +61,10 @@ export interface Lead {
   staff_role: StaffMode | null
   staff_name: string | null
   created_by: string | null
+  /** Who booked it, by name — set on Calendar-sourced leads (2026-09-18). */
+  created_by_name?: string | null
+  /** The work order this lead became (2026-09-18); Calendar leads are born with it. */
+  work_order_id?: string | null
   tags: string[]
   email_opt_out: boolean
   created_at: string
@@ -257,6 +261,8 @@ export interface WorkOrder {
   food_amount: number | null
   /** Food service fee percent, whole number as text; null = default (45). */
   food_fee_pct?: string | null
+  /** The CRM lead behind this session (2026-09-18). */
+  lead_id?: number | null
   client: string | null
   artist: string | null
   label: string | null

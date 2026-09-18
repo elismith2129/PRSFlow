@@ -172,6 +172,9 @@ type WO = {
   session_status: string
   session_type: string
   client_id: string | null
+  /** The CRM lead behind this session (migration 20260918120000) — from Start
+   *  Booking, or written by the WO itself for a calendar-first booking. */
+  lead_id: number | null
   is_srs: boolean
   cod_method: string
   anr_contact_id: string | null
@@ -410,6 +413,7 @@ function normalizeWO(d: any): WO {
     email: d.email ?? '',
     status: d.status ?? 'open',
     session_status: d.session_status ?? '',
+    lead_id: d.lead_id ?? null,
     session_type: d.session_type ?? '',
     client_id: d.client_id ?? null,
     is_srs: d.is_srs ?? false,
@@ -3096,6 +3100,63 @@ export function WorkOrderPopup({
    * save before it stamps the work order, and must not stamp a work order whose
    * save just failed (fix, 2026-08-13).
    */
+  // The confirmed-needs-a-client stop (2026-09-18). Rendered near the save
+  // buttons; "Find or add the client" scrolls the client block into view.
+  const [clientStop, setClientStop] = useState(false)
+  const clientPanelRef = useRef<HTMLDivElement | null>(null)
+
+  async function writeCalendarLead(workOrderId: string) {
+    if (!wo || !wo.client_id) return
+    const { data: cRows } = await supabase.from('clients')
+      .select('id, type, name, fname, lname, email, phone').eq('id', wo.client_id).limit(1)
+    const c = cRows?.[0]
+    if (!c) return
+    const dated = stRows.filter(r => r.studio !== '' && r.date).map(r => r.date).sort()
+    const first = dated[0] ?? wo.session_date ?? null
+    const last = dated[dated.length - 1] ?? null
+    const firstRow = stRows.find(r => r.studio !== '' && r.date === first)
+    const venue = (firstRow?.location || booking.location || '').trim()
+    const bookingType = wo.session_type === 'filming' ? 'Filming'
+      : wo.session_type === 'event_playback' ? 'Event/Playback' : 'Recording Session'
+    const rate = firstRow ? (firstRow.row_rate_type === 'day' ? firstRow.rate_daily : firstRow.rate) : ''
+    const isLabel = c.type === 'label'
+    const { data: made, error } = await supabase.from('leads').insert({
+      fname: isLabel ? (wo.client || wo.ordered_by || '').split(' ')[0] || '' : (c.fname || c.name || ''),
+      lname: isLabel ? (wo.client || wo.ordered_by || '').split(' ').slice(1).join(' ') : (c.lname || ''),
+      company: isLabel ? c.name : '',
+      label: isLabel ? c.name : '',
+      email: wo.email || c.email || '',
+      phone: wo.phone || c.phone || '',
+      source: 'Calendar',
+      booking: bookingType,
+      status: 'booked',
+      billing: wo.payment_status === 'Billing' ? 'Billing' : 'COD',
+      notes: '',
+      quote: rate || '',
+      rate_daily: firstRow?.row_rate_type === 'day' ? (firstRow.rate_daily || null) : null,
+      location: venue,
+      session_date: first,
+      session_end_date: last && last !== first ? last : null,
+      duration: '',
+      first_time: false,
+      last_contact: new Date().toISOString(),
+      client_id: c.id,
+      artist_name: wo.artist || null,
+      anr_contact_id: wo.anr_contact_id ?? null,
+      needs_contact: false,
+      created_by: profile?.id ?? null,
+      created_by_name: profile?.display_name || null,
+      work_order_id: workOrderId,
+      tags: [],
+    }).select('id')
+    if (!dbResult('Writing the CRM line', error)) return
+    const newId = made?.[0]?.id
+    if (newId) {
+      await supabase.from('work_orders').update({ lead_id: newId }).eq('id', workOrderId)
+      setWo(w => w ? { ...w, lead_id: newId } : w)
+    }
+  }
+
   async function handleClose(close = true): Promise<boolean> {
     if (!wo) { if (close) onClose(); return false }
     // Tour/Tech/Open-Hours → save as a simple block, skip the WO body + projection.
@@ -3157,6 +3218,21 @@ export function WorkOrderPopup({
           setTimeErrorMsg(startProblem.message)
           return false
         }
+      }
+
+      // ── A CONFIRMED SESSION NEEDS A CLIENT ON FILE (Eli, 2026-09-18) ──
+      // "people are just double-clicking a square, typing a name (spelled
+      // wrong, first name only, nickname) — we need to prevent this." A
+      // name alone is not a client: billing, COD collection and the CRM all
+      // key on the profile. Tentative holds still save with just a name
+      // (holds are fast by design) and wear the panel's "Not on file" chip
+      // until fixed; confirming is the moment it has to be real. Lockouts
+      // are confirmed sessions too. Office-only — runners never touch the
+      // client block.
+      if ((wo.session_status === 'confirmed' || wo.session_status === 'lockout') && !wo.client_id) {
+        setSaving(false)
+        setClientStop(true)
+        return false
       }
     }
 
@@ -3297,9 +3373,30 @@ export function WorkOrderPopup({
     if (leadId && wo.session_status !== 'cancelled') {
       const { error: leadErr } = await supabase
         .from('leads')
-        .update({ status: 'booked', keep_hot_until: null })
+        .update({ status: 'booked', keep_hot_until: null, work_order_id: id })
         .eq('id', leadId)
       dbResult('Marking lead booked', leadErr)
+      if (!wo.lead_id) {
+        await supabase.from('work_orders').update({ lead_id: leadId }).eq('id', id)
+        setWo(w => w ? { ...w, lead_id: leadId } : w)
+      }
+    }
+
+    // ── THE CRM LINE, WRITTEN FOR YOU (Eli, 2026-09-18): "tie any booking
+    // made straight to the cal and confirmed to a booked line in the CRM so
+    // it plays into the metrics." A confirmed session with a client on file
+    // and no lead behind it writes ONE lead — status booked, source
+    // 'Calendar', linked both ways — and remembers it on the work order so a
+    // re-save never writes a second. Cancelling later flips that lead to
+    // dead, the way a CRM lead would go. Separate from the atomic save on
+    // purpose: a CRM row failing must never un-save a session.
+    if (!runner && !leadId && !wo.lead_id && wo.client_id
+        && (wo.session_status === 'confirmed' || wo.session_status === 'lockout')) {
+      await writeCalendarLead(id)
+    } else if (!runner && wo.lead_id && wo.session_status === 'cancelled') {
+      const { error: deadErr } = await supabase.from('leads')
+        .update({ status: 'dead' }).eq('id', wo.lead_id).eq('status', 'booked')
+      dbResult('Closing the CRM lead', deadErr)
     }
 
     // ── History (lib/woActivity): diff the baselines against what was just
@@ -3778,6 +3875,7 @@ export function WorkOrderPopup({
   }
 
   function handleClientChange(patch: Partial<ClientPanelValue>) {
+    if (patch.client_db_id) setClientStop(false)
     setWo(w => {
       if (!w) return w
       const next: WO = { ...w }
@@ -4196,6 +4294,33 @@ export function WorkOrderPopup({
             the click that triggers it is down here, and on a long WO a
             top-of-page error would appear somewhere you aren't looking.
             Fill, not border — Law 1. Hot is the sanctioned critical colour. */}
+        {/* WHO'S THIS SESSION FOR? (2026-09-18) — the confirmed-needs-a-client
+            stop, same banner slot as the times error. One button, which
+            scrolls the client block into view. */}
+        {clientStop && (
+          <div
+            data-no-print=""
+            role="alert"
+            style={{
+              flexShrink: 0,
+              background: 'color-mix(in srgb, var(--c-st-hot) 16%, transparent)',
+              color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11.5, lineHeight: 1.5,
+              padding: isMobile ? '10px 16px' : '10px 22px',
+              display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ width: 20, height: 20, borderRadius: 99, background: 'var(--c-st-hot)', color: 'var(--c-hot-text)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>!</span>
+            <span style={{ flex: 1, minWidth: 200 }}>
+              <b style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400 }}>Who&apos;s this session for?</b>{' '}
+              A confirmed session needs a client on file — that&apos;s how billing, COD collection and the CRM know who to chase. Holds can save with just a name.
+            </span>
+            <button
+              type="button"
+              onClick={() => { setClientStop(false); clientPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
+              style={{ background: 'var(--c-st-hot)', color: 'var(--c-hot-text)', border: 'none', borderRadius: 99, padding: '7px 13px', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Inter' }}
+            >Find or add the client</button>
+          </div>
+        )}
         {timeErrorMsg && (
           <div
             data-no-print=""
@@ -5045,7 +5170,7 @@ export function WorkOrderPopup({
                   for COD), the artist well sized to its content, and A&R beside
                   Admin with ellipsizing emails and icon actions. Same component,
                   same state, same saves — only its arrangement differs. */}
-              <div style={wide ? { order: 3, minWidth: 0, display: 'flex', flexDirection: 'column' } : { minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              <div ref={clientPanelRef} style={wide ? { order: 3, minWidth: 0, display: 'flex', flexDirection: 'column' } : { minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                 <ClientPanel value={clientValue} onChange={handleClientChange} readOnly={readOnly} layout={wide ? 'wide' : 'stack'} />
               </div>
             </div>

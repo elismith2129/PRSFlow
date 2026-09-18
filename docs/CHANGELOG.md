@@ -20,6 +20,51 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.34.0 — Client capture on the work order: no more "mike" — Sep 18, 2026
+
+Eli: "we are going straight to the calendar for a lot of bookings and not the
+CRM… people are just double-clicking a square, typing a name (spelled wrong,
+first name only, nickname, name/name). We need to prevent this. And tie any
+booking made straight to the cal and confirmed to a booked line in the CRM so
+it plays into the metrics. Idiot proof." Mock: `docs/design-refs/wo-client-capture-options.html`.
+
+**The hole:** ClientPanel's dropdown row "+ New client: 'mike'" created a profile
+from the raw string in ONE tap (split on first space, no phone, no last name), the
+pencil-rename did the same for an unlinked name, and a WO saved fine with no
+client at all.
+
+- **Search results you can recognise** (`ClientPanel`): header "On file · N
+  matches"; each row = type chip, phone/email tail, `N sessions · last <date>`
+  (one `bookings` query per search for the matched ids); exact name match sorts
+  first with "✓ on file" and Enter picks it.
+- **New client is a card** (`openNewCard` / `createClientFromCard`): first + last
+  as two fields (Label: company + A&R first/last), phone OR email required,
+  "name/name" refused. Live **Looks like…** duplicate check (`dupe`): same phone
+  last-7 or email = hard, same first + last within one edit = soft; must be
+  answered (Use / No, different person). Both old one-tap paths now route here.
+- **On file / Not on file** line under the hero name; bare-name records get a
+  warm chip + "Put on file →" (opens the card pre-filled).
+- **Confirmed needs a client** (`WorkOrderPopup.handleClose`): `confirmed` or
+  `lockout` with no `client_id` → red banner "Who's this session for?" with a
+  button that scrolls the client block into view; save refused. Tentative saves
+  with a name. Office-only.
+- **The CRM line, written for you** (`writeCalendarLead`): confirmed + client on
+  file + no lead behind it → one `leads` row (status booked, source `Calendar`,
+  client/WO linked, dates, venue, booking type from session type, rate as
+  quote, `created_by_name`), remembered on `work_orders.lead_id`. Start-Booking
+  WOs record their `leadId` there too. Cancelling later → that lead `dead`.
+- CRM: Booked pill shows "· N from calendar"; the lead's creation label reads
+  "Booked on the calendar · Eli".
+
+**Migration (run first):** `20260918120000_wo_lead_link.sql` —
+`work_orders.lead_id int → leads`, `leads.created_by_name text`,
+`leads.work_order_id uuid → work_orders`. **Watch-outs:** `lead_id` is written by
+its own update after the atomic save, never in `woUpdate`. The bookings status
+list for history counts is `confirmed/lockout/completed`. Runners never see the
+client block, so none of this touches runner mode.
+
+---
+
 ## v1.33.3 — Billing row says who submitted; multi-day sessions say "needs review · in progress" — Sep 17, 2026
 
 Eli: "Fernando just needs something on the WO row in the billing hub that says

@@ -137,7 +137,12 @@ export function ClientPanel({
   const set = <K extends keyof ClientPanelValue>(k: K, v: ClientPanelValue[K]) => onChange({ [k]: v })
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [clientSuggestions, setClientSuggestions] = useState<Array<{ id: string; label: string; sub: string; isLabel: boolean; record: any }>>([])
+  const [clientSuggestions, setClientSuggestions] = useState<Array<{ id: string; label: string; sub: string; isLabel: boolean; record: any; exact?: boolean }>>([])
+  /** Per client id: how many sessions, and the last one — the recognition cue
+   *  on every result row (2026-09-18: "more indication that we are matching"). */
+  const [clientHistory, setClientHistory] = useState<Record<string, { n: number; last: string | null }>>({})
+  /** Sessions on file for the LINKED client — the card's "On file" line. */
+  const [linkedHistory, setLinkedHistory] = useState<{ n: number; last: string | null; since: string | null } | null>(null)
   const [showClientDD, setShowClientDD] = useState(false)
   const [clientHighlight, setClientHighlight] = useState(-1)
 
@@ -247,6 +252,21 @@ export function ClientPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value.client_db_id, value.payment_type])
 
+  // The linked client's history — "On file · since Mar 2025 · 6 sessions".
+  useEffect(() => {
+    const id = value.client_db_id
+    if (!id) { setLinkedHistory(null); return }
+    let live = true
+    Promise.all([
+      supabase.from('bookings').select('start_date').eq('client_id', id).in('status', ['confirmed', 'lockout', 'completed']).order('start_date', { ascending: false }).limit(200),
+      supabase.from('clients').select('created_at').eq('id', id).limit(1),
+    ]).then(([{ data: bk }, { data: cl }]) => {
+      if (!live) return
+      setLinkedHistory({ n: bk?.length ?? 0, last: bk?.[0]?.start_date ?? null, since: cl?.[0]?.created_at ?? null })
+    })
+    return () => { live = false }
+  }, [value.client_db_id])
+
   // Client search — clients by name, A&R contacts by name, artist-name matches.
   useEffect(() => {
     const q = searchQuery.trim()
@@ -348,11 +368,30 @@ export function ClientPanel({
         }
       }
 
+      // EXACT NAME FIRST (2026-09-18): "Mike Dean" typed in full puts Mike
+      // Dean at the top with a "✓ on file" tag, and Enter picks it.
+      const ql = q.toLowerCase()
+      for (const r of results) r.exact = r.label.trim().toLowerCase() === ql
+      results.sort((a, b) => Number(!!b.exact) - Number(!!a.exact))
       setClientSuggestions(results)
+      if (results.some(r => r.exact)) setClientHighlight(0)
       // Open even with zero matches: the dropdown's last row is "+ New client",
       // so an unknown name is one tap from a profile instead of a dead end
       // (Eli 2026-08-24 — a walk-in's WO was stuck blank with no way around).
       setShowClientDD(results.length > 0 || q.length >= 2)
+      // Session history per matched client — one query for the whole list.
+      const ids = Array.from(new Set(results.map(r => r.id)))
+      if (ids.length > 0) {
+        const { data: bk } = await supabase.from('bookings').select('client_id, start_date')
+          .in('client_id', ids).in('status', ['confirmed', 'lockout', 'completed']).order('start_date', { ascending: false }).limit(400)
+        const h: Record<string, { n: number; last: string | null }> = {}
+        for (const b of bk ?? []) {
+          const cur = h[b.client_id] ?? (h[b.client_id] = { n: 0, last: null })
+          cur.n++
+          if (!cur.last || b.start_date > cur.last) cur.last = b.start_date
+        }
+        setClientHistory(prev => ({ ...prev, ...h }))
+      }
     }, 200)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -394,33 +433,114 @@ export function ClientPanel({
     }
   }
 
-  /**
-   * "+ New client" from the search dropdown (2026-08-24). A name that isn't in
-   * the system creates its profile right here and attaches it — same
-   * one-string split as the A&R/artist add rows. COD → individual (typed name
-   * is the person); Billing → label (typed name is the company; A&R gets
-   * added via the card's own "+ Don't see this A&R?" flow after).
-   */
-  async function createClientFromSearch() {
-    const q = searchQuery.trim()
-    if (!q) return
-    const parts = q.split(/\s+/)
+  // ── NEW CLIENT IS A CARD, NOT A TAP (Eli, 2026-09-18) ────────────────────
+  // The dropdown's "+ New client: 'mike'" used to create a profile from the
+  // raw string in one tap — no last name, no phone, "mike/sarah" as a first
+  // name. Now it opens a short card: first + last name as two fields, phone
+  // OR email required, and a live "Looks like…" duplicate check. "Mike"
+  // alone cannot be saved. Mock: docs/design-refs/wo-client-capture-options.
+  const [newCard, setNewCard] = useState(false)
+  const [nc, setNc] = useState({ fname: '', lname: '', phone: '', email: '', artist: '', company: '' })
+  const [ncBusy, setNcBusy] = useState(false)
+  const [dupe, setDupe] = useState<{ id: string; name: string; sub: string; hard: boolean } | null>(null)
+  const [dupeDismissed, setDupeDismissed] = useState<string | null>(null)
+
+  function openNewCard(seed: string) {
+    // Split "mike dean" → first/last; "mike/sarah" and "mike & sarah" stay
+    // in first name so the last-name field is visibly empty and required.
+    const cleaned = seed.trim().replace(/\s+/g, ' ')
+    const parts = /[\/&,]/.test(cleaned) ? [cleaned] : cleaned.split(' ')
+    setNc({ fname: isBilling ? '' : (parts[0] || ''), lname: isBilling ? '' : parts.slice(1).join(' '), phone: value.phone || '', email: value.email || '', artist: value.artist || '', company: isBilling ? cleaned : '' })
+    setDupe(null); setDupeDismissed(null)
+    setNewCard(true); setShowClientDD(false)
+  }
+
+  const digits = (x: string) => x.replace(/\D/g, '')
+  const ncNameOk = isBilling ? !!nc.company.trim() : (!!nc.fname.trim() && !!nc.lname.trim() && !/[\/&,]/.test(nc.fname + nc.lname))
+  const ncContactOk = digits(nc.phone).length >= 7 || /\S+@\S+\.\S+/.test(nc.email.trim())
+  const ncValid = ncNameOk && ncContactOk && (!dupe || dupeDismissed === dupe.id)
+
+  // LOOKS LIKE… — the duplicate catch. Same phone or email anywhere on file
+  // is a hard match; same first name with a last name within one letter is
+  // a soft one. Either must be answered (Use / No, different person).
+  useEffect(() => {
+    if (!newCard) return
+    const ph = digits(nc.phone); const em = nc.email.trim().toLowerCase()
+    const fn = nc.fname.trim().toLowerCase(); const ln = nc.lname.trim().toLowerCase()
+    if (ph.length < 7 && !em && (!fn || !ln)) { setDupe(null); return }
+    const t = setTimeout(async () => {
+      const ors: string[] = []
+      if (em) ors.push(`email.ilike.${em}`)
+      if (fn) ors.push(`fname.ilike.${fn}`)
+      if (isBilling && nc.company.trim()) ors.push(`name.ilike.%${nc.company.trim()}%`)
+      const { data } = ors.length ? await supabase.from('clients').select('id, type, name, fname, lname, email, phone').or(ors.join(',')).limit(50) : { data: [] as any[] }
+      const rows = (data ?? []) as any[]
+      const lev1 = (a: string, b: string) => {
+        if (a === b) return true
+        if (Math.abs(a.length - b.length) > 1) return false
+        let i = 0, j = 0, edits = 0
+        while (i < a.length && j < b.length) {
+          if (a[i] === b[j]) { i++; j++; continue }
+          if (++edits > 1) return false
+          if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++ }
+        }
+        return edits + (a.length - i) + (b.length - j) <= 1
+      }
+      let hit: typeof dupe = null
+      for (const r of rows) {
+        const rph = digits(r.phone || ''); const rem = (r.email || '').toLowerCase()
+        const rfn = (r.fname || '').toLowerCase(); const rln = (r.lname || '').toLowerCase()
+        const name = r.type === 'label' ? r.name : `${r.fname || ''} ${r.lname || ''}`.trim() || r.name
+        const sub = `${r.type === 'label' ? 'Label' : 'COD'}${r.phone ? ` · ${r.phone}` : ''}${r.email ? ` · ${r.email}` : ''}`
+        if ((ph.length >= 7 && rph && rph.slice(-7) === ph.slice(-7)) || (em && rem === em)) { hit = { id: r.id, name, sub, hard: true }; break }
+        if (fn && ln && rfn === fn && lev1(rln, ln)) hit = hit ?? { id: r.id, name, sub, hard: false }
+        if (isBilling && nc.company.trim() && r.type === 'label' && lev1((r.name || '').toLowerCase(), nc.company.trim().toLowerCase())) hit = hit ?? { id: r.id, name, sub, hard: false }
+      }
+      setDupe(hit)
+    }, 250)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newCard, nc.fname, nc.lname, nc.phone, nc.email, nc.company])
+
+  async function useDupe() {
+    if (!dupe) return
+    const { data } = await supabase.from('clients').select('id,type,name,fname,lname,email,phone,artists,srs_client').eq('id', dupe.id).limit(1)
+    const r = data?.[0]
+    if (!r) return
+    setNewCard(false)
+    await applyClientAutofill({ id: r.id, label: dupe.name, sub: '', isLabel: r.type === 'label', record: r })
+  }
+
+  async function createClientFromCard() {
+    if (!ncValid || ncBusy) return
+    setNcBusy(true)
+    const fname = nc.fname.trim(); const lname = nc.lname.trim()
+    const name = isBilling ? nc.company.trim() : `${fname} ${lname}`.trim()
     const { data, error } = await supabase.from('clients').insert({
       id: crypto.randomUUID(),
       type: isBilling ? 'label' : 'individual',
-      name: q,
-      fname: isBilling ? null : (parts[0] || null),
-      lname: isBilling ? null : (parts.slice(1).join(' ') || null),
-      artists: [],
+      name,
+      fname: fname || null,
+      lname: lname || null,
+      email: nc.email.trim() || null,
+      phone: nc.phone.trim() || null,
+      artists: nc.artist.trim() ? [nc.artist.trim()] : [],
       created_at: new Date().toISOString(),
     }).select().single()
+    setNcBusy(false)
     if (!dbResult('Creating client', error) || !data) return
     onChange(isBilling
-      ? { client_db_id: data.id, label: q, client_name: '', ordered_by: '' }
-      : { client_db_id: data.id, client_name: q })
+      ? { client_db_id: data.id, label: name, client_name: `${fname} ${lname}`.trim(), ordered_by: `${fname} ${lname}`.trim(), phone: nc.phone.trim() || value.phone, email: nc.email.trim() || value.email, artist: nc.artist.trim() || value.artist }
+      : { client_db_id: data.id, client_name: name, phone: nc.phone.trim() || value.phone, email: nc.email.trim() || value.email, artist: nc.artist.trim() || value.artist })
+    setNewCard(false)
     setSearchQuery('')
     setShowClientDD(false)
     setClientHighlight(-1)
+  }
+
+  /** "Put on file" for a record that has a name but no profile (old sessions, quick holds). */
+  function putOnFile() {
+    openNewCard(isBilling ? (value.label || value.client_name) : value.client_name)
   }
 
   function clearClient() {
@@ -476,15 +596,13 @@ export function ClientPanel({
         if (!dbResult('Renaming client', error)) return
         await propagateClientRename({ ...(cur as Client), ...fields } as Client, fields)
       } else {
-        const parts = q.split(/\s+/).filter(Boolean)
-        const { data, error } = await supabase.from('clients').insert({
-          type: isBilling ? 'label' : 'individual',
-          name: q,
-          fname: isBilling ? null : (parts[0] || null),
-          lname: isBilling ? null : (parts.slice(1).join(' ') || null),
-        }).select('id').single()
-        if (!dbResult('Saving client', error) || !data) return
-        onChange({ client_db_id: data.id })
+        // NOT LINKED: the name goes onto this record, and the profile is
+        // made through the card (2026-09-18) — never a bare-name insert,
+        // which is exactly the "mike" profile this work stamps out.
+        onChange({ [heroField]: q } as Partial<ClientPanelValue>)
+        setEditingName(false)
+        openNewCard(q)
+        return
       }
       onChange({ [heroField]: q } as Partial<ClientPanelValue>)
       setEditingName(false)
@@ -564,7 +682,7 @@ export function ClientPanel({
       )}
 
       {/* Search input — shown when no client attached */}
-      {!hasClient && !readOnly && (
+      {!hasClient && !readOnly && !newCard && (
         <div style={{ position: 'relative' }}>
           <input
             placeholder={isBilling ? 'Search client, A&R, or artist…' : 'Search client name…'}
@@ -576,34 +694,64 @@ export function ClientPanel({
               if (!showClientDD) return
               if (e.key === 'ArrowDown') { e.preventDefault(); setClientHighlight(h => Math.min(h + 1, clientSuggestions.length - 1)) }
               if (e.key === 'ArrowUp') { e.preventDefault(); setClientHighlight(h => Math.max(h - 1, 0)) }
-              if (e.key === 'Enter' && clientHighlight >= 0) { e.preventDefault(); applyClientAutofill(clientSuggestions[clientHighlight]) }
+              if (e.key === 'Enter') { e.preventDefault(); const pick = clientHighlight >= 0 ? clientSuggestions[clientHighlight] : clientSuggestions.find(x => x.exact); if (pick) applyClientAutofill(pick) }
               if (e.key === 'Escape') setShowClientDD(false)
             }}
             className="c-input c-inset2"
             autoComplete="off"
           />
           {showClientDD && (clientSuggestions.length > 0 || searchQuery.trim().length >= 2) && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
-              {clientSuggestions.map((s, i) => (
-                <div key={i} onMouseDown={() => applyClientAutofill(s)} style={{ padding: '8px 12px', cursor: 'pointer', background: i === clientHighlight ? 'var(--c-wash)' : 'transparent' }}>
-                  <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}>{s.label}</div>
-                  {s.sub && <div style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 1 }}>{s.sub}</div>}
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'var(--c-bg)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.45)', overflow: 'hidden', marginTop: 2 }}>
+              {/* RESULTS YOU CAN RECOGNISE (2026-09-18): type, a phone or
+                  email tail, sessions on file and the last one — enough to
+                  know it's THAT Mike. The header says these are on file. */}
+              {clientSuggestions.length > 0 && (
+                <div style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', padding: '8px 12px 3px', fontFamily: 'Inter' }}>
+                  On file · {clientSuggestions.length} {clientSuggestions.length === 1 ? 'match' : 'matches'}
                 </div>
-              ))}
-              {/* The way out of the dead end: an unknown name becomes a client
-                  profile in one tap (skipped only when a suggestion already
-                  matches the typed name exactly). */}
+              )}
+              {clientSuggestions.map((s, i) => {
+                const r = s.record
+                const h = clientHistory[s.id]
+                const tail = r._anrPhone || r._anrEmail || r.phone || r.email || ''
+                const tailShort = tail.includes('@') ? tail.replace(/^(.{3}).*(@.*)$/, '$1···$2') : tail.replace(/\D/g, '').replace(/^(\d{3})\d*(\d{4})$/, '($1) ··· $2')
+                const last = h?.last ? new Date(h.last + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: h.last.slice(0, 4) === String(new Date().getFullYear()) ? undefined : 'numeric' }) : null
+                const meta = [
+                  r._artistMatch ? 'Artist' : (s.isLabel ? 'Label' : 'COD'),
+                  s.sub && s.sub !== s.label ? s.sub : null,
+                  tailShort || null,
+                  h ? (h.n === 0 ? 'no sessions yet' : `${h.n} ${h.n === 1 ? 'session' : 'sessions'}${last ? ` · last ${last}` : ''}`) : null,
+                ].filter(Boolean).join(' · ')
+                return (
+                  <div key={i} onMouseDown={() => applyClientAutofill(s)} style={{ padding: '7px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, background: i === clientHighlight ? 'var(--c-wash)' : 'transparent' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {s.label}
+                        {s.exact && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-st-booked)' }}>✓ on file</span>}
+                      </div>
+                      <div style={{ fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta}</div>
+                    </div>
+                    <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 99, background: s.isLabel ? 'var(--c-st-cold)' : 'var(--c-wash2)', color: s.isLabel ? 'var(--c-chip-ink)' : 'var(--c-fg-2)', flexShrink: 0, fontFamily: 'Inter' }}>{s.isLabel ? 'Label' : 'COD'}</span>
+                  </div>
+                )
+              })}
+              {/* The way out of the dead end — now a CARD, never a one-tap
+                  create (2026-09-18). Skipped only when a suggestion already
+                  matches the typed name exactly. */}
               {searchQuery.trim().length >= 2
-                && !clientSuggestions.some(s => s.label.toLowerCase() === searchQuery.trim().toLowerCase())
+                && !clientSuggestions.some(s => s.exact)
                 && (
                 <div
-                  onMouseDown={e => { e.preventDefault(); createClientFromSearch() }}
-                  style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', color: 'var(--c-fg)', display: 'flex', alignItems: 'center', gap: 6 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--c-wash)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  onMouseDown={e => { e.preventDefault(); openNewCard(searchQuery) }}
+                  style={{ padding: '9px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, borderTop: clientSuggestions.length ? '1px solid var(--c-wash2)' : 'none', background: 'color-mix(in srgb, var(--c-st-booked) 8%, transparent)' }}
                 >
-                  <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
-                  New {isBilling ? 'label' : 'client'}: &ldquo;{searchQuery.trim()}&rdquo;
+                  <span style={{ width: 24, height: 24, borderRadius: 99, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, flexShrink: 0 }}>+</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 11.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-booked)' }}>
+                      {clientSuggestions.length ? 'Not one of these? ' : ''}Add a new {isBilling ? 'label' : 'client'}: &ldquo;{searchQuery.trim()}&rdquo;
+                    </span>
+                    <span style={{ display: 'block', fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>Opens a short card — name, phone or email. Takes 20 seconds.</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -611,8 +759,89 @@ export function ClientPanel({
         </div>
       )}
 
+      {/* THE NEW-CLIENT CARD (2026-09-18) */}
+      {newCard && !readOnly && (() => {
+        const fl: React.CSSProperties = { fontSize: 8, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 3, display: 'block' }
+        const req = <span style={{ fontWeight: 600, letterSpacing: '0.02em', textTransform: 'none', color: 'var(--c-st-warm)' }}> · required</span>
+        const fi = (ok: boolean | null): React.CSSProperties => ({
+          width: '100%', background: 'var(--c-wash2)', borderRadius: 99, padding: '8px 12px', fontSize: 12, fontFamily: 'Inter', color: 'var(--c-fg)', border: 'none', outline: 'none', minHeight: 32,
+          boxShadow: ok === false ? 'inset 0 0 0 1.5px var(--c-st-hot)' : ok ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--c-st-booked) 60%, transparent)' : 'none',
+        })
+        const two: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }
+        const hint = !ncNameOk
+          ? (isBilling ? 'Needs the label or company name' : /[\/&,]/.test(nc.fname + nc.lname) ? 'One person per client — add the other separately' : 'Needs a first and last name')
+          : !ncContactOk ? 'Needs a phone or an email'
+          : dupe && dupeDismissed !== dupe.id ? 'Answer the question above first'
+          : 'Creates the profile and links this session'
+        return (
+          <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 13 }}>New {isBilling ? 'label' : 'client'}</span>
+              <button type="button" onClick={() => setNewCard(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', textDecoration: 'underline' }}>← back to search</button>
+            </div>
+            {isBilling && (
+              <div style={{ marginBottom: 8 }}>
+                <label style={fl}>Label / company{req}</label>
+                <input autoFocus value={nc.company} onChange={e => setNc(v => ({ ...v, company: e.target.value }))} placeholder="Company name" style={fi(nc.company.trim() ? true : null)} />
+              </div>
+            )}
+            <div style={two}>
+              <div>
+                <label style={fl}>{isBilling ? 'A&R first name' : 'First name'}{!isBilling && req}</label>
+                <input autoFocus={!isBilling} value={nc.fname} onChange={e => setNc(v => ({ ...v, fname: e.target.value }))} placeholder="First" style={fi(nc.fname.trim() ? (/[\/&,]/.test(nc.fname) ? false : true) : (isBilling ? null : false))} />
+              </div>
+              <div>
+                <label style={fl}>{isBilling ? 'A&R last name' : 'Last name'}{!isBilling && req}</label>
+                <input value={nc.lname} onChange={e => setNc(v => ({ ...v, lname: e.target.value }))} placeholder="Last" style={fi(nc.lname.trim() ? true : (isBilling ? null : false))} />
+              </div>
+            </div>
+            {dupe && dupeDismissed !== dupe.id && (
+              <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', background: 'color-mix(in srgb, var(--c-st-warm) 14%, transparent)', border: '1px solid color-mix(in srgb, var(--c-st-warm) 45%, transparent)', borderRadius: 10, padding: '9px 11px', margin: '2px 0 10px', fontSize: 11, fontFamily: 'Inter', lineHeight: 1.45 }}>
+                <span style={{ width: 18, height: 18, borderRadius: 99, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>!</span>
+                <div>
+                  <b style={{ display: 'block' }}>Looks like {dupe.name} is already on file</b>
+                  <span style={{ color: 'var(--c-fg-2)' }}>{dupe.sub}{dupe.hard ? ' — same phone or email.' : '.'} Same {isBilling ? 'label' : 'person'}?</span>
+                  <div style={{ marginTop: 6, display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <button type="button" onClick={useDupe} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'var(--c-fg)', color: 'var(--c-bg)', border: 'none', borderRadius: 99, padding: '5px 11px', cursor: 'pointer', fontFamily: 'Inter' }}>Use {dupe.name}</button>
+                    <button type="button" onClick={() => setDupeDismissed(dupe.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 9.5, fontWeight: 700, color: 'var(--c-fg-3)', textDecoration: 'underline', fontFamily: 'Inter' }}>No, different {isBilling ? 'label' : 'person'}</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div style={two}>
+              <div>
+                <label style={fl}>Phone</label>
+                <input value={nc.phone} onChange={e => setNc(v => ({ ...v, phone: e.target.value }))} placeholder="(310) 555-0100" inputMode="tel" style={fi(digits(nc.phone).length >= 7 ? true : null)} />
+              </div>
+              <div>
+                <label style={fl}>Email</label>
+                <input value={nc.email} onChange={e => setNc(v => ({ ...v, email: e.target.value }))} placeholder="name@email.com" inputMode="email" style={fi(/\S+@\S+\.\S+/.test(nc.email.trim()) ? true : null)} />
+              </div>
+            </div>
+            <div style={{ ...two, marginBottom: 2 }}>
+              <div>
+                <label style={fl}>Artist / project</label>
+                <input value={nc.artist} onChange={e => setNc(v => ({ ...v, artist: e.target.value }))} placeholder="—" style={fi(null)} />
+              </div>
+              <div>
+                <label style={fl}>Type</label>
+                <div style={{ ...fi(null), color: 'var(--c-fg-2)' }}>{isBilling ? 'Label / Billing' : 'COD'}</div>
+              </div>
+            </div>
+            {!ncContactOk && <div style={{ fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-st-warm)', marginTop: 2 }}>Phone or email — one of the two is required.</div>}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+              <button
+                type="button" onClick={createClientFromCard} disabled={!ncValid || ncBusy}
+                style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '9px 16px', borderRadius: 99, background: 'var(--c-fg)', color: 'var(--c-bg)', border: 'none', cursor: ncValid ? 'pointer' : 'default', opacity: ncValid ? 1 : 0.35, fontFamily: 'Inter' }}
+              >{ncBusy ? 'Adding…' : ncValid ? `Add ${isBilling ? 'label' : 'client'} & use` : `Add ${isBilling ? 'label' : 'client'}`}</button>
+              <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>{hint}</span>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Client card — shown when a client is attached */}
-      {hasClient && (
+      {hasClient && !newCard && (
         <div style={{ background: 'var(--c-wash)', borderRadius: 8, overflow: 'hidden' }}>
           {/* Card header */}
           <div style={{ padding: '12px 14px 10px' }}>
@@ -631,7 +860,7 @@ export function ClientPanel({
                     <button type="button" onClick={saveName} disabled={nameBusy} className="c-control c-pill c-fill-booked c-raised-chip" style={{ fontSize: 10 }}>{nameBusy ? 'Saving…' : 'Save'}</button>
                     <button type="button" onClick={() => setEditingName(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', textDecoration: 'underline' }}>Cancel</button>
                     <span style={{ width: '100%', fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
-                      {value.client_db_id ? 'Renames the client profile — every session, lead and work order linked to it updates.' : 'Saves this name as a client profile and links this record to it.'}
+                      {value.client_db_id ? 'Renames the client profile — every session, lead and work order linked to it updates.' : 'Fixes the name here, then opens the card to put it on file.'}
                     </span>
                   </div>
                 ) : (
@@ -644,6 +873,26 @@ export function ClientPanel({
                 )}
                 {subName && subName !== displayName && (
                   <div style={{ fontSize: 12, fontFamily: 'Inter', color: nameColor, marginTop: 3, opacity: 0.75 }}>{subName}</div>
+                )}
+                {/* ON FILE, OR JUST A NAME (2026-09-18) — the line that says
+                    whether this record is tied to a profile. A bare name
+                    (old sessions, quick holds) wears the warm chip and a
+                    one-tap "Put on file" that opens the card pre-filled. */}
+                {value.client_db_id ? (
+                  <div style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-booked)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 12, height: 12, borderRadius: 99, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 900 }}>✓</span>
+                    On file{linkedHistory?.since ? ` · since ${new Date(linkedHistory.since).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : ''}{linkedHistory ? ` · ${linkedHistory.n} ${linkedHistory.n === 1 ? 'session' : 'sessions'}` : ''}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 12, height: 12, borderRadius: 99, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 900 }}>!</span>
+                      Not on file — just a name
+                    </span>
+                    {!readOnly && (
+                      <button type="button" onClick={putOnFile} style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', border: 'none', borderRadius: 99, padding: '4px 9px', cursor: 'pointer', fontFamily: 'Inter' }}>Put on file →</button>
+                    )}
+                  </div>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>

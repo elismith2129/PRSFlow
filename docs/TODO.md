@@ -25,5 +25,7 @@ Newest at the top of each group.*
 
 ## Small / maybe
 
+- [ ] **Old "just a name" sessions:** a one-time dashboard list of work orders with a client name but no profile, so they can be put on file in one sitting (the WO card already offers "Put on file →" one at a time). *(Sep 18)*
+
 - [ ] Drop the − / + from the WO day-date chip if Eli finds it too much; keep the picker. *(Sep 16)*
 - [ ] Runner WO page studio-time scroll cap (~5 days visible, Eli wants ~8). *(Aug)*
