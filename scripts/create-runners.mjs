@@ -18,7 +18,8 @@
 // in the office roster.
 //
 // Usage:
-//   node --env-file=.env.local scripts/create-runners.mjs        (Node 20.6+)
+//   node --env-file=.env.local scripts/create-runners.mjs --only cras.cmartinez1@gmail.com
+//   node --env-file=.env.local scripts/create-runners.mjs        (EVERYONE — rotates all passwords)
 // Or:
 //   NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/create-runners.mjs
 
@@ -37,7 +38,18 @@ const RUNNERS = [
   { name: 'Lori Beth',        initials: 'LS', email: 'loribeth417@gmail.com' },
   { name: 'Hunter Tedeschi',  initials: 'HT', email: 'huntertedeschi12@gmail.com' },
   { name: 'Ezra Miller',      initials: 'EZ', email: 'cras.emiller1@gmail.com' },
+  { name: 'Cris Martinez',    initials: 'CM', email: 'cras.cmartinez1@gmail.com' }, // added 2026-09-18
 ];
+
+// ONE PERSON AT A TIME (2026-09-18): re-running the whole list rotates every
+// runner's password. `--only <email>` (repeatable) limits the run to those
+// rows, so adding a runner never logs the rest out.
+const ONLY = process.argv.flatMap((a, i, all) => a === '--only' && all[i + 1] ? [all[i + 1].trim().toLowerCase()] : []);
+const TARGETS = ONLY.length ? RUNNERS.filter(r => ONLY.includes(r.email.trim().toLowerCase())) : RUNNERS;
+if (ONLY.length && TARGETS.length !== ONLY.length) {
+  console.error(`--only: not in the roster: ${ONLY.filter(e => !RUNNERS.some(r => r.email.toLowerCase() === e)).join(', ')}`);
+  process.exit(1);
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -84,7 +96,7 @@ async function findAuthUserByEmail(email) {
 
 const results = [];
 
-for (const r of RUNNERS) {
+for (const r of TARGETS) {
   const email = r.email.trim().toLowerCase();
   const password = generatePassword();
 
@@ -123,4 +135,4 @@ for (const r of RUNNERS) {
 
 console.log('\nDone. Hand these out yourself — nothing was emailed.\n');
 console.table(results);
-console.log('\nRe-running this script rotates every password above.');
+console.log(ONLY.length ? '' : '\nRe-running this script rotates every password above. Use --only <email> to add one person.');
