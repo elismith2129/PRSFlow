@@ -30,6 +30,9 @@ import { stripCurrency } from '@/lib/format'
 
 /** A studio-time row, reduced to only the fields that affect money. */
 export type TotalsStudioRow = {
+  /** STATUS PER DAY (2026-09-19): an explicitly cancelled day bills nothing.
+   *  Zeroed HERE at total time, never on the row — the discount precedent. */
+  day_status?: string | null
   charge?: number | string | null
   ot_charge?: number | string | null
   from_time?: string | null
@@ -186,7 +189,8 @@ export function engChargeForRow(row: TotalsStudioRow): number {
 
 /** The six numbers on a work order. Pure — no I/O, safe to call in a loop. */
 export function computeWoTotals(input: WoTotalsInput): WoTotals {
-  const { studioRows, rentalRows, paymentRows } = input
+  const { rentalRows, paymentRows } = input
+  const studioRows = input.studioRows.filter(r => r.day_status !== 'cancelled')
 
   const studio = studioRows.reduce(
     (s, r) => s + money(r.charge) + money(r.ot_charge),

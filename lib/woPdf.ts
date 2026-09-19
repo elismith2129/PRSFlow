@@ -657,13 +657,17 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
           ])
         }
       } else if (!isEngOnly) {
+        // A CANCELLED DAY (2026-09-19) prints as a line that says so and
+        // carries no money — the row stays for the record, the total is
+        // zeroed at total time (computeWoTotals), never on the row.
+        const dayCancelled = r.day_status === 'cancelled'
         stRows.push([
           // "PRS A", never a bare "A" — every venue has a Studio A, and this
           // page is read months later by someone who was not there. A row's own
           // `location` wins; blank means it inherited the session's venue.
           roomCode(r.studio, r.location || wo.location),
           pdfDate(r.date),
-          r.session_info || '',
+          dayCancelled ? `CANCELLED${r.session_info ? ` · ${r.session_info}` : ''}` : (r.session_info || ''),
           r.from_time || '',
           r.to_time || '',
           rowHrs != null && rowHrs !== '' ? String(rowHrs) : '',
@@ -671,10 +675,10 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
           // `row_rate_type` is the only thing that decides which one shows.
           isDayRow ? 'Day' : 'Hr',
           (isDayRow ? r.rate_daily : r.rate) ? String(isDayRow ? r.rate_daily : r.rate) : '',
-          r.ot_hours ? String(r.ot_hours) : '',
-          r.ot_rate ? String(r.ot_rate) : '',
-          cash(r.ot_charge),
-          rowTotal ? money(rowTotal) : '',
+          dayCancelled ? '' : (r.ot_hours ? String(r.ot_hours) : ''),
+          dayCancelled ? '' : (r.ot_rate ? String(r.ot_rate) : ''),
+          dayCancelled ? '' : cash(r.ot_charge),
+          dayCancelled ? '—' : (rowTotal ? money(rowTotal) : ''),
         ])
       }
 

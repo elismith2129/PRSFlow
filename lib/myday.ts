@@ -928,7 +928,7 @@ export async function fetchBalancesQueue(opts?: {
   const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
-      .select('work_order_id, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate')
+      .select('work_order_id, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, day_status')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),

@@ -20,6 +20,49 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.36.0 — Status per day: confirmed Mon–Wed, tentative Thu–Fri, one work order — Sep 19, 2026 (branch `feature/day-status`)
+
+Step 3 of `docs/design-refs/wo-per-day-status-options.html`. Eli: "make one
+booking and have some days confirmed and some tentative — move the confirmed /
+tentative / cancelled bar to each day instead of the WO as a whole." **This one
+is WO logic** — the change is made at one layer so every status reader keeps
+working:
+
+- **Data:** `studio_time_rows.day_status` (`confirmed|tentative|cancelled|null`;
+  null = same as the session). Every existing row null → nothing changes on day
+  one. In the row save payload.
+- **WO status bar = all days:** tapping a status writes `session_status` AND
+  clears every `day_status`. When days differ the bar shows a disabled **Mixed**
+  pill (gradient) with a "3 confirmed · 2 tentative" line under it.
+- **Day pill:** Confirmed / Tentative / Cancelled on each desktop day card, phone
+  day card and the day sheet header (`dayStatusPill`); office only; only while
+  the session is a session (Tour/Tech/Open Hrs/Lockout stay WO-level).
+  `setDayStatus` writes every row of that date; same-as-session → null.
+- **Projection splits on status** (`buildBookingProjection`: the room group key
+  gains the effective status; `Seg.status` → each card's `bookings.status`). So
+  the calendar colour, runner hub, daily-ops sweeps, TV walls and the unsubmitted
+  rule are right without knowing days can differ.
+- **Guards per day:** confirm-needs-times runs over the effectively-confirmed rows
+  only (and still refuses Times TBD there); confirm-needs-client and the
+  calendar-lead write fire when ANY day is confirmed (or lockout). The Times TBD
+  button shows on any day that isn't effectively confirmed.
+- **Cancelled day:** row kept (history), zeroed at total time —
+  `computeWoTotals` drops `day_status === 'cancelled'` rows (all five callers;
+  billing + myday select lists gained `day_status`); the desktop day card
+  strikes through at 50% with $0; the PDF line says CANCELLED with no money.
+  Kill fee = the WO discount, unchanged. `unsubmittedDaysOf` /
+  `fetchUnsubmittedSessions` skip tentative/cancelled days.
+
+**Migration (run first — the preview shares the live DB):**
+`20260919130000_st_rows_day_status.sql`. **Watch-outs:** `effDayStatus(row,
+sessionStatus)` is the ONE place the effective status is derived in the popup —
+use it, don't read `day_status` raw. The projection's primary card is still the
+earliest segment, whatever its status. A whole-WO cancel (session_status
+`cancelled`) is unchanged — it never zeroes rows; only an explicit per-day
+cancel does.
+
+---
+
 ## v1.35.2 — Day view shows each day's own times and staff; day-view cards un-broken — Sep 19, 2026
 
 Eli: "the day view is not showing accurate day by day — Melly Mike still shows

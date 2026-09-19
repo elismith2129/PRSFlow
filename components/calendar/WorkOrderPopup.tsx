@@ -239,6 +239,10 @@ type StRow = {
   /** The TBD button on the day's times (migration 20260919120000) — an explicit
    *  "not decided yet", cleared when a time is typed. Part of the save payload. */
   times_tbd: boolean
+  /** STATUS PER DAY (migration 20260919130000). null = same as the session's
+   *  session_status. Set by the day card / day sheet pill; cleared on every
+   *  row when the WO's own status bar is tapped. In the save payload. */
+  day_status: 'confirmed' | 'tentative' | 'cancelled' | null
 }
 
 type EquipRow = {
@@ -547,6 +551,7 @@ function normalizeStRow(d: any): StRow {
     submitted_by_name: d.submitted_by_name ?? null,
     submitted_at: d.submitted_at ?? null,
     times_tbd: d.times_tbd === true,
+    day_status: d.day_status === 'confirmed' || d.day_status === 'tentative' || d.day_status === 'cancelled' ? d.day_status : null,
     // Assistant is the default role everywhere — an engineer is the exception.
     // Stored rows keep whatever they were saved with; this only decides the
     // fallback for a row with no role recorded.
@@ -894,7 +899,7 @@ export function WorkOrderPopup({
         eng_visible: monthlyStaff,
         eng_role: 'assistant' as const,
         bundle_id: null,
-        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null, times_tbd: false,
+        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null,
       }
     })
 
@@ -1780,6 +1785,35 @@ export function WorkOrderPopup({
 
   // ── Studio time row updates ─────────────────────────────────────────────────
 
+  // ── STATUS PER DAY (Eli, 2026-09-18) ────────────────────────────────────
+  // A day's EFFECTIVE status is its own day_status, else the session's. Only
+  // meaningful while the session is a session (confirmed / tentative /
+  // cancelled): Tour, Tech, Open Hrs and Lockout are WO-level and per-day
+  // overrides are ignored under them.
+  const DAY_STATUSES: readonly ['confirmed', 'tentative', 'cancelled'] = ['confirmed', 'tentative', 'cancelled']
+  const perDayStatusAllowed = (sessionStatus: string) => (DAY_STATUSES as readonly string[]).includes(sessionStatus)
+  function effDayStatus(r: Pick<StRow, 'day_status'>, sessionStatus: string = wo?.session_status ?? ''): string {
+    return perDayStatusAllowed(sessionStatus) && r.day_status ? r.day_status : sessionStatus
+  }
+  /** Set every row of a date (studio rows and staff sub-rows alike) to one status. Same as the session → null. */
+  function setDayStatus(date: string, status: 'confirmed' | 'tentative' | 'cancelled') {
+    if (!wo || runner) return
+    const value = status === wo.session_status ? null : status
+    setStRows(prev => prev.map(r => r.date === date ? { ...r, day_status: value } : r))
+    setDirtyFields(prev => new Set(prev).add('day_status'))
+  }
+  /** The bar's summary when days differ: counts per effective status, or null when they all agree. */
+  const mixedSummary = (() => {
+    if (!wo || !perDayStatusAllowed(wo.session_status)) return null
+    const dated = stRows.filter(r => r.date && r.studio !== '')
+    if (!dated.some(r => r.day_status && r.day_status !== wo.session_status)) return null
+    const days = new Map<string, string>()
+    for (const r of dated) if (!days.has(r.date)) days.set(r.date, effDayStatus(r))
+    const counts: Record<string, number> = {}
+    for (const st of days.values()) counts[st] = (counts[st] ?? 0) + 1
+    return counts
+  })()
+
   function updateStRow(id: string, updates: Partial<StRow>) {
     const row = stRows.find(r => r.id === id)
     // Typing a time is the decision — it clears Times TBD on its own (2026-09-19).
@@ -2440,7 +2474,7 @@ export function WorkOrderPopup({
       // Follow the row above (so a session staffed with an engineer keeps adding
       // engineers), otherwise fall back to assistant.
       eng_role: last?.eng_role || 'assistant',
-      status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false,
+      status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null,
     }))
 
     setStRows(prev => [...prev, ...rows])
@@ -2576,7 +2610,7 @@ export function WorkOrderPopup({
       eng_hours: null, eng_charge: null,
       actual_from_time: '', actual_to_time: '',
       admin_checked: false, admin_locked: false, eng_visible: true,
-      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, bundle_id: null,
+      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null, bundle_id: null,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -2835,7 +2869,7 @@ export function WorkOrderPopup({
     // Build segments (new segment on room change OR non-consecutive date).
     // Each segment carries BOTH an engineer (1ST) and an assistant (2ND) —
     // first named staffer per role wins.
-    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; eng: string; asst: string }
+    type Seg = { studio: string; location: string; start: string; end: string; from: string; to: string; eng: string; asst: string; status: string }
     const applyStaff = (seg: Seg, name: string, role: string) => {
       if (!name) return
       if (role === 'assistant') { if (!seg.asst) seg.asst = name }
@@ -2854,9 +2888,16 @@ export function WorkOrderPopup({
     //
     // Grouping by room first makes the date walk the only question inside a
     // group, which is what "continuous block" actually means.
+    // STATUS IS PART OF THE RUN (2026-09-19): Mon–Wed confirmed and Thu–Fri
+    // tentative are two cards — same room, same WO — so every surface that
+    // reads bookings.status per card (calendar colour, runner hub, daily-ops
+    // sweeps, TV walls, the unsubmitted rule) is right without knowing days
+    // can differ. Grouping by room+status makes the date walk the only
+    // question inside a group, exactly as the room split did.
+    const sessionStatus = wo.session_status || 'tentative'
     const byRoom = new Map<string, StRow[]>()
     for (const r of dated) {
-      const key = `${r.studio}|${r.location || venue}`
+      const key = `${r.studio}|${r.location || venue}|${effDayStatus(r, sessionStatus)}`
       const g = byRoom.get(key)
       if (g) g.push(r); else byRoom.set(key, [r])
     }
@@ -2886,7 +2927,7 @@ export function WorkOrderPopup({
           if (!sameDay) last.end = r.date
           applyStaff(last, r.eng_name, r.eng_role || 'assistant')
         } else {
-          const seg: Seg = { studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, eng: '', asst: '' }
+          const seg: Seg = { studio: r.studio, location: rLoc, start: r.date, end: r.date, from: r.from_time, to: r.to_time, eng: '', asst: '', status: effDayStatus(r, sessionStatus) }
           applyStaff(seg, r.eng_name, r.eng_role || 'assistant')
           segs.push(seg)
           last = seg
@@ -2945,6 +2986,7 @@ export function WorkOrderPopup({
     }
     const scheduleFor = (seg: Seg) => ({
       ...staffFor(seg),
+      status: seg.status,
       location: seg.location || venue || undefined,
       studio: roomLabelForVenue(seg.location || venue, seg.studio),
       start_date: seg.start,
@@ -3218,8 +3260,11 @@ export function WorkOrderPopup({
       // From and To. Tentative saves freely (deals close before times settle);
       // lockouts are exempt entirely (woNeedsTimes — Mustard's times are
       // runner-entered live). Office-only: runners cannot set the status.
-      if (woNeedsTimes(wo.session_status)) {
-        const startProblem = confirmStartProblem(wo.session_status, stRows)
+      // Per DAY (2026-09-19): only the days that are effectively confirmed
+      // need their times; a tentative day inside a confirmed run does not.
+      const confirmedRows = stRows.filter(r => effDayStatus(r) === 'confirmed')
+      if (woNeedsTimes(wo.session_status) || confirmedRows.length > 0) {
+        const startProblem = confirmStartProblem('confirmed', confirmedRows)
         if (startProblem) {
           setSaving(false)
           setTimeErrorRows(new Set(startProblem.rowIds))
@@ -3237,7 +3282,8 @@ export function WorkOrderPopup({
       // until fixed; confirming is the moment it has to be real. Lockouts
       // are confirmed sessions too. Office-only — runners never touch the
       // client block.
-      if ((wo.session_status === 'confirmed' || wo.session_status === 'lockout') && !wo.client_id) {
+      const anyConfirmedDay = wo.session_status === 'lockout' || stRows.some(r => r.studio !== '' && r.date && effDayStatus(r) === 'confirmed')
+      if (anyConfirmedDay && !wo.client_id) {
         setSaving(false)
         setClientStop(true)
         return false
@@ -3304,7 +3350,7 @@ export function WorkOrderPopup({
     const stPayloads = stRows.map(r => ({
       id: r.id,
       studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
-      from_time: r.from_time, to_time: r.to_time, times_tbd: r.times_tbd === true,
+      from_time: r.from_time, to_time: r.to_time, times_tbd: r.times_tbd === true, day_status: r.day_status ?? null,
       total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
       row_rate_type: r.row_rate_type,
       charge: r.charge,
@@ -3399,7 +3445,7 @@ export function WorkOrderPopup({
     // dead, the way a CRM lead would go. Separate from the atomic save on
     // purpose: a CRM row failing must never un-save a session.
     if (!runner && !leadId && !wo.lead_id && wo.client_id
-        && (wo.session_status === 'confirmed' || wo.session_status === 'lockout')) {
+        && (wo.session_status === 'lockout' || stRows.some(r => r.studio !== '' && r.date && effDayStatus(r) === 'confirmed'))) {
       await writeCalendarLead(id)
     } else if (!runner && wo.lead_id && wo.session_status === 'cancelled') {
       const { error: deadErr } = await supabase.from('leads')
@@ -3493,7 +3539,7 @@ export function WorkOrderPopup({
           id: r.id,
           work_order_id: woIdRef.current!,
           studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
-          from_time: r.from_time, to_time: r.to_time, times_tbd: r.times_tbd === true,
+          from_time: r.from_time, to_time: r.to_time, times_tbd: r.times_tbd === true, day_status: r.day_status ?? null,
           total_hours: r.total_hours, rate: r.rate,
           rate_daily: r.rate_daily || null,
           row_rate_type: r.row_rate_type,
@@ -3711,6 +3757,30 @@ export function WorkOrderPopup({
       return <span style={{ ...pill, background: 'var(--c-st-hot)', color: 'var(--c-hot-text)' }}>Not submitted</span>
     }
     return null
+  }
+  /**
+   * THE DAY'S OWN STATUS PILL (Eli, 2026-09-18: "move the confirmed / tentative
+   * / cancelled bar to each day"). Confirmed / Tentative / Cancelled for one
+   * date; the one that matches the session reads as inherited. Office only,
+   * and only while the session is a session (not Tour/Tech/Open Hrs/Lockout).
+   */
+  function dayStatusPill(date: string, small = false) {
+    if (!wo || runner || readOnly || !date || !perDayStatusAllowed(wo.session_status)) return null
+    const rows = stRows.filter(r => r.date === date)
+    if (rows.length === 0) return null
+    const cur = effDayStatus(rows.find(r => r.studio !== '') ?? rows[0])
+    return (
+      <span className={`c-seg${small ? ' c-seg-tiny' : ''}`} style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+        {DAY_STATUSES.map(st => (
+          <button key={st} type="button"
+            className={cur === st ? `c-on ${statusFillClass(st)}` : ''}
+            onClick={() => setDayStatus(date, st)}
+            title={cur === st && !rows[0].day_status ? 'Same as the session' : undefined}
+            style={{ cursor: 'pointer', fontSize: small ? 8 : 9, padding: small ? '3px 7px' : '4px 9px' }}
+          >{st === 'confirmed' ? 'Confirmed' : st === 'tentative' ? 'Tentative' : 'Cancelled'}</button>
+        ))}
+      </span>
+    )
   }
   const metaLabel: React.CSSProperties = {
     fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
@@ -4926,18 +4996,36 @@ export function WorkOrderPopup({
                 (globals.css) fits them at every width by tightening padding and
                 tracking; the horizontal scroll is deliberately gone. */}
             <div className={`c-seg c-seg-status${wide ? ' c-seg-tiny' : ''}`} style={{ order: wide ? 1 : undefined, alignSelf: 'stretch', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+              {/* MIXED (2026-09-19): when day cards disagree with the session,
+                  the bar stops claiming one status. Tapping any status here is
+                  "all days" — it writes session_status AND clears every day's
+                  own override. Set a single day on its card. */}
+              {mixedSummary && (
+                <button type="button" disabled className="c-on" title={Object.entries(mixedSummary).map(([k, n]) => `${n} ${k}`).join(' · ')} style={{ cursor: 'default', background: 'linear-gradient(90deg, var(--c-st-booked) 0 55%, var(--c-wash2) 55%)', color: 'var(--c-chip-ink)' }}>
+                  Mixed
+                </button>
+              )}
               {SESSION_STATUSES.map(([val, lbl]) => {
-                const on = wo.session_status === val
+                const on = !mixedSummary && wo.session_status === val
                 return (
                   <button key={val} type="button" disabled={readOnly}
                     className={on ? `c-on ${statusFillClass(val)}` : ''}
-                    onClick={() => { setDirtyFields(prev => new Set(prev).add('session_status')); setWo(w => w ? { ...w, session_status: val } : w) }}
+                    onClick={() => {
+                      setDirtyFields(prev => new Set(prev).add('session_status'))
+                      setWo(w => w ? { ...w, session_status: val } : w)
+                      setStRows(prev => prev.some(r => r.day_status) ? prev.map(r => ({ ...r, day_status: null as StRow['day_status'] })) : prev)
+                    }}
                     style={{ cursor: readOnly ? 'default' : 'pointer' }}>
                     {lbl}
                   </button>
                 )
               })}
             </div>
+            {mixedSummary && (
+              <div style={{ order: wide ? 1 : undefined, fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: -4 }}>
+                {Object.entries(mixedSummary).map(([k, n]) => `${n} ${k}`).join(' · ')} — set a day on its card, or tap a status above to set every day.
+              </div>
+            )}
 
             {/* BLOCK view — Tour/Tech/Open-Hours: just a title + dates + times */}
             {isBlock && (
@@ -6467,7 +6555,11 @@ export function WorkOrderPopup({
                       const hrs = calcHours(r.eng_from_time || r.from_time, r.eng_to_time || r.to_time)
                       return hrs != null && hrs > 0 && rate > 0 ? hrs * rate : 0
                     }
-                    const dayTotal = g.rows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
+                    // A CANCELLED DAY BILLS NOTHING (2026-09-19) — zeroed here
+                    // and in computeWoTotals, never on the row. Kill fee = the
+                    // WO discount, as before.
+                    const dayCancelled = !!first && effDayStatus(first) === 'cancelled'
+                    const dayTotal = dayCancelled ? 0 : g.rows.reduce((s, r) => s + (r.charge ?? 0) + (r.ot_charge ?? 0) + engChargeFor(r), 0)
 
                     // ── DESKTOP CARD — V1 "two halves" (Eli's pick, 2026-08-18;
                     // mock docs/design-refs/wo-day-card-options.html). The day
@@ -6487,7 +6579,8 @@ export function WorkOrderPopup({
                           style={{
                             background: 'var(--c-wash)', borderRadius: 14, padding: '15px 16px', marginBottom: 9,
                             cursor: cardLocked || readOnly ? 'default' : 'pointer',
-                            opacity: cardLocked ? 0.62 : 1,
+                            opacity: cardLocked ? 0.62 : dayCancelled ? 0.5 : 1,
+                            textDecoration: dayCancelled ? 'line-through' : undefined,
                             display: 'flex', gap: 14, alignItems: 'stretch',
                           }}
                         >
@@ -6512,6 +6605,7 @@ export function WorkOrderPopup({
                               )}
                               <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
                               {dayStateTag(g.rows, g.date)}
+                              {dayStatusPill(g.date)}
                             </div>
                             {/* 16px, NOT 22 (2026-08-18). At 22 the range wrapped
                                 onto two lines and pushed the hours onto a third —
@@ -6740,6 +6834,7 @@ export function WorkOrderPopup({
                             {renderDateChip(g.date, cardLocked, 'card')}
                             {dayStateTag(g.rows, g.date, true)}
                           </span>
+                          {dayStatusPill(g.date, true)}
                           {/* The signpost (Eli, 2026-08-16): the whole card
                               opens the sheet, but nothing SAID so. Not a
                               separate handler — it rides the card's tap. */}
@@ -7541,6 +7636,7 @@ export function WorkOrderPopup({
                     )}
                     {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>{dayIdx + 1} of {allDates.length}</span>}
                     {dayStateTag(sheetRows, daySheetDate, true)}
+                    {dayStatusPill(daySheetDate, true)}
                   </span>
                   <span style={fldK}>
                     {Array.from(new Set(sheetStudioRows.map(r => roomCode(toStudioLetter(r.studio), r.location || booking.location)).filter(Boolean))).join(' · ')}
@@ -7603,7 +7699,7 @@ export function WorkOrderPopup({
                               marks the day; typing a time un-marks it. Hidden on
                               a confirmed session — TBD is a tentative thing, and
                               the confirm guard refuses it. Office only. */}
-                          {!runner && !readOnly && wo.session_status !== 'confirmed' && wo.session_status !== 'lockout' && (
+                          {!runner && !readOnly && effDayStatus(r) !== 'confirmed' && wo.session_status !== 'lockout' && (
                             <button
                               type="button"
                               onClick={() => updateStRow(r.id, r.times_tbd ? { times_tbd: false } : { times_tbd: true, from_time: '', to_time: '' })}

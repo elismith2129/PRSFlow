@@ -59,7 +59,7 @@ const SENT = new Set(['submitted', 'approved'])
 
 /** The dates (< before) on which any studio row of this work order is still in progress. Used by the billing hub. */
 export function unsubmittedDaysOf(
-  rows: { date: string | null; studio: string | null; status: string | null; admin_locked?: boolean | null }[],
+  rows: { date: string | null; studio: string | null; status: string | null; admin_locked?: boolean | null; day_status?: string | null }[],
   before: string,
 ): string[] {
   const out = new Set<string>()
@@ -67,6 +67,9 @@ export function unsubmittedDaysOf(
     if (!r.date || r.date >= before) continue
     if (!(r.studio ?? '').trim()) continue // staff sub-rows follow the studio row
     if (r.admin_locked) continue
+    // A day the office marked tentative or cancelled was never a night to
+    // submit (2026-09-19).
+    if (r.day_status === 'tentative' || r.day_status === 'cancelled') continue
     if (!SENT.has(r.status ?? 'in_progress')) out.add(r.date)
   }
   return Array.from(out).sort()
@@ -108,8 +111,8 @@ export async function fetchUnsubmittedSessions(opts: { from: string; to: string;
   const resolved = bookings.map(b => ({ b, wo: (b.work_order_id ? woById.get(b.work_order_id) : undefined) ?? woByBooking.get(b.id) ?? null }))
   const allWo = Array.from(new Set(resolved.map(r => r.wo?.id).filter(Boolean))) as string[]
   const { data: rows } = allWo.length
-    ? await supabase.from('studio_time_rows').select('work_order_id, date, studio, status, admin_locked').in('work_order_id', allWo).gte('date', opts.from).lte('date', opts.to)
-    : { data: [] as { work_order_id: string; date: string | null; studio: string | null; status: string | null; admin_locked: boolean | null }[] }
+    ? await supabase.from('studio_time_rows').select('work_order_id, date, studio, status, admin_locked, day_status').in('work_order_id', allWo).gte('date', opts.from).lte('date', opts.to)
+    : { data: [] as { work_order_id: string; date: string | null; studio: string | null; status: string | null; admin_locked: boolean | null; day_status: string | null }[] }
   const rowsByWo = new Map<string, NonNullable<typeof rows>>()
   for (const r of rows ?? []) (rowsByWo.get(r.work_order_id) ?? rowsByWo.set(r.work_order_id, []).get(r.work_order_id)!).push(r)
 
@@ -119,6 +122,9 @@ export async function fetchUnsubmittedSessions(opts: { from: string; to: string;
     for (const date of dateRange(b.start_date, b.end_date)) {
       if (date < opts.from || date > opts.to) continue
       const dayRows = (rowsByWo.get(wo?.id ?? '') ?? []).filter(r => r.date === date && (r.studio ?? '').trim())
+      // Per-day status (2026-09-19): a day marked tentative/cancelled on the
+      // WO is not a night to submit, even under a confirmed card.
+      if (dayRows.length > 0 && dayRows.every(r => r.day_status === 'tentative' || r.day_status === 'cancelled')) continue
       const unsubmitted = !wo
         || dayRows.length === 0
         || dayRows.some(r => !r.admin_locked && !SENT.has(r.status ?? 'in_progress'))

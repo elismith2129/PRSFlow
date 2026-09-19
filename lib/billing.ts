@@ -625,7 +625,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const [st, rent, pay] = await Promise.all([
     supabase
       .from('studio_time_rows')
-      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status, studio, admin_locked, submitted_by_name, submitted_at')
+      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status, studio, admin_locked, submitted_by_name, submitted_at, day_status')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     // fee_amount IS REQUIRED (WO-1121, 2026-09-10). Without it computeWoTotals
