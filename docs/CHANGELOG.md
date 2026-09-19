@@ -20,7 +20,27 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.36.0 — Status per day: confirmed Mon–Wed, tentative Thu–Fri, one work order — Sep 19, 2026 (branch `feature/day-status`)
+## v1.36.1 — Day status in the money column; open seats say which seat — Sep 19, 2026
+
+- **Placement (option C, `docs/design-refs/wo-day-status-placement-options.html`):**
+  the day's Confirmed / Tentative / Cancelled picker lives in the desktop day
+  card's right-hand money column above the day total; the header row never wraps
+  the date again. Phone day card and day sheet keep the small pill under the
+  header. "Not billed" replaces "Day total" on a cancelled day.
+- **Open seat says which seat** (Eli: "we may know if it's 2nd or 1st but not
+  who"): a staff row with a role and no name renders as `1ST-?` / `2ND-?` on the
+  calendar footer, in the spine cells and the day view (`staffByDay` /
+  `dayInfo` carry `engTbd` / `asstTbd`; `eng_visible === false` rows stay
+  hidden). Nothing new on the WO — the role toggle + empty name already is that
+  state.
+- WO opens in card view always (Eli, "list isn't that helpful"); list stays
+  as the toggle.
+
+No migrations.
+
+---
+
+## v1.36.0 — Status per day: confirmed Mon–Wed, tentative Thu–Fri, one work order — Sep 19, 2026
 
 Step 3 of `docs/design-refs/wo-per-day-status-options.html`. Eli: "make one
 booking and have some days confirmed and some tentative — move the confirmed /

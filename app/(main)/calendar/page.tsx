@@ -262,7 +262,7 @@ function BookingBlock({
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
-  staffByDay?: Record<string, { eng?: string; asst?: string }>
+  staffByDay?: Record<string, { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }>
   // work_order_id|date[|room] -> that day's from/to (2026-09-18). Empty for legacy rows.
   timesByDay?: Record<string, { from: string; to: string; tbd?: boolean }>
   onHover?: (booking: Booking, day: string, rect: DOMRect, cursorX: number) => void
@@ -308,7 +308,7 @@ function BookingBlock({
   // studio_time_rows at all (legacy / pre-WO) — never blank.
   function staffFor(dateStr: string): { eng: string; asst: string } {
     const hit = booking.work_order_id ? staffByDay[`${booking.work_order_id}|${dateStr}`] : undefined
-    if (hit) return { eng: initials(hit.eng ?? null), asst: initials(hit.asst ?? null) }
+    if (hit) return { eng: initials(hit.eng ?? null) || (hit.engTbd ? '?' : ''), asst: initials(hit.asst ?? null) || (hit.asstTbd ? '?' : '') }
     return { eng: initials(booking.engineer_name), asst: initials(booking.assistant_name) }
   }
   const { eng, asst } = staffFor(booking.start_date)
@@ -360,7 +360,7 @@ function BookingBlock({
     // projection's collapsed names, which are exactly what this replaces.
     const hit = booking.work_order_id ? staffByDay[base] : undefined
     const st = hasRows
-      ? { eng: initials(hit?.eng ?? null), asst: initials(hit?.asst ?? null) }
+      ? { eng: initials(hit?.eng ?? null) || (hit?.engTbd ? '?' : ''), asst: initials(hit?.asst ?? null) || (hit?.asstTbd ? '?' : '') }
       : staffFor(d)
     const known = hasRows ? !!t : true
     const from = known ? (t ? t.from : (booking.from_time ?? '')) : ''
@@ -408,7 +408,8 @@ function BookingBlock({
             const prev = dayCells[i - 1]
             const quiet = !!prev && prev.known === c.known && prev.tbd === c.tbd && prev.from === c.from && prev.to === c.to && prev.eng === c.eng && prev.asst === c.asst
             const timeStr2 = !c.known ? '—' : c.tbd ? 'TBD' : (c.from && c.to ? `${fmtCardTime(c.from)}–${fmtCardTime(c.to)}` : c.from ? fmtCardTime(c.from) : '—')
-            const staffStr = !c.known ? 'TBD' : ([c.eng, c.asst].filter(Boolean).join(' / ') || 'TBD')
+            // "1ST-? / KE" — an open seat names its role; nobody at all is TBD.
+            const staffStr = !c.known ? 'TBD' : ([c.eng && (c.eng === '?' ? '1ST-?' : c.eng), c.asst && (c.asst === '?' ? '2ND-?' : c.asst)].filter(Boolean).join(' / ') || 'TBD')
             return (
               <div key={c.d} className={`c-ev-cell${quiet ? ' c-ev-cell-quiet' : ''}${!c.known ? ' c-ev-cell-tbd' : ''}`} style={{ width: `${100 / spanDays}%` }}>
                 {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.tbd ? 'TBD' : c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
@@ -491,7 +492,7 @@ function DayView({
 }) {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   /** booking id → that day's own times and staff from studio_time_rows (2026-09-19). */
-  const [dayInfo, setDayInfo] = useState<Record<string, { from: string; to: string; eng: string | null; asst: string | null }>>({})
+  const [dayInfo, setDayInfo] = useState<Record<string, { from: string; to: string; eng: string | null; asst: string | null; engTbd?: boolean; asstTbd?: boolean }>>({})
   const [miniMonthStart, setMiniMonthStart] = useState(
     () => new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1)
   )
@@ -523,7 +524,7 @@ function DayView({
       const woIds = Array.from(new Set(cards.map(b => b.work_order_id).filter(Boolean))) as string[]
       if (woIds.length === 0) { setDayBookings(cards); return }
       const { data: rows } = await supabase.from('studio_time_rows')
-        .select('work_order_id, studio, from_time, to_time, times_tbd, eng_name, eng_role')
+        .select('work_order_id, studio, from_time, to_time, times_tbd, eng_name, eng_role, eng_visible')
         .in('work_order_id', woIds).eq('date', dateStr)
       if (cancelled) return
       const byWo = new Map<string, any[]>()
@@ -531,19 +532,21 @@ function DayView({
       // Kept BESIDE the booking, not written onto it: the click hands the
       // untouched booking to the work order, and a 'TBD' from_time must
       // never seed a form.
-      const info: Record<string, { from: string; to: string; eng: string | null; asst: string | null }> = {}
+      const info: Record<string, { from: string; to: string; eng: string | null; asst: string | null; engTbd?: boolean; asstTbd?: boolean }> = {}
       for (const b of cards) {
         const all = b.work_order_id ? (byWo.get(b.work_order_id) ?? []) : []
         if (all.length === 0) continue
         const letter = toStudioLetter(b.studio || '')
         const roomRow = all.find(r => (r.studio ?? '').trim() && toStudioLetter(r.studio) === letter) ?? all.find(r => (r.studio ?? '').trim())
         let eng: string | null = null, asst: string | null = null
+        let engTbd = false, asstTbd = false
         for (const r of all) {
-          if (!r.eng_name) continue
+          if (!r.eng_name) { if (r.eng_visible !== false) { if (r.eng_role === 'engineer') engTbd = true; else asstTbd = true }; continue }
           if (r.eng_role === 'engineer') eng = eng ?? r.eng_name
           else asst = asst ?? r.eng_name
         }
         info[b.id] = {
+          engTbd: !eng && engTbd, asstTbd: !asst && asstTbd,
           from: roomRow ? (roomRow.times_tbd ? 'TBD' : (roomRow.from_time ?? '')) : (b.from_time ?? ''),
           to: roomRow ? (roomRow.times_tbd ? '' : (roomRow.to_time ?? '')) : (b.to_time ?? ''),
           eng, asst,
@@ -806,8 +809,8 @@ function DayView({
                         <SessionCardBody
                           booking={dayInfo[b.id] ? { ...b, from_time: dayInfo[b.id].from, to_time: dayInfo[b.id].to } : b}
                           height={CARD_FULL_H}
-                          eng={initials(dayInfo[b.id] ? dayInfo[b.id].eng : b.engineer_name)}
-                          asst={initials(dayInfo[b.id] ? dayInfo[b.id].asst : b.assistant_name)}
+                          eng={dayInfo[b.id] ? (initials(dayInfo[b.id].eng) || (dayInfo[b.id].engTbd ? '?' : '')) : initials(b.engineer_name)}
+                          asst={dayInfo[b.id] ? (initials(dayInfo[b.id].asst) || (dayInfo[b.id].asstTbd ? '?' : '')) : initials(b.assistant_name)}
                         />
                       </div>
                     )
@@ -1116,7 +1119,7 @@ function CalendarPageInner() {
 
   // work_order_id|date -> { eng, asst } for the visible range. Empty when a
   // booking predates the WO rebuild; the chip falls back to the projection names.
-  const [staffByDay, setStaffByDay] = useState<Record<string, { eng?: string; asst?: string }>>({})
+  const [staffByDay, setStaffByDay] = useState<Record<string, { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }>>({})
   const [timesByDay, setTimesByDay] = useState<Record<string, { from: string; to: string; tbd?: boolean }>>({})
 
   const load = useCallback(async () => {
@@ -1149,9 +1152,12 @@ function CalendarPageInner() {
     if (woIds.length) {
       const { data: stRows } = await supabase
         .from('studio_time_rows')
-        .select('work_order_id, date, eng_name, eng_role, studio, from_time, to_time, times_tbd')
+        .select('work_order_id, date, eng_name, eng_role, studio, from_time, to_time, times_tbd, eng_visible')
         .in('work_order_id', woIds)
-      const map: Record<string, { eng?: string; asst?: string }> = {}
+      // A SLOT WITH A ROLE BUT NO NAME is "1ST · TBD" / "2ND · TBD" (Eli,
+      // 2026-09-19: "we may know if it's 2nd or 1st but not who") — the
+      // card says which seat is open, not just that one is.
+      const map: Record<string, { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }> = {}
       // PER-DAY TIMES (Eli, 2026-09-18, WO-1198 — the B1 spine card): each
       // day column inside a multi-day bar shows ITS OWN times. Keyed by room
       // as well as day because a two-room WO has a row per room per day;
@@ -1164,9 +1170,11 @@ function CalendarPageInner() {
         if (!row.date) continue
         const key = `${row.work_order_id}|${row.date}`
         const name = row.eng_name
+        const slot = row.eng_role === 'engineer' ? 'eng' : 'asst'
         if (name) {
-          const slot = row.eng_role === 'engineer' ? 'eng' : 'asst'
           map[key] = { ...(map[key] || {}), [slot]: name }
+        } else if (row.eng_visible !== false) {
+          map[key] = { ...(map[key] || {}), [slot === 'eng' ? 'engTbd' : 'asstTbd']: true }
         }
         if ((row.studio ?? '').trim()) {
           const t = { from: row.from_time ?? '', to: row.to_time ?? '', tbd: row.times_tbd === true }

@@ -6600,21 +6600,16 @@ export function WorkOrderPopup({
                               pills wrapped and the staff line squeezed; the
                               notes column was hogging width it rarely uses. */}
                           <div style={{ flex: '0 0 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                               {studios.length > 0 && (
                                 <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
                                   {studios.join(' · ')}
                                 </span>
                               )}
-                              <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
+                              <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', whiteSpace: 'nowrap' }}>{weekdayDate(g.date)}</span>
                               {dayStateTag(g.rows, g.date)}
                             </div>
-                            {/* THE DAY'S STATUS, ON ITS OWN LINE (Eli, 2026-09-19 — the
-                                pill pushed the date onto three lines and spilled into
-                                the notes column at 340px). Small size, under the header. */}
-                            {dayStatusPill(g.date, true) && (
-                              <div style={{ marginTop: 6 }}>{dayStatusPill(g.date, true)}</div>
-                            )}
+
                             {/* 16px, NOT 22 (2026-08-18). At 22 the range wrapped
                                 onto two lines and pushed the hours onto a third —
                                 the mock sets 16 and keeps "12:00 PM – 7:00 PM 7h"
@@ -6798,6 +6793,14 @@ export function WorkOrderPopup({
                                 </span>
                               )
                             )}
+                            {/* THE DAY'S STATUS LIVES IN THE MONEY COLUMN (Eli,
+                                2026-09-19, option C of wo-day-status-placement-
+                                options.html): the right panel has the room; the
+                                header row does not (the pill there wrapped the date
+                                to three lines). Sits above the total, right-aligned. */}
+                            {dayStatusPill(g.date, true) && (
+                              <div style={{ marginTop: 8, alignSelf: 'flex-end' }}>{dayStatusPill(g.date, true)}</div>
+                            )}
                             <div style={{ marginTop: 'auto' }}>
                               {otHrsTotal > 0 && (
                                 <div style={{ fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>
@@ -6805,7 +6808,7 @@ export function WorkOrderPopup({
                                 </div>
                               )}
                               <div style={{ ...kLabel, marginTop: otHrsTotal > 0 ? 3 : 0 }}>
-                                Day total
+                                {dayCancelled ? 'Not billed' : 'Day total'}
                               </div>
                               <div className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em', color: dayTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
                                 {dayTotal > 0 ? `$${dayTotal.toFixed(2)}` : '—'}
