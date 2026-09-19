@@ -490,6 +490,8 @@ function DayView({
   isMobile?: boolean
 }) {
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
+  /** booking id → that day's own times and staff from studio_time_rows (2026-09-19). */
+  const [dayInfo, setDayInfo] = useState<Record<string, { from: string; to: string; eng: string | null; asst: string | null }>>({})
   const [miniMonthStart, setMiniMonthStart] = useState(
     () => new Date(dayViewDate.getFullYear(), dayViewDate.getMonth(), 1)
   )
@@ -505,10 +507,52 @@ function DayView({
   const todayStr = fmt(new Date())
 
   useEffect(() => {
-    supabase.from('bookings').select('*')
-      .lte('start_date', dateStr)
-      .gte('end_date', dateStr)
-      .then(({ data }) => setDayBookings(data ?? []))
+    // THE DAY'S OWN TIMES AND STAFF (Eli, 2026-09-19: "the day view is not
+    // showing accurate day by day — Melly Mike still shows the day-one info
+    // on all days"). A bookings card is the projection of a whole run and
+    // carries day 1; the per-day truth is studio_time_rows. Same batched
+    // read the grid does, for this one date: each card's from/to and staff
+    // are overridden with that day's row before it renders. Display only.
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('bookings').select('*')
+        .lte('start_date', dateStr)
+        .gte('end_date', dateStr)
+      if (cancelled) return
+      const cards = (data ?? []) as Booking[]
+      const woIds = Array.from(new Set(cards.map(b => b.work_order_id).filter(Boolean))) as string[]
+      if (woIds.length === 0) { setDayBookings(cards); return }
+      const { data: rows } = await supabase.from('studio_time_rows')
+        .select('work_order_id, studio, from_time, to_time, times_tbd, eng_name, eng_role')
+        .in('work_order_id', woIds).eq('date', dateStr)
+      if (cancelled) return
+      const byWo = new Map<string, any[]>()
+      for (const r of rows ?? []) (byWo.get(r.work_order_id) ?? byWo.set(r.work_order_id, []).get(r.work_order_id)!).push(r)
+      // Kept BESIDE the booking, not written onto it: the click hands the
+      // untouched booking to the work order, and a 'TBD' from_time must
+      // never seed a form.
+      const info: Record<string, { from: string; to: string; eng: string | null; asst: string | null }> = {}
+      for (const b of cards) {
+        const all = b.work_order_id ? (byWo.get(b.work_order_id) ?? []) : []
+        if (all.length === 0) continue
+        const letter = toStudioLetter(b.studio || '')
+        const roomRow = all.find(r => (r.studio ?? '').trim() && toStudioLetter(r.studio) === letter) ?? all.find(r => (r.studio ?? '').trim())
+        let eng: string | null = null, asst: string | null = null
+        for (const r of all) {
+          if (!r.eng_name) continue
+          if (r.eng_role === 'engineer') eng = eng ?? r.eng_name
+          else asst = asst ?? r.eng_name
+        }
+        info[b.id] = {
+          from: roomRow ? (roomRow.times_tbd ? 'TBD' : (roomRow.from_time ?? '')) : (b.from_time ?? ''),
+          to: roomRow ? (roomRow.times_tbd ? '' : (roomRow.to_time ?? '')) : (b.to_time ?? ''),
+          eng, asst,
+        }
+      }
+      setDayInfo(info)
+      setDayBookings(cards)
+    })()
+    return () => { cancelled = true }
   }, [dateStr, reloadKey])
 
   // Sync mini calendar month when day nav crosses a month boundary
@@ -721,7 +765,7 @@ function DayView({
             {allStudios.map(({ loc, room }) => {
               const cards = dayBookings
                 .filter(b => b.location === loc && b.studio === room)
-                .sort((a, b) => timeToMins(a.from_time) - timeToMins(b.from_time))
+                .sort((a, b) => timeToMins(dayInfo[a.id]?.from ?? a.from_time) - timeToMins(dayInfo[b.id]?.from ?? b.from_time))
               return (
                 <div key={`${loc}|${room}`} style={{
                   position: 'relative',
@@ -751,13 +795,19 @@ function DayView({
                         key={b.id}
                         onClick={() => onOpenEdit(b)}
                         className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
-                        style={{ padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
+                        // GRID, not a bare block (2026-09-19 — "COD strip in the
+                        // middle"): .c-evbody is height:100%, which resolves to
+                        // AUTO against a min-height parent, so the body ended
+                        // mid-chip and the COD strip sat in the middle with the
+                        // footer gone. A grid item stretches to the track — the
+                        // same fix the runner hub needed on 2026-08-16.
+                        style={{ padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H, display: 'grid', overflow: 'hidden' }}
                       >
                         <SessionCardBody
-                          booking={b}
+                          booking={dayInfo[b.id] ? { ...b, from_time: dayInfo[b.id].from, to_time: dayInfo[b.id].to } : b}
                           height={CARD_FULL_H}
-                          eng={initials(b.engineer_name)}
-                          asst={initials(b.assistant_name)}
+                          eng={initials(dayInfo[b.id] ? dayInfo[b.id].eng : b.engineer_name)}
+                          asst={initials(dayInfo[b.id] ? dayInfo[b.id].asst : b.assistant_name)}
                         />
                       </div>
                     )
@@ -908,7 +958,7 @@ function StudioView({
                     key={b.id}
                     onClick={e => { e.stopPropagation(); onOpenEdit(b) }}
                     className={`c-ev c-control c-raised-chip ${sessionFillClass(b.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
-                    style={{ marginBottom: 3, padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H }}
+                    style={{ marginBottom: 3, padding: 0, cursor: 'pointer', minHeight: CARD_FULL_H, display: 'grid', overflow: 'hidden' }}
                   >
                     <SessionCardBody
                       booking={b}

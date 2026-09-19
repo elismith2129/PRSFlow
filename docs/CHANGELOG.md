@@ -20,6 +20,26 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.35.2 — Day view shows each day's own times and staff; day-view cards un-broken — Sep 19, 2026
+
+Eli: "the day view is not showing accurate day by day — Melly Mike still shows
+the day-one info on all days. Also the cal cards are all fucked up, COD strip
+in the middle." Two fixes in `app/(main)/calendar/page.tsx`:
+
+- **Day view per day:** the view read the projection card (day 1's from/to and
+  first-named staff). Now one `studio_time_rows` read for the date's WOs, kept
+  in `dayInfo` beside the bookings (never written onto them — a `TBD`
+  from_time must not seed a form on click). Cards render and sort by that day's
+  own times/staff; Times TBD reads "TBD". Display only.
+- **Card layout:** the day- and studio-view chips were `minHeight` blocks;
+  `.c-evbody` is `height:100%`, which is AUTO against min-height, so the body
+  ended mid-chip — COD strip in the middle, footer gone. Chips are `display:
+  grid` now (the runner hub's Aug 16 fix), so the body fills the chip.
+
+No migrations.
+
+---
+
 ## v1.35.1 — Times TBD on a day; staff TBD made visible — Sep 19, 2026
 
 Step 2 of `docs/design-refs/wo-per-day-status-options.html`. Eli: "a TBD button
