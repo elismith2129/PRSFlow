@@ -6752,11 +6752,23 @@ export function WorkOrderPopup({
                               Read-only here on purpose — it is `session_info`,
                               the SAME existing field, edited in the day sheet
                               this card opens. No new field, no new write. */}
-                          <div style={{ flex: 1, minWidth: 0, borderLeft: '1px solid var(--c-wash2)', paddingLeft: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0, borderLeft: '1px solid var(--c-wash2)', paddingLeft: 12, display: 'flex', flexDirection: 'column' }}>
+                            {/* THE DAY'S STATUS IS THE TOP ROW OF THE NOTES COLUMN
+                                (Eli, 2026-09-19: "we have so much space in the song
+                                title place — move the notes header down, put the
+                                status bar above it so the session info never
+                                interferes, and truncate the notes"). The money column
+                                was 120px and the picker overlapped the notes. */}
+                            {dayStatusPill(g.date, true) && (
+                              <div style={{ marginBottom: 8 }}>{dayStatusPill(g.date, true)}</div>
+                            )}
                             <div style={{ ...kLabel, marginBottom: 3 }}>
                               Song / session notes{g.date ? ` · ${shortDate(g.date)}` : ''}
                             </div>
-                            <div style={{ fontSize: 11.5, fontFamily: 'Inter', lineHeight: 1.5, color: song ? 'var(--c-fg-2)' : 'var(--c-fg-3)', fontStyle: song ? 'normal' : 'italic' }}>
+                            <div
+                              title={song || undefined}
+                              style={{ fontSize: 11.5, fontFamily: 'Inter', lineHeight: 1.5, color: song ? 'var(--c-fg-2)' : 'var(--c-fg-3)', fontStyle: song ? 'normal' : 'italic', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any, minWidth: 0 }}
+                            >
                               {song || '—'}
                             </div>
                           </div>
@@ -6792,14 +6804,6 @@ export function WorkOrderPopup({
                                   >×</button>
                                 </span>
                               )
-                            )}
-                            {/* THE DAY'S STATUS LIVES IN THE MONEY COLUMN (Eli,
-                                2026-09-19, option C of wo-day-status-placement-
-                                options.html): the right panel has the room; the
-                                header row does not (the pill there wrapped the date
-                                to three lines). Sits above the total, right-aligned. */}
-                            {dayStatusPill(g.date, true) && (
-                              <div style={{ marginTop: 8, alignSelf: 'flex-end' }}>{dayStatusPill(g.date, true)}</div>
                             )}
                             <div style={{ marginTop: 'auto' }}>
                               {otHrsTotal > 0 && (
