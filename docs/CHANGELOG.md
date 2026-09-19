@@ -20,15 +20,42 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.34.2 — Calendar rows grow when a room has two sessions in a day — Sep 18, 2026
+## v1.35.0 — Multi-day calendar cards: the spine — Sep 18, 2026
 
-Eli: "stretch the cal row like the TV displays so cards show fully." Desktop
-rows were fixed (Aug ruling: stacked cards share the cell and shed content);
-two sessions in one room on one day rendered as two slivers. Now the room row is
-`rowH × lanes` on every layout, the way mobile has been since Aug 26 and the TV
-walls always were. Applies in both Card and Rooms modes (in Rooms mode a
-doubled room means one row of scroll — Eli chose full cards over fit).
-`app/(main)/calendar/page.tsx`, no migrations.
+Eli (WO-1198 Melly Mike): "the cal card only reflects the times/staff for the
+first day. We need to see how each day is staffed and the start time. Only the
+card display, not WO logic." Round 2: "we like B but I want some link between
+the days." Picked **B1** of `docs/design-refs/cal-multiday-linked-options.html`
+(round 1 in `cal-multiday-card-options.html`).
+
+- A multi-day bar is still one chip (one click, one hover, one colour). Inside:
+  a darker **spine** across the top (name · label · `#inv · N days`, or
+  `days 3–7 of 20` when clipped to the window) and a **cell per day column**
+  with that day's own times and initials from `studio_time_rows`. A day that
+  matches the day before is drawn at 55%; a day with no studio row reads
+  `— / TBD`; a row naming nobody reads TBD (not the projection's collapsed
+  names). Long bars repeat the name along the spine every 7 days.
+- Tiers by column width: ≥88px times + staff; 58–87 start time + staff; <58
+  staff only. Desktop only, chip ≥56px tall — stacked/Rooms-mode slivers and
+  the phone's 26px chips keep the ladder card.
+- Data: the calendar's batched `studio_time_rows` read gains `studio,
+  from_time, to_time` → `timesByDay` keyed `wo|date|room` with a `wo|date`
+  fallback. One query for the visible range, as before.
+- **WO logic untouched** — projection, save, cards. The per-day status work
+  (`docs/design-refs/wo-per-day-status-options.html`) is the next step and IS
+  WO logic; it goes on a branch.
+
+**Files:** `app/(main)/calendar/page.tsx`, `styles/globals.css` (`.c-ev-spine*`,
+`.c-ev-cell*`). No migrations.
+
+---
+
+## v1.34.2 — (reverted) calendar rows growing for stacked sessions — Sep 18, 2026
+
+Shipped for an hour, then pulled: Eli tried it and ditched it ("we're going to
+ditch that, revert"). The Aug ruling stands — desktop rows stay fixed and stacked
+cards share the cell. Code is back to exactly v1.34.1 in `app/(main)/calendar/page.tsx`;
+kept here so nobody re-proposes it.
 
 ---
 

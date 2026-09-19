@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Multi-day cards on the calendar: every day says its own time and staff</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  MULTI-DAY CARDS (Eli, 2026-09-18, WO-1198 Melly Mike): "the cal card only
+  reflects the times/staff for the first day. We need to be able to see how
+  each day is staffed and the start time. Only changing the cal card display,
+  not any WO logic."
+
+  ── WHAT'S THERE ──────────────────────────────────────────────────────────
+  A multi-day session is ONE bookings card (projectBookingCards writes one
+  per consecutive same-room run) carrying day 1's from/to and the first named
+  staff per role. The grid draws it as one bar, and the bar shows that. The
+  per-day truth is studio_time_rows, and the calendar ALREADY fetches it —
+  `staffByDay` (Aug, "F-9 option B") — but only uses it for day 1 and the
+  hover card. Times aren't fetched at all. So this is: fetch from_time /
+  to_time too, and draw them per day INSIDE the bar. Display layer only;
+  nothing about the projection or the save changes.
+
+  ── OPTION A (recommended): one bar, a lane per day ────────────────────────
+  The bar stays one chip (name, label, WO# once at the left, same colour).
+  Under the name, each day-column inside the bar gets its own line:
+      12:00 PM–12:00 AM · KE / HT
+  Same-as-yesterday days are drawn quieter so a change stands out; a day
+  with no row yet reads "— · TBD". At narrow zoom the line drops to just
+  the start time + initials. The hover card keeps its exact-day detail.
+  ── OPTION B: split the bar into day cards ─────────────────────────────────
+  Draw N joined cards instead of one bar — name repeated on every day, each
+  with its own time/staff. Reads like the day view. Rejected: at 7+ days
+  the name repeats seven times and the bar stops reading as one session;
+  also loses the long-bar behaviour (repeated payload every 7 days).
+  ── OPTION C: keep the bar, mark the days that differ ──────────────────────
+  Day 1 as today; days whose time or staff differs get a small ◆ and the
+  hover says why. Cheapest. Rejected for the actual ask ("see how each day
+  is staffed and the start time") — a dot is not seeing it.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--uncon:#9ec5ea;--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22);--tick:rgba(217,214,205,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:32px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:12px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+/* grid */
+.grid{background:var(--srf);border-radius:14px;padding:10px 12px 12px;box-shadow:var(--softsh);overflow-x:auto}
+.hdr{display:grid;grid-template-columns:110px repeat(7,120px);margin-bottom:4px}
+.hdr div{text-align:center;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.hdr div b{display:block;font-size:11px;color:var(--fg);letter-spacing:0;text-transform:none;font-weight:400}
+.hdr div.t b{background:var(--fg);color:var(--bg);border-radius:99px;width:22px;height:22px;line-height:22px;margin:2px auto 0;font-weight:700}
+.row{display:grid;grid-template-columns:110px repeat(7,120px);height:82px;position:relative;background-image:repeating-linear-gradient(to right,var(--tick) 0 1px,transparent 1px 120px);background-position:110px 0;border-bottom:1px solid var(--tick)}
+.row.tall{height:164px}
+.row .lab{font-size:10px;color:var(--fg2);display:flex;align-items:center;padding-left:10px;background:var(--srf);position:relative;z-index:2}
+.bar{position:absolute;top:3px;height:76px;background:var(--booked);color:var(--chip-ink);border-radius:9px;box-shadow:0 1px 3px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.bar .top{padding:5px 8px 0;display:flex;gap:8px;align-items:baseline;white-space:nowrap}
+.bar .nm{font-family:'Archivo Black',sans-serif;font-size:12.5px}
+.bar .lb{font-size:10px;font-weight:700;opacity:.8}
+.bar .days{display:flex;flex:1;margin-top:3px}
+.bar .d{width:120px;padding:2px 8px 0;border-left:1px solid rgba(0,0,0,.14);font-size:9.5px;line-height:1.25}
+.bar .d:first-child{border-left:0}
+.bar .d .tm{font-family:'DM Mono',monospace;font-weight:600}
+.bar .d .st{font-weight:800;letter-spacing:.03em;margin-top:1px}
+.bar .d.same{opacity:.55}
+.bar .d.tbd .tm{opacity:.5}
+.bar .d .wd{font-size:7.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.55;display:block}
+.bar .foot{background:rgba(0,0,0,.3);font-family:'DM Mono',monospace;font-size:8.5px;padding:2px 8px;display:flex;justify-content:space-between;margin-top:auto}
+/* split cards (B) */
+.cards{position:absolute;top:3px;display:flex;gap:2px}
+.cards .c{width:118px;height:76px;background:var(--booked);color:var(--chip-ink);border-radius:9px;padding:5px 8px;font-size:9.5px;line-height:1.25;overflow:hidden}
+.cards .c .nm{font-family:'Archivo Black',sans-serif;font-size:11.5px;display:block}
+.cards .c .tm{font-family:'DM Mono',monospace;font-weight:600;display:block;margin-top:3px}
+.cards .c .st{font-weight:800;display:block}
+/* today (A, current) */
+.bar.now .days{display:none}
+.bar.now .one{padding:2px 8px;font-size:9.5px;line-height:1.3}
+.bar.now .one .tm{font-family:'DM Mono',monospace;font-weight:600}
+/* stacked */
+.bar.b2{background:var(--uncon)}
+.legend{display:flex;gap:16px;font-size:10.5px;color:var(--fg3);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle;background:var(--booked)}
+.legend i.q{opacity:.55}
+table{width:100%;border-collapse:collapse;font-size:11.5px;max-width:900px}
+th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Multi-day cards — every day says its own time and staff</h1>
+<p class="lede">WO-1198 (Melly Mike) is one bar across five days, and the bar shows day 1's time and staff on every day. The per-day truth already reaches the calendar (the hover card uses it); the bar just doesn't draw it. Display only — nothing about the work order or how it saves changes.</p>
+
+<h2><span class="n">0</span>Today</h2>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="bar now" style="left:calc(110px + 120px + 2px);width:calc(600px - 4px)">
+      <div class="top"><span class="nm">Melly Mike</span><span class="lb">Epic Records</span></div>
+      <div class="one"><span class="tm">12:00 PM–12:00 AM</span> · KE / HT</div>
+      <div class="foot"><span>WO-1198</span><span>KE / HT</span></div>
+    </div>
+  </div>
+</div>
+<p class="cap">One time, one pair of initials, five days. Wednesday actually starts at 2 PM with Hunter alone and Friday is TBD — you'd only find out by hovering each day or opening the work order.</p>
+
+<h2><span class="n">A</span>One bar, a lane per day <span class="rec">Recommended</span></h2>
+<p class="sub">The bar stays one chip — name, label, WO# once on the left, same colour, same click. Under the name, each day-column inside the bar gets its own line: time, then staff. Days that match the day before are drawn quieter so a change jumps out; a day with no row yet says TBD.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="bar" style="left:calc(110px + 120px + 2px);width:calc(600px - 4px)">
+      <div class="top"><span class="nm">Melly Mike</span><span class="lb">Epic Records</span></div>
+      <div class="days">
+        <div class="d"><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+        <div class="d same"><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+        <div class="d"><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+        <div class="d same"><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+        <div class="d tbd"><span class="tm">—</span><span class="st">TBD</span></div>
+      </div>
+      <div class="foot"><span>WO-1198</span><span>5 days</span></div>
+    </div>
+  </div>
+</div>
+<div class="legend"><span><i></i>day differs from the one before</span><span><i class="q"></i>same as yesterday</span><span>TBD = no studio row for that day yet</span></div>
+<p class="cap"><b>At narrow zoom</b> (columns under ~90px) each day drops to the start time and initials only: "12P · KE/HT". <b>On a phone</b> the bar is 26px and shows the name only, as today — the tap synopsis lists the days. <b>The hover card</b> keeps its exact-day detail. <b>Long bars</b> (7+ days) still repeat the name every week so you know what you're looking at mid-scroll.</p>
+
+<h2><span class="n">B</span>Split the bar into day cards</h2>
+<p class="sub">Five joined cards instead of one bar. Every day repeats the name and carries its own time and staff.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="cards" style="left:calc(110px + 120px + 2px)">
+      <div class="c"><span class="nm">Melly Mike</span>Epic Records<span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+      <div class="c"><span class="nm">Melly Mike</span>Epic Records<span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+      <div class="c"><span class="nm">Melly Mike</span>Epic Records<span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+      <div class="c"><span class="nm">Melly Mike</span>Epic Records<span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+      <div class="c"><span class="nm">Melly Mike</span>Epic Records<span class="tm">—</span><span class="st">TBD</span></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Why not:</b> at seven-plus days the name repeats seven times and the run stops reading as one session; a 20-day lockout becomes 20 identical tiles. Also throws away the long-bar behaviour that exists for exactly that case.</p>
+
+<h2><span class="n">C</span>Keep the bar, mark the days that differ</h2>
+<p class="sub">Day 1 as today; a day whose time or staff differs gets a small ◆ in its column, and the hover says what changed. The cheapest option.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="bar now" style="left:calc(110px + 120px + 2px);width:calc(600px - 4px)">
+      <div class="top"><span class="nm">Melly Mike</span><span class="lb">Epic Records</span></div>
+      <div class="one"><span class="tm">12:00 PM–12:00 AM</span> · KE / HT <span style="margin-left:198px;font-weight:800">◆</span><span style="margin-left:222px;font-weight:800">◆</span></div>
+      <div class="foot"><span>WO-1198</span><span>KE / HT</span></div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>Why not:</b> the ask is to <i>see</i> each day's staffing and start time. A diamond says "something's different here" and makes you hover to find out — that's the problem, one step shorter.</p>
+
+<h2><span class="n">D</span>And the row stretch (already pushed as v1.34.2)</h2>
+<p class="sub">Two sessions in one room on one day used to share the 80px row and shed content until both were slivers. Now the row grows by lane count, the way the TV walls and the phone already do.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row tall"><div class="lab">Studio B</div>
+    <div class="bar" style="left:calc(110px + 360px + 2px);width:calc(120px - 4px);top:3px">
+      <div class="top"><span class="nm">Havelange</span></div>
+      <div class="days"><div class="d"><span class="tm">10:00 AM–4:00 PM</span><span class="st">JG</span></div></div>
+      <div class="foot"><span>WO-1150</span><span>JG</span></div>
+    </div>
+    <div class="bar b2" style="left:calc(110px + 360px + 2px);width:calc(120px - 4px);top:85px">
+      <div class="top"><span class="nm">Sonic Ranch</span></div>
+      <div class="days"><div class="d"><span class="tm">6:00 PM–2:00 AM</span><span class="st">SJ / LB</span></div></div>
+      <div class="foot"><span>WO-1141</span><span>SJ / LB</span></div>
+    </div>
+  </div>
+  <div class="row"><div class="lab">Studio C</div></div>
+</div>
+
+<h2><span class="n">E</span>Rules</h2>
+<table>
+  <tr><th>Question</th><th>Answer</th></tr>
+  <tr><td><b>Where does each day's time/staff come from?</b></td><td><code>studio_time_rows</code> for the work order — the same batched read the calendar already does for staff, plus <code>from_time</code> / <code>to_time</code>. One query for the visible range, never per card.</td></tr>
+  <tr><td><b>What changes in the WO?</b></td><td>Nothing. Not the projection, not the save, not the cards it writes.</td></tr>
+  <tr><td><b>A day with no studio row?</b></td><td>"— · TBD". (Legacy pre-WO bookings with no rows at all fall back to the card's own time/staff, as today.)</td></tr>
+  <tr><td><b>Two rooms on one WO?</b></td><td>Each room's bar shows its own days — rows are already per room.</td></tr>
+  <tr><td><b>Phone?</b></td><td>Unchanged (26px scan rows). The tap synopsis gains the day list.</td></tr>
+</table>
+</body>
+</html>

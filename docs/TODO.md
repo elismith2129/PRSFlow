@@ -20,6 +20,8 @@ Newest at the top of each group.*
 
 ## Features parked
 
+- [ ] **Per-day status + TBD buttons on the WO** (Eli, Sep 18; mock `wo-per-day-status-options.html`). Order: TBD buttons first (`times_tbd` column, one guard), then `day_status` (projection split on status, totals zero cancelled days, guards per confirmed day). WO logic — feature branch + preview walk before merge. *(Sep 18)*
+
 - [ ] **Tenants out of the billing hub** — its own page/rail entry, separate from regular billing (Eli, Sep 18). Today: a third view inside `app/(main)/billing/page.tsx` (`TenantsView`, `lib/tenants.ts`, roster is code). Next chat. *(Sep 18)*
 
 - [ ] **Unsubmitted WOs, later layers:** a push to the closer at the booked end time ("Havelange is done — submit the work order"), and a 9:05 AM email to the office. Both are one call on `lib/unsubmitted.fetchUnsubmittedSessions`; waiting on push (below) and the cron. Also possible: an "Unsubmitted" filter chip in the billing hub if the row flag isn't enough. *(Sep 17)*

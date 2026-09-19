@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Multi-day cards, round 2: day cards that read as one booking</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ROUND 2 (Eli, 2026-09-18): "we like B, but I want some sort of link between
+  the days as it's not clear this is one long booking." (Row stretch: ditched
+  and reverted.)
+
+  Still display only. One bookings card per run, drawn as N day cells inside
+  it; each cell reads its day's from/to + staff from studio_time_rows (the
+  batched read the calendar already does, plus times). Same click, same
+  hover, same colour. What differs between options is only how the cells
+  are tied together.
+
+  B1  THE SPINE — a continuous band along the top (name once, "5 days"),
+      day cells hang under it. Reads as a header + its days.
+  B2  THE THREAD — cells are separate but a rounded ribbon runs behind
+      them at the bottom edge carrying the WO#; the first cell is the only
+      one with the name at full size, the rest say it small and grey.
+  B3  THE BRACKET — cells joined edge-to-edge with no gap, outer corners
+      rounded, inner corners square, one shared footer band. The name is
+      on the first cell; each other cell shows a "›" continuation mark.
+  Recommend B1: it is the one that still reads at a glance from across
+  the room, and it fails gracefully on a 20-day lockout (a long header
+  band with the name repeated weekly, exactly the long-bar rule today).
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--uncon:#9ec5ea;--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22);--tick:rgba(217,214,205,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:32px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:12px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+.grid{background:var(--srf);border-radius:14px;padding:10px 12px 12px;box-shadow:var(--softsh);overflow-x:auto}
+.hdr{display:grid;grid-template-columns:110px repeat(7,120px);margin-bottom:4px}
+.hdr div{text-align:center;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.hdr div b{display:block;font-size:11px;color:var(--fg);letter-spacing:0;text-transform:none;font-weight:400}
+.hdr div.t b{background:var(--fg);color:var(--bg);border-radius:99px;width:22px;height:22px;line-height:22px;margin:2px auto 0;font-weight:700}
+.row{display:grid;grid-template-columns:110px repeat(7,120px);height:82px;position:relative;background-image:repeating-linear-gradient(to right,var(--tick) 0 1px,transparent 1px 120px);background-position:110px 0;border-bottom:1px solid var(--tick)}
+.row .lab{font-size:10px;color:var(--fg2);display:flex;align-items:center;padding-left:10px;background:var(--srf);position:relative;z-index:2}
+.mono{font-family:'DM Mono',monospace}
+/* shared cell text */
+.tm{font-family:'DM Mono',monospace;font-weight:600;font-size:9.5px;display:block;line-height:1.25}
+.st{font-weight:800;font-size:9.5px;letter-spacing:.03em;display:block;line-height:1.25}
+.same{opacity:.55}
+.tbd .tm{opacity:.5}
+/* B1 spine */
+.b1{position:absolute;top:3px;left:calc(110px + 120px + 2px);width:calc(600px - 4px);height:76px;background:var(--booked);color:var(--chip-ink);border-radius:9px;box-shadow:0 1px 3px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column}
+.b1 .spine{background:rgba(0,0,0,.22);padding:4px 8px;display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.b1 .spine .nm{font-family:'Archivo Black',sans-serif;font-size:12.5px}
+.b1 .spine .lb{font-size:10px;font-weight:700;opacity:.85}
+.b1 .spine .n{margin-left:auto;font-family:'DM Mono',monospace;font-size:8.5px;opacity:.8}
+.b1 .cells{display:flex;flex:1}
+.b1 .c{width:120px;padding:4px 8px;border-left:1px solid rgba(0,0,0,.18)}
+.b1 .c:first-child{border-left:0}
+.b1 .c .wd{font-size:7.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.5;display:block;margin-bottom:1px}
+/* B2 thread */
+.b2wrap{position:absolute;top:3px;left:calc(110px + 120px + 2px);width:calc(600px - 4px);height:76px}
+.b2wrap .thread{position:absolute;left:0;right:0;bottom:0;height:16px;background:rgba(67,223,174,.28);border-radius:8px;display:flex;align-items:center;padding:0 8px;font-family:'DM Mono',monospace;font-size:8.5px;color:var(--booked);justify-content:space-between}
+.b2wrap .cells{display:flex;gap:4px;height:58px}
+.b2wrap .c{width:116px;background:var(--booked);color:var(--chip-ink);border-radius:9px;padding:4px 8px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.b2wrap .c .nm{font-family:'Archivo Black',sans-serif;font-size:12px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.b2wrap .c .nm.q{font-family:Inter;font-weight:700;font-size:9px;opacity:.55}
+/* B3 bracket */
+.b3{position:absolute;top:3px;left:calc(110px + 120px + 2px);width:calc(600px - 4px);height:76px;display:flex;border-radius:9px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.b3 .c{width:120px;background:var(--booked);color:var(--chip-ink);padding:5px 8px 0;position:relative;display:flex;flex-direction:column}
+.b3 .c + .c{border-left:2px solid rgba(0,0,0,.28)}
+.b3 .c .nm{font-family:'Archivo Black',sans-serif;font-size:12px;display:block;white-space:nowrap}
+.b3 .c .cont{font-size:11px;font-weight:800;opacity:.45;display:block;height:16px}
+.b3 .c .body{margin-top:2px}
+.b3 .c .foot{margin-top:auto;background:rgba(0,0,0,.3);margin-left:-8px;margin-right:-8px;padding:2px 8px;font-family:'DM Mono',monospace;font-size:8.5px;display:flex;justify-content:space-between}
+.b3 .c + .c .foot{justify-content:flex-end}
+.legend{display:flex;gap:16px;font-size:10.5px;color:var(--fg3);margin-top:8px}
+/* long bar demo */
+.hdr.long{grid-template-columns:110px repeat(7,80px)}
+.row.long{grid-template-columns:110px repeat(7,80px);background-image:repeating-linear-gradient(to right,var(--tick) 0 1px,transparent 1px 80px)}
+.b1.long{left:calc(110px + 2px);width:calc(560px - 4px)}
+.b1.long .c{width:80px;padding:4px 6px}
+.b1.long .tm{font-size:8.5px}.b1.long .st{font-size:8.5px}
+table{width:100%;border-collapse:collapse;font-size:11.5px;max-width:900px}
+th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Multi-day cards, round 2 — day cards that read as one booking</h1>
+<p class="lede">Three ways to tie the day cells together. All three: one card per run, same colour, same click, same hover; every day shows its own time and staff; days that match the day before are quieter. Only the linking differs.</p>
+
+<h2><span class="n">B1</span>The spine <span class="rec">Recommended</span></h2>
+<p class="sub">A continuous darker band across the top carries the name, label and day count once. The day cells hang under it. You read the header first, then the days — the way a table reads.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="b1">
+      <div class="spine"><span class="nm">Melly Mike</span><span class="lb">Epic Records</span><span class="n">WO-1198 · 5 days</span></div>
+      <div class="cells">
+        <div class="c"><span class="wd">Mon</span><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+        <div class="c same"><span class="wd">Tue</span><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+        <div class="c"><span class="wd">Wed</span><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+        <div class="c same"><span class="wd">Thu</span><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+        <div class="c tbd"><span class="wd">Fri</span><span class="tm">—</span><span class="st">TBD</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="cap"><b>On a long bar</b> the spine keeps going and repeats the name every 7 days (the rule today), so a 20-day lockout is one header band with twenty cells under it — still obviously one thing:</p>
+<div class="grid">
+  <div class="hdr long"><div></div><div>Mon<b>21</b></div><div>Tue<b>22</b></div><div>Wed<b>23</b></div><div>Thu<b>24</b></div><div>Fri<b>25</b></div><div>Sat<b>26</b></div><div>Sun<b>27</b></div></div>
+  <div class="row long"><div class="lab">ERS B</div>
+    <div class="b1 long">
+      <div class="spine"><span class="nm">Mustard</span><span class="lb">lockout</span><span class="n">day 11–17 of 30</span></div>
+      <div class="cells">
+        <div class="c"><span class="tm">12P–12A</span><span class="st">LB</span></div>
+        <div class="c same"><span class="tm">12P–12A</span><span class="st">LB</span></div>
+        <div class="c same"><span class="tm">12P–12A</span><span class="st">LB</span></div>
+        <div class="c"><span class="tm">2P–2A</span><span class="st">TT</span></div>
+        <div class="c same"><span class="tm">2P–2A</span><span class="st">TT</span></div>
+        <div class="c tbd"><span class="tm">—</span><span class="st">TBD</span></div>
+        <div class="c tbd"><span class="tm">—</span><span class="st">TBD</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="n">B2</span>The thread</h2>
+<p class="sub">Separate day cards, with a translucent ribbon running behind them along the bottom carrying the WO# and day count. The first card has the name at full size; the rest whisper it.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="b2wrap">
+      <div class="cells">
+        <div class="c"><span class="nm">Melly Mike</span><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+        <div class="c same"><span class="nm q">Melly Mike</span><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div>
+        <div class="c"><span class="nm q">Melly Mike</span><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+        <div class="c same"><span class="nm q">Melly Mike</span><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div>
+        <div class="c tbd"><span class="nm q">Melly Mike</span><span class="tm">—</span><span class="st">TBD</span></div>
+      </div>
+      <div class="thread"><span>WO-1198 · Epic Records</span><span>5 days ›</span></div>
+    </div>
+  </div>
+</div>
+<p class="cap">Prettiest of the three. Catch: the ribbon eats 16px of a 76px card, so the day cells are shorter, and the gaps between cards still read as five things at a squint.</p>
+
+<h2><span class="n">B3</span>The bracket</h2>
+<p class="sub">Cells joined edge to edge — no gap, outer corners rounded, inner corners square, one shared footer band. The name lives on the first cell; each following cell shows a › continuation mark where the name would be.</p>
+<div class="grid">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div class="t">Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="b3">
+      <div class="c"><span class="nm">Melly Mike</span><div class="body"><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div><div class="foot"><span>WO-1198</span><span>1/5</span></div></div>
+      <div class="c same"><span class="cont">›</span><div class="body"><span class="tm">12:00 PM–12:00 AM</span><span class="st">KE / HT</span></div><div class="foot"><span>2/5</span></div></div>
+      <div class="c"><span class="cont">›</span><div class="body"><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div><div class="foot"><span>3/5</span></div></div>
+      <div class="c same"><span class="cont">›</span><div class="body"><span class="tm">2:00 PM–2:00 AM</span><span class="st">HT</span></div><div class="foot"><span>4/5</span></div></div>
+      <div class="c tbd"><span class="cont">›</span><div class="body"><span class="tm">—</span><span class="st">TBD</span></div><div class="foot"><span>5/5</span></div></div>
+    </div>
+  </div>
+</div>
+<p class="cap">Closest to today's bar. Catch: when you're scrolled into the middle of a long one, the name is off-screen and all you see is › › › — the weekly name repeat would have to come back as a cell that says the name instead of ›.</p>
+
+<h2><span class="n">4</span>Same for all three</h2>
+<table>
+  <tr><th>Question</th><th>Answer</th></tr>
+  <tr><td><b>Data</b></td><td><code>studio_time_rows</code> per WO — the batched read the calendar already does for staff, plus <code>from_time</code> / <code>to_time</code>. One query for the visible range.</td></tr>
+  <tr><td><b>WO logic</b></td><td>Untouched. Projection, save, cards — nothing changes.</td></tr>
+  <tr><td><b>Quiet days</b></td><td>A day whose time and staff match the day before is drawn at ~55% so a change stands out. "TBD" = no studio row for that day.</td></tr>
+  <tr><td><b>Narrow zoom</b></td><td>Under ~90px columns: start time + initials only ("12P · KE/HT"). Under ~60px: initials only.</td></tr>
+  <tr><td><b>Phone</b></td><td>Unchanged (26px scan rows, name only). The tap synopsis lists the days.</td></tr>
+  <tr><td><b>Hover</b></td><td>Unchanged — still the exact day under the cursor.</td></tr>
+</table>
+</body>
+</html>

@@ -1279,6 +1279,33 @@ select.c-input {
    change size — only the typeface. */
 .c-ev-foot .c-mono { font-size: inherit; }
 
+/* THE SPINE CARD (2026-09-18, B1 of cal-multiday-linked-options.html) — a
+   multi-day bar with a darker band across the top (name · label · N days) and
+   one cell per day underneath carrying that day's times and staff. Same chip
+   ink as every other card; the band is the footer's shade, moved to the top. */
+.c-ev-spinebar {
+  background: rgba(0, 0, 0, .22);
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 2px 8px; flex-shrink: 0;
+  white-space: nowrap; overflow: hidden; line-height: 1.35;
+}
+:root:not([data-theme="light"]) .c-ev-spinebar { background: rgba(0, 0, 0, .3); }
+.c-ev-spinename  { font-size: 12px; }
+.c-ev-spinelabel { font-size: 10px; font-weight: 700; opacity: .85; overflow: hidden; text-overflow: ellipsis; }
+.c-ev-spinecount { margin-left: auto; font-size: 8.5px !important; font-weight: 600; opacity: .8; flex-shrink: 0; }
+.c-ev-cells { display: flex; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.c-ev-cell {
+  padding: 3px 7px 0; min-width: 0; overflow: hidden;
+  border-left: 1px solid rgba(0, 0, 0, .18);
+  display: flex; flex-direction: column; line-height: 1.25;
+}
+.c-ev-cell:first-child { border-left: 0; }
+.c-ev-celltime  { font-size: 9.5px !important; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-ev-cellstaff { font-size: 9.5px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A day that matches the day before is quiet, so a change reads at a glance. */
+.c-ev-cell-quiet { opacity: .55; }
+.c-ev-cell-tbd .c-ev-celltime { opacity: .5; }
+
 /* COD strip — full-width hot bar on the chip's bottom edge, COD only.
    Sanctioned under §5 hot-as-critical: money to collect at the door is a
    critical condition, not a temperature. Billing renders NOTHING — silence

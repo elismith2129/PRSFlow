@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Status per day: confirmed Mon–Wed, tentative Thu–Fri, one work order</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  STATUS PER DAY (Eli, 2026-09-18): "now that we have each day broken up…
+  we need a TBD button for times as well as the staff for days that are
+  tentative where we don't know yet. And we need to make one booking and
+  have some days confirmed and some tentative — move the confirmed /
+  tentative / cancelled bar to each day instead of the WO as a whole."
+
+  THIS ONE IS WO LOGIC — the opposite of the calendar card work. Status is
+  the single most load-bearing field in the app (calendar colour, runner hub
+  filter, billing buckets, the unsubmitted rule, the confirm-needs-times and
+  confirm-needs-client guards, daily-ops sweeps all select status='confirmed').
+  So the design below is built to keep every one of those working by making
+  the change at exactly one layer:
+
+  ── THE DESIGN ──────────────────────────────────────────────────────────────
+  · studio_time_rows.day_status  'confirmed' | 'tentative' | 'cancelled' | null
+      null = "same as the session" (the WO's session_status). Every existing
+      row is null, so nothing changes on day one.
+  · studio_time_rows.times_tbd  boolean — the TBD button for times. Staff
+      TBD needs no column: an empty eng_name already IS "engineer, TBD"
+      (ruling 2026-07-28); it just gets a visible chip.
+  · The WO's status bar becomes "ALL DAYS": tapping it sets every day (and
+      clears the per-day overrides). Each day card and day sheet gets its own
+      Confirmed / Tentative / Cancelled pill. When days differ, the bar shows
+      "Mixed · 3 confirmed · 2 tentative" and stops being a setter until you
+      tap one.
+  · THE PROJECTION splits a run on status the way it already splits on room
+      and date gap: Mon–Wed confirmed → one green card, Thu–Fri tentative →
+      one grey card, same work_order_id. So the calendar, the runner hub,
+      daily-ops sweeps, the unsubmitted rule and the TV walls all keep
+      reading bookings.status per card and are correct for free.
+  · Billing: the WO counts as confirmed if ANY day is. The confirm-needs-
+      times guard runs per CONFIRMED day (times_tbd is refused on a
+      confirmed day — TBD is a tentative thing). The confirm-needs-client
+      stop fires when any day is confirmed.
+  · A CANCELLED DAY keeps its row (history) and is zeroed at total time in
+      computeWoTotals — never rewritten on the row (the discount precedent).
+      Kill fee = the WO discount, as today. Its calendar card is red,
+      struck through, one day wide.
+  · Tour / Tech / Open Hrs / Lockout stay WO-level. They aren't days.
+
+  Migration: two columns. Code: projection split, totals, three guards, two
+  pills, two chips, the calendar day-cell colour. Not small — but one
+  layer, and the reason it can be one layer is that the calendar card work
+  (B1) already made the day the unit on screen.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--uncon:#9ec5ea;--tent:rgba(217,214,205,.22);--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22);--tick:rgba(217,214,205,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:880px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:32px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:880px;line-height:1.6;margin-bottom:12px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:880px}.cap b{color:var(--fg2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+/* WO top bar */
+.wo{background:var(--srf);border-radius:16px;padding:14px 16px;box-shadow:var(--softsh)}
+.k{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px}
+.seg{display:inline-flex;gap:2px;background:var(--wash);border-radius:99px;padding:3px}
+.seg span{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:6px 12px;border-radius:99px;color:var(--fg3)}
+.seg span.on{background:var(--wash2);color:var(--fg)}
+.seg span.on.g{background:var(--booked);color:var(--chip-ink)}
+.seg span.on.t{background:var(--wash2);color:var(--fg)}
+.seg span.on.h{background:var(--hot);color:#fff}
+.seg span.mixed{background:linear-gradient(90deg,var(--booked) 0 60%,var(--wash2) 60%);color:var(--chip-ink)}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar .note{font-size:10.5px;color:var(--fg3)}
+/* day card */
+.day{background:var(--wash);border-radius:14px;padding:12px 14px;margin-top:9px;display:flex;gap:14px}
+.day .l{flex:0 0 360px;min-width:0}
+.day .hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day .hd .st{font-family:'Archivo Black',sans-serif;font-size:16px}
+.day .hd .dt{font-size:12px;font-weight:700;color:var(--fg2)}
+.day .hd .seg{margin-left:auto;padding:2px}.day .hd .seg span{font-size:8px;padding:4px 8px}
+.day .tm{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:8px}
+.day .tm .h{font-size:11px;opacity:.6}
+.tbd{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:3px 8px;background:var(--wash2);color:var(--fg2);border:1px dashed var(--fg3)}
+.tbd.on{background:var(--warm);color:var(--chip-ink);border-color:transparent}
+.day .staff{margin-top:6px;font-size:12px;display:flex;flex-direction:column;gap:3px}
+.day .staff .r{display:flex;align-items:center;gap:8px}
+.day .staff .r b{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--fg3);width:28px}
+.day .staff .r .n{font-weight:700}
+.day .money{margin-left:auto;text-align:right;font-family:'DM Mono',monospace;font-size:12px;color:var(--fg2);min-width:120px}
+.day .money b{display:block;font-size:16px;color:var(--fg)}
+.day .money small{display:block;font-size:9px;color:var(--fg3);font-family:Inter;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.day.tent{opacity:.85;background:repeating-linear-gradient(135deg,var(--wash) 0 10px,rgba(217,214,205,.04) 10px 20px)}
+.day.canc .l{text-decoration:line-through;opacity:.5}
+.day.canc .money b{text-decoration:line-through;opacity:.4}
+/* calendar preview */
+.cal{background:var(--srf);border-radius:14px;padding:10px 12px 12px;box-shadow:var(--softsh);overflow-x:auto}
+.hdr{display:grid;grid-template-columns:90px repeat(7,110px);margin-bottom:4px}
+.hdr div{text-align:center;font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3)}
+.hdr div b{display:block;font-size:11px;color:var(--fg);letter-spacing:0;text-transform:none;font-weight:400}
+.row{display:grid;grid-template-columns:90px repeat(7,110px);height:80px;position:relative;background-image:repeating-linear-gradient(to right,var(--tick) 0 1px,transparent 1px 110px);background-position:90px 0;border-bottom:1px solid var(--tick)}
+.row .lab{font-size:10px;color:var(--fg2);display:flex;align-items:center;padding-left:10px}
+.b1{position:absolute;top:3px;height:74px;border-radius:9px;box-shadow:0 1px 3px rgba(0,0,0,.4);overflow:hidden;display:flex;flex-direction:column;color:var(--chip-ink)}
+.b1.g{background:var(--booked)}.b1.t{background:var(--tent);color:var(--fg)}.b1.h{background:var(--hot);color:#fff}
+.b1 .spine{background:rgba(0,0,0,.22);padding:3px 8px;display:flex;align-items:baseline;gap:8px;white-space:nowrap;font-size:10px}
+.b1 .spine .nm{font-family:'Archivo Black',sans-serif;font-size:12px}
+.b1 .spine .n{margin-left:auto;font-family:'DM Mono',monospace;font-size:8px;opacity:.8}
+.b1 .cells{display:flex;flex:1}
+.b1 .c{width:110px;padding:4px 8px;border-left:1px solid rgba(0,0,0,.18);font-size:9.5px;line-height:1.25}
+.b1 .c:first-child{border-left:0}
+.b1 .c .m{font-family:'DM Mono',monospace;font-weight:600;display:block}
+.b1 .c .s{font-weight:800;display:block}
+.b1.h .c{text-decoration:line-through}
+table{width:100%;border-collapse:collapse;font-size:11.5px;max-width:960px}
+th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+td code{font-family:'DM Mono',monospace;font-size:10.5px;background:var(--wash);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>Status per day — confirmed Mon–Wed, tentative Thu–Fri, one work order</h1>
+<p class="lede">Makes sense, and it's the natural next step once the calendar treats the day as the unit. But be clear: this one <b>is</b> work-order logic — status drives the calendar colour, the runner hub, billing, the unsubmitted rule, and the guards we just built. The design below moves it to the day at exactly one layer so all of those keep working without each being rewritten.</p>
+
+<h2><span class="n">1</span>The work order: the top bar sets all days, each day can differ</h2>
+<p class="sub">The status bar at the top becomes <b>All days</b> — tap Confirmed and every day is confirmed. Each day card gets its own small pill. When days differ, the top bar reads <b>Mixed</b> and shows the count; tapping it again snaps everything back to one status.</p>
+<div class="wo">
+  <div class="k">Status · all days</div>
+  <div class="bar">
+    <span class="seg"><span class="mixed">Mixed</span><span>Confirmed</span><span>Tentative</span><span>Cancelled</span><span>Tour</span><span>Tech</span><span>Open Hrs</span><span>Lockout</span></span>
+    <span class="note">3 confirmed · 2 tentative — set a day on its card, or tap a status here to set every day.</span>
+  </div>
+
+  <div class="day">
+    <div class="l">
+      <div class="hd"><span class="st">PRS A</span><span class="dt">Mon, Sep 14</span><span class="seg"><span class="on g">Confirmed</span><span>Tentative</span><span>Cancelled</span></span></div>
+      <div class="tm">12:00 PM – 12:00 AM <span class="h">12h</span></div>
+      <div class="staff"><div class="r"><b>1st</b><span class="n">Kovan Eskerie</span></div><div class="r"><b>2nd</b><span class="n">Hunter Tedeschi</span></div></div>
+    </div>
+    <div class="money"><b>$2,500</b>day rate · 12h incl<small>then $250/hr</small></div>
+  </div>
+  <div class="day">
+    <div class="l">
+      <div class="hd"><span class="st">PRS A</span><span class="dt">Wed, Sep 16</span><span class="seg"><span class="on g">Confirmed</span><span>Tentative</span><span>Cancelled</span></span></div>
+      <div class="tm">2:00 PM – 2:00 AM <span class="h">12h</span></div>
+      <div class="staff"><div class="r"><b>1st</b><span class="tbd">TBD</span></div><div class="r"><b>2nd</b><span class="n">Hunter Tedeschi</span></div></div>
+    </div>
+    <div class="money"><b>$2,500</b>day rate · 12h incl<small>then $250/hr</small></div>
+  </div>
+  <div class="day tent">
+    <div class="l">
+      <div class="hd"><span class="st">PRS A</span><span class="dt">Thu, Sep 17</span><span class="seg"><span>Confirmed</span><span class="on t">Tentative</span><span>Cancelled</span></span></div>
+      <div class="tm"><span class="tbd on">Times TBD</span><span class="h" style="font-family:Inter;font-size:10px">tap to set</span></div>
+      <div class="staff"><div class="r"><b>1st</b><span class="tbd on">TBD</span></div><div class="r"><b>2nd</b><span class="tbd on">TBD</span></div></div>
+    </div>
+    <div class="money"><b>$2,500</b>day rate<small>if it happens</small></div>
+  </div>
+  <div class="day canc">
+    <div class="l">
+      <div class="hd"><span class="st">PRS A</span><span class="dt">Fri, Sep 18</span><span class="seg" style="text-decoration:none"><span>Confirmed</span><span>Tentative</span><span class="on h">Cancelled</span></span></div>
+      <div class="tm">12:00 PM – 12:00 AM</div>
+      <div class="staff"><div class="r"><b>1st</b><span class="n">Kovan Eskerie</span></div></div>
+    </div>
+    <div class="money"><b>$2,500</b><small>not billed · kill fee via discount</small></div>
+  </div>
+</div>
+<p class="cap"><b>TBD is a button, not a blank.</b> On a tentative day the time well and each staff well show a dashed TBD; tap to make it explicit (warm), tap again or type to fill it. A confirmed day cannot be saved with Times TBD — the guard says so, same as today's "confirmed needs times." A blank staff slot already means "engineer, TBD" in the data; it just becomes visible. <b>Cancelled day:</b> the row stays (history), it's struck through, and it's zeroed at total time — never rewritten on the row. Kill fee is the WO discount, as now.</p>
+
+<h2><span class="n">2</span>The calendar, automatically</h2>
+<p class="sub">The projection already splits a run on room and on date gap; it splits on status too. Mon–Wed becomes one confirmed card, Thu one tentative card, Fri one cancelled card — same work order. Everything that reads booking colour (calendar, runner hub, TV walls, daily-ops, the unsubmitted rule) keeps working untouched.</p>
+<div class="cal">
+  <div class="hdr"><div></div><div>Mon<b>14</b></div><div>Tue<b>15</b></div><div>Wed<b>16</b></div><div>Thu<b>17</b></div><div>Fri<b>18</b></div><div>Sat<b>19</b></div><div>Sun<b>20</b></div></div>
+  <div class="row"><div class="lab">Studio A</div>
+    <div class="b1 g" style="left:calc(90px + 2px);width:calc(330px - 4px)"><div class="spine"><span class="nm">Melly Mike</span><span>Epic</span><span class="n">WO-1198 · 1–3 of 5</span></div><div class="cells"><div class="c"><span class="m">12P–12A</span><span class="s">KE / HT</span></div><div class="c" style="opacity:.55"><span class="m">12P–12A</span><span class="s">KE / HT</span></div><div class="c"><span class="m">2P–2A</span><span class="s">TBD / HT</span></div></div></div>
+    <div class="b1 t" style="left:calc(90px + 330px + 2px);width:calc(110px - 4px)"><div class="spine"><span class="nm">Melly Mike</span><span class="n">tent.</span></div><div class="cells"><div class="c"><span class="m">TBD</span><span class="s">TBD</span></div></div></div>
+    <div class="b1 h" style="left:calc(90px + 440px + 2px);width:calc(110px - 4px)"><div class="spine"><span class="nm">Melly Mike</span><span class="n">canc.</span></div><div class="cells"><div class="c"><span class="m">12P–12A</span><span class="s">KE</span></div></div></div>
+  </div>
+</div>
+<p class="cap">Three cards, one WO, the B1 spine on each. Click any of them → the same work order. The runner hub shows only the green one on its day, which is exactly right.</p>
+
+<h2><span class="n">3</span>What has to change underneath (the honest list)</h2>
+<table>
+  <tr><th>Piece</th><th>Change</th><th>Risk</th></tr>
+  <tr><td><b>Data</b></td><td><code>studio_time_rows.day_status</code> (null = same as the session) + <code>times_tbd</code>. Every existing row is null → nothing changes on day one.</td><td>Low — additive.</td></tr>
+  <tr><td><b>WO status bar</b></td><td>Becomes "all days": writes <code>session_status</code> AND clears every <code>day_status</code>. Shows Mixed when days differ.</td><td>Low.</td></tr>
+  <tr><td><b>Day card / day sheet</b></td><td>Status pill per day; Times TBD button; TBD chip on empty staff wells.</td><td>Low.</td></tr>
+  <tr><td><b>Projection</b> (the atomic save)</td><td>Segment breaks on effective status, and each card's <code>status</code> = its segment's. This is the one edit to the WO save path.</td><td><b>Medium</b> — it's the path we guard hardest. Has a precedent (the Sep 9 room split) and the selftest covers it.</td></tr>
+  <tr><td><b>Totals</b></td><td><code>computeWoTotals</code> zeroes cancelled days at total time (row untouched).</td><td>Medium — four callers, but one function.</td></tr>
+  <tr><td><b>Guards</b></td><td>Confirm-needs-times: per confirmed day, and refuses Times TBD. Confirm-needs-client: any confirmed day. Confirm-with-blank-status write guard: unchanged.</td><td>Low.</td></tr>
+  <tr><td><b>Billing</b></td><td>WO counts as confirmed if any day is (bucket gate). Nothing else — it already reads rows per day.</td><td>Low.</td></tr>
+  <tr><td><b>Calendar / runner hub / TV / daily-ops / unsubmitted</b></td><td>None. They read <code>bookings.status</code> per card.</td><td>None.</td></tr>
+  <tr><td><b>Tour / Tech / Open Hrs / Lockout</b></td><td>Stay WO-level. Not days.</td><td>None.</td></tr>
+</table>
+
+<h2><span class="n">4</span>Order of work</h2>
+<p class="sub">1 — B1 calendar cards (display only, no SQL). 2 — TBD buttons (one column, display + one guard). 3 — Status per day (one column, projection + totals + guards). Three pushes, each usable on its own; the risky one last, on a branch with a preview you walk before it merges.</p>
+</body>
+</html>

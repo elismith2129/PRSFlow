@@ -9,7 +9,7 @@ import { type FormData, emptyForm } from '@/components/calendar/sessionFormData'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
 import { deleteSessionAndWO } from '@/lib/deleteSession'
-import { dateRange } from '@/lib/time'
+import { dateRange, toStudioLetter } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass, fmtCardTime } from '@/components/calendar/SessionCard'
 import { StatusDot, StatusPill } from '@/components/carved'
@@ -256,12 +256,15 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
+  timesByDay = {},
   onHover, onHoverEnd, colW = 0,
 }: {
   booking: Booking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
   staffByDay?: Record<string, { eng?: string; asst?: string }>
+  // work_order_id|date[|room] -> that day's from/to (2026-09-18). Empty for legacy rows.
+  timesByDay?: Record<string, { from: string; to: string }>
   onHover?: (booking: Booking, day: string, rect: DOMRect, cursorX: number) => void
   onHoverEnd?: () => void
   // Horizontal scroll offset + day-column width, so a long bar can slide its
@@ -328,6 +331,96 @@ function BookingBlock({
     ? Array.from({ length: Math.floor(spanDays / REPEAT_DAYS) }, (_, i) => (i + 1) * REPEAT_DAYS)
         .filter(d => d < spanDays - 1)
     : []
+
+  // ── B1 — THE SPINE (Eli, 2026-09-18, WO-1198 Melly Mike: "the cal card
+  // only reflects the times/staff for the first day. We need to see how each
+  // day is staffed and the start time"; round 2: "I want some sort of link
+  // between the days as it's not clear this is one long booking").
+  //
+  // A multi-day bar is still ONE chip (one click, one hover, one colour) but
+  // inside it: a darker SPINE across the top carrying the name, label and
+  // "N days" once, and a CELL per day column underneath with that day's own
+  // times and initials from studio_time_rows. A day that matches the day
+  // before is drawn quieter so a change stands out; a day with no row reads
+  // TBD. Legacy bookings with no rows at all fall back to the card's own
+  // time/staff on every day. Long bars repeat the name along the spine every
+  // 7 days — the static-repeat rule from the old payload, same reason.
+  //
+  // Desktop only, and only when the chip is tall enough for two lines under
+  // the spine; a stacked or Rooms-mode sliver keeps the ladder card. Phone
+  // rows are 26px scan chips (name only) and are untouched.
+  const hasRows = !!booking.work_order_id && Object.keys(timesByDay).some(k => k.startsWith(`${booking.work_order_id}|`))
+  const spineMode = !isMobile && spanDays > 1 && blockHeight >= 56
+  const roomLetter = toStudioLetter(booking.studio || '')
+  const dayCells = spineMode ? Array.from({ length: spanDays }, (_, i) => {
+    const d = fmt(addDays(visStart, i))
+    const base = `${booking.work_order_id}|${d}`
+    const t = booking.work_order_id ? (timesByDay[`${base}|${roomLetter}`] ?? timesByDay[base]) : undefined
+    // With rows on file, a day whose row names nobody is TBD — not the
+    // projection's collapsed names, which are exactly what this replaces.
+    const hit = booking.work_order_id ? staffByDay[base] : undefined
+    const st = hasRows
+      ? { eng: initials(hit?.eng ?? null), asst: initials(hit?.asst ?? null) }
+      : staffFor(d)
+    const known = hasRows ? !!t : true
+    const from = known ? (t ? t.from : (booking.from_time ?? '')) : ''
+    const to = known ? (t ? t.to : (booking.to_time ?? '')) : ''
+    return { d, known, from, to, eng: st.eng, asst: st.asst }
+  }) : []
+  if (spineMode) {
+    const isBilling2 = booking.payment_type === 'billing'
+    const isBlock = ['tour', 'tech', 'open_hours'].includes(booking.status ?? '')
+    const showPayment = !isBlock && !isBilling2
+    const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
+    const totalSpan = dayDiff(bStart, bEnd) + 1
+    const firstIdx = dayDiff(bStart, visStart)
+    const countLabel = totalSpan === spanDays ? `${totalSpan} days` : `days ${firstIdx + 1}–${firstIdx + spanDays} of ${totalSpan}`
+    const cellW = colW || 120
+    const tier = cellW >= 88 ? 2 : cellW >= 58 ? 1 : 0
+    return (
+      <div
+        onClick={e => { e.stopPropagation(); onClick() }}
+        onMouseMove={onHover ? e => {
+          const r = e.currentTarget.getBoundingClientRect()
+          const frac = (e.clientX - r.left) / Math.max(1, r.width)
+          const idx = Math.min(spanDays - 1, Math.max(0, Math.floor(frac * spanDays)))
+          onHover(booking, fmt(addDays(visStart, idx)), r, e.clientX)
+        } : undefined}
+        onMouseLeave={onHoverEnd}
+        className={`c-ev c-control c-raised-chip c-ev-spine ${sessionFillClass(booking.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+        style={{
+          position: 'absolute', top: blockTop, height: blockHeight,
+          left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
+          boxSizing: 'border-box', padding: 0, cursor: 'pointer', overflow: 'hidden',
+          zIndex: 2, minWidth: 0, display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <div className="c-ev-spinebar" style={{ position: 'relative' }}>
+          <span className="c-arch c-ev-spinename">{primaryName}</span>
+          {labelLine && <span className="c-ev-spinelabel">{labelLine}</span>}
+          <span className="c-ev-spinecount c-mono">{booking.invoice_num ? `#${booking.invoice_num} · ` : ''}{countLabel}</span>
+          {repeatOffsets.map(d => (
+            <span key={d} aria-hidden className="c-arch c-ev-spinename" style={{ position: 'absolute', top: 3, left: `calc(${(d / spanDays) * 100}% + 8px)`, pointerEvents: 'none' }}>{primaryName}</span>
+          ))}
+        </div>
+        <div className="c-ev-cells">
+          {dayCells.map((c, i) => {
+            const prev = dayCells[i - 1]
+            const quiet = !!prev && prev.known === c.known && prev.from === c.from && prev.to === c.to && prev.eng === c.eng && prev.asst === c.asst
+            const timeStr2 = !c.known ? '—' : (c.from && c.to ? `${fmtCardTime(c.from)}–${fmtCardTime(c.to)}` : c.from ? fmtCardTime(c.from) : '—')
+            const staffStr = !c.known ? 'TBD' : ([c.eng, c.asst].filter(Boolean).join(' / ') || 'TBD')
+            return (
+              <div key={c.d} className={`c-ev-cell${quiet ? ' c-ev-cell-quiet' : ''}${!c.known ? ' c-ev-cell-tbd' : ''}`} style={{ width: `${100 / spanDays}%` }}>
+                {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
+                <span className="c-ev-cellstaff">{staffStr}</span>
+              </div>
+            )
+          })}
+        </div>
+        {showPayment && <div className="c-ev-cod">{codLabel ? `COD ${codLabel}` : 'COD'}</div>}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -974,6 +1067,7 @@ function CalendarPageInner() {
   // work_order_id|date -> { eng, asst } for the visible range. Empty when a
   // booking predates the WO rebuild; the chip falls back to the projection names.
   const [staffByDay, setStaffByDay] = useState<Record<string, { eng?: string; asst?: string }>>({})
+  const [timesByDay, setTimesByDay] = useState<Record<string, { from: string; to: string }>>({})
 
   const load = useCallback(async () => {
     const buf = BUFFER_WEEKS * 7
@@ -1005,19 +1099,36 @@ function CalendarPageInner() {
     if (woIds.length) {
       const { data: stRows } = await supabase
         .from('studio_time_rows')
-        .select('work_order_id, date, eng_name, eng_role')
+        .select('work_order_id, date, eng_name, eng_role, studio, from_time, to_time')
         .in('work_order_id', woIds)
       const map: Record<string, { eng?: string; asst?: string }> = {}
+      // PER-DAY TIMES (Eli, 2026-09-18, WO-1198 — the B1 spine card): each
+      // day column inside a multi-day bar shows ITS OWN times. Keyed by room
+      // as well as day because a two-room WO has a row per room per day;
+      // the room-less key is the fallback. A day with no studio row at all
+      // is absent here and the card says TBD. Display only — the WO is
+      // untouched. Mock: docs/design-refs/cal-multiday-linked-options.html.
+      const tmap: Record<string, { from: string; to: string }> = {}
       for (const r of stRows ?? []) {
-        const name = (r as any).eng_name
-        if (!name || !(r as any).date) continue
-        const key = `${(r as any).work_order_id}|${(r as any).date}`
-        const slot = (r as any).eng_role === 'engineer' ? 'eng' : 'asst'
-        map[key] = { ...(map[key] || {}), [slot]: name }
+        const row = r as any
+        if (!row.date) continue
+        const key = `${row.work_order_id}|${row.date}`
+        const name = row.eng_name
+        if (name) {
+          const slot = row.eng_role === 'engineer' ? 'eng' : 'asst'
+          map[key] = { ...(map[key] || {}), [slot]: name }
+        }
+        if ((row.studio ?? '').trim()) {
+          const t = { from: row.from_time ?? '', to: row.to_time ?? '' }
+          tmap[`${key}|${toStudioLetter(row.studio)}`] = t
+          if (!tmap[key]) tmap[key] = t
+        }
       }
       setStaffByDay(map)
+      setTimesByDay(tmap)
     } else {
       setStaffByDay({})
+      setTimesByDay({})
     }
   }, [startDate, view])
 
@@ -1719,22 +1830,26 @@ function CalendarPageInner() {
                 b.start_date <= winEnd && b.end_date >= winStart
               )
               const laneMap = assignLanes(roomBookings)
-              // THE ROW GROWS TO FIT STACKED SESSIONS — EVERYWHERE (Eli,
-              // 2026-09-18: "stretch the cal row like the TV displays so cards
-              // show fully"). This reverses the Aug ruling that desktop rows
-              // stay fixed and stacked cards share the cell by shedding content
-              // — in practice two sessions in one room on one day rendered as
-              // two unreadable slivers, and the TV walls (which grow the row)
-              // read better than the app. Same mechanic mobile has had since
-              // 2026-08-26: the row height is rowH × the room's lane count.
-              // numLanes is PER-BOOKING (its own collision count), so the room
-              // needs the MAX across its bookings — a random solo session in
-              // the window reports 1.
+              // ROW HEIGHT IS FIXED — ON DESKTOP. Growing the row to fit stacked
+              // sessions was tried and rejected there: a doubled row is permanent
+              // visual damage to the grid's rhythm, paid every day of the year.
+              // Desktop stacked cards share the normal cell and shed content
+              // instead — see the tier ladder in BookingBlock.
+              //
+              // MOBILE IS THE EXCEPTION (Eli, 2026-08-26 — the overspill bug):
+              // phone chips carry minHeight 44 for tap targets, so they CANNOT
+              // shrink to share a cell; three stacked sessions rendered 44px
+              // chips into 26px slots and painted them over each other. On the
+              // phone the row grows by lane count — every chip gets a full slot.
+              // numLanes is PER-BOOKING (its own collision count) — reading it
+              // off roomBookings[0] was the bug that kept rows from growing: a
+              // random solo session in the window reports numLanes 1. The
+              // room's height needs the MAX across its bookings.
               const roomLanes = roomBookings.reduce(
                 (m, b) => Math.max(m, laneMap.get(b.id)?.numLanes ?? 1), 1)
               const roomRowH = isRoomCollapsed
                 ? COLLAPSED_ROOM_H
-                : rowH * roomLanes
+                : (isMobile ? rowH * roomLanes : rowH)
               return (
                 <div key={room} className={roomIdx % 2 === 0 ? 'c-calrow c-calrow-alt' : 'c-calrow'} style={{
                   display: 'flex',
@@ -1809,6 +1924,7 @@ function CalendarPageInner() {
                             onClick={() => (isMobile ? setSynopsis(b) : openEdit(b))}
                             isMobile={isMobile}
                             staffByDay={staffByDay}
+                            timesByDay={timesByDay}
                             onHover={showHover}
                             onHoverEnd={hideHover}
                             colW={colW}
