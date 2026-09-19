@@ -220,6 +220,51 @@ function bookingDateOverlaps(a: Booking, b: Booking): boolean {
   return a.start_date <= b.end_date && b.start_date <= a.end_date
 }
 
+/** Adjacent (or overlapping) cards of the same work order in one room, in
+ *  date order, folded into one run for drawing. The run keeps the first
+ *  card's identity (click opens that card's WO — same WO either way) and
+ *  carries its members so each day cell can wear its own status. */
+type RunBooking = Booking & { _members?: Booking[] }
+function mergeWoRuns(cards: Booking[]): RunBooking[] {
+  const byWo = new Map<string, Booking[]>()
+  const out: RunBooking[] = []
+  for (const b of cards) {
+    if (!b.work_order_id) { out.push(b); continue }
+    const g = byWo.get(b.work_order_id)
+    if (g) g.push(b); else byWo.set(b.work_order_id, [b])
+  }
+  byWo.forEach(list => {
+    const sorted = [...list].sort((a, b) => a.start_date.localeCompare(b.start_date))
+    let run: RunBooking | null = null
+    for (const b of sorted) {
+      const touches = run && (b.start_date <= run.end_date || isNextDayStr(run.end_date, b.start_date))
+      if (run && touches) {
+        if (b.end_date > run.end_date) run.end_date = b.end_date
+        run._members!.push(b)
+      } else {
+        run = { ...b, _members: [b] }
+        out.push(run)
+      }
+    }
+  })
+  // The bar wears CONFIRMED if any day is — a run that happens to start on
+  // a tentative day is still a booked session; the odd day shows its own
+  // colour in its cell.
+  for (const r of out) {
+    if (r._members && r._members.length > 1 && r._members.some(m => m.status === 'confirmed')) r.status = 'confirmed'
+  }
+  return out
+}
+function isNextDayStr(a: string, b: string): boolean {
+  const d = parse(a); d.setDate(d.getDate() + 1)
+  return fmt(d) === b
+}
+/** The member card covering a date (a run's own status otherwise). */
+function cardStatusOn(b: RunBooking, date: string): string {
+  const m = b._members?.find(x => x.start_date <= date && x.end_date >= date)
+  return (m ?? b).status
+}
+
 function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes: number }> {
   if (bookings.length === 0) return new Map()
   const sorted = [...bookings].sort((a, b) => {
@@ -259,7 +304,7 @@ function BookingBlock({
   timesByDay = {},
   onHover, onHoverEnd, colW = 0,
 }: {
-  booking: Booking; gridStart: Date; totalDays: number
+  booking: RunBooking; gridStart: Date; totalDays: number
   lane: number; numLanes: number; rowH: number; onClick: () => void
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
   staffByDay?: Record<string, { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }>
@@ -365,7 +410,7 @@ function BookingBlock({
     const known = hasRows ? !!t : true
     const from = known ? (t ? t.from : (booking.from_time ?? '')) : ''
     const to = known ? (t ? t.to : (booking.to_time ?? '')) : ''
-    return { d, known, from, to, eng: st.eng, asst: st.asst, tbd: !!t?.tbd }
+    return { d, known, from, to, eng: st.eng, asst: st.asst, tbd: !!t?.tbd, status: cardStatusOn(booking, d) }
   }) : []
   if (spineMode) {
     const isBilling2 = booking.payment_type === 'billing'
@@ -406,12 +451,20 @@ function BookingBlock({
         <div className="c-ev-cells">
           {dayCells.map((c, i) => {
             const prev = dayCells[i - 1]
-            const quiet = !!prev && prev.known === c.known && prev.tbd === c.tbd && prev.from === c.from && prev.to === c.to && prev.eng === c.eng && prev.asst === c.asst
+            const quiet = !!prev && prev.known === c.known && prev.tbd === c.tbd && prev.from === c.from && prev.to === c.to && prev.eng === c.eng && prev.asst === c.asst && prev.status === c.status
             const timeStr2 = !c.known ? '—' : c.tbd ? 'TBD' : (c.from && c.to ? `${fmtCardTime(c.from)}–${fmtCardTime(c.to)}` : c.from ? fmtCardTime(c.from) : '—')
             // "1ST-? / KE" — an open seat names its role; nobody at all is TBD.
             const staffStr = !c.known ? 'TBD' : ([c.eng && (c.eng === '?' ? '1ST-?' : c.eng), c.asst && (c.asst === '?' ? '2ND-?' : c.asst)].filter(Boolean).join(' / ') || 'TBD')
             return (
-              <div key={c.d} className={`c-ev-cell${quiet ? ' c-ev-cell-quiet' : ''}${!c.known ? ' c-ev-cell-tbd' : ''}`} style={{ width: `${100 / spanDays}%` }}>
+              <div
+                key={c.d}
+                // The cell's own status colour when it differs from the bar's
+                // (a tentative Thursday inside a confirmed week reads grey;
+                // a cancelled Friday reads red and struck). Same fill classes
+                // as the chips, so the colours can't drift.
+                className={`c-ev-cell${quiet ? ' c-ev-cell-quiet' : ''}${!c.known ? ' c-ev-cell-tbd' : ''}${c.status !== booking.status ? ` c-ev-cell-own ${sessionFillClass(c.status)}` : ''}${c.status === 'cancelled' ? ' c-ev-cell-cancelled' : ''}`}
+                style={{ width: `${100 / spanDays}%` }}
+              >
                 {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.tbd ? 'TBD' : c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
                 <span className="c-ev-cellstaff">{staffStr}</span>
               </div>
@@ -1883,10 +1936,19 @@ function CalendarPageInner() {
             {!collapsed.has(loc.name) && loc.rooms.map((room, roomIdx) => {
               const roomKey = `${loc.name}|${room}`
               const isRoomCollapsed = collapsedRooms.has(roomKey)
-              const roomBookings = bookings.filter(b =>
+              const roomCards = bookings.filter(b =>
                 b.location === loc.name && b.studio === room &&
                 b.start_date <= winEnd && b.end_date >= winStart
               )
+              // ONE WORK ORDER, ONE BAR (Eli, 2026-09-19: "is there a way to
+              // keep this connected for multi-day on one work order? just
+              // change the color?"). Status per day splits a run into one
+              // card per status; on the desktop grid the adjacent cards of
+              // one WO in one room are drawn back together as a single spine
+              // bar, and each day CELL wears its own card's colour. The
+              // cards themselves are untouched — this is how the grid draws
+              // them. Phone keeps separate chips (26px scan rows).
+              const roomBookings = isMobile ? roomCards : mergeWoRuns(roomCards)
               const laneMap = assignLanes(roomBookings)
               // ROW HEIGHT IS FIXED — ON DESKTOP. Growing the row to fit stacked
               // sessions was tried and rejected there: a doubled row is permanent
@@ -1979,7 +2041,7 @@ function CalendarPageInner() {
                             key={b.id} booking={b}
                             gridStart={gridRenderStart} totalDays={DAYS}
                             lane={lane} numLanes={numLanes} rowH={roomRowH}
-                            onClick={() => (isMobile ? setSynopsis(b) : openEdit(b))}
+                            onClick={() => (isMobile ? setSynopsis(b) : openEdit((b as RunBooking)._members?.[0] ?? b))}
                             isMobile={isMobile}
                             staffByDay={staffByDay}
                             timesByDay={timesByDay}

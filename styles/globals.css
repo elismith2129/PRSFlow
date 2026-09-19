@@ -1304,6 +1304,10 @@ select.c-input {
 .c-ev-cellstaff { font-size: 9.5px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* A day that matches the day before is quiet, so a change reads at a glance. */
 .c-ev-cell-quiet { opacity: .55; }
+/* A cell whose status differs from the bar's wears its own fill (v1.36.2) —
+   the run stays one bar, the day changes colour. Quiet never applies to it. */
+.c-ev-cell-own { opacity: 1; }
+.c-ev-cell-cancelled .c-ev-celltime, .c-ev-cell-cancelled .c-ev-cellstaff { text-decoration: line-through; }
 .c-ev-cell-tbd .c-ev-celltime { opacity: .5; }
 
 /* COD strip — full-width hot bar on the chip's bottom edge, COD only.

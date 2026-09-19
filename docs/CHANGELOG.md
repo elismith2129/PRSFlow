@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.36.2 — One work order, one bar: day cells wear their own status colour — Sep 19, 2026
+
+Eli: "is there a way to keep this connected for multi-day on one work order?
+just change the colour?" Status per day splits a run into one card per status;
+on the desktop grid `mergeWoRuns` folds adjacent (or overlapping) cards of one
+WO in one room back into a single spine bar, and each day cell wears its own
+card's fill (`cardStatusOn`, `.c-ev-cell-own`; cancelled cells struck). The
+bar reads confirmed if any member day is. Click opens the first member card
+(same WO). Cards and the projection are untouched — this is only how the grid
+draws them; the phone keeps separate chips. `app/(main)/calendar/page.tsx`,
+`styles/globals.css`. No migrations.
+
+---
+
 ## v1.36.1 — Day status in the money column; open seats say which seat — Sep 19, 2026
 
 - **Placement (option C, `docs/design-refs/wo-day-status-placement-options.html`):**
