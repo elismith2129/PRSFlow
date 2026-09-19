@@ -1265,10 +1265,13 @@ export function WorkOrderPopup({
   useEffect(() => {
     if (loading || stView !== null) return
     const dayCount = new Set(stRows.filter(r => r.date).map(r => r.date)).size
-    // RUNNER ALWAYS DEFAULTS TO CARDS (Eli, 2026-08-16). Everyone else —
-    // admin desktop included (Eli, 2026-08-18) — opens in cards for short
-    // sessions (≤3 days) and list for long runs.
-    setStView(runner ? 'cards' : (dayCount > 0 && dayCount <= 3 ? 'cards' : 'list'))
+    // ALWAYS CARDS (Eli, 2026-09-19: "let's just always default to card
+    // view, I don't think list view is that helpful"). The Aug 18 rule opened
+    // long runs in list; now that each card carries its own status, times,
+    // staff and TBD, the card IS the day and list is the toggle for anyone
+    // who wants a table. dayCount kept for the log line below.
+    void dayCount
+    setStView('cards')
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Blanket-rate bundles: load once the WO resolves ───────────────────────
@@ -6605,8 +6608,13 @@ export function WorkOrderPopup({
                               )}
                               <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>{weekdayDate(g.date)}</span>
                               {dayStateTag(g.rows, g.date)}
-                              {dayStatusPill(g.date)}
                             </div>
+                            {/* THE DAY'S STATUS, ON ITS OWN LINE (Eli, 2026-09-19 — the
+                                pill pushed the date onto three lines and spilled into
+                                the notes column at 340px). Small size, under the header. */}
+                            {dayStatusPill(g.date, true) && (
+                              <div style={{ marginTop: 6 }}>{dayStatusPill(g.date, true)}</div>
+                            )}
                             {/* 16px, NOT 22 (2026-08-18). At 22 the range wrapped
                                 onto two lines and pushed the hours onto a third —
                                 the mock sets 16 and keeps "12:00 PM – 7:00 PM 7h"
