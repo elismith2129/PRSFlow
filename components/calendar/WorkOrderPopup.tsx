@@ -236,6 +236,9 @@ type StRow = {
    *  handleRunnerSubmit with status; NOT in the save payload, same as status. */
   submitted_by_name: string | null
   submitted_at: string | null
+  /** The TBD button on the day's times (migration 20260919120000) — an explicit
+   *  "not decided yet", cleared when a time is typed. Part of the save payload. */
+  times_tbd: boolean
 }
 
 type EquipRow = {
@@ -543,6 +546,7 @@ function normalizeStRow(d: any): StRow {
     status: d.status ?? 'in_progress',
     submitted_by_name: d.submitted_by_name ?? null,
     submitted_at: d.submitted_at ?? null,
+    times_tbd: d.times_tbd === true,
     // Assistant is the default role everywhere — an engineer is the exception.
     // Stored rows keep whatever they were saved with; this only decides the
     // fallback for a row with no role recorded.
@@ -890,7 +894,7 @@ export function WorkOrderPopup({
         eng_visible: monthlyStaff,
         eng_role: 'assistant' as const,
         bundle_id: null,
-        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null,
+        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null, times_tbd: false,
       }
     })
 
@@ -1778,6 +1782,10 @@ export function WorkOrderPopup({
 
   function updateStRow(id: string, updates: Partial<StRow>) {
     const row = stRows.find(r => r.id === id)
+    // Typing a time is the decision — it clears Times TBD on its own (2026-09-19).
+    if (('from_time' in updates && updates.from_time) || ('to_time' in updates && updates.to_time)) {
+      if (row?.times_tbd && !('times_tbd' in updates)) updates = { ...updates, times_tbd: false }
+    }
     // RUNNER FIELD LOCKS (defence in depth — the inputs are also disabled).
     // A locked day is the office's; rates are the office's on every day.
     if (runner) {
@@ -2432,7 +2440,7 @@ export function WorkOrderPopup({
       // Follow the row above (so a session staffed with an engineer keeps adding
       // engineers), otherwise fall back to assistant.
       eng_role: last?.eng_role || 'assistant',
-      status: 'in_progress', submitted_by_name: null, submitted_at: null,
+      status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false,
     }))
 
     setStRows(prev => [...prev, ...rows])
@@ -2568,7 +2576,7 @@ export function WorkOrderPopup({
       eng_hours: null, eng_charge: null,
       actual_from_time: '', actual_to_time: '',
       admin_checked: false, admin_locked: false, eng_visible: true,
-      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, bundle_id: null,
+      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, bundle_id: null,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -3296,7 +3304,7 @@ export function WorkOrderPopup({
     const stPayloads = stRows.map(r => ({
       id: r.id,
       studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
-      from_time: r.from_time, to_time: r.to_time,
+      from_time: r.from_time, to_time: r.to_time, times_tbd: r.times_tbd === true,
       total_hours: r.total_hours, rate: r.rate, rate_daily: r.rate_daily || null,
       row_rate_type: r.row_rate_type,
       charge: r.charge,
@@ -3485,7 +3493,7 @@ export function WorkOrderPopup({
           id: r.id,
           work_order_id: woIdRef.current!,
           studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
-          from_time: r.from_time, to_time: r.to_time,
+          from_time: r.from_time, to_time: r.to_time, times_tbd: r.times_tbd === true,
           total_hours: r.total_hours, rate: r.rate,
           rate_daily: r.rate_daily || null,
           row_rate_type: r.row_rate_type,
@@ -6513,7 +6521,9 @@ export function WorkOrderPopup({
                                 that a guarantee rather than a hope. */}
                             <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
                               <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 16, fontWeight: 600 }}>
-                                {first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 12 }}>tap to set</span>}
+                                {first?.times_tbd
+                                  ? <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', borderRadius: 99, padding: '3px 9px', verticalAlign: 'middle' }}>Times TBD</span>
+                                  : <>{first?.from_time || '—'} – {first?.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 12 }}>tap to set</span>}</>}
                               </span>
                               {first?.total_hours != null && <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{first.total_hours}h</span>}
                               {/* THE RATE THAT MADE THE TOTAL (Eli, 2026-08-20:
@@ -6585,7 +6595,7 @@ export function WorkOrderPopup({
                                     {r.eng_role === 'assistant' ? '2ND' : '1ST'}
                                   </span>
                                   <span style={{ fontSize: 11.5, fontFamily: 'Inter', fontWeight: 600 }}>
-                                    {r.eng_name || <span style={{ color: 'var(--c-fg-3)' }}>TBD</span>}
+                                    {r.eng_name || <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--c-fg-2)', border: '1px dashed var(--c-fg-3)', borderRadius: 99, padding: '2px 7px' }}>TBD</span>}
                                   </span>
                                   <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 10.5, color: 'var(--c-fg-2)', opacity: 0.75 }}>
                                     {st.from || '—'} – {st.to || '—'}
@@ -7583,9 +7593,30 @@ export function WorkOrderPopup({
                           )}
                           <span style={hrsChip}>{rowHrs != null ? `${rowHrs}h` : '—'}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
                           {timeWell(r, 'from_time', 'Start', r.from_time)}
                           {timeWell(r, 'to_time', 'End', r.to_time)}
+                          {/* TIMES TBD (Eli, 2026-09-18: "a TBD button for times
+                              for days that are tentative where we don't know
+                              yet"). An explicit not-decided, as opposed to a
+                              blank someone forgot. Tapping clears the times and
+                              marks the day; typing a time un-marks it. Hidden on
+                              a confirmed session — TBD is a tentative thing, and
+                              the confirm guard refuses it. Office only. */}
+                          {!runner && !readOnly && wo.session_status !== 'confirmed' && wo.session_status !== 'lockout' && (
+                            <button
+                              type="button"
+                              onClick={() => updateStRow(r.id, r.times_tbd ? { times_tbd: false } : { times_tbd: true, from_time: '', to_time: '' })}
+                              title={r.times_tbd ? 'Times marked TBD — tap to clear, or just type a time' : 'Times not decided yet'}
+                              style={{
+                                flexShrink: 0, alignSelf: 'center', borderRadius: 99, padding: '6px 10px', cursor: 'pointer', font: 'inherit',
+                                fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+                                background: r.times_tbd ? 'var(--c-st-warm)' : 'var(--c-wash2)',
+                                color: r.times_tbd ? 'var(--c-chip-ink)' : 'var(--c-fg-2)',
+                                border: r.times_tbd ? '1px solid transparent' : '1px dashed var(--c-fg-3)',
+                              }}
+                            >TBD</button>
+                          )}
                         </div>
                         {/* ACTUAL vs BILLED (Eli, 2026-09-01): when the client
                             really arrived and left. Typed, same smart-parse +
@@ -7738,7 +7769,7 @@ export function WorkOrderPopup({
                             >
                               {r.eng_role === 'assistant' ? '2ND' : '1ST'}
                             </button>
-                            <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder={r.eng_role === 'assistant' ? 'Assistant name…' : 'Engineer name…'} className="c-tin" style={{ fontWeight: 700, fontSize: 13, minHeight: 30 }} />
+                            <input list="wo-eng-roster" value={r.eng_name || ''} onChange={e => updateStRow(r.id, { eng_name: e.target.value })} placeholder={r.eng_role === 'assistant' ? 'Assistant · TBD' : 'Engineer · TBD'} className="c-tin" style={{ fontWeight: 700, fontSize: 13, minHeight: 30 }} />
                           </span>
                           <span style={hrsChip}>{staffHrs != null ? `${staffHrs}h` : '—'}</span>
                           {/* REMOVE A STAFF BLOCK (Eli, 2026-08-20: staff hit

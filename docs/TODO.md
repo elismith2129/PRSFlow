@@ -20,7 +20,7 @@ Newest at the top of each group.*
 
 ## Features parked
 
-- [ ] **Per-day status + TBD buttons on the WO** (Eli, Sep 18; mock `wo-per-day-status-options.html`). Order: TBD buttons first (`times_tbd` column, one guard), then `day_status` (projection split on status, totals zero cancelled days, guards per confirmed day). WO logic — feature branch + preview walk before merge. *(Sep 18)*
+- [ ] **Per-day status + TBD buttons on the WO** (Eli, Sep 18; mock `wo-per-day-status-options.html`). TBD buttons shipped v1.35.1; next is `day_status` (projection split on status, totals zero cancelled days, guards per confirmed day). WO logic — feature branch + preview walk before merge. *(Sep 18)*
 
 - [ ] **Tenants out of the billing hub** — its own page/rail entry, separate from regular billing (Eli, Sep 18). Today: a third view inside `app/(main)/billing/page.tsx` (`TenantsView`, `lib/tenants.ts`, roster is code). Next chat. *(Sep 18)*
 

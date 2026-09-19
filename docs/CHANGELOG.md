@@ -20,6 +20,30 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.35.1 — Times TBD on a day; staff TBD made visible — Sep 19, 2026
+
+Step 2 of `docs/design-refs/wo-per-day-status-options.html`. Eli: "a TBD button
+for times as well as the staff for days that are tentative where we don't know
+yet."
+
+- **Times TBD:** a dashed TBD button beside Start/End on the day sheet (office,
+  not on confirmed/lockout sessions). Tap → clears the times and marks the day
+  (warm); typing a time un-marks it (`updateStRow`). The desktop day card shows
+  a warm "Times TBD" chip in place of the range. The calendar spine cell reads
+  `TBD`. The confirm-needs-times guard names it: "(marked TBD)" — a confirmed
+  day has to have decided times.
+- **Staff TBD:** no data change — an empty `eng_name` already is "engineer,
+  TBD". The day card's grey text becomes a dashed TBD chip; the sheet's name
+  field placeholder reads "Engineer · TBD" / "Assistant · TBD".
+- `times_tbd` IS in the row save payload (unlike status/submitted_*) — it is
+  schedule data.
+
+**Migration (run first):** `20260919120000_st_rows_times_tbd.sql` —
+`studio_time_rows.times_tbd boolean not null default false`. **Files:**
+`WorkOrderPopup.tsx`, `lib/woValidation.ts`, `app/(main)/calendar/page.tsx`.
+
+---
+
 ## v1.35.0 — Multi-day calendar cards: the spine — Sep 18, 2026
 
 Eli (WO-1198 Melly Mike): "the cal card only reflects the times/staff for the

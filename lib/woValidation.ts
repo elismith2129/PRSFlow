@@ -56,6 +56,8 @@ export type ValidatableStudioRow = {
   date?: string | null
   from_time?: string | null
   to_time?: string | null
+  /** The day's times are explicitly not decided (2026-09-19). */
+  times_tbd?: boolean | null
   eng_visible?: boolean | null
   eng_name?: string | null
   eng_role?: 'engineer' | 'assistant' | null
@@ -288,11 +290,14 @@ export function confirmStartProblem(
   if (sessionStatus !== 'confirmed') return null
   const missing = rows
     .filter(r => r.studio && r.studio.trim() !== '' && (r.date ?? '').trim() !== '')
-    .filter(r => badTime(r.from_time) || badTime(r.to_time))
+    .filter(r => r.times_tbd || badTime(r.from_time) || badTime(r.to_time))
     .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
   if (missing.length === 0) return null
 
   const label = (r: ValidatableStudioRow) => {
+    // TBD is a tentative thing (2026-09-19): a confirmed day has to have its
+    // times decided, so the marker is named as the reason.
+    if (r.times_tbd) return `${whereDate(r.date)} (marked TBD)`
     const f: string[] = []
     if (badTime(r.from_time)) f.push('From')
     if (badTime(r.to_time)) f.push('To')

@@ -264,7 +264,7 @@ function BookingBlock({
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
   staffByDay?: Record<string, { eng?: string; asst?: string }>
   // work_order_id|date[|room] -> that day's from/to (2026-09-18). Empty for legacy rows.
-  timesByDay?: Record<string, { from: string; to: string }>
+  timesByDay?: Record<string, { from: string; to: string; tbd?: boolean }>
   onHover?: (booking: Booking, day: string, rect: DOMRect, cursorX: number) => void
   onHoverEnd?: () => void
   // Horizontal scroll offset + day-column width, so a long bar can slide its
@@ -365,7 +365,7 @@ function BookingBlock({
     const known = hasRows ? !!t : true
     const from = known ? (t ? t.from : (booking.from_time ?? '')) : ''
     const to = known ? (t ? t.to : (booking.to_time ?? '')) : ''
-    return { d, known, from, to, eng: st.eng, asst: st.asst }
+    return { d, known, from, to, eng: st.eng, asst: st.asst, tbd: !!t?.tbd }
   }) : []
   if (spineMode) {
     const isBilling2 = booking.payment_type === 'billing'
@@ -406,12 +406,12 @@ function BookingBlock({
         <div className="c-ev-cells">
           {dayCells.map((c, i) => {
             const prev = dayCells[i - 1]
-            const quiet = !!prev && prev.known === c.known && prev.from === c.from && prev.to === c.to && prev.eng === c.eng && prev.asst === c.asst
-            const timeStr2 = !c.known ? '—' : (c.from && c.to ? `${fmtCardTime(c.from)}–${fmtCardTime(c.to)}` : c.from ? fmtCardTime(c.from) : '—')
+            const quiet = !!prev && prev.known === c.known && prev.tbd === c.tbd && prev.from === c.from && prev.to === c.to && prev.eng === c.eng && prev.asst === c.asst
+            const timeStr2 = !c.known ? '—' : c.tbd ? 'TBD' : (c.from && c.to ? `${fmtCardTime(c.from)}–${fmtCardTime(c.to)}` : c.from ? fmtCardTime(c.from) : '—')
             const staffStr = !c.known ? 'TBD' : ([c.eng, c.asst].filter(Boolean).join(' / ') || 'TBD')
             return (
               <div key={c.d} className={`c-ev-cell${quiet ? ' c-ev-cell-quiet' : ''}${!c.known ? ' c-ev-cell-tbd' : ''}`} style={{ width: `${100 / spanDays}%` }}>
-                {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
+                {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.tbd ? 'TBD' : c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
                 <span className="c-ev-cellstaff">{staffStr}</span>
               </div>
             )
@@ -1067,7 +1067,7 @@ function CalendarPageInner() {
   // work_order_id|date -> { eng, asst } for the visible range. Empty when a
   // booking predates the WO rebuild; the chip falls back to the projection names.
   const [staffByDay, setStaffByDay] = useState<Record<string, { eng?: string; asst?: string }>>({})
-  const [timesByDay, setTimesByDay] = useState<Record<string, { from: string; to: string }>>({})
+  const [timesByDay, setTimesByDay] = useState<Record<string, { from: string; to: string; tbd?: boolean }>>({})
 
   const load = useCallback(async () => {
     const buf = BUFFER_WEEKS * 7
@@ -1099,7 +1099,7 @@ function CalendarPageInner() {
     if (woIds.length) {
       const { data: stRows } = await supabase
         .from('studio_time_rows')
-        .select('work_order_id, date, eng_name, eng_role, studio, from_time, to_time')
+        .select('work_order_id, date, eng_name, eng_role, studio, from_time, to_time, times_tbd')
         .in('work_order_id', woIds)
       const map: Record<string, { eng?: string; asst?: string }> = {}
       // PER-DAY TIMES (Eli, 2026-09-18, WO-1198 — the B1 spine card): each
@@ -1108,7 +1108,7 @@ function CalendarPageInner() {
       // the room-less key is the fallback. A day with no studio row at all
       // is absent here and the card says TBD. Display only — the WO is
       // untouched. Mock: docs/design-refs/cal-multiday-linked-options.html.
-      const tmap: Record<string, { from: string; to: string }> = {}
+      const tmap: Record<string, { from: string; to: string; tbd?: boolean }> = {}
       for (const r of stRows ?? []) {
         const row = r as any
         if (!row.date) continue
@@ -1119,7 +1119,7 @@ function CalendarPageInner() {
           map[key] = { ...(map[key] || {}), [slot]: name }
         }
         if ((row.studio ?? '').trim()) {
-          const t = { from: row.from_time ?? '', to: row.to_time ?? '' }
+          const t = { from: row.from_time ?? '', to: row.to_time ?? '', tbd: row.times_tbd === true }
           tmap[`${key}|${toStudioLetter(row.studio)}`] = t
           if (!tmap[key]) tmap[key] = t
         }
