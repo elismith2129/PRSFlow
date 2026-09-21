@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Hiring: one case per person, the checklist, and documents they sign in the app</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  HIRING (Eli, 2026-09-21): "really what i need is the checklist. be able to
+  create an onboarding for an employee or a promotion. type a name, select new
+  hire, promotion, or separation and then the checklists for each of those.
+  i'm doing a promotion right now and i have to send an offer letter, signed,
+  and a job description, signed. it'd be great to send and capture from the
+  app, and have the template where i just put in a start date, pay, how many
+  days a week, vacation prorate and their name — it sends it and they sign in
+  the app. + the checklist for adding these to ADP."
+
+  THIS IS SMALLER THAN HR-SPEC §7 AND THAT IS THE POINT. The spec has a
+  template engine (four tables, admin-editable templates, per-item owners and
+  offsets). Eli asked for three fixed checklists and two documents. Build
+  what he asked for; the engine can grow under it later if it ever needs to.
+
+  ── THE DESIGN ──────────────────────────────────────────────────────────────
+  · hr_cases            one row per person-event: name, kind (new_hire |
+                        promotion | separation), staff_id (nullable — a new
+                        hire has no profile yet), anchor date (start /
+                        effective / last day), separation_type, status.
+  · hr_case_items       the checklist, COPIED from a code constant at create
+                        time (lib/hrChecklists.ts — three arrays, one per
+                        kind). Each row: label, group, due_on, legal flag,
+                        done_at, done_by, note. Copying (not referencing)
+                        means editing the constant never rewrites a live case.
+  · hr_documents        offer letter / job description per case. The FIELDS
+                        (title, start, pay, days/week, vacation, reports to)
+                        live as jsonb; the letter is rendered from them by
+                        lib/hrDocs.ts at send time and again at sign time.
+                        sign_token (login-free /sign/<token>, same mechanic as
+                        /m/<token> memos), sent_at, signed_at, signed_name,
+                        signed_ip, pdf_path (private bucket hr-documents,
+                        signed URLs — personnel records, never public).
+  · SIGNING = typed full name + "I agree" on the token page. Works for a new
+    hire who has no login yet, and for a promotion (they can also be signed in
+    — we record the auth user if present). No PIN dance: a PIN is a login
+    secret, not a signature, and the new hire doesn't have one.
+  · SENDING = lib/sendMail (Resend), one mail, link to /sign/<token>. The
+    signed PDF is rendered server-side (same stack as /api/wo-package) and
+    stored; the case item "Offer letter — signed" ticks itself when signed_at
+    lands. The checklist watches the documents; nobody ticks it by hand.
+  · ADP steps are checklist rows with the exact WFN menu path in help text,
+    straight from PRG-P02. PRSFlo never talks to ADP (HR-SPEC §1.1).
+  · SEPARATION asks "how is this ending?" first and stamps the final-pay
+    deadline on the case (LC 201 / 202). Involuntary = red banner: check
+    before the conversation, Eli approval, 48 hrs to Lynair.
+  · Pay is on the case. RLS: owner + manager rows only; hr_documents readable
+    by owner + manager; the /sign page reads by token through the service
+    role. Runners / techs / asst managers never see the Hiring page.
+
+  Migration: three tables + one bucket. Code: lib/hrChecklists.ts,
+  lib/hrDocs.ts (render → HTML for mail + PDF), /hiring page (list + case),
+  /sign/[token] page, /api/hr-doc-send, /api/hr-doc-sign. Two sessions.
+-->
+<style>
+:root{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg2:rgba(217,214,205,.72);--fg3:rgba(217,214,205,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--uncon:#9ec5ea;--chip-ink:#1c2626;--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22);--tick:rgba(217,214,205,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 16px 70px;max-width:1180px;margin:0 auto}
+@media(min-width:720px){body{padding:22px 26px 70px}}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:880px;line-height:1.65;margin-bottom:8px}.lede b{opacity:1}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:34px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:880px;line-height:1.6;margin-bottom:12px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:880px}.cap b{color:var(--fg2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--srf);border-radius:16px;padding:14px 16px;box-shadow:var(--softsh)}
+.k{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin-bottom:6px}
+.seg{display:inline-flex;gap:2px;background:var(--wash);border-radius:99px;padding:3px}
+.seg span{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:6px 12px;border-radius:99px;color:var(--fg3)}
+.seg span.on{background:var(--wash2);color:var(--fg)}
+.seg span.on.g{background:var(--booked);color:var(--chip-ink)}
+.seg span.on.h{background:var(--hot);color:#fff}
+.seg span.on.w{background:var(--warm);color:var(--chip-ink)}
+.inp{background:var(--wash);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--fg);display:flex;align-items:center;gap:8px;min-height:36px}
+.inp.ph{color:var(--fg3)}
+.inp b{font-family:'DM Mono',monospace;font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:8px 14px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--fg);color:var(--bg)}
+.btn.ghost{background:var(--wash2);color:var(--fg)}
+.btn.sm{padding:5px 10px;font-size:9px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:3px 8px;background:var(--wash2);color:var(--fg2)}
+.pill.g{background:var(--booked);color:var(--chip-ink)}.pill.w{background:var(--warm);color:var(--chip-ink)}.pill.h{background:var(--hot);color:#fff}.pill.b{background:var(--uncon);color:var(--chip-ink)}
+/* case list */
+.case{display:grid;grid-template-columns:1fr auto;gap:8px 14px;padding:11px 0;border-top:1px solid var(--wash);align-items:center}
+.case:first-of-type{border-top:0}
+.case .nm{font-weight:700;font-size:13.5px}
+.case .meta{font-size:11px;color:var(--fg3);margin-top:1px}
+.case .prog{font-family:'DM Mono',monospace;font-size:11px;color:var(--fg2);text-align:right}
+.bar{height:4px;border-radius:99px;background:var(--wash2);width:120px;margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--booked)}
+/* checklist */
+.grp{margin-top:14px}
+.grp .gh{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.grp .gh .k{margin:0}
+.grp .gh .cnt{font-family:'DM Mono',monospace;font-size:10px;color:var(--fg3)}
+.it{display:grid;grid-template-columns:22px 1fr auto;gap:10px;padding:8px 0;border-top:1px solid var(--tick);align-items:start}
+.cb{width:18px;height:18px;border-radius:6px;border:1.5px solid var(--fg3);margin-top:1px}
+.cb.on{background:var(--booked);border-color:var(--booked);position:relative}
+.cb.on:after{content:"";position:absolute;left:5px;top:2px;width:5px;height:9px;border:solid var(--chip-ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.cb.auto{border-style:dashed}
+.it .lb{font-size:12.5px}.it .lb.done{opacity:.5;text-decoration:line-through}
+.it .hp{font-size:10.5px;color:var(--fg3);margin-top:2px;line-height:1.5}
+.it .hp code{font-family:'DM Mono',monospace;font-size:10px;background:var(--wash);padding:1px 5px;border-radius:4px;color:var(--fg2)}
+.it .due{font-family:'DM Mono',monospace;font-size:10px;color:var(--fg3);white-space:nowrap;text-align:right}
+.it .due.legal{color:var(--warm)}
+.it .due.over{color:var(--hot)}
+.it .who{display:block;font-size:9px;color:var(--fg3);font-family:Inter;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.doc{display:flex;align-items:center;gap:10px;background:var(--wash);border-radius:12px;padding:10px 12px;margin-top:6px}
+.doc .t{font-weight:700;font-size:12.5px}.doc .s{font-size:10.5px;color:var(--fg3)}
+.doc .st{margin-left:auto}
+.banner{background:rgba(255,90,77,.14);border:1px solid rgba(255,90,77,.4);border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.5;margin-top:10px}
+.banner b{color:var(--hot)}
+/* doc form */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.form .f{display:flex;flex-direction:column;gap:4px}
+.form .f.full{grid-column:1 / -1}
+.form .f .k{margin:0}
+.calc{font-size:10.5px;color:var(--fg3);line-height:1.5}
+.calc b{font-family:'DM Mono',monospace;color:var(--fg);font-weight:600}
+/* letter */
+.letter{background:#efece3;color:#1c1b18;border-radius:12px;padding:26px 28px;font:400 12.5px/1.65 Georgia,serif;box-shadow:var(--softsh)}
+.letter .lh{font-family:Inter,sans-serif;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:10px;color:#6b675c;margin-bottom:18px}
+.letter h3{font-family:Inter,sans-serif;font-size:15px;font-weight:800;margin-bottom:10px;letter-spacing:-.01em}
+.letter p{margin-bottom:9px}
+.letter .mf{background:rgba(255,169,77,.28);border-radius:3px;padding:0 3px}
+.letter table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:12px}
+.letter td{padding:4px 0;border-top:1px solid rgba(0,0,0,.1);vertical-align:top}
+.letter td:first-child{color:#6b675c;width:36%}
+.sig{margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,0,0,.15)}
+.sig .k{color:#6b675c}
+.sig .box{background:#fff;border:1px solid rgba(0,0,0,.2);border-radius:8px;padding:10px 12px;font:italic 20px 'Georgia',serif;color:#1c1b18;margin:6px 0 8px}
+.sig .chk{display:flex;gap:8px;align-items:flex-start;font-family:Inter,sans-serif;font-size:11.5px;color:#3a382f}
+.sig .chk i{width:15px;height:15px;border:1.5px solid #6b675c;border-radius:4px;flex:none;margin-top:1px}
+.sig .btn{margin-top:10px;background:#1c1b18;color:#efece3}
+.done{font-family:Inter,sans-serif;font-size:11px;color:#2d7a5c;margin-top:8px}
+/* tables */
+table.t{width:100%;border-collapse:collapse;font-size:11.5px;max-width:960px}
+.t th{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:left;padding:0 10px 6px 0}
+.t td{padding:6px 10px 6px 0;border-top:1px solid var(--wash);vertical-align:top;line-height:1.5}
+.t td code{font-family:'DM Mono',monospace;font-size:10.5px;background:var(--wash);padding:1px 5px;border-radius:4px}
+.ask{background:var(--wash);border-radius:12px;padding:12px 14px;margin-top:8px;max-width:880px}
+.ask ol{padding-left:18px}.ask li{margin:5px 0;font-size:12px;line-height:1.55}
+.ask li b{color:var(--warm)}
+</style>
+</head>
+<body>
+<h1>Hiring — one case per person, the checklist for it, and the two documents they sign in the app</h1>
+<p class="lede">Type a name, pick <b>New hire · Promotion · Separation</b>, and you get that checklist with the dates already on it. Offer letter and job description are generated from a short form, emailed, and signed on a login-free page — the signed PDF files itself against the case and ticks the box. ADP steps are on the list with the exact menu path, so nobody has to remember them. This is deliberately smaller than the HR-SPEC's template engine: three fixed lists and two documents, which is what's actually needed this week.</p>
+
+<h2><span class="n">1</span>The page: open cases, and starting one</h2>
+<p class="sub">Starting a case is one line. The name, the kind, and one date — the checklist dates itself from that date. Separation asks one more question first, because that question sets the pay deadline.</p>
+<div class="grid2">
+  <div class="panel">
+    <div class="k">New case</div>
+    <div class="row" style="gap:8px">
+      <div class="inp" style="flex:1 1 180px">Quinn Cassell</div>
+      <span class="seg"><span>New hire</span><span class="on w">Promotion</span><span>Separation</span></span>
+    </div>
+    <div class="row" style="gap:8px;margin-top:8px">
+      <div class="inp" style="flex:1 1 160px"><span style="color:var(--fg3)">Effective</span> <b>Mon Oct 5, 2026</b></div>
+      <div class="inp" style="flex:1 1 180px"><span style="color:var(--fg3)">New title</span> Studio Manager</div>
+      <span class="btn">Start case</span>
+    </div>
+    <p class="cap">A promotion or separation picks the person from <code>user_profiles</code> (they already exist). A new hire is just a typed name until day one, when the checklist step "PRSFlo staff record + PIN" creates the profile and links the case to it.</p>
+
+    <div class="k" style="margin-top:18px">Separation asks first</div>
+    <div class="row" style="gap:8px">
+      <span class="seg"><span class="on h">We let them go</span><span>Quit, 72+ hrs notice</span><span>Quit, short notice</span></span>
+    </div>
+    <div class="banner"><b>Final pay is due at the moment of termination.</b> The check has to exist before the conversation. Needs Eli's approval and 48 hours' notice to Lynair. Late = up to 30 days of wages in penalties (LC 201/203).</div>
+    <p class="cap">Quit with 72+ hours → paid on the last day. Quit with less → within 72 hours. The deadline is stamped on the case and sits at the top of the list as its own row.</p>
+  </div>
+
+  <div class="panel">
+    <div class="k">Open cases · 3</div>
+    <div class="case">
+      <div><div class="nm">Quinn Cassell <span class="pill w">Promotion</span></div><div class="meta">Studio Manager · effective Oct 5 · offer letter <b style="color:var(--warm)">sent, unsigned</b></div></div>
+      <div class="prog">4 / 11<div class="bar"><i style="width:36%"></i></div></div>
+    </div>
+    <div class="case">
+      <div><div class="nm">Cris Martinez <span class="pill b">New hire</span></div><div class="meta">Runner · started Sep 18 · <b style="color:var(--hot)">I-9 Section 2 overdue</b></div></div>
+      <div class="prog">9 / 16<div class="bar"><i style="width:56%"></i></div></div>
+    </div>
+    <div class="case">
+      <div><div class="nm">Aaron A. <span class="pill">Separation</span></div><div class="meta">Quit, 72+ hrs · last day Sep 30 · final pay due Sep 30</div></div>
+      <div class="prog">2 / 12<div class="bar"><i style="width:17%"></i></div></div>
+    </div>
+    <div class="row" style="margin-top:12px;gap:8px"><span class="pill">Open</span><span class="pill" style="opacity:.5">Closed · 6</span></div>
+    <p class="cap">The list is the whole page until you open a case. A red note on the row is the next legal deadline that's passed; an orange one is the next thing waiting on someone else (an unsigned document). Closed cases keep the signed PDFs — that's the personnel file.</p>
+  </div>
+</div>
+
+<h2><span class="n">2</span>A case: the promotion you're doing right now</h2>
+<p class="sub">Documents first, because they gate everything else. The two document rows aren't checkboxes you tick — they tick themselves when the signature lands. Everything under ADP carries the menu path from PRG-P02 so it's a copy job, not a memory job.</p>
+<div class="panel" style="max-width:760px">
+  <div class="row"><span style="font-family:'Archivo Black',sans-serif;font-size:17px">Quinn Cassell</span><span class="pill w">Promotion</span><span class="pill">Asst. Manager → Studio Manager</span><span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:11px;color:var(--fg2)">effective Oct 5 · 4 / 11</span></div>
+
+  <div class="grp"><div class="gh"><div class="k">Documents</div><span class="cnt">0 / 2 signed</span></div>
+    <div class="doc"><div><div class="t">Offer letter</div><div class="s">Sent Sep 21 · 2:40 PM to quinncassellmusic@gmail.com · opened</div></div><span class="pill w st">Awaiting signature</span><span class="btn ghost sm">Resend</span></div>
+    <div class="doc"><div><div class="t">Job description — Studio Manager</div><div class="s">Not sent · edit the body before sending</div></div><span class="pill st">Draft</span><span class="btn sm">Send</span></div>
+  </div>
+
+  <div class="grp"><div class="gh"><div class="k">Before ADP</div><span class="cnt">2 / 3</span></div>
+    <div class="it"><div class="cb on"></div><div><div class="lb done">Offer accepted verbally, effective date agreed</div></div><div class="due">Sep 19<span class="who">Eli</span></div></div>
+    <div class="it"><div class="cb on"></div><div><div class="lb done">New rate, title, and days/week decided (they're on the offer letter)</div></div><div class="due">Sep 21<span class="who">Eli</span></div></div>
+    <div class="it"><div class="cb auto"></div><div><div class="lb">Offer letter and job description signed</div><div class="hp">Ticks itself when both signatures land. Nothing in ADP moves before this.</div></div><div class="due legal">before Oct 5</div></div>
+  </div>
+
+  <div class="grp"><div class="gh"><div class="k">ADP — Eli</div><span class="cnt">0 / 4</span></div>
+    <div class="it"><div class="cb"></div><div><div class="lb">Change position and title</div><div class="hp"><code>People › Employment › Position</code> — effective date = the letter's effective date, not today.</div></div><div class="due">Oct 5<span class="who">Eli</span></div></div>
+    <div class="it"><div class="cb"></div><div><div class="lb">Change pay rate</div><div class="hp"><code>People › Pay Profile › Pay Rate</code> — effective Oct 5. Lynair processes the first period at the new rate; tell her it's coming.</div></div><div class="due">Oct 5<span class="who">Eli</span></div></div>
+    <div class="it"><div class="cb"></div><div><div class="lb">Set Manager classification and reports-to</div><div class="hp">Per Lynair, ADP's Manager flag is the first pass for supervisor training status. Only if the new role supervises anyone.</div></div><div class="due">Oct 5<span class="who">Eli</span></div></div>
+    <div class="it"><div class="cb"></div><div><div class="lb">Upload the signed letter and JD to their ADP record</div><div class="hp">Download both from this case. <code>People › Documents</code>.</div></div><div class="due">Oct 5<span class="who">Fernando</span></div></div>
+  </div>
+
+  <div class="grp"><div class="gh"><div class="k">PRSFlo &amp; training</div><span class="cnt">0 / 2</span></div>
+    <div class="it"><div class="cb"></div><div><div class="lb">Change role in PRSFlo to manager</div><div class="hp">One tap here — sets <code>user_profiles.role</code> on the effective date, not before.</div></div><div class="due">Oct 5<span class="who">Eli</span></div></div>
+    <div class="it"><div class="cb"></div><div><div class="lb">Supervisory harassment training (2 hrs) within 6 months of promotion</div><div class="hp">Gov. Code 12950.1 — a newly supervisory employee gets the 2-hour course within six months. Free CRD course. Save the certificate; CRD doesn't reissue.</div></div><div class="due legal">by Apr 5, 2027<span class="who">Fernando</span></div></div>
+  </div>
+  <p class="cap">Dashed box = ticks itself. Orange date = a legal deadline. The "who" under a date is the default owner from PRG-P02; anyone with the page can tick anything (coverage rule, HR-SPEC §5.6) — we record who did.</p>
+</div>
+
+<h2><span class="n">3</span>The document form: seven fields, one letter</h2>
+<p class="sub">You fill the left; the letter on the right is what they get. Merge fields are highlighted here so you can see what's yours and what's template. Vacation prorates from the annual days you enter — the formula is shown, not hidden.</p>
+<div class="grid2">
+  <div class="panel">
+    <div class="k">Offer letter · Quinn Cassell · Promotion</div>
+    <div class="form">
+      <div class="f"><div class="k">Title</div><div class="inp">Studio Manager</div></div>
+      <div class="f"><div class="k">Effective date</div><div class="inp"><b>Oct 5, 2026</b></div></div>
+      <div class="f"><div class="k">Pay</div><div class="inp"><b>$28.00</b> <span style="color:var(--fg3)">/ hour</span></div></div>
+      <div class="f"><div class="k">Pay basis</div><span class="seg"><span class="on">Hourly</span><span>Salary</span></span></div>
+      <div class="f"><div class="k">Days per week</div><div class="inp"><b>5</b></div></div>
+      <div class="f"><div class="k">Reports to</div><div class="inp">Eli Smith, General Manager</div></div>
+      <div class="f"><div class="k">Vacation · annual days at full time</div><div class="inp"><b>10</b></div></div>
+      <div class="f"><div class="k">Studio</div><div class="inp">Paramount (PRS)</div></div>
+      <div class="f full"><div class="k">Prorated this year</div><div class="calc">10 days × (87 remaining of 365) × (5 / 5 days) = <b>2.4 days</b> through Dec 31, 2026 — then 10 days per year from Jan 1. Round to the half day.</div></div>
+      <div class="f full"><div class="k">Anything else</div><div class="inp ph">Optional paragraph — a signing bonus, a probation note, a schedule detail. Left empty, nothing prints.</div></div>
+    </div>
+    <div class="row" style="margin-top:12px;gap:8px"><span class="btn">Send to quinncassellmusic@gmail.com</span><span class="btn ghost">Preview PDF</span><span class="btn ghost">Save draft</span></div>
+    <p class="cap">Send = one email through the same Resend sender as memos, with a link to <code>/sign/&lt;token&gt;</code>. The fields are saved as-is; the letter is rendered from them every time, so a fixed typo in the template fixes every unsent letter and none of the signed ones. Signed letters are frozen as PDF.</p>
+    <p class="cap"><b>Job description</b> uses the same form minus pay: title, reports to, studio, effective date, and an editable body seeded from a per-title text (Studio Manager, Runner, Billing Coordinator, Tech…). The first time you send one for a title, that body becomes the seed for the next.</p>
+  </div>
+
+  <div>
+    <div class="letter">
+      <div class="lh">Paramount Recording Studios</div>
+      <h3>Offer of promotion — <span class="mf">Studio Manager</span></h3>
+      <p><span class="mf">September 21, 2026</span></p>
+      <p>Dear <span class="mf">Quinn</span>,</p>
+      <p>We're pleased to offer you the position of <span class="mf">Studio Manager</span> at <span class="mf">Paramount Recording Studios (PRS)</span>, effective <span class="mf">Monday, October 5, 2026</span>. You will report to <span class="mf">Eli Smith, General Manager</span>.</p>
+      <table>
+        <tr><td>Pay</td><td><span class="mf">$28.00 per hour</span>, non-exempt, paid on the regular payroll schedule</td></tr>
+        <tr><td>Schedule</td><td><span class="mf">5 days per week</span>; shifts set by the studio schedule</td></tr>
+        <tr><td>Vacation</td><td><span class="mf">10 days per year</span> at full time; prorated to <span class="mf">2.5 days</span> for the remainder of 2026</td></tr>
+        <tr><td>Job description</td><td>Attached separately for your signature</td></tr>
+      </table>
+      <p>Employment remains at-will. Everything else about your employment — sick leave, policies, and the handbook — continues unchanged.</p>
+      <p>Please sign below to accept. We're glad to have you in this role.</p>
+      <p><span class="mf">Eli Smith</span><br>General Manager, Paramount Recording Studios</p>
+      <div class="sig">
+        <div class="k">Sign to accept</div>
+        <div class="box">Quinn Cassell</div>
+        <div class="chk"><i></i><span>By typing my name I agree this is my electronic signature and that I accept this offer. <span style="color:#6b675c">Sep 21, 2026 · 3:12 PM</span></span></div>
+        <span class="btn">Sign and accept</span>
+        <div class="done">After signing: "Signed. A copy is on its way to your email." — and the case row flips to Signed.</div>
+      </div>
+    </div>
+    <p class="cap">This is the <code>/sign/&lt;token&gt;</code> page on their phone: the letter, a name box, one checkbox, one button. No login, no PIN, no account — a new hire has none of those. We record typed name, time, IP, and the auth user if they happened to be signed in. The token dies once signed; the PDF is what remains. A typed-name signature with an intent checkbox is a valid electronic signature under E-SIGN/UETA — it's what the ADP onboarding forms do too.</p>
+  </div>
+</div>
+
+<h2><span class="n">4</span>The three checklists (what gets copied onto a case)</h2>
+<p class="sub">New hire and separation are lifted from PRG-P02 as written. Promotion is new — you told me what's on it today, and the training clause comes from HR-SPEC §6. Owner is the default from P02; "auto" means the app ticks it.</p>
+<div class="grid2">
+  <div class="panel">
+    <div class="k">New hire · 16 · dates from start date</div>
+    <table class="t">
+      <tr><th>Item</th><th>Due</th><th>Who</th></tr>
+      <tr><td><b>Documents</b> — offer letter signed · job description signed</td><td>before start</td><td>auto</td></tr>
+      <tr><td>Legal name, personal email, mobile, start date sent to Eli</td><td>—</td><td>Fernando</td></tr>
+      <tr><td>ADP: create hire <code>Process › HR › Hire / Rehire</code> — hire date 7 days before day one, STANDARD onboarding, "use for notification" ticked, CURR, 4DA</td><td>start − 7</td><td>Eli</td></tr>
+      <tr><td>Welcome email sent, cc Lynair (template on the case)</td><td>start − 7</td><td>Fernando</td></tr>
+      <tr><td>Notices not already in the ADP packet handed over (WTPA, harassment policy signed, CRD sheet, sick leave, WC + DWC-1, DE 2515/2511, WVPP, IIPP, handbook signed)</td><td>day one</td><td>Fernando</td></tr>
+      <tr><td>I-9 Section 1 complete</td><td>day one</td><td>Fernando</td></tr>
+      <tr><td><b>I-9 Section 2 complete</b></td><td style="color:var(--warm)">start + 3 business days</td><td>Fernando</td></tr>
+      <tr><td>Onboarding progress checked; uploaded documents approved in ADP</td><td>rolling</td><td>Fernando</td></tr>
+      <tr><td>Eli told steps are done → final approve in ADP</td><td>—</td><td>Eli</td></tr>
+      <tr><td>Email Lynair: add to CalSavers (needs address + SSN from completed onboarding)</td><td style="color:var(--warm)">hire + 30</td><td>Fernando</td></tr>
+      <tr><td>Training tracker: harassment due in 6 months, WPV at hire</td><td style="color:var(--warm)">start + 6 mo / day one</td><td>Fernando</td></tr>
+      <tr><td>PRSFlo staff record + PIN (creates the profile, links this case)</td><td>day one</td><td>Eli</td></tr>
+      <tr><td>Keys, codes, email, gear</td><td>day one</td><td>Fernando</td></tr>
+      <tr><td>Can punch and approve their own timecard before first shift ends</td><td>day one</td><td>Fernando</td></tr>
+      <tr><td>Walked through punches, meals, same-day self-reporting, timecard approval</td><td>week one</td><td>Fernando</td></tr>
+      <tr><td>30-day check: I-9 done, everything signed and filed, CalSavers confirmed, training scheduled, approving own timecards</td><td>start + 30</td><td>Fernando</td></tr>
+    </table>
+  </div>
+  <div>
+    <div class="panel">
+      <div class="k">Promotion · 11 · dates from effective date</div>
+      <table class="t">
+        <tr><th>Item</th><th>Due</th><th>Who</th></tr>
+        <tr><td><b>Documents</b> — offer letter signed · job description signed</td><td>before effective</td><td>auto</td></tr>
+        <tr><td>Offer accepted verbally, effective date agreed</td><td>—</td><td>Eli</td></tr>
+        <tr><td>Rate, title, days/week decided</td><td>—</td><td>Eli</td></tr>
+        <tr><td>ADP: position + title <code>People › Employment › Position</code></td><td>effective</td><td>Eli</td></tr>
+        <tr><td>ADP: pay rate <code>People › Pay Profile</code>; tell Lynair</td><td>effective</td><td>Eli</td></tr>
+        <tr><td>ADP: Manager classification + reports-to (if supervising)</td><td>effective</td><td>Eli</td></tr>
+        <tr><td>Signed letter + JD uploaded to ADP record</td><td>effective</td><td>Fernando</td></tr>
+        <tr><td>PRSFlo role changed (one tap, on the date)</td><td>effective</td><td>Eli</td></tr>
+        <tr><td>Supervisory harassment training, 2 hrs (only if newly supervising)</td><td style="color:var(--warm)">effective + 6 mo</td><td>Fernando</td></tr>
+        <tr><td>Keys / codes / access adjusted for the new role</td><td>effective</td><td>Fernando</td></tr>
+      </table>
+    </div>
+    <div class="panel" style="margin-top:20px">
+      <div class="k">Separation · 12 · dates from notice + last day</div>
+      <table class="t">
+        <tr><th>Item</th><th>Due</th><th>Who</th></tr>
+        <tr><td><b>Final pay ready</b> — immediate / last day / 72 hrs, by type. Includes accrued PTO.</td><td style="color:var(--hot)">by type</td><td>Eli · Lynair</td></tr>
+        <tr><td>Involuntary only: Eli approved, reason documented, Lynair has 48 hrs notice</td><td>notice − 2</td><td>Eli</td></tr>
+        <tr><td>Quit only: resignation in writing on the case (never verbal)</td><td>—</td><td>Fernando</td></tr>
+        <tr><td>Date and time of notice recorded (sets the deadline)</td><td>auto</td><td>—</td></tr>
+        <tr><td>Last day and PTO balance confirmed with Lynair</td><td>—</td><td>Fernando</td></tr>
+        <tr><td>Packet emailed: Separation Notice (return), DE 2511/2515/2320, COBRA if applicable, final pay statement</td><td>last day</td><td>Fernando</td></tr>
+        <tr><td>ADP: terminate <code>Process › HR › Terminate Employment</code>; docs uploaded</td><td>last day</td><td>Eli</td></tr>
+        <tr><td>Email Lynair: remove from CalSavers</td><td>last day</td><td>Fernando</td></tr>
+        <tr><td>Final timecard closed — punches, premiums, PTO paid</td><td>last day</td><td>Fernando</td></tr>
+        <tr><td>PRSFlo: deactivate, void PIN, reassign open tasks and work orders (one tap)</td><td>last day</td><td>Eli</td></tr>
+        <tr><td>Keys, fobs, codes revoked; gear back; email off or forwarded; clients reassigned</td><td>last day</td><td>Fernando</td></tr>
+        <tr><td>Personnel file closed — case closed, keep 4 years</td><td>last day</td><td>Fernando</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<h2><span class="n">5</span>What it's made of</h2>
+<table class="t">
+  <tr><th>Piece</th><th>What</th></tr>
+  <tr><td><code>hr_cases</code></td><td>subject_name · kind (new_hire / promotion / separation) · staff_id nullable · anchor_date · separation_type · final_pay_due · notice_at · new_title · status (open / closed) · created_by. RLS: owner + manager.</td></tr>
+  <tr><td><code>hr_case_items</code></td><td>case_id · sort · group · label · help · owner_role · due_on · is_legal · auto_key (nullable: <code>docs_signed</code>, <code>notice_recorded</code>) · done_at · done_by · note. Copied from <code>lib/hrChecklists.ts</code> when the case is created.</td></tr>
+  <tr><td><code>hr_documents</code></td><td>case_id · kind (offer_letter / job_description) · fields jsonb · body text (JD only) · recipient_email · sign_token · sent_at · opened_at · signed_at · signed_name · signed_ip · signed_auth_user · pdf_path. RLS: owner + manager; the sign page reads by token via service role.</td></tr>
+  <tr><td>bucket <code>hr-documents</code></td><td>Private, signed URLs, same pattern as <code>checklist-photos</code>. One PDF per signed document, plus the uploaded resignation letter on a separation.</td></tr>
+  <tr><td><code>lib/hrDocs.ts</code></td><td>renders a document's fields → HTML (for the mail and the sign page) and → PDF (same renderer stack as <code>/api/wo-package</code>). Templates are code with merge fields; JD body is per-title seed text.</td></tr>
+  <tr><td><code>/sign/[token]</code></td><td>Login-free page in <code>app/sign/</code> beside <code>app/m/</code>. Letter · name box · intent checkbox · button. Dead after signing (shows the signed copy).</td></tr>
+  <tr><td><code>/api/hr-doc-send</code> · <code>/api/hr-doc-sign</code></td><td>Send mints the token and mails (soft-fail like memos). Sign verifies the token, stamps the signature, renders + stores the PDF, emails a copy to the signer, ticks <code>docs_signed</code> on the case when both are in.</td></tr>
+  <tr><td>Role change / deactivate</td><td>Two case actions that already exist elsewhere (role on the profile; deactivate + void PIN + reassign). The case item just calls them and records who.</td></tr>
+</table>
+<p class="cap">Build order: migration (three tables, bucket, RLS, grants) → <code>lib/hrChecklists.ts</code> + the case page with a working checklist (you can use it for Quinn's promotion the same day, ticking the document rows by hand) → documents: form, render, send, sign, PDF, auto-tick. Two sessions. The HR-SPEC's template engine isn't built and doesn't need to be — if a checklist ever needs to change, it's a code edit; live cases keep their copy.</p>
+
+<h2><span class="n">6</span>Rulings I need from you</h2>
+<div class="ask"><ol>
+  <li><b>Vacation.</b> What's the annual number at full time, and does it scale with days/week (a 3-day person gets 3/5 of it)? The form assumes yes. And is it days or hours?</li>
+  <li><b>Who sees pay.</b> Fernando runs the checklist but you set pay. Can he see the rate on the case (simplest — he's uploading the signed letter to ADP anyway), or is the offer letter form owner-only?</li>
+  <li><b>Signing an existing employee.</b> For a promotion, the letter goes to their personal email like a new hire, or do you want it to also appear in-app on their dashboard ("You have a document to sign")? I'd ship email-only first.</li>
+  <li><b>Job descriptions.</b> Do you have written JDs for the roles beyond the 2025 Billing Coordinator one? If not, the first JD you send for each title becomes the seed and I draft Studio Manager from what you tell me.</li>
+  <li><b>Letter signer.</b> Every letter signs as you, or can Fernando send a letter as himself?</li>
+  <li><b>New hire day one.</b> "PRSFlo staff record + PIN" as a case action creates the profile and runs <code>set-pins.mjs --only</code>'s logic in-app — or keep that a manual step you do from the terminal like today?</li>
+</ol></div>
+</body>
+</html>

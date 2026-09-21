@@ -127,6 +127,11 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     // need much but cal and flags"). The billing group and its children go.
     if (profile?.role === 'tech' && (item.href.startsWith('/billing') || item.href === '/ap-protocols')) return false
     if (item.href === '/nadines' && !isEli) return false
+    // Hiring holds pay and separations — owner/manager only (2026-09-21); the
+    // page body and RLS say the same.
+    if (item.href === '/hiring'
+      && profile?.role !== 'owner'
+      && profile?.role !== 'manager') return false
     if (item.href === '/rates'
       && profile?.role !== 'owner'
       && profile?.role !== 'manager'

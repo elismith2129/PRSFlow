@@ -20,6 +20,34 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.37.0 — Hiring: one case per person, the checklist for it (part 1 of 2) — Sep 21, 2026
+
+`/hiring` stops being a placeholder. Type a name, pick New hire / Promotion /
+Separation, one date → the checklist for it, dated from that date, ADP steps
+with the WFN menu path in the help text. Separation asks the separation type
+first and stamps `final_pay_due` (LC 201/202); involuntary gets a red banner.
+Owner + manager only (rail, page body, RLS). Realtime on all three tables.
+Mock: `docs/design-refs/hiring-options.html`.
+
+- **Migration `20260921120000_hr_cases.sql`** — `hr_cases`, `hr_case_items`,
+  `hr_documents`, private bucket `hr-documents`, RLS (owner/manager), grants,
+  realtime. `hr_documents` is carried now so part 2 (send / sign / PDF) needs
+  no schema step. No delete policy on documents; no update/delete on the bucket.
+- `lib/hrChecklists.ts` — the three lists as code + `resolveChecklist` (dates:
+  `addDays` / `addMonths` / `addBusinessDays` for I-9 §2) + `finalPayDue`.
+- `lib/hrCases.ts` — types, `createCase` (insert case → copy items; removes
+  the case if the items insert fails), `progress`, `nextUp`.
+- `app/(main)/hiring/page.tsx` — list (open / closed) + case view. Items tick
+  with `done_at`/`done_by`; the two Documents rows carry `auto_key =
+  'docs_signed'` and are hand-ticked until part 2. A new-hire case links to
+  its `user_profiles` row once that exists (day-one step).
+- `components/layout/Rail.tsx` — `/hiring` hidden from billing / asst / tech.
+
+**Watch-outs:** a case's items are a COPY — editing `lib/hrChecklists.ts` does
+not touch open cases. `hr_documents` exists but nothing writes it yet.
+
+---
+
 ## v1.36.2 — One work order, one bar: day cells wear their own status colour — Sep 19, 2026
 
 Eli: "is there a way to keep this connected for multi-day on one work order?

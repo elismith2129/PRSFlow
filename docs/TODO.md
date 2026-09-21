@@ -20,6 +20,9 @@ Newest at the top of each group.*
 
 ## Features parked
 
+- [ ] **Hiring part 2 — the letters:** offer letter + job description form on the case (title, effective date, pay, hours/week, vacation with the prorate shown), send via Resend, sign at `/sign/<token>` (typed name + intent box), PDF to `hr-documents`, Documents rows tick themselves. JD seeds: Asst. Manager and Billing Coordinator from the real docs; Studio Manager drafted from Asst. Manager (no paper JD exists). *(Sep 21)*
+- [ ] **Hiring: one-tap case actions** — "role changed in PRSFlo" and "deactivate + void PIN + reassign" call the real thing instead of being ticks. *(Sep 21)*
+
 - [x] ~~Per-day status + TBD buttons on the WO~~ — shipped v1.35.1 / v1.36.0–v1.36.2. *(Sep 19)*
 
 - [ ] **Tenants out of the billing hub** — its own page/rail entry, separate from regular billing (Eli, Sep 18). Today: a third view inside `app/(main)/billing/page.tsx` (`TenantsView`, `lib/tenants.ts`, roster is code). Next chat. *(Sep 18)*

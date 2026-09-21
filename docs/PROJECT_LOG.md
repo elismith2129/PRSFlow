@@ -752,6 +752,45 @@ always opens in card view ("list isn't that helpful").
 the hour — the Aug ruling stands); diamonds on days that differ; the stripe-and-dropdown
 placement (A) in favour of C.
 
+#### Sep 21 — Hiring: a case, its checklist, and the two letters (v1.37.0, part 1)
+
+Picked up the HR layer at the one page still a placeholder. Eli: "really what i need is
+the checklist. type a name, select new hire, promotion, or separation and then the
+checklists for each of those. i'm doing a promotion right now and i have to send an
+offer letter, signed, and a job description, signed — it'd be great to send and capture
+from the app, with a template where i just put in a start date, pay, days a week,
+vacation prorate and their name, and they sign in the app. + the checklist for ADP."
+
+**Deliberately smaller than HR-SPEC §7.** The spec has a template engine (four tables,
+admin-editable templates, per-item owners and offsets). What was asked for is three
+fixed lists and two documents. So: `hr_cases` (one per person-event), `hr_case_items`
+(the list, COPIED from `lib/hrChecklists.ts` at create time, dated from the case's
+anchor), `hr_documents` (fields as jsonb, letter rendered from them, signed PDF frozen
+in the private `hr-documents` bucket). Editing the constant changes the next case,
+never a live one. If a list ever needs an editor, the engine can grow under this.
+
+**The lists.** New hire and separation are PRG-P02 as written, with the WFN menu paths
+in the help text so ADP is a copy job. Promotion is new — Eli's own list plus the
+supervisory-training clause (Gov. Code 12950.1, 2 hrs within 6 months) from HR-SPEC §6.
+Separation asks "how is this ending?" first and stamps `final_pay_due` (LC 201/202:
+involuntary → the last day, quit 72+ → last day, quit short → notice + 72h); involuntary
+gets the red banner because it's the highest-dollar miss in the whole layer.
+
+**What the real letters settled** (Eli sent Fernando's, Sam's and Lori Beth's letters
+plus the Asst. Manager and Billing Coordinator JDs): vacation is FRONT-LOADED Jan 1 —
+6 days (48h) managers, 5 days (40h) asst managers and billing coordinator; the prorate is
+`annual × days remaining ÷ 365` (Sam's 1.7 and Lori Beth's 1.38 both check), and a
+32-hour week did NOT scale it. Letters always sign as Eli, GM, with a "Received and
+accepted" block and the 8-clause vacation policy attached. JDs have a two-party
+certification (employee + GM). No Studio Manager JD exists on paper — part 2 seeds one
+from the Asst. Manager JD, marked draft.
+
+**Signing (part 2, next):** typed name + intent checkbox on a login-free `/sign/<token>`
+page, same mechanic as `/m/<token>` memos. Not a PIN — a PIN is a login secret, and a
+new hire doesn't have one. Until part 2 ships, the two Documents rows are ticked by hand
+(dashed box = will tick itself). Pay is on the case → owner + manager RLS; Fernando sees
+the rate because he uploads the signed letter to ADP anyway.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
