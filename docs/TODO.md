@@ -22,6 +22,8 @@ Newest at the top of each group.*
 
 - [ ] **Hiring part 2 — the letters:** offer letter + job description form on the case (title, effective date, pay, hours/week, vacation with the prorate shown), send via Resend, sign at `/sign/<token>` (typed name + intent box), PDF to `hr-documents`, Documents rows tick themselves. JD seeds: Asst. Manager and Billing Coordinator from the real docs; Studio Manager drafted from Asst. Manager (no paper JD exists). *(Sep 21)*
 - [ ] **Hiring: one-tap case actions** — "role changed in PRSFlo" and "deactivate + void PIN + reassign" call the real thing instead of being ticks. *(Sep 21)*
+- [ ] **Positions → profiles:** the "role and position changed in PRSFlo" step should set `user_profiles.role` + `position_title` from the case's position in one tap; until then set the position on the profile by hand (SQL) so the next promotion knows whether they already supervise. Also: a way to set `position_title` for everyone currently on staff (one-time). *(Sep 21)*
+- [ ] **Studio Manager JD** is a draft written from the Asst. Manager JD + PRG-P01 — Eli to read it on Admin → Positions and mark Final. *(Sep 21)*
 
 - [x] ~~Per-day status + TBD buttons on the WO~~ — shipped v1.35.1 / v1.36.0–v1.36.2. *(Sep 19)*
 

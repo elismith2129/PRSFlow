@@ -29,6 +29,15 @@ export type ChecklistCtx = {
   noticeAt?: string | null
   /** computed final pay date for a separation */
   finalPayDue?: string | null
+  /** the position the case is for (hr_positions) — drives the supervisory rows */
+  position?: { title: string; is_supervisory: boolean; vacation_days?: number | null } | null
+  /** promotion only: did they already supervise before this? */
+  wasSupervisory?: boolean | null
+}
+
+/** Newly supervisory = the new position supervises and the old one didn't. */
+export function newlySupervisory(c: ChecklistCtx): boolean {
+  return !!c.position?.is_supervisory && !c.wasSupervisory
 }
 
 export type ChecklistSpec = {
@@ -115,8 +124,14 @@ const NEW_HIRE: ChecklistSpec[] = [
   { grp: 'While onboarding runs', label: 'Told Eli their steps are done → Eli does the final review and approve', owner: 'Eli' },
   { grp: 'While onboarding runs', label: 'Email Lynair: add to CalSavers', owner: 'Fernando', due: c => addDays(c.anchor, 30), legal: true,
     help: 'Only possible once onboarding completes (she needs address + SSN). The 30-day clock runs from the hire date regardless, so a slow onboarding compresses the window.' },
-  { grp: 'While onboarding runs', label: 'Added to the training tracker — harassment due in 6 months, WPV at hire', owner: 'Fernando', due: c => addMonths(c.anchor, 6), legal: true,
-    help: 'PRG-P04. Free CRD course for harassment (1 hr non-supervisory / 2 hrs supervisory). CRD does not reissue certificates — save it before closing the browser.' },
+  { grp: 'While onboarding runs', label: 'Harassment prevention training done within 6 months (non-supervisory, 1 hour)', owner: 'Fernando', due: c => addMonths(c.anchor, 6), legal: true,
+    only: c => !c.position?.is_supervisory,
+    help: 'PRG-P04. Free CRD course, 1 hour. CRD does not reissue certificates — save it before closing the browser. Then record it on the training tracker.' },
+  { grp: 'While onboarding runs', label: 'Harassment prevention training done within 6 months (supervisory, 2 hours)', owner: 'Fernando', due: c => addMonths(c.anchor, 6), legal: true,
+    only: c => !!c.position?.is_supervisory,
+    help: 'This position supervises people, so it is the 2-hour supervisory course (Gov. Code 12950.1). Free CRD course. Save the certificate — CRD does not reissue. Then record it on the training tracker.' },
+  { grp: 'While onboarding runs', label: 'Workplace violence training done at hire; recorded on the training tracker', owner: 'Fernando', due: c => c.anchor, legal: true,
+    help: 'PRG-P04 / PRG-WVPP. Walk them through the plan, answer their questions, get the acknowledgment signed.' },
 
   { grp: '30 days', label: '30-day check: I-9 done · everything signed and filed · CalSavers confirmed · training scheduled · approving their own timecards', owner: 'Fernando', due: c => addDays(c.anchor, 30) },
 ]
@@ -136,18 +151,20 @@ const PROMOTION: ChecklistSpec[] = [
     help: 'People › Employment › Position. Effective date = the letter\'s effective date, not today.' },
   { grp: 'ADP — Eli', label: 'Change pay rate', owner: 'Eli', due: c => c.anchor,
     help: 'People › Pay Profile › Pay Rate, effective on the date. Tell Lynair the first period at the new rate is coming.' },
-  { grp: 'ADP — Eli', label: 'Manager classification and reports-to set (only if they now supervise anyone)', owner: 'Eli', due: c => c.anchor,
-    help: 'Per Lynair, ADP\'s Manager flag is the first pass for supervisor training status.' },
+  { grp: 'ADP — Eli', label: 'Manager classification and reports-to set', owner: 'Eli', due: c => c.anchor,
+    only: c => !!c.position?.is_supervisory,
+    help: 'This position supervises people. Per Lynair, ADP\'s Manager flag is the first pass for supervisor training status.' },
   { grp: 'ADP — Eli', label: 'Vacation allotment updated in ADP', owner: 'Eli', due: c => c.anchor,
     help: 'Front-loaded: the prorated one-time amount now, the full allotment every January 1.' },
   { grp: 'ADP — Eli', label: 'Signed offer letter and job description uploaded to their ADP record', owner: 'Fernando', due: c => c.anchor,
     help: 'Download both from this case. People › Documents.' },
 
-  { grp: 'PRSFlo & training', label: 'Role changed in PRSFlo on the effective date', owner: 'Eli', due: c => c.anchor,
-    help: 'user_profiles.role — on the date, not before.' },
+  { grp: 'PRSFlo & training', label: 'Role and position changed in PRSFlo on the effective date', owner: 'Eli', due: c => c.anchor,
+    help: 'On the date, not before. The person\'s PRSFlo role and their position on the roster.' },
   { grp: 'PRSFlo & training', label: 'Keys, codes, and access adjusted for the new role', owner: 'Fernando', due: c => c.anchor },
-  { grp: 'PRSFlo & training', label: 'Supervisory harassment training (2 hrs) within 6 months — only if newly supervising', owner: 'Fernando', due: c => addMonths(c.anchor, 6), legal: true,
-    help: 'Gov. Code 12950.1: a newly supervisory employee takes the 2-hour course within six months. Free CRD course; save the certificate.' },
+  { grp: 'PRSFlo & training', label: 'Supervisory harassment training (2 hours) within 6 months of the promotion', owner: 'Fernando', due: c => addMonths(c.anchor, 6), legal: true,
+    only: newlySupervisory,
+    help: 'They now supervise people and didn\'t before, so Gov. Code 12950.1 gives them six months to take the 2-hour supervisory course. Free CRD course; save the certificate. Record it on the training tracker.' },
 ]
 
 const SEPARATION: ChecklistSpec[] = [

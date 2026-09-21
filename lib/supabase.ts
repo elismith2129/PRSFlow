@@ -421,6 +421,8 @@ export interface UserProfile {
   updated_at: string | null
   deleted_at: string | null
   sop_acknowledged?: boolean
+  /** job title on the roster (hr_positions.title); set by a hiring case */
+  position_title?: string | null
 }
 
 export interface Flag {

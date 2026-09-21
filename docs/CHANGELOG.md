@@ -20,6 +20,36 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.38.0 — Positions, and Hiring becomes a walk-through — Sep 21, 2026
+
+- **Migration `20260921130000_hr_positions.sql`** — `hr_positions` (title,
+  is_supervisory, vacation_days, default_hours_week, reports_to, prsflo_role,
+  jd_body, jd_is_draft, sort_order, is_active; select for all authenticated,
+  write owner/manager; realtime), seeded with five positions and three real
+  JDs (Studio Manager's is a draft). `user_profiles.position_title`.
+  `hr_cases.position_id / from_position_title / was_supervisory`.
+- `app/(main)/positions/page.tsx` — Admin → Positions: list + inline editor
+  (supervisory seg, vacation, hours, reports to, PRSFlo role, JD textarea,
+  draft/final, retired). Rail item owner/manager.
+- `lib/hrChecklists.ts` — ctx gains `position` + `wasSupervisory`;
+  `newlySupervisory()`. New hire: harassment row split into 1-hour /
+  2-hour by position, WPV-at-hire row added. Promotion: Manager-flag row
+  only if supervisory; course row only if newly supervisory.
+- `lib/hrCases.ts` — `HrPosition` type; `createCase` carries the position
+  and resolves the list with it.
+- `app/(main)/hiring/page.tsx` — four-step walk-through with a plain-words
+  review; case view marks the NOW group; position facts under the name;
+  runners in the Who picker; `from → to` title on a promotion.
+- `lib/supabase.ts` — `UserProfile.position_title`. `components/layout/Rail.tsx`.
+
+**Watch-outs:** `position_title` on profiles is free text matched to
+`hr_positions.title` — renaming a position on the page does not rename
+profiles (the "role and position changed" case step is still a hand tick;
+one-tap is on the TODO). Cases created before this migration have no
+position; their lists were resolved without one (the old conditional rows).
+
+---
+
 ## v1.37.0 — Hiring: one case per person, the checklist for it (part 1 of 2) — Sep 21, 2026
 
 `/hiring` stops being a placeholder. Type a name, pick New hire / Promotion /

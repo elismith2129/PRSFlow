@@ -791,6 +791,38 @@ new hire doesn't have one. Until part 2 ships, the two Documents rows are ticked
 (dashed box = will tick itself). Pay is on the case → owner + manager RLS; Fernando sees
 the rate because he uploads the signed letter to ADP anyway.
 
+#### Sep 21 (later) — Positions, and the walk-through (v1.38.0)
+
+First cut of Hiring landed and Eli's read was exact: "think you have old UI info" (the
+page wore the pre-redesign SectionHeader), "needs to be more interactive and
+understandable as to what you are doing", "need to be able to pick runners too", and then
+the one that reshaped it: "billing coordinator is not supervisory. but i think we should
+be able to set things like that in the app. and i want it to walk you through this stuff.
+needs to be idiot proof. we do these so rarely it's hard to build the muscle that just
+knows how to do this."
+
+**Positions** (`hr_positions`, Admin → Positions): one row per title — supervisory or
+not, vacation days a year, usual hours a week, reports to, the PRSFlo role it maps to,
+and the job description text (draft/final flag). Seeded from the real documents: Studio
+Manager (supervisory, 6 days, JD DRAFTED — none exists on paper), Assistant Studio
+Manager (5 days, JD from the 2025 PDF), Billing & Accounting Coordinator (NOT
+supervisory, 5 days, JD from the ADP docx), Runner and Tech (short drafts). The case
+picks a position instead of free-typing a title, so the checklist KNOWS: supervisory
+rows (2-hour course, ADP Manager flag) appear only when the position supervises, and a
+promotion of someone who already supervised gets the flag row but not a new course
+(`was_supervisory`, from `user_profiles.position_title` → the "their position today"
+picker). The letters (part 2) read vacation and hours from here.
+
+**The walk-through.** Starting a case is four screens, one question each: what's
+happening (cards) → who → the position and date (or, for a separation, how it's ending
+and when) → a review in plain words: "A 12-step promotion list for Quinn as Studio
+Manager (from Assistant Studio Manager), effective Oct 5. Studio Manager supervises
+people, so the list includes the 2-hour course (due Apr 5) and the ADP Manager flag.
+Legal deadlines: … Nothing is sent by pressing Start." Each screen says why it's asking.
+Inside a case the first group with open items wears a NOW pill and the header leads
+with Next up. Rejected: one long form (the first cut) — it assumed you already knew
+what the fields meant, which is the opposite of the ask.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a

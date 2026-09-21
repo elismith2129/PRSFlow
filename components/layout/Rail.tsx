@@ -85,6 +85,10 @@ const HR: RailItem[] = [
 // Owner / manager / billing only (the pages here change what things cost).
 const ADMIN: RailItem[] = [
   { href: '/rates', label: 'Rates', ic: '$' },
+  // Job titles and what each carries (supervisory, vacation, JD) — read by
+  // Hiring (Eli, 2026-09-21: "we should be able to set things like that in
+  // the app").
+  { href: '/positions', label: 'Positions', ic: '◇' },
 ]
 // Rarely-used items live behind the foot's Settings disclosure (Eli,
 // 2026-08-17): DEV, the theme toggle, Sign Out. Admin is OUT of the nav
@@ -130,6 +134,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     // Hiring holds pay and separations — owner/manager only (2026-09-21); the
     // page body and RLS say the same.
     if (item.href === '/hiring'
+      && profile?.role !== 'owner'
+      && profile?.role !== 'manager') return false
+    if (item.href === '/positions'
       && profile?.role !== 'owner'
       && profile?.role !== 'manager') return false
     if (item.href === '/rates'

@@ -24,6 +24,9 @@ export type HrCase = {
   separation_type: SeparationType | null
   notice_at: string | null
   final_pay_due: string | null
+  position_id: string | null
+  from_position_title: string | null
+  was_supervisory: boolean | null
   status: 'open' | 'closed'
   closed_at: string | null
   note: string | null
@@ -67,6 +70,20 @@ export type HrDocument = {
   updated_at: string
 }
 
+export type HrPosition = {
+  id: string
+  title: string
+  is_supervisory: boolean
+  vacation_days: number
+  default_hours_week: number | null
+  reports_to: string | null
+  prsflo_role: 'owner' | 'manager' | 'billing' | 'asst_manager' | 'tech' | 'runner' | null
+  jd_body: string | null
+  jd_is_draft: boolean
+  sort_order: number
+  is_active: boolean
+}
+
 export type NewCaseInput = {
   kind: HrCaseKind
   subject_name: string
@@ -78,6 +95,9 @@ export type NewCaseInput = {
   separation_type?: SeparationType | null
   /** ISO timestamp; separation only */
   notice_at?: string | null
+  position?: HrPosition | null
+  from_position_title?: string | null
+  was_supervisory?: boolean | null
   created_by: string | null
 }
 
@@ -101,6 +121,9 @@ export async function createCase(input: NewCaseInput): Promise<{ id: string } | 
       separation_type: input.kind === 'separation' ? (input.separation_type ?? null) : null,
       notice_at: input.kind === 'separation' ? (input.notice_at ?? null) : null,
       final_pay_due: fpd,
+      position_id: input.position?.id ?? null,
+      from_position_title: input.from_position_title ?? null,
+      was_supervisory: input.was_supervisory ?? null,
       created_by: input.created_by,
     })
     .select('id')
@@ -114,6 +137,8 @@ export async function createCase(input: NewCaseInput): Promise<{ id: string } | 
     separationType: input.separation_type ?? null,
     noticeAt: input.notice_at ?? null,
     finalPayDue: fpd,
+    position: input.position ?? null,
+    wasSupervisory: input.was_supervisory ?? null,
   }).map(it => ({
     ...it,
     case_id: id,

@@ -4,22 +4,26 @@
 // Rail: HR → Hiring. Owner + manager only (RLS says the same).
 //
 // Eli: "type a name, select new hire, promotion, or separation and then the
-// checklists for each of those." The list is the whole page until a case is
-// opened. Starting a case is one line — name, kind, one date — and the
-// checklist dates itself from that date (lib/hrChecklists.ts). Separation
-// asks "how is this ending?" first because that answer sets the final-pay
-// deadline (LC 201/202), which then sits at the top of its list.
+// checklists for each of those." Then, same day: "needs to be more
+// interactive and understandable… i want it to walk you through this stuff.
+// needs to be idiot proof. we do these so rarely it's hard to build the
+// muscle that just knows how to do this."
 //
-// Second pass same day (Eli: "needs to be more interactive and understandable
-// as to what you are doing"): the page explains itself. Empty state = the
-// three kinds as cards saying what each one carries; the form previews what
-// it is about to create before you commit; a case leads with "Next up".
-// Skin = soft (§7c): raised panels, c-seg housing for choices, teal primary.
+// So starting a case is a WALK-THROUGH, one question per screen:
+//   1 What's happening   (new hire / promotion / separation — cards that say
+//                         what each one carries)
+//   2 Who                (a name, or a person from the roster)
+//   3 The position       (from /positions — this is how the list KNOWS
+//                         whether the job supervises, its vacation, its hours)
+//     or, for a separation, how it's ending — that sets the final-pay date
+//   4 Review             (plain words: what this creates, the deadlines, why
+//                         the supervisory rows are or aren't there) → Start
+// Inside a case the first group with open items is marked NOW, and the
+// header leads with Next up. Skin = soft (§7c).
 //
-// Session 1 (this): cases + checklist. The two Documents rows are ticked by
-// hand for now. Session 2: the offer letter / job description form, send,
-// sign at /sign/<token>, PDF — after which those rows tick themselves.
-// Mock: docs/design-refs/hiring-options.html.
+// Session 1: cases + checklist (this). Session 2: offer letter / job
+// description form, send, sign at /sign/<token>, PDF — after which the two
+// Documents rows tick themselves. Mock: docs/design-refs/hiring-options.html.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -34,7 +38,7 @@ import {
 } from '@/lib/hrChecklists'
 import {
   createCase, fmtDate, nextUp, progress,
-  type HrCase, type HrCaseItem,
+  type HrCase, type HrCaseItem, type HrPosition,
 } from '@/lib/hrCases'
 
 const KINDS: HrCaseKind[] = ['new_hire', 'promotion', 'separation']
@@ -47,7 +51,7 @@ const KIND_FILL: Record<HrCaseKind, string> = {
   separation: 'c-fill-cold',
 }
 
-// What each kind is FOR — shown on the cards so nobody has to guess.
+// What each kind is FOR — on the cards so nobody has to guess.
 const KIND_BLURB: Record<HrCaseKind, { what: string; carries: string }> = {
   new_hire: {
     what: 'Someone new is starting.',
@@ -63,6 +67,12 @@ const KIND_BLURB: Record<HrCaseKind, { what: string; carries: string }> = {
   },
 }
 
+const SEP_EXPLAIN: Record<SeparationType, string> = {
+  involuntary: 'Final pay is due at the moment of termination. The check must exist before the conversation — Eli\'s approval and 48 hours\' notice to Lynair.',
+  quit_72_notice: 'They gave 72 hours or more. Final pay is due on their last day.',
+  quit_short_notice: 'They gave less than 72 hours. Final pay is due within 72 hours of when they told us.',
+}
+
 const panel: React.CSSProperties = {
   background: 'var(--c-srf)', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: '14px 18px',
 }
@@ -70,27 +80,29 @@ const fL: React.CSSProperties = {
   display: 'block', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.11em', textTransform: 'uppercase', opacity: 0.45, marginBottom: 4,
 }
 const muted: React.CSSProperties = { fontSize: 11.5, color: 'var(--c-fg-3)', lineHeight: 1.5 }
+const hint: React.CSSProperties = { ...muted, fontSize: 10.5, marginTop: 4 }
 
-function toISODate(d: Date): string {
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
-}
+type Step = 1 | 2 | 3 | 4
 
 export default function HiringPage() {
   const { profile } = useUserProfile()
   const [cases, setCases] = useState<HrCase[]>([])
   const [items, setItems] = useState<HrCaseItem[]>([])
   const [people, setPeople] = useState<UserProfile[]>([])
+  const [positions, setPositions] = useState<HrPosition[]>([])
   const [loading, setLoading] = useState(true)
   const [openId, setOpenId] = useState<string | null>(null)
   const [showClosed, setShowClosed] = useState(false)
-  const [starting, setStarting] = useState(false)
 
-  // New-case form
+  // The walk-through
+  const [starting, setStarting] = useState(false)
+  const [step, setStep] = useState<Step>(1)
   const [kind, setKind] = useState<HrCaseKind | null>(null)
   const [name, setName] = useState('')
   const [staffId, setStaffId] = useState<string>('')
   const [email, setEmail] = useState('')
-  const [title, setTitle] = useState('')
+  const [positionId, setPositionId] = useState<string>('')
+  const [fromPositionId, setFromPositionId] = useState<string>('')
   const [studio, setStudio] = useState<HrCase['studio']>(null)
   const [anchor, setAnchor] = useState('')
   const [sepType, setSepType] = useState<SeparationType | null>(null)
@@ -102,14 +114,16 @@ export default function HiringPage() {
   const today = getLocalToday()
 
   const load = useCallback(async () => {
-    const [{ data: c }, { data: i }, { data: p }] = await Promise.all([
+    const [{ data: c }, { data: i }, { data: p }, { data: pos }] = await Promise.all([
       supabase.from('hr_cases').select('*').order('anchor_date', { ascending: true }),
       supabase.from('hr_case_items').select('*').order('sort_order', { ascending: true }),
       supabase.from('user_profiles').select('*').is('deleted_at', null).order('display_name'),
+      supabase.from('hr_positions').select('*').order('sort_order').order('title'),
     ])
     setCases((c ?? []) as HrCase[])
     setItems((i ?? []) as HrCaseItem[])
     setPeople((p ?? []) as UserProfile[])
+    setPositions((pos ?? []) as HrPosition[])
     setLoading(false)
   }, [])
 
@@ -119,58 +133,71 @@ export default function HiringPage() {
       .channel('hiring-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hr_cases' }, () => { load() })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'hr_case_items' }, () => { load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hr_positions' }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [load])
 
   const itemsOf = useCallback((caseId: string) => items.filter(i => i.case_id === caseId), [items])
   const nameOf = (id: string | null) => people.find(p => p.id === id)?.display_name ?? ''
+  const positionOf = (id: string | null) => positions.find(p => p.id === id) ?? null
+  const activePositions = positions.filter(p => p.is_active)
 
-  // Picking an existing person fills the name and email for promotion / separation.
+  // Picking a person fills name, email, and their current position.
   useEffect(() => {
     if (kind === 'new_hire') { setStaffId(''); return }
     const p = people.find(x => x.id === staffId)
-    if (p) { setName(p.display_name); setEmail(p.email ?? '') }
-  }, [kind, staffId, people])
+    if (p) {
+      setName(p.display_name); setEmail(p.email ?? '')
+      const cur = positions.find(x => x.title === p.position_title)
+      setFromPositionId(cur?.id ?? '')
+    }
+  }, [kind, staffId, people, positions])
 
   function resetForm() {
-    setKind(null); setName(''); setStaffId(''); setEmail(''); setTitle(''); setStudio(null)
-    setAnchor(''); setSepType(null); setNoticeDate(''); setNoticeTime('')
+    setStep(1); setKind(null); setName(''); setStaffId(''); setEmail(''); setPositionId(''); setFromPositionId('')
+    setStudio(null); setAnchor(''); setSepType(null); setNoticeDate(''); setNoticeTime('')
   }
+  function openWalkthrough() { resetForm(); setStarting(true) }
+  function closeWalkthrough() { resetForm(); setStarting(false) }
 
+  const position = positionOf(positionId || null)
+  const fromPosition = positionOf(fromPositionId || null)
+  const wasSupervisory = kind === 'promotion' ? !!fromPosition?.is_supervisory : null
   const noticeIso = noticeDate ? `${noticeDate}T${noticeTime || '12:00'}:00` : null
   const previewFinalPay = kind === 'separation' && anchor && sepType ? finalPayDue(sepType, anchor, noticeIso) : null
 
-  // The "here's what this will create" line — computed from the same function
-  // that writes the rows, so it cannot drift from what you get.
+  // What Start will create — from the same function that writes the rows.
   const preview = kind && anchor && (kind !== 'separation' || sepType)
-    ? resolveChecklist({ kind, anchor, separationType: sepType, noticeAt: noticeIso, finalPayDue: previewFinalPay })
+    ? resolveChecklist({ kind, anchor, separationType: sepType, noticeAt: noticeIso, finalPayDue: previewFinalPay, position, wasSupervisory })
     : null
-  const previewFirstLegal = preview?.filter(p => p.is_legal && p.due_on).sort((a, b) => (a.due_on! < b.due_on! ? -1 : 1))[0]
-  const readyToStart = !!kind && !!name.trim() && !!anchor && (kind !== 'separation' || !!sepType)
+  const legalPreview = (preview ?? []).filter(p => p.is_legal && p.due_on).sort((a, b) => (a.due_on! < b.due_on! ? -1 : 1))
+
+  // Step gating — each step needs the one thing it asks for.
+  const step2ok = !!name.trim() && (kind === 'new_hire' || !!staffId)
+  const step3ok = kind === 'separation' ? (!!sepType && !!anchor && (sepType !== 'quit_short_notice' || !!noticeDate)) : (!!anchor && !!positionId)
 
   async function start() {
     if (!profile || !kind) return
-    if (!name.trim()) { alert('Whose case is this?'); return }
-    if (!anchor) { alert(`${ANCHOR_LABEL[kind]} is needed — the checklist dates itself from it.`); return }
-    if (kind === 'separation' && !sepType) { alert('How is this ending? That sets the final-pay date.'); return }
     setSaving(true)
     const res = await createCase({
       kind,
       subject_name: name,
       staff_id: kind === 'new_hire' ? null : (staffId || null),
       recipient_email: email,
-      new_title: title,
+      new_title: position?.title ?? null,
       studio,
       anchor_date: anchor,
       separation_type: kind === 'separation' ? sepType : null,
       notice_at: kind === 'separation' && noticeIso ? new Date(noticeIso).toISOString() : null,
+      position: kind === 'separation' ? null : position,
+      from_position_title: kind === 'promotion' ? (fromPosition?.title ?? null) : null,
+      was_supervisory: wasSupervisory,
       created_by: profile.id,
     })
     setSaving(false)
     if ('error' in res) { dbResult('Starting the case', { message: res.error }); return }
-    resetForm()
-    setStarting(false)
+    closeWalkthrough()
     setOpenId(res.id)
     load()
   }
@@ -238,7 +265,9 @@ export default function HiringPage() {
       if (g) g.rows.push(it); else acc.push({ grp: it.grp, rows: [it] })
       return acc
     }, [])
+    const nowGrp = groups.find(g => g.rows.some(r => !r.done_at))?.grp ?? null
     const involuntary = current.separation_type === 'involuntary'
+    const pos = positionOf(current.position_id)
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 780 }}>
         <div>
@@ -249,14 +278,21 @@ export default function HiringPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <span className="c-arch" style={{ fontSize: 20, letterSpacing: '-0.02em' }}>{current.subject_name}</span>
             <span className={`c-pill ${KIND_FILL[current.kind]}`}>{KIND_LABEL[current.kind]}</span>
-            {current.new_title && <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{current.new_title}</span>}
+            {current.new_title && <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{current.from_position_title ? `${current.from_position_title} → ` : ''}{current.new_title}</span>}
             {current.studio && <span style={{ fontSize: 11, opacity: 0.5 }}>{current.studio}</span>}
             <span className="c-tnum" style={{ marginLeft: 'auto', fontSize: 11.5, opacity: 0.75, whiteSpace: 'nowrap' }}>
               {ANCHOR_LABEL[current.kind]} {fmtDate(current.anchor_date, { year: true })}
             </span>
           </div>
+          {pos && (
+            <div style={{ ...muted, marginTop: 4 }}>
+              {pos.title} {pos.is_supervisory ? 'supervises people' : 'doesn\'t supervise anyone'}
+              {pos.vacation_days > 0 ? ` · ${pos.vacation_days} vacation days a year` : ''}
+              {pos.default_hours_week ? ` · usually ${pos.default_hours_week} hrs a week` : ''}
+              {current.kind === 'promotion' && pos.is_supervisory && current.was_supervisory ? ' · already supervised, so no new supervisor course' : ''}
+            </div>
+          )}
 
-          {/* progress + next up: the one line that says where this case is */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
             <div style={{ height: 6, borderRadius: 99, background: 'var(--c-wash)', flex: '1 1 160px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${pr.total ? Math.round(100 * pr.done / pr.total) : 0}%`, background: 'var(--c-st-booked)', transition: 'width .3s ease' }} />
@@ -303,9 +339,8 @@ export default function HiringPage() {
               <b style={{ color: involuntary ? 'var(--c-st-hot)' : undefined }}>
                 {current.separation_type ? SEPARATION_LABEL[current.separation_type] : 'Separation'} · final pay due {fmtDate(current.final_pay_due, { year: true })}
               </b>
-              {involuntary && <> — the check has to exist before the conversation. Eli's approval and 48 hours' notice to Lynair. Late = up to 30 days of wages in penalties (LC 201/203).</>}
-              {current.separation_type === 'quit_72_notice' && <> — paid on the last day (LC 202).</>}
-              {current.separation_type === 'quit_short_notice' && <> — within 72 hours of notice (LC 202).</>}
+              {current.separation_type && <> — {SEP_EXPLAIN[current.separation_type]}</>}
+              {involuntary && <> Late = up to 30 days of wages in penalties (LC 201/203).</>}
               {current.notice_at && <span style={{ opacity: 0.6 }}> · notice given {new Date(current.notice_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>}
             </div>
           )}
@@ -313,11 +348,13 @@ export default function HiringPage() {
 
         {groups.map(g => {
           const done = g.rows.filter(r => r.done_at).length
+          const isNow = g.grp === nowGrp
           return (
-            <div key={g.grp} className="c-panel" style={panel}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+            <div key={g.grp} className="c-panel" style={{ ...panel, opacity: isNow || done < g.rows.length ? 1 : 0.6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                 <span style={{ ...fL, marginBottom: 0 }}>{g.grp}</span>
                 <span className="c-tnum" style={{ fontSize: 10, opacity: 0.45 }}>{done} / {g.rows.length}</span>
+                {isNow && <span className="c-pill c-fill-booked" style={{ fontSize: 8.5 }}>Now</span>}
                 {g.grp === 'Documents' && (
                   <span style={{ ...muted, fontSize: 10.5, marginLeft: 'auto' }}>sending and signing from here is next — tick by hand for now</span>
                 )}
@@ -364,67 +401,77 @@ export default function HiringPage() {
           )
         })}
         <div style={{ ...muted, fontSize: 10.5 }}>
-          Tap a box to tick it — we record who and when. <span style={{ color: 'var(--c-st-warm)' }}>Orange</span> date = a legal deadline. <span style={{ color: 'var(--c-st-hot)' }}>Red</span> = past it. Dashed box = the app will tick this itself once documents send from here. The name under a date is who usually does it; anyone with this page can tick anything.
+          Work the group marked <b>Now</b>, top to bottom. Tap a box to tick it — we record who and when. <span style={{ color: 'var(--c-st-warm)' }}>Orange</span> date = a legal deadline. <span style={{ color: 'var(--c-st-hot)' }}>Red</span> = past it. Dashed box = the app will tick this itself once documents send from here. The name under a date is who usually does it; anyone with this page can tick anything.
         </div>
       </div>
     )
   }
 
-  // ── the list ────────────────────────────────────────────────────────────
-  const showPicker = starting || (!loading && openCases.length === 0)
+  // ── the walk-through ────────────────────────────────────────────────────
+  const showWalkthrough = starting || (!loading && openCases.length === 0)
+  const stepTitle = !kind ? 'What\'s happening?'
+    : step === 2 ? 'Who is this for?'
+    : step === 3 ? (kind === 'separation' ? 'How is it ending, and when?' : 'What position, and when?')
+    : 'Here\'s what Start will do'
+
+  const Nav = ({ next, nextLabel = 'Next', can = true }: { next: () => void; nextLabel?: string; can?: boolean }) => (
+    <div style={{ display: 'flex', gap: 8, marginTop: 14, alignItems: 'center' }}>
+      <button type="button" className="c-control c-pill c-fill-booked c-raised-chip" disabled={!can || saving} onClick={next} style={{ fontSize: 11.5, minHeight: 36, opacity: can ? 1 : 0.45 }}>{nextLabel}</button>
+      <button type="button" className="c-control c-soft c-raised-chip" onClick={() => setStep(s => (s > 1 ? ((s - 1) as Step) : 1))} style={{ fontSize: 10 }}>Back</button>
+      {openCases.length > 0 && <button type="button" className="c-control c-soft c-raised-chip" onClick={closeWalkthrough} style={{ fontSize: 10, marginLeft: 'auto', opacity: 0.7 }}>Cancel</button>}
+    </div>
+  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 880 }}>
 
-      {/* ── start a case ───────────────────────────────────────────────── */}
-      {showPicker && (
+      {showWalkthrough && (
         <div className="c-panel" style={panel}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
             <SectionHeader title={kind ? `New ${KIND_LABEL[kind].toLowerCase()}` : 'Start a case'} />
-            {(starting || kind) && openCases.length > 0 && (
-              <button type="button" className="c-control c-soft c-raised-chip" onClick={() => { resetForm(); setStarting(false) }} style={{ fontSize: 10 }}>Cancel</button>
+            {kind && (
+              <span className="c-tnum" style={{ fontSize: 10.5, opacity: 0.5 }}>step {step} of 4</span>
+            )}
+            {kind && (
+              <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                {[1, 2, 3, 4].map(n => <span key={n} style={{ width: 22, height: 4, borderRadius: 99, background: n <= step ? 'var(--c-st-booked)' : 'var(--c-wash2)' }} />)}
+              </div>
             )}
           </div>
-          {!kind && (
-            <div style={{ ...muted, marginBottom: 12 }}>
-              One case per person. Pick what's happening and you get the checklist for it, already dated, with the ADP steps spelled out.
-            </div>
-          )}
+          <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>{stepTitle}</div>
 
-          {/* the three kinds, as cards — pick one */}
-          {!kind ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-              {KINDS.map(k => (
-                <button
-                  key={k}
-                  type="button"
-                  className="c-control"
-                  onClick={() => { setKind(k); setStarting(true) }}
-                  style={{
+          {/* STEP 1 — what's happening */}
+          {!kind && (
+            <>
+              <div style={{ ...muted, marginBottom: 12 }}>One case per person. Pick what's happening — you'll be asked one thing at a time, and nothing is created until the last screen.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                {KINDS.map(k => (
+                  <button key={k} type="button" className="c-control" onClick={() => { setKind(k); setStarting(true); setStep(2) }} style={{
                     textAlign: 'left', borderRadius: 14, padding: '12px 14px', border: 'none', font: 'inherit', color: 'var(--c-fg)',
                     background: 'var(--c-wash)', boxShadow: 'var(--c-ctlsh)', display: 'flex', flexDirection: 'column', gap: 6, cursor: 'pointer',
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className={`c-pill ${KIND_FILL[k]}`}>{KIND_LABEL[k]}</span>
-                    <span className="c-tnum" style={{ fontSize: 10, opacity: 0.5, marginLeft: 'auto' }}>{stepCount(k)} steps</span>
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 700 }}>{KIND_BLURB[k].what}</span>
-                  <span style={{ ...muted, fontSize: 11 }}>{KIND_BLURB[k].carries}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* kind switcher, one housing */}
-              <div className="c-seg" style={{ marginBottom: 12 }}>
-                {KINDS.map(k => (
-                  <button key={k} type="button" className={kind === k ? `c-on ${KIND_FILL[k]}` : ''} onClick={() => { setKind(k); setSepType(null) }}>{KIND_LABEL[k]}</button>
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className={`c-pill ${KIND_FILL[k]}`}>{KIND_LABEL[k]}</span>
+                      <span className="c-tnum" style={{ fontSize: 10, opacity: 0.5, marginLeft: 'auto' }}>~{stepCount(k)} steps</span>
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{KIND_BLURB[k].what}</span>
+                    <span style={{ ...muted, fontSize: 11 }}>{KIND_BLURB[k].carries}</span>
+                  </button>
                 ))}
               </div>
-              <div style={{ ...muted, marginBottom: 12 }}>{KIND_BLURB[kind].what} {KIND_BLURB[kind].carries}</div>
+              {openCases.length > 0 && <div style={{ marginTop: 12 }}><button type="button" className="c-control c-soft c-raised-chip" onClick={closeWalkthrough} style={{ fontSize: 10 }}>Cancel</button></div>}
+            </>
+          )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px 12px' }}>
+          {/* STEP 2 — who */}
+          {kind && step === 2 && (
+            <>
+              <div style={{ ...muted, marginBottom: 12 }}>
+                {kind === 'new_hire'
+                  ? 'They don\'t have a PRSFlo login yet — just their name and the personal email their offer letter should go to. Their staff record gets made on day one, from the checklist.'
+                  : 'Pick them from the roster. Their name and email fill in from their profile; fix the email if the letter should go somewhere else.'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px 12px', maxWidth: 560 }}>
                 {kind === 'new_hire' ? (
                   <div><label style={fL}>Their name</label>
                     <input className="c-input c-inset2" value={name} onChange={e => setName(e.target.value)} placeholder="First and last" autoFocus /></div>
@@ -435,73 +482,116 @@ export default function HiringPage() {
                       {staffPool.map(p => <option key={p.id} value={p.id}>{p.display_name}</option>)}
                     </select></div>
                 )}
-                <div><label style={fL}>{ANCHOR_LABEL[kind]}</label>
-                  <input className="c-input c-inset2" type="date" value={anchor} onChange={e => setAnchor(e.target.value)} /></div>
-                {kind !== 'separation' && (
-                  <div><label style={fL}>{kind === 'promotion' ? 'New title' : 'Title'}</label>
-                    <input className="c-input c-inset2" value={title} onChange={e => setTitle(e.target.value)} placeholder="Studio Manager" /></div>
+                <div><label style={fL}>{kind === 'new_hire' ? 'Personal email' : 'Email for documents'}</label>
+                  <input className="c-input c-inset2" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="them@gmail.com" />
+                  {kind !== 'separation' && <div style={hint}>Where the offer letter and job description get sent for signature.</div>}</div>
+                {kind === 'promotion' && (
+                  <div><label style={fL}>Their position today</label>
+                    <select className="c-input c-inset2" value={fromPositionId} onChange={e => setFromPositionId(e.target.value)}>
+                      <option value="">Not on the roster yet…</option>
+                      {positions.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                    </select>
+                    <div style={hint}>So we know whether they already supervise. If it's blank, their profile has no position set yet — pick it here.</div></div>
                 )}
+              </div>
+              <Nav next={() => setStep(3)} can={step2ok} />
+            </>
+          )}
+
+          {/* STEP 3 — position + date, or how it's ending */}
+          {kind && step === 3 && kind !== 'separation' && (
+            <>
+              <div style={{ ...muted, marginBottom: 12 }}>
+                The position decides the rest: whether they supervise (which training and ADP flag), their vacation, their usual hours. Set those on <b>Admin → Positions</b> if something's wrong here.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px 12px', maxWidth: 640 }}>
+                <div><label style={fL}>{kind === 'promotion' ? 'New position' : 'Position'}</label>
+                  <select className="c-input c-inset2" value={positionId} onChange={e => setPositionId(e.target.value)} autoFocus>
+                    <option value="">Pick a position…</option>
+                    {activePositions.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                  </select>
+                  {position && (
+                    <div style={hint}>
+                      {position.is_supervisory ? 'Supervises people → 2-hour harassment course, ADP Manager flag.' : 'Doesn\'t supervise → 1-hour course, no Manager flag.'}
+                      {position.vacation_days > 0 ? ` ${position.vacation_days} vacation days a year.` : ' No vacation allotment.'}
+                      {position.jd_body ? (position.jd_is_draft ? ' Job description is still a draft.' : '') : ' No job description on file yet.'}
+                    </div>
+                  )}</div>
+                <div><label style={fL}>{ANCHOR_LABEL[kind]}</label>
+                  <input className="c-input c-inset2" type="date" value={anchor} onChange={e => setAnchor(e.target.value)} />
+                  <div style={hint}>{kind === 'new_hire' ? 'Day one. Every deadline on the list counts from here. (ADP\'s hire date is set 7 days earlier — the list says so.)' : 'The day the new title and rate take effect. ADP and PRSFlo change on this date, not before.'}</div></div>
                 <div><label style={fL}>Studio</label>
                   <select className="c-input c-inset2" value={studio ?? ''} onChange={e => setStudio((e.target.value || null) as HrCase['studio'])}>
                     <option value="">—</option>
                     {STUDIOS.map(s => <option key={s} value={s}>{s}</option>)}
                   </select></div>
-                <div><label style={fL}>{kind === 'new_hire' ? 'Personal email' : 'Email for documents'}</label>
-                  <input className="c-input c-inset2" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="them@gmail.com" /></div>
               </div>
+              <Nav next={() => setStep(4)} can={step3ok} />
+            </>
+          )}
 
-              {kind === 'separation' && (
-                <div style={{ marginTop: 14 }}>
-                  <label style={fL}>How is this ending? <span style={{ opacity: 0.6, textTransform: 'none', letterSpacing: 0, fontWeight: 600 }}>— this sets when the final check is due</span></label>
-                  <div className="c-seg c-seg-wrap">
-                    {SEP_TYPES.map(s => (
-                      <button key={s} type="button" className={sepType === s ? (s === 'involuntary' ? 'c-on c-fill-hot' : 'c-on') : ''} onClick={() => setSepType(s)}>{SEPARATION_LABEL[s]}</button>
-                    ))}
-                  </div>
-                  {sepType === 'quit_short_notice' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 12px', marginTop: 10, maxWidth: 380 }}>
-                      <div><label style={fL}>Notice given · date</label>
-                        <input className="c-input c-inset2" type="date" value={noticeDate} onChange={e => setNoticeDate(e.target.value)} /></div>
-                      <div><label style={fL}>Time</label>
-                        <input className="c-input c-inset2" type="time" value={noticeTime} onChange={e => setNoticeTime(e.target.value)} /></div>
-                    </div>
-                  )}
-                  {sepType && sepType !== 'quit_short_notice' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 12px', marginTop: 10, maxWidth: 380 }}>
-                      <div><label style={fL}>Notice given · date <span style={{ opacity: 0.6, textTransform: 'none', letterSpacing: 0, fontWeight: 600 }}>(optional)</span></label>
-                        <input className="c-input c-inset2" type="date" value={noticeDate} onChange={e => setNoticeDate(e.target.value)} /></div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* what pressing Start will do */}
-              <div style={{ marginTop: 14, borderRadius: 12, padding: '10px 12px', fontSize: 12, lineHeight: 1.55, background: previewFinalPay && sepType === 'involuntary' ? 'rgba(255,90,77,.14)' : 'var(--c-wash)' }}>
-                {!preview ? (
-                  <span style={{ opacity: 0.6 }}>
-                    {kind === 'separation' && !sepType ? 'Pick how it\'s ending and the ' : 'Add the '}{ANCHOR_LABEL[kind].toLowerCase()} and I'll show you what this creates.
-                  </span>
-                ) : (
-                  <>
-                    <b>Start</b> makes a {preview.length}-step {KIND_LABEL[kind].toLowerCase()} list for <b>{name.trim() || '…'}</b>, dated from {fmtDate(anchor, { year: true })}.
-                    {previewFirstLegal && <> First legal deadline: <b style={{ color: 'var(--c-st-warm)' }}>{previewFirstLegal.label.split(' — ')[0]}</b> by {fmtDate(previewFirstLegal.due_on!)}.</>}
-                    {previewFinalPay && (
-                      <> <b style={{ color: sepType === 'involuntary' ? 'var(--c-st-hot)' : undefined }}>Final pay due {fmtDate(previewFinalPay, { year: true })}</b>
-                        {sepType === 'involuntary' && ' — at the moment of termination. The check must exist before the conversation.'}
-                        {sepType === 'quit_72_notice' && ' — on the last day.'}
-                        {sepType === 'quit_short_notice' && (noticeDate ? ' — 72 hours from notice.' : ' — 72 hours from notice; add the notice date to get the exact day.')}
-                      </>
-                    )}
-                  </>
+          {kind === 'separation' && step === 3 && (
+            <>
+              <div style={{ ...muted, marginBottom: 10 }}>This is the one question that changes everything downstream — it sets when the final check is due, and getting that wrong costs up to 30 days of wages.</div>
+              <label style={fL}>How is this ending?</label>
+              <div className="c-seg c-seg-wrap">
+                {SEP_TYPES.map(s => (
+                  <button key={s} type="button" className={sepType === s ? (s === 'involuntary' ? 'c-on c-fill-hot' : 'c-on') : ''} onClick={() => setSepType(s)}>{SEPARATION_LABEL[s]}</button>
+                ))}
+              </div>
+              {sepType && <div style={{ ...hint, color: sepType === 'involuntary' ? 'var(--c-st-hot)' : undefined }}>{SEP_EXPLAIN[sepType]}</div>}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px 12px', marginTop: 12, maxWidth: 560 }}>
+                <div><label style={fL}>Last day</label>
+                  <input className="c-input c-inset2" type="date" value={anchor} onChange={e => setAnchor(e.target.value)} />
+                  <div style={hint}>Their last day worked.</div></div>
+                <div><label style={fL}>Notice given · date{sepType !== 'quit_short_notice' && <span style={{ opacity: 0.6, textTransform: 'none', letterSpacing: 0, fontWeight: 600 }}> (optional)</span>}</label>
+                  <input className="c-input c-inset2" type="date" value={noticeDate} onChange={e => setNoticeDate(e.target.value)} />
+                  {sepType === 'quit_short_notice' && <div style={hint}>The 72-hour clock runs from this.</div>}</div>
+                {sepType === 'quit_short_notice' && (
+                  <div><label style={fL}>Time</label>
+                    <input className="c-input c-inset2" type="time" value={noticeTime} onChange={e => setNoticeTime(e.target.value)} /></div>
                 )}
               </div>
+              <Nav next={() => setStep(4)} can={step3ok} />
+            </>
+          )}
 
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
-                <button type="button" className="c-control c-pill c-fill-booked c-raised-chip" disabled={saving || !readyToStart} onClick={start} style={{ fontSize: 11.5, minHeight: 36, opacity: readyToStart ? 1 : 0.45 }}>
-                  {saving ? 'Starting…' : 'Start case'}
-                </button>
-                <button type="button" className="c-control c-soft c-raised-chip" onClick={() => { resetForm(); setStarting(openCases.length === 0) }} style={{ fontSize: 10 }}>Back</button>
+          {/* STEP 4 — review */}
+          {kind && step === 4 && preview && (
+            <>
+              <div style={{ borderRadius: 12, padding: '12px 14px', background: sepType === 'involuntary' ? 'rgba(255,90,77,.14)' : 'var(--c-wash)', fontSize: 12.5, lineHeight: 1.6 }}>
+                <div>
+                  A <b>{preview.length}-step {KIND_LABEL[kind].toLowerCase()}</b> list for <b>{name.trim()}</b>
+                  {position ? <> as <b>{position.title}</b></> : null}
+                  {kind === 'promotion' && fromPosition ? <> (from {fromPosition.title})</> : null}, {ANCHOR_LABEL[kind].toLowerCase()} <b>{fmtDate(anchor, { year: true })}</b>.
+                </div>
+                {position && kind !== 'separation' && (
+                  <div style={{ marginTop: 6 }}>
+                    {position.is_supervisory
+                      ? (kind === 'promotion' && wasSupervisory
+                        ? <>They already supervised, so <b>no new supervisor course</b> — but the ADP Manager flag stays on the list.</>
+                        : <>{position.title} <b>supervises people</b>, so the list includes the 2-hour harassment course (due {fmtDate(legalPreview.find(l => l.label.includes('upervisory'))?.due_on ?? anchor)}) and the ADP Manager flag.</>)
+                      : <>{position.title} <b>doesn't supervise anyone</b>, so there's no supervisor course or Manager flag on the list.</>}
+                    {position.vacation_days > 0 ? <> Vacation: {position.vacation_days} days a year, prorated on the letter.</> : null}
+                  </div>
+                )}
+                {legalPreview.length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}>Legal deadlines:</span>{' '}
+                    {legalPreview.slice(0, 4).map((l, i) => <span key={l.label}>{i > 0 ? ' · ' : ''}{l.label.split(' — ')[0].split(' (')[0]} by {fmtDate(l.due_on!)}</span>)}
+                    {legalPreview.length > 4 ? ` · +${legalPreview.length - 4} more` : ''}
+                  </div>
+                )}
+                {previewFinalPay && sepType && (
+                  <div style={{ marginTop: 6 }}>
+                    <b style={{ color: sepType === 'involuntary' ? 'var(--c-st-hot)' : undefined }}>Final pay due {fmtDate(previewFinalPay, { year: true })}.</b> {SEP_EXPLAIN[sepType]}
+                  </div>
+                )}
+                <div style={{ ...muted, marginTop: 8 }}>
+                  Nothing is sent to anyone by pressing Start. It makes the list; you work it from there.{kind !== 'separation' ? ' The letters get sent from the case once they\'re ready.' : ''}
+                </div>
               </div>
+              <Nav next={start} nextLabel={saving ? 'Starting…' : 'Start case'} can={!saving} />
             </>
           )}
         </div>
@@ -512,7 +602,7 @@ export default function HiringPage() {
         <div className="c-panel" style={panel}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
             <SectionHeader title="Open cases" count={openCases.length || undefined} countColor="orange" />
-            {!starting && <button type="button" className="c-control c-pill c-fill-booked c-raised-chip" onClick={() => setStarting(true)} style={{ fontSize: 11 }}>+ New case</button>}
+            {!starting && <button type="button" className="c-control c-pill c-fill-booked c-raised-chip" onClick={openWalkthrough} style={{ fontSize: 11 }}>+ New case</button>}
           </div>
           {loading ? (
             <div style={{ ...muted, padding: '6px 0' }}>Loading…</div>
