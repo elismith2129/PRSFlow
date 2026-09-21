@@ -223,7 +223,9 @@ export default function HiringPage() {
   const openCases = cases.filter(c => c.status === 'open')
   const closedCases = cases.filter(c => c.status === 'closed')
   const current = openId ? cases.find(c => c.id === openId) ?? null : null
-  const staffPool = people.filter(p => p.role !== 'runner')
+  // Everyone with a profile, runners included (Eli, 2026-09-21: "need to be
+  // able to pick runners too") — a runner gets promoted or leaves like anyone.
+  const staffPool = people
   const stepCount = (k: HrCaseKind) => resolveChecklist({ kind: k, anchor: today, separationType: 'quit_72_notice' }).length
 
   // ── a case ──────────────────────────────────────────────────────────────
