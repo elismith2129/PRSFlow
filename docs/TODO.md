@@ -20,7 +20,7 @@ Newest at the top of each group.*
 
 ## Features parked
 
-- [x] ~~Per-day status + TBD buttons on the WO~~ — TBD v1.35.1; day_status v1.36.0 on `feature/day-status`, merge after Eli walks the preview. *(Sep 19)*
+- [x] ~~Per-day status + TBD buttons on the WO~~ — shipped v1.35.1 / v1.36.0–v1.36.2. *(Sep 19)*
 
 - [ ] **Tenants out of the billing hub** — its own page/rail entry, separate from regular billing (Eli, Sep 18). Today: a third view inside `app/(main)/billing/page.tsx` (`TenantsView`, `lib/tenants.ts`, roster is code). Next chat. *(Sep 18)*
 
@@ -30,6 +30,8 @@ Newest at the top of each group.*
 - [ ] **Admin stock-list editor** — runners can't add items anymore (they file "Missing an item?" to the dev bin); the office edits stock lists in SQL until this exists. *(Sep 15)*
 
 ## Small / maybe
+
+- [ ] **Phone day card / synopsis for per-day status:** the phone grid keeps separate chips per status (no spine); the tap synopsis could list the days with their status. *(Sep 19)*
 
 - [ ] **Old "just a name" sessions:** a one-time dashboard list of work orders with a client name but no profile, so they can be put on file in one sitting (the WO card already offers "Put on file →" one at a time). *(Sep 18)*
 

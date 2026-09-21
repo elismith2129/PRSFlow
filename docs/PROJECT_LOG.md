@@ -714,6 +714,44 @@ function calls a month, and Observability Plus (on by default) was the $9.88 lin
 turn it off; the shared-probe fix is parked in TODO.md because it means touching
 11 panel URLs. `docs/TODO.md` created as the one standing list.
 
+#### Sep 18–19 — the day becomes the unit: calendar cards, TBD, status per day
+
+Started from one complaint (WO-1198 Melly Mike: "the cal card only reflects day one")
+and ended with the day as the unit everywhere. Three steps, each pushed on its own:
+
+**1. Calendar cards (v1.35.0, display only).** Round 1 offered a per-day strip (rejected:
+"a 20-day session would not fit") — Eli liked split day cards but "not clear it's one
+booking." Round 2, B1 the spine: one chip, a darker band across the top with the name
+once, a cell per day underneath with that day's own times and staff from studio_time_rows;
+quiet when a day matches the day before; TBD when there's no row. The day view had the
+same bug (projection card = day 1) and its chips were min-height blocks with the body
+ending mid-card (COD strip in the middle) — the runner hub's Aug 16 grid fix, again.
+
+**2. TBD (v1.35.1).** A dashed TBD button beside Start/End: an explicit not-decided,
+cleared by typing a time; refused on a confirmed day. Staff TBD needed no data — an empty
+name already was "engineer, TBD"; it just got a chip, and the calendar now says WHICH seat
+is open ("1ST-?" / "2ND-?") because "we may know if it's 2nd or 1st but not who."
+
+**3. Status per day (v1.36.0).** "Make one booking and have some days confirmed and some
+tentative." This is WO logic, and the design keeps it to one layer: `day_status` on the
+row (null = same as the session), the WO bar becomes "all days" and reads Mixed when they
+differ, and the PROJECTION splits a run on effective status — so bookings.status per card
+stays the truth every daily surface reads, and calendar, runner hub, daily-ops, TV walls
+and the unsubmitted rule were right without changes. Cancelled day: row kept, zeroed in
+computeWoTotals, struck on the card, CANCELLED on the PDF; kill fee stays the discount.
+Eli skipped the branch and went straight to main.
+
+Then the visual settling: the pill in the day-card header wrapped the date to three lines
+→ mocked four placements → Eli picked the money column (C) → too tight at 120px → landed as
+the top row of the notes column with the notes clamped to three lines. And the split
+cards on the calendar looked like two bookings → the grid folds adjacent cards of one WO
+back into one spine bar with each day cell wearing its own colour (v1.36.2). Also: WO
+always opens in card view ("list isn't that helpful").
+
+**Rejected along the way:** the row stretch for stacked sessions (shipped, ditched within
+the hour — the Aug ruling stands); diamonds on days that differ; the stripe-and-dropdown
+placement (A) in favour of C.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
