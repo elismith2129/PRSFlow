@@ -20,6 +20,44 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.38.3 — Times survive the squeeze — Sep 22, 2026
+
+**Why.** Eli: *"is there a way to make these slimmer sessions show the start times at minimum… my goal is to avoid the giant stretch that happens on a cal row. So truncated to keep scanning easy, but minimum need the start/end times for each day. If we can do that without changing the height, that'd be great."* Reference: `docs/design-refs/cal-slim-times-options.html`, option A.
+
+**Row height is unchanged.** Everything below happens inside the pixels the grid already gives.
+
+**Two separate faults, same cause.**
+
+The first: a single-day card in a 3-lane room row gets 24px, and `cardTiers` drops the times under 36px. Three stacked sessions read as three names with no hours anywhere. Now under 36px the card puts the range and the name on ONE line, time first — `6P–1A  Melly Mike`. The column scans vertically and the NAME takes the ellipsis, because a clipped name is recoverable from the room and the hour and a missing time is not. Phones are excluded: a 26px scan chip has no room for either half to survive.
+
+The second, worse one: `spineMode` required 56px — a room row to itself. The moment anything else landed in that room that week, the multi-day bar fell back to the ladder card and stamped **day one's times across the whole span**. Four days reading 6P–1A because Monday was. That is worse than showing nothing because it is confidently wrong, and it silently undid the per-day work from Sep 18.
+
+**The spine now has three tiers, all at the same row height:**
+
+| Tier | Height | Spine bar | Cells |
+|---|---|---|---|
+| full | ≥ 56 | name · label · N days | times **and** staff |
+| slim | ≥ 34 | name · label · N days | times only |
+| flat | < 34 | name only, 9.5px, tight | times only |
+
+Staff is what gives at slim, because the times are the floor Eli set and staff is one click away. At flat the label and the day count go too.
+
+**Rejected: moving the name to a left block at the flat tier.** It was built and thrown away. In the flow it broke the day alignment that is the entire point of the cells; overlaid on them it hid day one's time — reintroducing the exact fault that makes the old fallback wrong. Compressing the bar keeps ONE structure at every height and every day keeps its own range.
+
+**Also:** the spine's COD bar now uses the 4px sliver below `CARD_FULL_H`, same rule the ladder card has always used. A 14px word-bar was eating half a 24px flat spine.
+
+**Watch-outs.**
+- `.c-ev-spinebar-flat` has to override `.c-ev-spinename`'s font size on the CHILD. A child's `font-size` beats an inherited one — the same trap `.c-mono` set in the footer. Setting it on the bar alone does nothing.
+- TV displays are untouched: `app/display/[room]/route.ts` builds its own HTML and never imports `SessionCard`. Verified, not assumed.
+- Runner hub passes `height={90}`, so it stays on the full card. Also verified.
+- `.c-ev-cell:has(...)` centres the single line at slim/flat. `:has()` is fine in every browser the office runs; if a panel ever renders it top-aligned, that selector is why.
+
+**Migrations:** none.
+
+**Files:** `components/calendar/SessionCard.tsx`, `app/(main)/calendar/page.tsx`, `styles/globals.css`, `docs/design-refs/cal-slim-times-options.html`.
+
+---
+
 ## v1.38.2 — The submit trail: who missed it, who covered it — Sep 22, 2026
 
 **Why.** Eli: *"on the billing hub it shows submitted by (runner name) and it shows 'runner never submitted' — I want that to show the runner name. And when they forget and then the admin fixes and completes the WO it should show in green completed by (admin name). This way we have the trail."*

@@ -1302,6 +1302,18 @@ select.c-input {
 .c-ev-cell:first-child { border-left: 0; }
 .c-ev-celltime  { font-size: 9.5px !important; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .c-ev-cellstaff { font-size: 9.5px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* FLAT SPINE (2026-09-22) — a multi-day bar in a 3-lane row gets ~24px. The
+   bar COMPRESSES rather than leaving: name only, no padding, no label, no day
+   count. 13px of bar over an 11px cell line, which is what 24px buys.
+   Overriding the name's size needs the extra class because .c-ev-spinename
+   sets its own and a child's font-size beats an inherited one — the same trap
+   .c-mono set in the footer. */
+.c-ev-spinebar-flat { padding: 1px 6px; line-height: 1.2; }
+.c-ev-spinebar-flat .c-ev-spinename { font-size: 9.5px; }
+
+/* Slim spine: cells carry times only, so centre the one line in the cell. */
+.c-ev-cell:has(> .c-ev-celltime:only-child) { justify-content: center; padding-top: 0; }
+
 /* A day that matches the day before is quiet, so a change reads at a glance. */
 .c-ev-cell-quiet { opacity: .55; }
 /* A cell whose status differs from the bar's wears its own fill (v1.36.2) —

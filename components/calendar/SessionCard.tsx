@@ -145,6 +145,7 @@ export function SessionCardBody({
     : booking.from_time ? fmtCardTime(booking.from_time) : ''
   // Non-recording session types used to be flagged with an accent-coloured
   // border. The accent is retired (§12) so the distinction returns as a tag.
+  const inlineTime = !showTimes && !isMobile && !!timeStr
   const typeTag = booking.session_type === 'filming' ? 'FILM'
     : booking.session_type === 'event_playback' ? 'EVENT' : ''
   const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
@@ -164,11 +165,19 @@ export function SessionCardBody({
       }}>
         {children}
         <div style={{
-          fontSize: large ? 16 : boostText ? 14 : isMobile ? 11 : (showTimes ? 12.5 : 11),
+          fontSize: large ? 16 : boostText ? 14 : isMobile ? 11 : (showTimes ? 12.5 : inlineTime ? 10 : 11),
           fontFamily: "'Archivo Black', sans-serif", lineHeight: 1.3,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {primaryName}
+          {/* ONE LINE, TIME FIRST (Eli, 2026-09-22: "minimum need the start/end
+              times"). Under 36px there is room for a single line, and the old
+              ladder spent it entirely on the name — three stacked sessions read
+              as three names with no hours anywhere. The range goes first so the
+              column scans vertically, and the NAME takes the ellipsis: a clipped
+              name is recoverable from the room and the hour, a missing time is
+              not. Phones keep name-only — a 26px scan chip has no room for
+              either half to survive. */}
+          {inlineTime ? `${timeStr}\u2002${primaryName}` : primaryName}
         </div>
         {labelLine && showClient && (
           <div className="c-ev-meta" style={{

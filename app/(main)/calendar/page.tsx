@@ -395,7 +395,32 @@ function BookingBlock({
   // the spine; a stacked or Rooms-mode sliver keeps the ladder card. Phone
   // rows are 26px scan chips (name only) and are untouched.
   const hasRows = !!booking.work_order_id && Object.keys(timesByDay).some(k => k.startsWith(`${booking.work_order_id}|`))
-  const spineMode = !isMobile && spanDays > 1 && blockHeight >= 56
+  // THE SPINE NOW SURVIVES A SHARED ROW (Eli, 2026-09-22, option A of
+  // cal-slim-times-options.html). It used to need 56px, which is a room row to
+  // itself: the moment anything else landed in that room that week the bar fell
+  // back to the ladder card and stamped DAY ONE'S TIMES across the whole span —
+  // four days reading 6P-1A because Monday was. That is worse than showing
+  // nothing, because it is confidently wrong, and it silently undid the
+  // per-day work from Sep 18.
+  //
+  // Three tiers now, all at the SAME row height (his constraint: "if we can do
+  // that without changing the height, that'd be great"):
+  //   full (>=56) — spine bar, per-day times AND staff. Unchanged.
+  //   slim (>=34) — spine bar, per-day times only. Staff is what gives, because
+  //                 the times are the floor he set and staff is one click away.
+  //   flat (<34)  — the bar COMPRESSES rather than leaving: name only, 9px,
+  //                 no padding, no label, no day count. 13px of bar + 11px of
+  //                 cell fits the 24px a 3-lane row yields.
+  //
+  // The name was nearly moved to a block on the LEFT at the flat tier. It was
+  // built and thrown away: placed in the flow it broke the day alignment that
+  // is the whole point of the cells, and placed over them it hid DAY ONE'S
+  // time — reintroducing the exact fault that makes the old fallback wrong.
+  // Compressing the bar keeps one structure at every height and every day
+  // keeps its own range.
+  const spineMode = !isMobile && spanDays > 1 && blockHeight >= 20
+  const spineSlim = blockHeight < 56
+  const spineFlat = blockHeight < 34
   const roomLetter = toStudioLetter(booking.studio || '')
   const dayCells = spineMode ? Array.from({ length: spanDays }, (_, i) => {
     const d = fmt(addDays(visStart, i))
@@ -440,10 +465,10 @@ function BookingBlock({
           zIndex: 2, minWidth: 0, display: 'flex', flexDirection: 'column',
         }}
       >
-        <div className="c-ev-spinebar" style={{ position: 'relative' }}>
+        <div className={`c-ev-spinebar${spineFlat ? ' c-ev-spinebar-flat' : ''}`} style={{ position: 'relative' }}>
           <span className="c-arch c-ev-spinename">{primaryName}</span>
-          {labelLine && <span className="c-ev-spinelabel">{labelLine}</span>}
-          <span className="c-ev-spinecount c-mono">{booking.invoice_num ? `#${booking.invoice_num} · ` : ''}{countLabel}</span>
+          {labelLine && !spineFlat && <span className="c-ev-spinelabel">{labelLine}</span>}
+          {!spineFlat && <span className="c-ev-spinecount c-mono">{booking.invoice_num ? `#${booking.invoice_num} · ` : ''}{countLabel}</span>}
           {repeatOffsets.map(d => (
             <span key={d} aria-hidden className="c-arch c-ev-spinename" style={{ position: 'absolute', top: 3, left: `calc(${(d / spanDays) * 100}% + 8px)`, pointerEvents: 'none' }}>{primaryName}</span>
           ))}
@@ -466,12 +491,19 @@ function BookingBlock({
                 style={{ width: `${100 / spanDays}%` }}
               >
                 {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.tbd ? 'TBD' : c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
-                <span className="c-ev-cellstaff">{staffStr}</span>
+                {!spineSlim && <span className="c-ev-cellstaff">{staffStr}</span>}
               </div>
             )
           })}
         </div>
-        {showPayment && <div className="c-ev-cod">{codLabel ? `COD ${codLabel}` : 'COD'}</div>}
+        {/* Same sliver rule the ladder card uses: below the full card the red
+            edge is the signal and the method is one hover away. Without this a
+            14px word-bar ate half a 24px flat spine. */}
+        {showPayment && (
+          <div className={`c-ev-cod${blockHeight < CARD_FULL_H ? ' c-ev-cod-sliver' : ''}`}>
+            {blockHeight < CARD_FULL_H ? '' : (codLabel ? `COD ${codLabel}` : 'COD')}
+          </div>
+        )}
       </div>
     )
   }
