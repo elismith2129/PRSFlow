@@ -977,8 +977,13 @@ export default function DashboardPage() {
           ) : (
             <div className="n-rgrid" onClick={e => e.stopPropagation()}>
               {ROOMS.map(room => {
-                const booking = bookings.find(b => b.location === room.venue && b.studio === room.studio)
-                if (!booking) {
+                // EVERY session in the room, not the first one (Eli, 2026-09-21:
+                // "dashboard cal does not show if there are two sessions in one
+                // day. only shows the first session"). A day session and a night
+                // session in the same room are two blocks in one card, each
+                // wearing its own status colour, each opening its own WO.
+                const inRoom = bookings.filter(b => b.location === room.venue && b.studio === room.studio)
+                if (inRoom.length === 0) {
                   return (
                     <div
                       key={room.label}
@@ -990,20 +995,44 @@ export default function DashboardPage() {
                     </div>
                   )
                 }
-                const eng = initials(booking.engineer_name)
-                const asst = initials(booking.assistant_name)
+                if (inRoom.length === 1) {
+                  const booking = inRoom[0]
+                  const eng = initials(booking.engineer_name)
+                  const asst = initials(booking.assistant_name)
+                  return (
+                    <div
+                      key={room.label}
+                      className={`n-rc${roomFill(booking.status)}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setDashEditBooking(booking)}
+                    >
+                      <span className="n-rn">{room.label}</span>
+                      <div className="n-a">{booking.artist || booking.client_name || booking.label || '—'}</div>
+                      <div className="n-c">{booking.label || booking.client_name || ''}</div>
+                      <div className="n-tm">{[booking.from_time, booking.to_time].filter(Boolean).join('–')}</div>
+                      {(eng || asst) && <span className="n-eng">{eng ? `1ST-${eng}` : `2ND-${asst}`}</span>}
+                    </div>
+                  )
+                }
                 return (
-                  <div
-                    key={room.label}
-                    className={`n-rc${roomFill(booking.status)}`}
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => setDashEditBooking(booking)}
-                  >
-                    <span className="n-rn">{room.label}</span>
-                    <div className="n-a">{booking.artist || booking.client_name || booking.label || '—'}</div>
-                    <div className="n-c">{booking.label || booking.client_name || ''}</div>
-                    <div className="n-tm">{[booking.from_time, booking.to_time].filter(Boolean).join('–')}</div>
-                    {(eng || asst) && <span className="n-eng">{eng ? `1ST-${eng}` : `2ND-${asst}`}</span>}
+                  <div key={room.label} className="n-rc n-multi">
+                    <span className="n-rn n-rn-multi">{room.label} · {inRoom.length} sessions</span>
+                    {inRoom.map(booking => {
+                      const eng = initials(booking.engineer_name)
+                      const asst = initials(booking.assistant_name)
+                      return (
+                        <div
+                          key={booking.id}
+                          className={`n-rs${roomFill(booking.status)}`}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setDashEditBooking(booking)}
+                        >
+                          <div className="n-a">{booking.artist || booking.client_name || booking.label || '—'}</div>
+                          <div className="n-tm">{[booking.from_time, booking.to_time].filter(Boolean).join('–')}</div>
+                          {(eng || asst) && <span className="n-eng">{eng ? `1ST-${eng}` : `2ND-${asst}`}</span>}
+                        </div>
+                      )
+                    })}
                   </div>
                 )
               })}

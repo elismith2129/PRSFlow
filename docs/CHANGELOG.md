@@ -20,6 +20,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.38.1 — Dashboard room card shows every session in the room — Sep 21, 2026
+
+Eli: "dashboard cal does not show if there are two sessions in one day. only
+shows the first session." `ROOMS.map` used `bookings.find(...)` — first
+match wins, the night session vanished. Now `filter`: one session renders
+exactly as before; two or more render one card with the room label once
+and a block per session (`.n-rs`), each in its own status colour, each
+opening its own work order. `app/(main)/page.tsx`, `styles/globals.css`
+(`.n-multi`, `.n-rs`). No migrations.
+
+---
+
 ## v1.38.0 — Positions, and Hiring becomes a walk-through — Sep 21, 2026
 
 - **Migration `20260921130000_hr_positions.sql`** — `hr_positions` (title,

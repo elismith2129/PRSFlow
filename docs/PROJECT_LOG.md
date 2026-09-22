@@ -823,6 +823,10 @@ Inside a case the first group with open items wears a NOW pill and the header le
 with Next up. Rejected: one long form (the first cut) — it assumed you already knew
 what the fields meant, which is the opposite of the ask.
 
+**Same evening, a bug (v1.38.1):** the dashboard room grid showed one session per room —
+`bookings.find` — so a room with a day and a night session lost the night one. Now every
+session in the room, stacked in the card, each its own colour and click.
+
 #### Open
 
 - **Flo briefing cron** returned malformed JSON twice (Sep 10, 13) — `app_errors`. Needs a
