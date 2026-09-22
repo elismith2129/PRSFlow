@@ -645,6 +645,19 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.38.3', date:'Sep 22, 2026',
+    headline:'The billing hub tells you who, and the calendar stops hiding times.',
+    desc:'Three fixes from the floor. The hub now names the runner on a night nobody turned in and the admin who picked it up, the green badge says what to do instead of what already happened, and a squeezed calendar row keeps its hours.',
+    changes:[
+      'Billing hub: the green badge now reads <b>Ready to send</b> instead of Approved. Same rows, same colour — it just tells you the next move. COD still reads Approved, because there is nothing to send.',
+      'Billing hub: a night no runner submitted now names the runner who closed that studio out — <b>Never submitted · Cris</b>. Once someone fixes the work order and presses <b>Complete WO</b>, the row turns green and reads <b>Completed by (your name)</b>.',
+      'Pressing <b>Complete WO</b> is also what clears that session from the morning pop-up. If the same sessions keep coming back every morning, it is because the work order was never completed.',
+      'Calendar: when several sessions share one room in a day the cards get short, and they used to drop the times entirely. They now read <b>6P–1A  Melly Mike</b> on one line — the time first, the name shortened if it has to be.',
+      'Calendar: a booking running several days keeps each day\'s own start and end times even when it shares the row with another session. It used to show the first day\'s hours across the whole run, which was simply wrong on every other day.',
+    ],
+    affects:'Office and billing mostly. Everyone who reads the calendar gets the times back.',
+  },
+  {
     ver:'v1.38', date:'Sep 21, 2026',
     headline:'Hiring walks you through it, and Positions live in the app.',
     desc:'Starting a hire, promotion or separation is now one question at a time, with a plain-English summary before anything is created. Job titles and what they carry are set on Admin → Positions.',

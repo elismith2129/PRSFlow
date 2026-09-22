@@ -20,6 +20,24 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.38.4 — "Approved" becomes "Ready to send" — Sep 22, 2026
+
+**Why.** Eli: *"I think we should change the green Approved badge in the billing hub to Ready to send."*
+
+Every other label in that column names the state or the next act — Needs review, Needs invoice, Needs approval, Awaiting PO, Sent, Paid. "Approved" was the odd one out: it reported a finished act and left the reader to work out that an invoice was now sitting there waiting to go.
+
+**Billing only. COD keeps "Approved"** — its ladder ends at the owner's sign-off, there is nothing to send, and the same words there would promise an act that does not exist.
+
+**The lights are unchanged** (`Reviewed · Invoiced · Approved`). They are the record of what HAPPENED; the badge says what the row NEEDS. The two are not meant to match.
+
+**The key stays `'approved'`** — `STAGE_STYLE`, `QUEUE_RANK` and the stage dividers are keyed on it, so only the words moved. Badge colour, sort order and grouping are untouched.
+
+**Left alone deliberately:** the "Approved 12 Sep" hint next to Awaiting PO and the "Approved — $1,240" toast after the owner signs off. Both report the act, not the state, so both are still right.
+
+**Migrations:** none. **Files:** `lib/billing.ts`, `public/sop.html`.
+
+---
+
 ## v1.38.3 — Times survive the squeeze — Sep 22, 2026
 
 **Why.** Eli: *"is there a way to make these slimmer sessions show the start times at minimum… my goal is to avoid the giant stretch that happens on a cal row. So truncated to keep scanning easy, but minimum need the start/end times for each day. If we can do that without changing the height, that'd be great."* Reference: `docs/design-refs/cal-slim-times-options.html`, option A.

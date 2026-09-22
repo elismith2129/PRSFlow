@@ -412,9 +412,23 @@ export function billingStage(row: InvoiceRow): { key: StageKey; label: string } 
   // The owner bounced it — hot until the corrected invoice is dropped on it.
   if (row.rejectedAt && row.step === 2) return { key: 'not_approved', label: 'Not approved' }
   if (row.step === 3) {
+    // READY TO SEND, not "Approved" (Eli, 2026-09-22). Every other label in
+    // this column names the state or the next act — Needs review, Needs
+    // invoice, Needs approval, Awaiting PO, Sent, Paid. "Approved" was the odd
+    // one out: it reported an act already finished and left the reader to work
+    // out that the invoice was now sitting there waiting to go. The lights
+    // above still read Reviewed · Invoiced · Approved, which is the record of
+    // what HAPPENED; the badge says what the row NEEDS.
+    //
+    // COD keeps "Approved" (see the branch above). Its ladder ends at the
+    // owner's sign-off — there is nothing to send — so the same words there
+    // would promise an act that does not exist.
+    //
+    // The KEY stays 'approved' on purpose: STAGE_STYLE, QUEUE_RANK and the
+    // stage dividers are all keyed on it, so only the words move.
     return row.awaitingPo
       ? { key: 'po', label: 'Awaiting PO' }
-      : { key: 'approved', label: 'Approved' }
+      : { key: 'approved', label: 'Ready to send' }
   }
   if (row.step === 2) return { key: 'approval', label: 'Needs approval' }
   if (row.step === 1) return { key: 'invoice', label: 'Needs invoice' }
