@@ -20,6 +20,37 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.38.2 — The submit trail: who missed it, who covered it — Sep 22, 2026
+
+**Why.** Eli: *"on the billing hub it shows submitted by (runner name) and it shows 'runner never submitted' — I want that to show the runner name. And when they forget and then the admin fixes and completes the WO it should show in green completed by (admin name). This way we have the trail."*
+
+**The flag cell now tells the whole story in one chip:**
+
+| State | Chip | Colour |
+|---|---|---|
+| Night nobody submitted, still open | `Never submitted · Cris · 3 days` | hot |
+| Same night, office fixed it and pressed **Complete WO** | `Completed by Fernando` | booked green |
+| Normal submitted day | `Submitted by <runner>` (unchanged) | warm |
+
+**Where the runner's name comes from.** There is no submitter — that is the whole point of the flag. The name is whoever filed **that studio's closing checklist that night** (`daily_ops_submissions`, category `closing_checklist`/`closing`, keyed slug+date), which is the runner who was in the building. No checklist filed either → the chip stays nameless rather than guessing. This is the same resolution `fetchUnsubmittedSessions` already used for the office pop-up, so the pop-up and the hub name the same person.
+
+That lookup needs the **venue**, which only the booking card carries, so `lib/billing` now reads `bookings(work_order_id, location)` — but only for the work orders that actually have an unsubmitted day, so a clean month costs zero extra queries.
+
+**Green only where a night was missed.** `Completed by X` is gated on `unsubmittedDays.length > 0`. Complete WO is how almost every work order enters billing, so an ungated badge would have printed on nearly every row and meant nothing.
+
+**This is also what clears the morning pop-up.** The office dashboard pop-up (and the billing flag) clear on exactly three acts: the runner submits late, the office locks the day in review, or **someone presses Complete WO**. The billing pipeline — raising, sending, approving, paying an invoice — touches none of them, which is why the same four sessions reappeared every morning while the office worked around them. Completing the work order is the act; the green chip is the receipt for it.
+
+**Migration (run before the push):** `supabase/migrations/20260922120000_wo_completed_by.sql` — `work_orders.completed_by_name text`, nullable, idempotent. Written by `handleComplete` from the admin's profile display name (the same source as the runner's submit tag) and **cleared on reopen**.
+
+**Watch-outs.**
+- `completed_by_name` is on the `work_orders` select in `lib/billing`. Any other explicit `.select()` list that wants it must add it — `computeWoTotals` callers do not need it.
+- Historical completions have `completed_by_name` null, so they show the red chip until someone reopens and re-completes. Deliberate: we do not invent a name for a press that happened before the column existed.
+- The green chip is a record, not a task. It is not a bucket, not a filter, and it does not gate anything.
+
+**Files:** `supabase/migrations/20260922120000_wo_completed_by.sql`, `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`, `app/(main)/billing/page.tsx`, `styles/globals.css`.
+
+---
+
 ## v1.38.1 — Dashboard room card shows every session in the room — Sep 21, 2026
 
 Eli: "dashboard cal does not show if there are two sessions in one day. only

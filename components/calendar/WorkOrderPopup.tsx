@@ -3066,9 +3066,15 @@ export function WorkOrderPopup({
 
     const newStatus = reopening ? 'open' : 'completed'
     const now = new Date().toISOString()
+    // WHO COMPLETED IT (Eli, 2026-09-22): "when they forget and then the admin
+    // fixes and completes the WO it should show in green completed by (admin
+    // name) — this way we have the trail." Same source as the runner's submit
+    // tag, so the two ends of the trail read alike. Reopening clears it.
+    const completedBy = (profile?.display_name || '').trim() || null
     const { error: completeErr } = await supabase.from('work_orders').update({
       status: newStatus,
       admin_approved_at: newStatus === 'completed' ? now : null,
+      completed_by_name: newStatus === 'completed' ? completedBy : null,
     }).eq('id', woIdRef.current)
 
     // Reopening also takes it back OUT of billing — but only from

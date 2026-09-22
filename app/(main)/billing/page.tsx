@@ -1223,14 +1223,28 @@ function Row({
       {/* FLAG COLUMN — locked, so a row without a flag leaves the space empty
           rather than sliding everything else left. */}
       <span className="c-bflagcell">
-        {row.unsubmittedDays.length > 0 ? (
+        {row.unsubmittedDays.length > 0 && row.completedBy ? (
+          // THE TRAIL CLOSES (Eli, 2026-09-22): the runner forgot, the office
+          // picked it up and pressed Complete WO. Green, because this row no
+          // longer needs anybody — it is the record of who covered, not a
+          // thing to do. Only shown where a night WAS missed, so it never
+          // becomes a badge on every completed work order.
+          <span className="c-bdone" title={`Nobody submitted ${row.unsubmittedDays.map(fmtDayHeading).join(', ')}${row.unsubmittedBy ? ` (${row.unsubmittedBy} closed out that night)` : ''} — ${row.completedBy} fixed the work order and completed it`}>
+            Completed by {row.completedBy}
+          </span>
+        ) : row.unsubmittedDays.length > 0 ? (
           // NEVER SUBMITTED (Eli, 2026-09-17): the runner never turned that
           // night in, so nobody has said what happened in the room — check
           // the work order before billing a number nobody looked at. Hot,
           // and first: it outranks every other flag because every other
           // flag assumes the day was real.
-          <span className="c-bdrift" title={`The runner never submitted ${row.unsubmittedDays.length === 1 ? 'this day' : 'these days'}: ${row.unsubmittedDays.map(fmtDayHeading).join(', ')} — open the work order and check the room before billing`}>
-            Runner never submitted{row.unsubmittedDays.length > 1 ? ` · ${row.unsubmittedDays.length} days` : ''}
+          //
+          // THE NAME (2026-09-22) is not a submitter — there isn't one. It is
+          // whoever filed that studio's closing checklist that night, which is
+          // the runner who was in the building. No checklist either, and the
+          // chip stays nameless rather than guessing.
+          <span className="c-bdrift" title={`The runner never submitted ${row.unsubmittedDays.length === 1 ? 'this day' : 'these days'}: ${row.unsubmittedDays.map(fmtDayHeading).join(', ')}${row.unsubmittedBy ? ` — ${row.unsubmittedBy} closed out that night` : ''} — open the work order, fix it and press Complete WO`}>
+            Never submitted{row.unsubmittedBy ? ` · ${row.unsubmittedBy}` : ''}{row.unsubmittedDays.length > 1 ? ` · ${row.unsubmittedDays.length} days` : ''}
           </span>
         ) : row.rejectedAt ? (
           // NOT APPROVED: the owner looked and bounced it. The badge says so;

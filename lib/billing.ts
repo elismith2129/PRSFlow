@@ -31,7 +31,7 @@
 // a decent message before the round-trip; the database is what makes it true.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { unsubmittedDaysOf } from './unsubmitted'
+import { unsubmittedDaysOf, studioSlugOf } from './unsubmitted'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { computeWoTotals } from '@/lib/woTotals'
@@ -312,6 +312,10 @@ export type InvoiceRow = {
    * to collect"). Same rule as lib/unsubmitted, from the rows already loaded.
    */
   unsubmittedDays: string[]
+  /** Who closed that studio out on the night(s) nobody submitted — the runner to ask. Null = nobody closed in the app. */
+  unsubmittedBy: string | null
+  /** The admin who pressed Complete WO. The green end of the trail. */
+  completedBy: string | null
   /**
    * "Aug 5–8" — the REAL span, from the work order's own dated rows.
    * `sessionDate` alone made a four-day session look like a one-nighter, which
@@ -573,7 +577,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, invoice_closed_note')
+    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, invoice_closed_note, completed_by_name')
     .order('session_date', { ascending: false })
     // Secondary order = id: without it Postgres returns equal-date rows in
     // ARBITRARY order that can differ per refetch (the page-2 churn bug —
@@ -666,7 +670,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
 
   const today = getLocalToday()
 
-  return relevant.map(w => {
+  const built: InvoiceRow[] = relevant.map(w => {
     const stRows = stBy.get(w.id) ?? []
     const totals = computeWoTotals({
       studioRows: stRows,
@@ -823,6 +827,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       rejectNote: (w as any).invoice_reject_note ?? null,
       invoicedTotal,
       unsubmittedDays,
+      unsubmittedBy: null as string | null,
+      completedBy: (w as any).completed_by_name ?? null,
       invoiceDrift,
       dateRange,
       rooms,
@@ -836,6 +842,44 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       needsReview,
     }
   })
+
+  // ─── Who was on that night ────────────────────────────────────────────────
+  // Eli, 2026-09-22: "it shows 'runner never submitted' — I want that to show
+  // the runner name… this way we have the trail."
+  //
+  // There is no submitter to name (that is the whole point), so the name comes
+  // from the OTHER thing the runner did that night: the closing checklist.
+  // daily_ops_submissions is keyed studio-slug + calendar date, so we need the
+  // work order's VENUE, which only the booking card carries — one extra read,
+  // and only when something is actually unsubmitted.
+  const needWho = built.filter(r => r.unsubmittedDays.length > 0)
+  if (needWho.length > 0) {
+    const woIds = needWho.map(r => r.workOrderId)
+    const dates = Array.from(new Set(needWho.flatMap(r => r.unsubmittedDays)))
+    const [bk, ops] = await Promise.all([
+      supabase.from('bookings').select('work_order_id, location').in('work_order_id', woIds),
+      supabase.from('daily_ops_submissions').select('studio, date, category, staff_name').in('date', dates).in('category', ['closing_checklist', 'closing']),
+    ])
+    const slugByWo = new Map<string, string>()
+    for (const b of bk.data ?? []) {
+      if (!b.work_order_id) continue
+      const slug = studioSlugOf(b.location)
+      if (slug && !slugByWo.has(b.work_order_id)) slugByWo.set(b.work_order_id, slug)
+    }
+    const closer = new Map<string, string>()
+    for (const o of ops.data ?? []) if (o.staff_name) closer.set(`${o.studio}|${o.date}`, o.staff_name)
+    for (const r of needWho) {
+      const slug = slugByWo.get(r.workOrderId)
+      if (!slug) continue
+      // Most recent unsubmitted night wins — that is the one still owed.
+      for (const d of [...r.unsubmittedDays].reverse()) {
+        const who = closer.get(`${slug}|${d}`)
+        if (who) { r.unsubmittedBy = who; break }
+      }
+    }
+  }
+
+  return built
 }
 
 // ─── Filtering, search, pagination ───────────────────────────────────────────

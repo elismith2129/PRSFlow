@@ -2161,6 +2161,14 @@ select.c-input {
   color: var(--c-st-hot); flex-shrink: 0; cursor: help;
 }
 
+/* The trail closed: a missed night the office picked up and completed. Same
+   shape as .c-bdrift so the row reads identically — only the colour changes,
+   hot to booked-green (Eli, 2026-09-22: "this way we have the trail"). */
+.c-bdone {
+  font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--c-st-booked); flex-shrink: 0; cursor: help;
+}
+
 .c-bnote { font-size: 11px; opacity: .5; padding: 9px 4px 0; line-height: 1.5; }
 .c-bempty { padding: 18px 10px; font-size: 12px; opacity: .5; text-align: center; }
 
