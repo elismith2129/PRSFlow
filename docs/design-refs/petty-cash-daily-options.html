@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Petty cash — daily ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--c-bg:#0b0a09;--c-srf:#161412;--c-fg:#f2efe7;--c-wash:rgba(242,239,231,.06);--c-wash2:rgba(242,239,231,.12);
+--c-st-hot:#ff5a4d;--c-st-warm:#ffa94d;--c-st-booked:#43dfae;--c-fg-2:rgba(242,239,231,.72);--c-fg-3:rgba(242,239,231,.45);--c-hot-text:#fff4f2;--c-chip-ink:#1c2626}
+*{box-sizing:border-box}
+body{margin:0;background:var(--c-bg);color:var(--c-fg);font-family:Inter,system-ui,sans-serif;padding:28px 22px 70px}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;margin:0 0 6px}
+.sub{font-size:13px;color:var(--c-fg-2);max-width:780px;line-height:1.55;margin:0 0 8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:38px 0 4px}
+.note{font-size:12.5px;color:var(--c-fg-2);line-height:1.55;max-width:780px;margin:0 0 14px}
+.verdict{font-size:12px;color:var(--c-fg-3);line-height:1.5;max-width:780px;margin:10px 0 0}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:300px;background:var(--c-bg);border-radius:20px;padding:12px 12px 16px;box-shadow:0 0 0 1px var(--c-wash2)}
+.cap{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin:0 0 7px}
+.card{background:var(--c-srf);border-radius:16px;padding:13px;margin-bottom:11px}
+.lbl{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:9px}
+.ln{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12.5px}
+.ln .k{color:var(--c-fg-2)}
+.mono{font-family:'DM Mono',ui-monospace,monospace;font-weight:500}
+.v{font-size:13px;font-weight:700}
+.big{font-size:19px;font-weight:700}
+.src{font-size:10.5px;color:var(--c-fg-3);line-height:1.4;margin:-1px 0 10px}
+.green{color:var(--c-st-booked)}.hot{color:var(--c-st-hot)}.warm{color:var(--c-st-warm)}
+.rule{height:1px;background:var(--c-wash2);margin:10px 0}
+.ent{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--c-wash)}
+.ent:last-child{border-bottom:0}
+.ent .d{font-size:12.5px}
+.ent .s{font-size:10px;color:var(--c-fg-3);margin-top:1px}
+.btn{width:100%;min-height:48px;border-radius:14px;background:var(--c-srf);color:var(--c-fg);border:0;
+  font:inherit;font-size:13px;font-weight:700;margin-top:9px;cursor:default;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:1px}
+.btn small{font-size:10px;font-weight:400;opacity:.55}
+.btn.go{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.inp{background:var(--c-wash);border-radius:9px;padding:7px 10px;font-family:'DM Mono',ui-monospace,monospace;
+  font-size:13px;font-weight:500;min-width:92px;text-align:right}
+.ro{background:transparent;padding:0}
+.seg{display:flex;gap:6px;margin:8px 0 0}
+.seg span{flex:1;text-align:center;padding:7px;border-radius:9px;background:var(--c-wash);font-size:11.5px;font-weight:700}
+.seg .on{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.seg .onh{background:var(--c-st-hot);color:var(--c-hot-text)}
+/* confirm sheet */
+.sheet{background:var(--c-srf);border-radius:18px;padding:16px;box-shadow:0 0 0 1px var(--c-wash2)}
+.sheet h3{font-family:'Archivo Black',sans-serif;font-size:14px;margin:0 0 7px;line-height:1.3}
+.sheet p{font-size:12.5px;color:var(--c-fg-2);line-height:1.55;margin:0 0 10px}
+.sheet .pair{display:flex;gap:8px;margin-top:11px}
+.sheet .pair button{flex:1;min-height:44px;border-radius:12px;border:0;font:inherit;font-size:12.5px;font-weight:700;cursor:default}
+.ghost{background:var(--c-wash);color:var(--c-fg)}
+.solid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.solidh{background:var(--c-st-hot);color:var(--c-hot-text)}
+.box{background:var(--c-wash);border-radius:11px;padding:10px 11px;margin:9px 0}
+table{border-collapse:collapse;font-size:12.5px;margin:10px 0 0;max-width:780px}
+td,th{border:1px solid var(--c-wash2);padding:6px 10px;text-align:left;color:var(--c-fg-2)}
+th{color:var(--c-fg);font-weight:700}
+</style></head><body>
+
+<h1>Petty cash — a real daily ledger</h1>
+<p class="sub">Today the runner page loads <em>every entry that studio has ever made</em> and calls the original seed "Opening balance". The office modal scopes to one day but still reads that seed as the day's opening, so its Closing Balance has never meant anything. Both are fixed by the same rule.</p>
+
+<h2>The rule</h2>
+<p class="note">Cash is physical, so the <b>count is the truth</b>. The ledger resets to reality every time someone counts the box.</p>
+<div class="box" style="max-width:780px">
+  <b>Today's opening = the most recent counted close, plus every entry logged since that count.</b>
+</div>
+<p class="note">A skipped night doesn't break the chain — the next runner still opens at the last real count plus whatever was logged. If nobody has ever counted, it falls back to the seed the owner set when the log began.</p>
+
+<h2>The page</h2>
+<div class="row">
+
+  <div class="phone">
+    <p class="cap">Normal night</p>
+    <div class="card">
+      <div class="lbl">Tonight · Mon Sep 22</div>
+      <div class="ln"><span class="k">Opening</span><span class="mono v">$340.00</span></div>
+      <div class="src">Carried from Sat's count of $360.00, less $20.00 logged Sunday. Tap to see.</div>
+      <div class="rule"></div>
+      <div class="ln"><span class="k">Cash in</span><span class="mono v green">+$0.00</span></div>
+      <div class="ln"><span class="k">Cash out</span><span class="mono v hot">−$42.50</span></div>
+      <div class="ln"><span class="k">Should be in the box</span><span class="mono big">$297.50</span></div>
+      <div class="rule"></div>
+      <div class="ln"><span class="k">You counted</span><span class="inp">297.50</span></div>
+      <div class="src green" style="margin-top:6px">Box agrees with the ledger.</div>
+    </div>
+    <div class="card">
+      <div class="lbl">Tonight's entries</div>
+      <div class="ent"><div><div class="d">Coffee run — Studio B</div><div class="s">9:12 PM · you</div></div><span class="mono hot">−$18.50</span></div>
+      <div class="ent"><div><div class="d">Parking, client</div><div class="s">11:40 PM · you</div></div><span class="mono hot">−$24.00</span></div>
+    </div>
+    <button class="btn">+ Add entry</button>
+    <button class="btn go">Save &amp; close out<small>you'll see a summary first</small></button>
+  </div>
+
+  <div class="phone">
+    <p class="cap">Opening, explained</p>
+    <div class="card">
+      <div class="lbl">Where $340.00 came from</div>
+      <div class="ln"><span class="k">Sat Sep 20 — counted</span><span class="mono v">$360.00</span></div>
+      <div class="src">Counted by Cris at close.</div>
+      <div class="ln"><span class="k">Sun Sep 21 — out</span><span class="mono v hot">−$20.00</span></div>
+      <div class="src">Tape, Studio A. Nobody counted Sunday.</div>
+      <div class="rule"></div>
+      <div class="ln"><span class="k">Opens tonight at</span><span class="mono big">$340.00</span></div>
+    </div>
+    <div class="card">
+      <div class="lbl">Not what's in the box?</div>
+      <p style="font-size:12.5px;color:var(--c-fg-2);line-height:1.55;margin:0">Don't change this number. Count the box, type it in <b>You counted</b>, and the difference gets flagged for the office.</p>
+    </div>
+    <button class="btn">Back</button>
+  </div>
+
+  <div class="phone">
+    <p class="cap">Adding an entry</p>
+    <div class="card">
+      <div class="lbl">New entry</div>
+      <div class="ln"><span class="k">What for?</span></div>
+      <div class="inp" style="width:100%;text-align:left;font-family:inherit;font-size:12.5px;color:var(--c-fg-3)">Coffee run — Studio B</div>
+      <div class="seg"><span class="onh">Cash OUT</span><span>Cash IN</span></div>
+      <div class="src" style="margin-top:8px">Out = money leaving the box. In = money physically added to it — a top-up or a refund coming back.</div>
+      <div class="src hot" style="margin-top:6px"><b>Never enter the balance as an entry.</b> The opening is carried for you.</div>
+      <div class="ln" style="margin-top:10px"><span class="k">Amount</span><span class="inp">18.50</span></div>
+    </div>
+    <button class="btn go">Add</button>
+  </div>
+
+</div>
+<p class="verdict">The opening is a read-only fact with its own receipt. The one line that stops the mistake your runner made is the red one — and it sits exactly where they'd make it.</p>
+
+<h2>The "are you sure" moments</h2>
+<p class="note">Confirming everything trains people to tap through everything. These four are the ones that move money or can't be walked back — the rest of the page is built so it doesn't need a prompt.</p>
+<div class="row">
+
+  <div class="phone">
+    <p class="cap">1 · Cash IN that looks like a balance</p>
+    <div class="sheet">
+      <h3>Is this really money going <i>into</i> the box?</h3>
+      <p>You're adding <b class="green">+$340.00</b> as cash in — and that's almost exactly tonight's opening balance.</p>
+      <div class="box"><div class="ln" style="margin:0"><span class="k">Opening tonight</span><span class="mono v">$340.00</span></div></div>
+      <p>The opening is already counted for you. You only log cash <b>in</b> when someone physically <b>puts money into the box</b>.</p>
+      <div class="pair"><button class="ghost">Cancel</button><button class="solid">Yes, money went in</button></div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <p class="cap">2 · Changing something already saved</p>
+    <div class="sheet">
+      <h3>This was already recorded</h3>
+      <p><b>Parking, client — $24.00</b> was saved at 11:40 PM tonight.</p>
+      <p>Changing it rewrites what the office already sees. If the money genuinely moved again, add a new entry instead so both are on the record.</p>
+      <div class="pair"><button class="ghost">Add a new entry</button><button class="solidh">Change it</button></div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <p class="cap">3 · The box doesn't match</p>
+    <div class="sheet">
+      <h3>The box is $15.00 short</h3>
+      <div class="box">
+        <div class="ln"><span class="k">Ledger says</span><span class="mono v">$297.50</span></div>
+        <div class="ln" style="margin:0"><span class="k">You counted</span><span class="mono v">$282.50</span></div>
+      </div>
+      <p>That's fine to record — the office would rather know. Check you counted the coins, then tell us anything you noticed.</p>
+      <div class="inp" style="width:100%;text-align:left;font-family:inherit;font-size:12.5px;color:var(--c-fg-3)">Note for the office (optional)</div>
+      <div class="pair"><button class="ghost">Recount</button><button class="solid">Record it</button></div>
+    </div>
+  </div>
+
+  <div class="phone">
+    <p class="cap">4 · Save &amp; close out</p>
+    <div class="sheet">
+      <h3>Closing out Monday</h3>
+      <div class="box">
+        <div class="ln"><span class="k">Opened at</span><span class="mono v">$340.00</span></div>
+        <div class="ln"><span class="k">In</span><span class="mono v green">+$0.00</span></div>
+        <div class="ln"><span class="k">Out</span><span class="mono v hot">−$42.50</span></div>
+        <div class="ln"><span class="k">Should be</span><span class="mono v">$297.50</span></div>
+        <div class="ln" style="margin:0"><span class="k">You counted</span><span class="mono v green">$297.50</span></div>
+      </div>
+      <p>Tomorrow opens at <b>$297.50</b> unless something is logged before then. Your name goes on this.</p>
+      <div class="pair"><button class="ghost">Back</button><button class="solid">Close out the night</button></div>
+    </div>
+  </div>
+
+</div>
+<p class="verdict">Sheet 4 is the one that teaches the model: it names tomorrow's opening out loud, so the carry-forward stops being invisible.</p>
+
+<h2>What changes where</h2>
+<table>
+  <tr><th>Surface</th><th>Today</th><th>After</th></tr>
+  <tr><td>Runner page — entries</td><td>every entry ever</td><td>tonight only</td></tr>
+  <tr><td>Runner page — opening</td><td>editable, shows the seed</td><td>read-only, carried, with its receipt</td></tr>
+  <tr><td>Office daily-ops modal</td><td>opening = seed, so closing is meaningless</td><td>same carried opening, closing is real</td></tr>
+  <tr><td>Seed</td><td>any runner can overwrite it</td><td>owner/manager only, set once per studio</td></tr>
+</table>
+
+<h2>Cutover</h2>
+<p class="note">Nothing historical gets rewritten. We establish <b>one</b> counted close per studio as of tonight — the real cash in each box — and every day after that carries forward on its own. Old rows keep whatever they say; they just stop being read as openings.</p>
+<p class="verdict">This also needs the bad cash-in entry corrected. Not deleted — a correcting entry, dated today, so the trail shows what happened.</p>
+
+</body></html>

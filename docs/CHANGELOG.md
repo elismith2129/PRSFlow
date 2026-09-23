@@ -20,6 +20,52 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.39.0 — Petty cash becomes a daily ledger — Sep 23, 2026
+
+**Why.** A runner told Eli the opening balance is always the same number. It was.
+
+**What it actually was.** The runner page loaded *every entry that studio had ever made* — no date filter — and labelled the original seed "Opening balance". The arithmetic was internally consistent (seed + all history = the real balance) but the label was a lie, and the seed was re-stamped onto each day's row, so the number never moved. Two live consequences:
+
+- A runner typed the night's cash in as a **cash-in entry**. In a perpetual ledger that never washes out — it inflates that studio's balance permanently.
+- The opening stayed an **editable input** while every entry ever was summed against it. One well-meant correction would have added the entire transaction history on top of itself.
+
+**And the office side was worse.** `lib/dailyOps` and the daily-ops modal already scoped entries to one day, but still read `amount` as that day's opening. So the modal's Closing Balance has been *seed + one night's movement* since it shipped — a number that never meant anything.
+
+**The rule, now in SQL so the two surfaces cannot disagree:**
+
+> `petty_cash_opening(studio, date)` = the most recent **counted** close before `date`, plus every entry logged after that count and before `date`.
+
+Cash is physical, so a count is the truth and the ledger resets to it. A skipped night does not break the chain — the next runner still opens at the last real count plus whatever was logged since. With no count on record it falls back to the studio's seed.
+
+**The opening is no longer a field.** It is a read-only fact with a receipt: tapping it shows "Sat Sep 20 — counted by Cris · $360.00" and "logged since · −$20.00". A runner who thinks it is wrong counts the box and types the count; the difference is the signal and it goes to the office with their note attached.
+
+**The seed** moves to its own table, `petty_cash_seed`, readable by everyone and settable only by `owner` / `manager` / `billing` (Eli: Fernando and Lori too). A runner overwriting the seed was the landmine this removes.
+
+**Four confirm sheets, not one per action.** A prompt on every change trains people to tap through the one that mattered, so prompts sit only where money moves or something cannot be walked back:
+
+| Moment | What it does |
+|---|---|
+| Cash **in** within 5% (or $5) of the opening | Names the amount and the opening, explains that cash in means money physically added. "That's not right" flips it to Out and clears the amount. |
+| Editing an entry already saved | Offers **Add a new entry** first, since that is usually the right answer; changing it is the red button. Asked once per entry per visit. |
+| Box doesn't match | Folded into the save sheet — never a block, with a note field the office reads on the row. |
+| Save | Opened at / In / Out / Should be / You counted, and names **tomorrow's opening out loud**. |
+
+That last line is the one that teaches the model: the carry-forward stops being invisible.
+
+**Migration:** `supabase/migrations/20260923120000_petty_cash_daily_ledger.sql` — `petty_cash_seed` table + RLS, `counted_by_name` and `count_note` on `petty_cash_balances`, and the `petty_cash_opening()` function. Idempotent, rewrites no history.
+
+**CUTOVER IS NOT DONE BY THE MIGRATION.** Seeds are inserted at 0 with the note "awaiting first count", deliberately: the real cutover is a counted close typed tonight per studio, by someone who physically counted the box. Until that happens each studio opens from 0 plus its history.
+
+**Watch-outs.**
+- `amount` on `petty_cash_balances` changes meaning: it is now that day's derived opening, stamped on save, not a typed figure. Old rows still hold the seed — harmless, since nothing reads them as openings any more.
+- The modal falls back to the stored `amount` if the RPC returns null, so a night saved before this change still renders.
+- Entries are scoped to `opsToday()`, the 8:50 AM boundary — an after-midnight entry belongs to the night in progress, same as everywhere else.
+- Every edit to an entry funnels through `patchEntry` so the two guards cannot be bypassed by one of the three inputs forgetting to call them. Add a fourth input and route it through there too.
+
+**Files:** `supabase/migrations/20260923120000_petty_cash_daily_ledger.sql`, `app/runner/[studio]/petty-cash/page.tsx`, `components/dashboard/DailyOpsModal.tsx`, `docs/design-refs/petty-cash-daily-options.html`.
+
+---
+
 ## v1.38.4 — "Approved" becomes "Ready to send" — Sep 22, 2026
 
 **Why.** Eli: *"I think we should change the green Approved badge in the billing hub to Ready to send."*

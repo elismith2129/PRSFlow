@@ -97,6 +97,8 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
   const [cashEntries, setCashEntries] = useState<any[]>([])
   const [openingBalance, setOpeningBalance] = useState<number | null>(null)
   const [countedClose, setCountedClose] = useState<number | null>(null)
+  const [countNote, setCountNote] = useState<string | null>(null)
+  const [countedBy, setCountedBy] = useState<string | null>(null)
 
   // Stock
   const [stockItems, setStockItems] = useState<any[]>([])
@@ -131,13 +133,22 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
     }
 
     if (category === 'petty_cash') {
-      const [{ data: entries }, { data: bal }] = await Promise.all([
+      // THE OPENING COMES FROM THE RULE, not from the row (2026-09-23).
+      // `amount` used to be the seed re-stamped every day, so this modal's
+      // Closing Balance was seed + one night's movement — a number that meant
+      // nothing. petty_cash_opening() is the same function the runner page
+      // reads, so the two can no longer disagree. The stored `amount` is still
+      // the fallback for a night saved before this change.
+      const [{ data: entries }, { data: bal }, { data: op }] = await Promise.all([
         supabase.from('petty_cash_entries').select('*').eq('studio', studio).eq('date', today).order('created_at'),
         supabase.from('petty_cash_balances').select('*').eq('studio', studio).eq('date', today).maybeSingle(),
+        supabase.rpc('petty_cash_opening', { p_studio: studio, p_date: today }),
       ])
       setCashEntries(entries ?? [])
-      setOpeningBalance(bal?.amount ?? null)
+      setOpeningBalance(op != null ? Number(op) : (bal?.amount ?? null))
       setCountedClose(bal?.counted_close ?? null)
+      setCountNote(bal?.count_note ?? null)
+      setCountedBy(bal?.counted_by_name ?? null)
     }
 
     if (category === 'stock_list') {
@@ -319,7 +330,7 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
             ['Cash Out', `-$${totalOut.toFixed(2)}`, 'var(--c-fg)'],
             ['Closing Balance', `$${closing.toFixed(2)}`, 'var(--c-fg)'],
             ...(countedClose != null ? [
-              ['Counted at Close', `$${Number(countedClose).toFixed(2)}`, 'var(--c-fg)'],
+              ['Counted at Close', `$${Number(countedClose).toFixed(2)}${countedBy ? ` · ${countedBy}` : ''}`, 'var(--c-fg)'],
               [diff === 0 ? 'Box matches' : diff! > 0 ? 'Over' : 'Short',
                diff === 0 ? '✓' : `$${Math.abs(diff!).toFixed(2)}`,
                diff === 0 ? 'var(--c-st-booked)' : 'var(--c-st-warm)'],
@@ -332,6 +343,14 @@ export function DailyOpsModal({ category, studio, today, studioLabel, submission
               <span style={{ fontSize: 13, fontWeight: 700, color: c, fontFamily: 'Inter' }}>{v}</span>
             </div>
           ))}
+          {/* The runner's own words on a mismatch (2026-09-23). The whole
+              value of asking for a note is that someone who was not in the
+              room can read it — so it renders here, not behind a click. */}
+          {countNote && (
+            <div style={{ marginTop: 8, paddingTop: 8, boxShadow: '0 -1px 0 var(--c-wash2)', fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.5 }}>
+              “{countNote}”
+            </div>
+          )}
         </div>
 
         {/* Transaction ledger */}

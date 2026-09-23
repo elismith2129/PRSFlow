@@ -645,6 +645,20 @@ const CLIENT_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.39', date:'Sep 23, 2026',
+    headline:'Petty cash now works like a real cash box.',
+    desc:'The opening balance used to be the same number every day — it was the figure from when the log first started, not last night\'s close. It now carries forward properly, and the page only shows tonight.',
+    changes:[
+      '<b>Opening balance is carried for you and can no longer be typed.</b> Tap it to see where it came from — for example &ldquo;carried from Saturday\'s count of $360.00, less $20.00 logged Sunday&rdquo;.',
+      'The list now shows <b>tonight only</b>. It used to show every transaction the studio had ever logged, which is why the totals looked enormous.',
+      '<b>Never enter the balance as a transaction.</b> Cash in means someone physically put money into the box — a top-up or a refund coming back. If you type a cash-in close to the opening balance, the app will stop and ask.',
+      'If the number is not what is in the box, do not try to correct it. Count the box, type it into <b>Counted at close</b>, and the difference goes to the office with a note from you.',
+      'Closing out now shows a summary first — what it opened at, in, out, what should be there, what you counted — and tells you what tomorrow will open at.',
+      'Changing something you already saved asks first, and offers to add a new entry instead, so both are on the record.',
+    ],
+    affects:'Runners, every night. Managers: the daily-ops petty cash panel was also showing a meaningless closing balance and is now correct.',
+  },
+  {
     ver:'v1.38.3', date:'Sep 22, 2026',
     headline:'The billing hub tells you who, and the calendar stops hiding times.',
     desc:'Three fixes from the floor. The hub now names the runner on a night nobody turned in and the admin who picked it up, the green badge says what to do instead of what already happened, and a squeezed calendar row keeps its hours.',
