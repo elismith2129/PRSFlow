@@ -27,6 +27,9 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
  * Closed bucket with a reason, rather than a disappearance. Same principle the
  * 2026-08-11 ruling applied to already-invoiced cancellations.
  */
+// `open_hours` (the calendar's "Open Hrs") IS the staff session — a runner or
+// engineer using a room on their own time (Eli, 2026-09-23). No client, no
+// work order, nothing to collect.
 const NON_SESSION_STATUSES = ['tour', 'tech', 'open_hours']
 
 /**

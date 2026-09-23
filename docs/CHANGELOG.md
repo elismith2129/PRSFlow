@@ -20,6 +20,26 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.39.4 — The office can rescue one day of a multi-day, in its own name — Sep 23, 2026
+
+**Why.** Eli: *"on a multi-day session, if a runner forgets, how does office just close off that one day to make it 'submitted'? I notice card view does have the checkmark to make that it has been reviewed. Right now it looks like admins can only complete a full WO."*
+
+**They always could.** The per-row ✓ sets `admin_locked`, and `unsubmittedDaysOf` and `fetchUnsubmittedSessions` both skip a locked day — so reviewing a single day has always taken it out of the flag and out of the morning pop-up. Completing the whole work order was never the only route.
+
+**What it didn't do was put a name on it.** A 20-day session rescued one day at a time left no trace of who rescued which day, and the billing row stayed nameless until somebody completed the entire work order. So a day the runner never turned in is now **submitted in the reviewer's name** when it is reviewed: `status='submitted'`, `submitted_by_name`, `submitted_at`, alongside the lock.
+
+That is not a fiction. After the night has passed the duty is the office's (the 2026-09-22 ruling), and the person pressing ✓ is the one discharging it. **A day the runner did submit keeps the runner's name** — the review is a second act on top of it, not a replacement, so the `SENT_STATUSES` guard only stamps rows that were never sent.
+
+The ✓ now carries a `title` that says which of the two it is about to do, because the button's meaning changes with the row's state and nothing on screen said so.
+
+**Watch-out.** The activity log distinguishes the two: *"Submitted for the runner and reviewed the day"* vs *"Reviewed the day"*. Unlocking still logs *"Review reopened"* and deliberately does **not** un-submit — once the office has taken a day on, that fact stays on the record.
+
+**Migrations:** none.
+
+**Files:** `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
 ## v1.39.3 — One sentence for the submit trail; Arrived/Left required; the closing stop becomes a prompt — Sep 23, 2026
 
 ### The billing row always says who submitted it

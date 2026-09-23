@@ -89,6 +89,12 @@ const SESSION_STATUSES: [string, string][] = [
   ['confirmed', 'Confirmed'], ['tentative', 'Tentative'], ['cancelled', 'Cancelled'],
   // 'Open Hrs' not 'Open Hours' (2026-08-26): seven pills have to share one
   // line — Lockout's arrival wrapped the seg to a second row.
+  //
+  // OPEN HRS *IS* THE STAFF SESSION (Eli, 2026-09-23: "open hours is staff
+  // sessions, they are the same thing"). Renaming the pill to 'Staff' was
+  // proposed and REJECTED by him the same day — the label stays. Noted here
+  // so the next person reading a staff booking tagged open_hours knows the
+  // two words mean one thing, and does not re-propose the rename.
   ['tour', 'Tour'], ['tech', 'Tech'], ['open_hours', 'Open Hrs'],
   // Rent-only monthly lockout — full WO (rent is invoiced) but invisible to
   // every daily-ops surface because they all select status='confirmed'.
@@ -573,6 +579,9 @@ export type WOFormSync = {
   rate: string; rate_daily: string; rate_type?: 'hourly' | 'daily'
   notes?: string; engineer_status?: string; engineer_rate?: string
 }
+
+/** A day already turned in — by the runner, or by the office on their behalf. */
+const SENT_STATUSES = new Set(['submitted', 'approved'])
 
 export function WorkOrderPopup({
   booking,
@@ -6323,6 +6332,11 @@ export function WorkOrderPopup({
                               background: r.admin_locked ? 'var(--c-st-booked)' : 'var(--c-wash)',
                               color: r.admin_locked ? 'var(--c-bg)' : 'var(--c-fg-3)',
                             }}
+                            title={r.admin_locked
+                              ? 'Reviewed. Click to reopen this day.'
+                              : SENT_STATUSES.has(r.status ?? 'in_progress')
+                                ? 'Mark this day reviewed'
+                                : 'The runner never submitted this day — reviewing it submits it in your name'}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
                         </div>
                         {/* Delete row — confirm pops open to the LEFT of the ×, next
