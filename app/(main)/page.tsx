@@ -63,7 +63,14 @@ const BRIEF_SEEN_KEY = 'prsflo-brief-seen'
 const GUIDE_SEEN_KEY = 'prsflo-owner-guide-seen'
 /** Per-device "I saw this ops day's unsubmitted list" marker (Eli 2026-09-17). */
 const UNSUB_SEEN_KEY = 'prsflo-unsubmitted-seen'
-const UNSUB_LOOKBACK_DAYS = 14
+/** LAST NIGHT ONLY (Eli, 2026-09-23). Was 14 days, which meant the pop-up
+ *  carried every unhandled night forward and read as a backlog nobody could
+ *  clear in one sitting — so it got dismissed rather than worked.
+ *
+ *  1 makes it exactly what it is named: what happened last night. Anything
+ *  older is not lost — it keeps its red flag in the billing hub, which is the
+ *  surface built for working a queue. The pop-up is a morning glance. */
+const UNSUB_LOOKBACK_DAYS = 1
 
 /** '2026-09-07' → 'Mon, Sep 7' — the briefing modal's date chip. */
 function fmtBriefDate(d: string): string {
@@ -711,11 +718,11 @@ export default function DashboardPage() {
           <div className="n-bmodal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div className="n-bmhead">
               <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-st-hot)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 800, fontSize: 13, flexShrink: 0 }}>!</span>
-              <b>{unsub.length === 1 ? 'A work order was never submitted' : `${unsub.length} work orders were never submitted`}</b>
+              <b>{unsub.length === 1 ? 'Last night: a work order was never submitted' : `Last night: ${unsub.length} work orders were never submitted`}</b>
               <span className="n-bmx" onClick={dismissUnsub}>✕</span>
             </div>
             <p className="n-bmln" style={{ fontSize: 13.5, lineHeight: 1.55, opacity: 0.8 }}>
-              The runner never turned {unsub.length === 1 ? 'this night' : 'these nights'} in, so nobody has said what happened in the room. Open each one and check it before it gets billed — and have the conversation.
+              Nobody has said what happened in {unsub.length === 1 ? 'that room' : 'those rooms'}. Fix {unsub.length === 1 ? 'it' : 'them'} today — {unsub.length === 1 ? 'it' : 'they'} won&rsquo;t appear here again, only as a red flag in the billing hub.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
               {unsub.map(o => (

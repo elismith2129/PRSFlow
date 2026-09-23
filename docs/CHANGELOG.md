@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.39.5 — The morning pop-up is last night only — Sep 23, 2026
+
+**Why.** Eli: *"I think it should only show last night's unsubmitted WOs… ideally we are correcting all of those every day. There should never be an unsubmitted WO hanging around."*
+
+`UNSUB_LOOKBACK_DAYS` 14 → **1**. The fourteen-day window meant the pop-up carried every unhandled night forward, so it read as a backlog nobody could clear in one sitting — and a list you cannot finish gets dismissed rather than worked. That is exactly what was happening.
+
+One night makes it what its name says. Copy now leads with **"Last night:"** and tells the reader plainly that these will not appear here again, only as a red flag in the billing hub.
+
+**The trade-off, stated.** Miss a morning and that night never returns to the pop-up. It is not lost — the billing hub keeps its red flag with the runner's name, and that is the surface built for working a queue. The pop-up is a morning glance, not a to-do list. This only works if the office genuinely clears it daily, which is the standard Eli set.
+
+**Migrations:** none. **Files:** `app/(main)/page.tsx`.
+
+---
+
 ## v1.39.4 — The office can rescue one day of a multi-day, in its own name — Sep 23, 2026
 
 **Why.** Eli: *"on a multi-day session, if a runner forgets, how does office just close off that one day to make it 'submitted'? I notice card view does have the checkmark to make that it has been reviewed. Right now it looks like admins can only complete a full WO."*
