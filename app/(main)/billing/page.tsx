@@ -1257,14 +1257,28 @@ function Row({
       {/* FLAG COLUMN — locked, so a row without a flag leaves the space empty
           rather than sliding everything else left. */}
       <span className="c-bflagcell">
-        {row.unsubmittedDays.length > 0 && row.completedBy ? (
+        {row.unsubmittedDays.length > 0 && (row.completedBy || row.woCompleted) ? (
           // THE TRAIL CLOSES (Eli, 2026-09-22): the runner forgot, the office
           // picked it up and pressed Complete WO. Green, because this row no
           // longer needs anybody — it is the record of who covered, not a
           // thing to do. Only shown where a night WAS missed, so it never
           // becomes a badge on every completed work order.
-          <span className="c-bdone" title={`Nobody submitted ${row.unsubmittedDays.map(fmtDayHeading).join(', ')}${row.unsubmittedBy ? ` (${row.unsubmittedBy} closed out that night)` : ''} — ${row.completedBy} fixed the work order and completed it`}>
-            Completed by {row.completedBy}
+          //
+          // ONE COLUMN, ONE SENTENCE (Eli, 2026-09-23: "it will always say
+          // submitted by. If they forget it goes flag in red, correct,
+          // document by who corrected"). The runner's window closes with the
+          // night — after that it is the office's job, so the office taking it
+          // over is still a SUBMISSION, just by someone else. Same words as
+          // the runner's tag, green instead of warm, so a rescued row reads at
+          // a glance without a second vocabulary. "Completed by" was the first
+          // attempt and it was wrong: it named the button pressed rather than
+          // the duty discharged.
+          <span className="c-bdone" title={`The runner never submitted ${row.unsubmittedDays.map(fmtDayHeading).join(', ')}${row.unsubmittedBy ? ` — ${row.unsubmittedBy} was on that night` : ''}. ${row.completedBy} corrected the work order and submitted it for them.`}>
+            {/* No name on rows completed before completed_by_name existed
+                (2026-09-22). "the office" is honest about what we know —
+                inventing a name for a press nobody recorded would be worse
+                than admitting the trail starts later. */}
+            Submitted by {row.completedBy || 'the office'}
           </span>
         ) : row.unsubmittedDays.length > 0 ? (
           // NEVER SUBMITTED (Eli, 2026-09-17): the runner never turned that

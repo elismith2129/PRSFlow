@@ -207,11 +207,22 @@ export default function ChecklistPage() {
   // Closing is the last thing a closer does, so it is the last moment the
   // runner is still in the building. Submit closing checks TODAY's sessions
   // at this studio (lib/unsubmitted — the one rule, shared with the office
-  // side); any that aren't turned in are listed and closing does not go
-  // through. No bypass: a session still running is submitted with what it
-  // has ("Update submission" exists for exactly this), and submitted-with-a-
-  // problem always beats never-submitted. The morning-after backstop is the
-  // office's pop-up — by then it is already a conversation.
+  // side) and lists any that aren't turned in, each a door straight to that
+  // work order.
+  //
+  // IT IS A PROMPT, NOT A GATE (Eli, 2026-09-23: "sometimes runners leave
+  // before the session ends, in some occasions"). It shipped as a hard stop
+  // with no bypass, and that was wrong for a real and ordinary case: a closer
+  // who goes home while a session is still running cannot submit that
+  // session's work order, so the stop was holding their closing checklist
+  // hostage to a night that was not theirs to turn in. Blocking a task
+  // somebody CAN do, to punish one they cannot, just teaches people the app
+  // is an obstacle.
+  //
+  // So the list still appears, still leads straight to each work order, and
+  // still says plainly what is missing — and then lets them close. The
+  // accountability did not live here anyway: it lives in the billing hub's
+  // red flag and the office's morning pop-up, both of which name the runner.
   const [stopList, setStopList] = useState<UnsubmittedSession[] | null>(null)
   const [stopBusy, setStopBusy] = useState(false)
   async function submitClosingGuarded() {
@@ -557,17 +568,18 @@ export default function ChecklistPage() {
       )}
 
       {/* The stop itself — red, in the runner's words, one row per session,
-          each a door straight to that work order. The only way past it is to
-          submit them. */}
+          each a door straight to that work order — and, since 2026-09-23, a
+          way past for the closer who is leaving before someone else's session
+          ends. */}
       {stopList && (
         <div onClick={() => setStopList(null)} style={{ position: 'fixed', inset: 0, zIndex: 10040, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', padding: 12 }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: 'var(--c-bg)', borderRadius: 20, padding: '16px 14px calc(14px + env(safe-area-inset-bottom))', boxShadow: 'var(--c-softsh)', boxSizing: 'border-box' }}>
-            <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', color: 'var(--c-st-hot)', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-st-hot)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 800, fontSize: 13 }}>!</span>
-              Can&apos;t close yet
+            <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', color: 'var(--c-st-warm)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 800, fontSize: 13 }}>!</span>
+              Before you close
             </div>
             <div style={{ fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.5, margin: '6px 0 4px' }}>
-              {stopList.length === 1 ? 'A session today hasn\u2019t been submitted.' : `${stopList.length} sessions today haven\u2019t been submitted.`} Turn {stopList.length === 1 ? 'it' : 'them'} in first — submitted with a problem always beats never submitted.
+              {stopList.length === 1 ? 'A session today hasn\u2019t been submitted.' : `${stopList.length} sessions today haven\u2019t been submitted.`} Turn {stopList.length === 1 ? 'it' : 'them'} in if {stopList.length === 1 ? 'it\u2019s' : 'they\u2019re'} yours — submitted with a problem always beats never submitted.
             </div>
             {stopList.map(o => (
               <div
@@ -581,12 +593,23 @@ export default function ChecklistPage() {
                     {[o.fromTime && o.toTime ? `${o.fromTime} – ${o.toTime}` : null, o.woNumber ? o.woNumber : 'No work order yet'].filter(Boolean).join(' · ')}
                   </div>
                 </div>
-                <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', background: 'var(--c-st-hot)', color: '#fff', borderRadius: 99, padding: '6px 10px', flexShrink: 0 }}>Submit</span>
+                <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', borderRadius: 99, padding: '6px 10px', flexShrink: 0 }}>Submit</span>
               </div>
             ))}
-            <button onClick={() => setStopList(null)} style={{ marginTop: 12, width: '100%', minHeight: 44, borderRadius: 12, border: 'none', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-              Back to the checklist
-            </button>
+            {/* THE WAY OUT. Deliberately the quieter of the two — going back
+                and submitting is still the right answer nearly every time, and
+                this exists for the night it is not. */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button onClick={() => setStopList(null)} style={{ flex: 1, minHeight: 44, borderRadius: 12, border: 'none', background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                Back to the checklist
+              </button>
+              <button
+                onClick={() => { setStopList(null); handleSubmit() }}
+                style={{ flex: 1, minHeight: 44, borderRadius: 12, border: 'none', background: 'var(--c-wash2)', color: 'var(--c-fg-2)', font: 'inherit', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}
+              >
+                Not mine — close
+              </button>
+            </div>
           </div>
         </div>
       )}

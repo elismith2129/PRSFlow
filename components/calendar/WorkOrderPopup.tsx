@@ -1037,6 +1037,8 @@ export function WorkOrderPopup({
   const sheetTouchX = useRef<number | null>(null)
   // Runner submit (today's rows → 'submitted').
   const [submittingRun, setSubmittingRun] = useState(false)
+  /** Row ids missing Arrived/Left when the runner pressed Submit — the gate below. */
+  const [needTimes, setNeedTimes] = useState<string[] | null>(null)
   // Needs-attention photo upload (ported from the deleted runner WO page —
   // writes immediately, like the equipment note photos).
   const [naUploading, setNaUploading] = useState(false)
@@ -2818,6 +2820,28 @@ export function WorkOrderPopup({
    */
   async function handleRunnerSubmit() {
     if (!woIdRef.current) return
+    // ARRIVED / LEFT ARE REQUIRED TO SUBMIT (Eli, 2026-09-23: "runners are not
+    // putting in actual arrival and departure times… if they submit a WO that
+    // doesn't have that they have to correct before submitting").
+    //
+    // This is a GATE, unlike the closing-checklist reminder, and the
+    // difference is deliberate: the checklist stop was blocking a runner who
+    // had already left the building, but the runner filling in this work order
+    // is standing in front of it right now. The information is one field away,
+    // and it cannot be reconstructed the next morning by anyone else — the
+    // office can correct a rate, it cannot remember what time a client walked
+    // out.
+    //
+    // Only TODAY's studio rows, and only days that actually happened: a day
+    // marked tentative or cancelled was never a session to time, and staff
+    // sub-rows carry no studio so they follow their studio row.
+    const todayForTimes = opsToday()
+    const missingActual = stRows.filter(r =>
+      r.date === todayForTimes
+      && (r.studio ?? '').trim()
+      && r.day_status !== 'tentative' && r.day_status !== 'cancelled'
+      && (!(r.actual_from_time || '').trim() || !(r.actual_to_time || '').trim()))
+    if (missingActual.length > 0) { setNeedTimes(missingActual.map(r => r.id)); return }
     setSubmittingRun(true)
     const saved = await handleClose(false)
     if (!saved) { setSubmittingRun(false); return }
@@ -8205,6 +8229,47 @@ export function WorkOrderPopup({
           )
         })()}
 
+        {/* ── ARRIVED / LEFT MISSING ────────────────────────────────────────
+            Not a warning they can tap past. The runner is in the building with
+            the answer; tomorrow nobody has it. Names the rooms so a multi-room
+            night says WHICH one, and closing the sheet drops them back on the
+            form with the fields still empty and waiting. */}
+        {needTimes && needTimes.length > 0 && (() => {
+          const rooms = Array.from(new Set(
+            stRows.filter(r => needTimes.includes(r.id)).map(r => (r.studio ?? '').trim()).filter(Boolean),
+          ))
+          return (
+            <div
+              onClick={() => setNeedTimes(null)}
+              style={{ position: 'fixed', inset: 0, zIndex: 10045, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'flex-end', padding: 12 }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ width: '100%', background: 'var(--c-bg)', borderRadius: 20, padding: '16px 14px calc(14px + env(safe-area-inset-bottom))', boxShadow: 'var(--c-softsh)', boxSizing: 'border-box' }}
+              >
+                <div className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', color: 'var(--c-st-hot)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 99, background: 'var(--c-st-hot)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 800, fontSize: 13 }}>!</span>
+                  Arrived and left first
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--c-fg-2)', lineHeight: 1.55, margin: '7px 0 4px' }}>
+                  {rooms.length > 0
+                    ? <>Fill in <b>Client actually here</b> for {rooms.length === 1 ? <b>{rooms[0]}</b> : <b>{rooms.join(' and ')}</b>} before you submit.</>
+                    : <>Fill in <b>Client actually here</b> before you submit.</>}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--c-fg-3)', lineHeight: 1.55, marginBottom: 10 }}>
+                  It&rsquo;s the one thing nobody can work out in the morning. The billed times stay exactly as booked — this is only what actually happened.
+                </div>
+                <button
+                  onClick={() => setNeedTimes(null)}
+                  className="c-control c-pill c-fill-booked c-raised-chip"
+                  style={{ width: '100%', minHeight: 46, justifyContent: 'center', display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: 12.5 }}
+                >
+                  Go fill it in
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
       </div>
       </div>

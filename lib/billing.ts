@@ -316,6 +316,9 @@ export type InvoiceRow = {
   unsubmittedBy: string | null
   /** The admin who pressed Complete WO. The green end of the trail. */
   completedBy: string | null
+  /** Work order is completed. Carries the pre-2026-09-22 rows, which were
+   *  completed before completed_by_name existed and so have no name to show. */
+  woCompleted: boolean
   /**
    * "Aug 5–8" — the REAL span, from the work order's own dated rows.
    * `sessionDate` alone made a four-day session look like a one-nighter, which
@@ -843,6 +846,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       unsubmittedDays,
       unsubmittedBy: null as string | null,
       completedBy: (w as any).completed_by_name ?? null,
+      woCompleted: w.status === 'completed',
       invoiceDrift,
       dateRange,
       rooms,

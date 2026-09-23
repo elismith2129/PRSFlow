@@ -20,6 +20,45 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.39.3 — One sentence for the submit trail; Arrived/Left required; the closing stop becomes a prompt — Sep 23, 2026
+
+### The billing row always says who submitted it
+
+Eli: *"it will always say submitted by. If they forget it goes flag in red, correct, document by who corrected."*
+
+The runner's window closes with the night — after that it is the office's job, so **the office taking it over is still a submission, just by someone else.** The green chip therefore reads **"Submitted by &lt;admin&gt;"**, not "Completed by". The old wording named the button pressed rather than the duty discharged, and it forced a reader to hold two vocabularies for one column.
+
+The column now reads, in every state: warm **"Submitted by &lt;runner&gt;"** → red **"Never submitted · &lt;runner&gt;"** when they forgot → green **"Submitted by &lt;admin&gt;"** once the office corrected and completed it.
+
+**Rows completed before `completed_by_name` existed** (anything before 2026-09-22) have no name to show, and were reading red even though the office had fixed them — which is what Eli was seeing on old work orders. They now read green as **"Submitted by the office"**, via a new `woCompleted` flag on `InvoiceRow`. Inventing a name for a press nobody recorded would be worse than admitting the trail starts later.
+
+### Arrived / Left are required to submit
+
+Eli: *"runners are not putting in actual arrival and departure times… if they submit a WO that doesn't have that they have to correct before submitting."*
+
+`handleRunnerSubmit` now refuses while any of **today's** studio rows is missing `actual_from_time` or `actual_to_time`, and names the rooms that need filling. Days marked tentative or cancelled are exempt — they were never sessions to time — and staff sub-rows follow their studio row as always.
+
+**This one IS a gate, and the contrast with the change below is the point.** The runner filling in a work order is standing in front of the answer; the information is one field away and cannot be reconstructed the next morning by anybody. The office can correct a rate. It cannot remember what time a client walked out.
+
+### The closing-checklist stop becomes a prompt
+
+Eli: *"sometimes runners leave before the session ends, in some occasions."*
+
+It shipped as a hard stop with no bypass, and that was wrong for a real and ordinary case: a closer who goes home while someone else's session is still running **cannot** submit that work order, so the stop was holding their closing checklist hostage to a night that was not theirs to turn in. Blocking a task somebody can do, to punish one they cannot, teaches people the app is an obstacle.
+
+The sheet still appears, still lists each unsubmitted session, still links straight to each work order — and now offers **"Not mine — close"** beside **"Back to the checklist"**. Hot red becomes warm amber, because this is no longer a wall. The accountability never lived here anyway: it lives in the billing hub's red flag and the office's morning pop-up, both of which name the runner.
+
+**Watch-outs.**
+- The two behaviours look inconsistent from the outside and are not: gate where the person has the answer in hand, prompt where they may not. Anyone tempted to "make them consistent" should read both comment blocks first.
+- `woCompleted` reads `work_orders.status`, already in the billing select — no new column, no migration.
+- The Arrived/Left gate fires **before** the save in `handleRunnerSubmit`, so a blocked submit leaves the form exactly as typed.
+
+**Migrations:** none.
+
+**Files:** `app/(main)/billing/page.tsx`, `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`, `app/runner/[studio]/checklist/[type]/page.tsx`.
+
+---
+
 ## v1.39.1 — Petty cash gets a month view, in the billing hub — Sep 23, 2026
 
 **Why.** Eli's accountant: *"I like the look of petty cash on Flo. We were wondering if there's a way to print the logs at the end of each month? I need to enter the transactions on QuickBooks and reconcile the accounts."* And Eli: *"where does this show up on the admin side? It's hard to find."*
