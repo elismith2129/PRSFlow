@@ -63,6 +63,7 @@ import { toast } from '@/components/ui/Toaster'
 import { deleteWorkOrderEverywhere } from '@/lib/deleteSession'
 import { Hint } from '@/components/ui/Hint'
 import { FinancialsView } from '@/components/billing/FinancialsView'
+import { PettyCashSection } from '@/components/billing/PettyCashSection'
 import { TenantsView } from '@/components/billing/TenantsView'
 import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
@@ -99,7 +100,18 @@ export default function BillingPage() {
   // TENANTS joined the heading 2026-09-02 (rent board + the Mustard shared-
   // runner sheet) — same shape as Financials: a view, deliberately NOT a
   // `Pipeline` value, rendered as its own branch.
-  const [view, setView] = useState<'invoices' | 'financials' | 'tenants'>('invoices')
+  // PETTY CASH joined the heading 2026-09-23 (Eli's accountant: "is there a
+  // way to print the logs at the end of each month? I need to enter the
+  // transactions on QuickBooks and reconcile the accounts"). Same shape as
+  // Tenants and Financials — a VIEW, deliberately not a `Pipeline` value, for
+  // the reason spelled out above: Pipeline types the invoice buckets, and a
+  // month of cash movements has no bucket, no row and no next action.
+  //
+  // It lands here rather than in Admin because the people who need it are the
+  // people already in this hub at month end. Its old homes — the dashboard
+  // daily-ops modal and Admin → Ops Log — both show ONE DAY and neither
+  // exports, which is why the accountant was retyping.
+  const [view, setView] = useState<'invoices' | 'financials' | 'tenants' | 'petty'>('invoices')
   const [tab, setTab] = useState<BucketKey>('progress')
   // COD TABS ARE LATCHES (Eli, 2026-08-19: "make the latching buttons only on
   // COD… say COD in progress and balance due. that way we dont miss
@@ -449,7 +461,9 @@ export default function BillingPage() {
         <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
           {view === 'financials'
             ? 'Revenue'
-            : view === 'tenants'
+            : view === 'petty'
+              ? <>Cash boxes<Hint tip="One month, one studio: every transaction with a running balance, the nights someone counted, and any night the box disagreed with the ledger. Download CSV for QuickBooks, or Print for the file." /></>
+              : view === 'tenants'
               ? <>Rent<Hint tip="One row per tenant room per month: Mark sent (the 25th rent email) → Mark paid → In QB (entered in QuickBooks). Mustard's incidentals line carries the shared-runner hours — solo hours bill full, hours shared with a billed ERS·A session bill half." /></>
               : <>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></>}
         </span>
@@ -469,6 +483,14 @@ export default function BillingPage() {
               </span>
             </button>
           ))}
+          <button
+            className={`c-arch${view === 'petty' ? ' c-on' : ''}`}
+            onClick={() => setView('petty')}
+            aria-current={view === 'petty' ? 'page' : undefined}
+            title="Petty cash by month — running balance, counts and variances, printable and exportable"
+          >
+            Petty Cash
+          </button>
           <button
             className={`c-arch${view === 'tenants' ? ' c-on' : ''}`}
             onClick={() => setView('tenants')}
@@ -531,6 +553,18 @@ export default function BillingPage() {
       <div className="c-root">
         {header}
         <TenantsView />
+      </div>
+    )
+  }
+
+  // Petty cash: its own branch for the same reason. The early return also
+  // unmounts WorkOrderPopup, which keeps this view off the invoice channels
+  // entirely — it reads two tables nothing else on this page touches.
+  if (view === 'petty') {
+    return (
+      <div className="c-root">
+        {header}
+        <PettyCashSection />
       </div>
     )
   }

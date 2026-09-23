@@ -20,6 +20,32 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.39.1 — Petty cash gets a month view, in the billing hub — Sep 23, 2026
+
+**Why.** Eli's accountant: *"I like the look of petty cash on Flo. We were wondering if there's a way to print the logs at the end of each month? I need to enter the transactions on QuickBooks and reconcile the accounts."* And Eli: *"where does this show up on the admin side? It's hard to find."*
+
+**It was hard to find because it barely existed.** The only office windows onto petty cash were the dashboard's daily-ops modal and Admin → Ops Log, and **both show one day**. No range, no totals, no export. A month-end reconciliation meant opening thirty modals and retyping.
+
+**Now it is a tab in the billing hub** — `Billing · COD · Petty Cash · Tenants · Financials`. It goes here rather than Admin because the people who need it at month end are already in this hub. Like Tenants and Financials it is a `view`, deliberately **not** a `Pipeline` value: `Pipeline` types the invoice buckets, and a month of cash movements has no bucket, no row and no next action.
+
+**What the page is.** One studio, one month: every transaction with a **running balance** down the page, the period's opening and closing as bookends, the last count, and — the part that makes it an accounting document — **every night the box disagreed with the ledger**, with the counter's name and their own note.
+
+The period's opening comes from `petty_cash_opening()`, the same SQL the runner page and the daily-ops modal read, so the accountant's figure and the runner's figure cannot disagree.
+
+**Two outputs.** **Download CSV** (Date, Description, Type, Amount, Signed Amount, Balance, Studio) with the opening and closing as rows in the file, so a copy opened in a week still says what it opened at. BOM-prefixed so Excel reads it as UTF-8. And **Print**, which is what they literally asked for: app chrome hidden, colour dropped to ink, `thead` repeating per page.
+
+**Watch-outs.**
+- The CSV shape is a guess at what their QuickBooks wants. Nobody has confirmed it — expect one round of column renaming.
+- Variances recompute the expected balance by replaying entries up to that date rather than trusting a stored figure, so a back-dated entry changes an old variance. That is correct, and it is also why the printed copy is a snapshot, not a record.
+- Access is whatever already gates the billing hub (`owner`/`manager`/`billing`/`asst_manager`). Petty cash is not owner-only, unlike Financials.
+- There is almost no history: 12 entries at Paramount, 3 at Ameraycan, 2 at Encore, none at Track. September will print nearly empty; October is the first clean month.
+
+**Migrations:** none — v1.39.0's `petty_cash_opening()` does the work.
+
+**Files:** `components/billing/PettyCashSection.tsx` (new), `app/(main)/billing/page.tsx`.
+
+---
+
 ## v1.39.0 — Petty cash becomes a daily ledger — Sep 23, 2026
 
 **Why.** A runner told Eli the opening balance is always the same number. It was.
