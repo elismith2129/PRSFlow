@@ -40,7 +40,13 @@ The period's opening comes from `petty_cash_opening()`, the same SQL the runner 
 - Access is whatever already gates the billing hub (`owner`/`manager`/`billing`/`asst_manager`). Petty cash is not owner-only, unlike Financials.
 - There is almost no history: 12 entries at Paramount, 3 at Ameraycan, 2 at Encore, none at Track. September will print nearly empty; October is the first clean month.
 
-**Migrations:** none — v1.39.0's `petty_cash_opening()` does the work.
+**Migration — and a v1.39.0 bug this caught.** `supabase/migrations/20260923140000_petty_cash_opening_text_dates.sql`.
+
+`petty_cash_opening()` shipped assuming `date` was a `date` column. **Both petty cash tables store it as TEXT**, so every call raised `42883: operator does not exist: text < date` and the function was unusable — meaning the runner page and this new view were both calling something that could not execute. ISO `YYYY-MM-DD` sorts lexicographically exactly as it sorts chronologically, so the comparison moves to text, and taking `p_date` as text makes the function correct whether the columns are text or date — the property the first version lacked.
+
+The `(text, date)` signature is **dropped**, not left alongside: two overloads would make supabase-js's `rpc()` ambiguous, since it sends the date as a JSON string either way. The v1.39.0 migration file was corrected in place as well, so a fresh bootstrap never builds the broken version.
+
+**Cutover ran the same day** — first real counts recorded as 2026-09-23 closes: Paramount $209.24, Encore $297.25, Ameraycan $5.26. Track has no cash box on record and was left uncounted.
 
 **Files:** `components/billing/PettyCashSection.tsx` (new), `app/(main)/billing/page.tsx`.
 

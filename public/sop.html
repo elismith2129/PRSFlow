@@ -141,6 +141,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text1);min-
   <button class="side-btn" onclick="switchTab('clients',this)"><span class="side-ico">👤</span>Clients</button>
   <button class="side-btn" onclick="switchTab('tasks',this)"><span class="side-ico">📋</span>Tasks</button>
   <button class="side-btn" onclick="switchTab('flags',this)"><span class="side-ico">🚩</span>Flags</button>
+  <button class="side-btn" onclick="switchTab('petty',this)"><span class="side-ico">💵</span>Petty Cash</button>
   <button class="side-btn" onclick="switchTab('versions',this)"><span class="side-ico">🧾</span>Version History</button>
 </div>
 <div class="content">
@@ -597,6 +598,32 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text1);min-
   </div>
 </div>
 
+<div class="page" id="page-petty">
+  <div class="hero">
+    <div class="hero-label">Training Guide · Petty Cash</div>
+    <div class="hero-title">The box and the app<br><em>have to agree.</em></div>
+    <div class="hero-body">Every studio has a cash box. Your job on a shift is to log what leaves it, count what's in it, and say so honestly when the two don't line up. That's the whole procedure — everything below is detail on those three things.</div>
+  </div>
+
+  <div class="section-label">How the balance works now</div>
+  <div class="reg-flow">
+    <div class="reg-step"><div class="reg-step-n">01</div><div class="reg-step-title">It Opens Itself</div><div class="reg-step-body">The opening balance is <b style="color:var(--text1)">the last count, plus anything logged since</b>. You don't type it. Tap it to see where the number came from.</div></div>
+    <div class="reg-step"><div class="reg-step-n">02</div><div class="reg-step-title">You Log The Night</div><div class="reg-step-body">Every time money leaves the box, it gets an entry — what it was for and how much. The list only shows tonight.</div></div>
+    <div class="reg-step"><div class="reg-step-n">03</div><div class="reg-step-title">You Count At Close</div><div class="reg-step-body">Count the box, type it into <b style="color:var(--text1)">Counted at close</b>. That count becomes tomorrow's opening for whoever is in next.</div></div>
+  </div>
+
+  <div class="section-label">Doing it right</div>
+  <div class="steps" id="petty-steps"></div>
+
+  <div class="section-label">Golden rules</div>
+  <div class="rules-grid">
+    <div class="rule-card"><div class="rule-title">Count after your last transaction</div><div class="rule-body">Not at the start of your close-out, not halfway through. The count is the anchor — anything you log after it gets added on top tomorrow, so a count taken too early makes the next shift wrong.</div></div>
+    <div class="rule-card"><div class="rule-title">The box is the truth</div><div class="rule-body">If the app says $297.50 and the box holds $282.50, the answer is $282.50. Type what is actually there. The app resets to your count — that is what it is for.</div></div>
+    <div class="rule-card"><div class="rule-title">Never make it tie out</div><div class="rule-body">Do not edit or delete a transaction to close a gap. A wrong number with an honest note is worth far more to the office than a tidy one that hides something.</div></div>
+    <div class="rule-card"><div class="rule-title">Cash IN is rare</div><div class="rule-body">It means money physically went into the box — the office topped it up, or change came back from a purchase. It never means "here is the balance."</div></div>
+  </div>
+</div>
+
 <div class="page" id="page-versions">
   <div class="hero">
     <div class="hero-label">Training Guide · Version History</div>
@@ -638,6 +665,13 @@ const CLIENT_STEPS=[
   {title:'Reviewing a New Profile',tag:'Incomplete = liability',desc:'When a new client appears, review it right away. Don\'t assume it\'s complete. ID uploaded? T&Cs signed? Phone and email present?',tip:'Make this part of your daily routine. No session happens with an incomplete profile.',dos:['Check ID is uploaded and legible','Confirm T&Cs signed','Verify phone and email are on file'],donts:['Assume it\'s complete because they submitted it','Allow sessions if ID is missing']},
   {title:'Keeping Profiles Updated',tag:'Old info causes real problems',desc:'Phone numbers and emails change. Every time a client gives updated info, change it in their profile before the conversation ends.',tip:'Any time a client gives you new contact info — open their profile and update it on the spot.',dos:['Update contact info the moment it changes','Note preferences and special requirements'],donts:['Leave outdated numbers on file','Use personal texts as the main client record']},
   {title:'Writing Good Notes',tag:'Turns one-time clients into regulars',desc:'Notes capture the relationship. What do they care about? Usual setup? Who they work with? This is what makes any team member able to make a client feel like a VIP.',tip:'"Prefers Studio A, works with Marcus, R&B, usually needs parking for 3 cars" — that\'s what matters.',dos:['Add notes after every session or significant interaction','Note preferences, quirks, recurring needs, who referred them'],donts:['Leave notes empty on active clients','Only write notes when something goes wrong']}
+];
+const PETTY_STEPS=[
+  {title:'Reading The Opening Balance',tag:'You never type this',desc:'The opening is worked out for you: the last time anyone counted the box, plus anything logged since that count. Tap it and it shows you the whole trail — which night was counted, who counted it, and what has moved since. It used to be a number you could type, and it was the same figure every day because it came from when the log first started.',tip:'If the opening looks wrong, do not try to correct it. There is nothing to correct — it is a record of what happened. Count the box and type your count at close; the difference is what tells the office something is off.',dos:['Glance at it at the start of your shift','Tap it if the number surprises you','Trust it — it comes from the last real count'],donts:['Look for a way to edit it','Assume a strange number means the app is broken','Ignore a big surprise without telling anyone']},
+  {title:'Logging A Transaction',tag:'As it happens, not later',desc:'Every time money leaves the box, it gets an entry: what it was for, and how much. Write it so someone who was not there understands it — "Coffee run, Studio B" not "coffee". Log it when it happens, not from memory at 2am.',tip:'Include the room or the client where it makes sense. At month end the accountant reads these lines and has to work out what the money was for.',dos:['Log it the moment the money moves','Say what it was for and where','Use Out for money leaving the box'],donts:['Save them all up for the end of the night','Write one word and move on','Log a purchase you paid for personally — that is an expense claim, not petty cash']},
+  {title:'Cash In — When It Actually Applies',tag:'The one people get wrong',desc:'Cash IN means someone physically put money into the box. The office topping it up. Change coming back from a purchase. That is it. It does not mean recording what is in the box, and it does not mean balancing anything out.',tip:'If you type a cash-in that is close to the opening balance, the app stops and asks whether you really mean it. That prompt exists because this is easy to get wrong — read it rather than tapping through.',dos:['Use it for a top-up from the office','Use it for change returned from a purchase','Say who put the money in'],donts:['Enter the balance as a cash-in','Use a cash-in to correct a mistake — tell the office instead','Tap through the warning without reading it']},
+  {title:'Counting At Close',tag:'The most important thing you do',desc:'Count the box at the end of your shift and type the total into Counted at close. This is what sets tomorrow\'s opening for the next person. A night nobody counts is a night the chain has to guess at — it still works, but the next real count is what puts it right.',tip:'Count after your last transaction, not before. The count is the anchor: anything logged after it is added on top tomorrow, so counting too early makes the next shift start from a wrong number.',dos:['Count coins as well as notes','Count after everything is logged','Press Save & close out and read the summary'],donts:['Count at the start of your close-out','Skip it because nothing moved — a no-change night still gets counted','Guess the total']},
+  {title:'When The Box Does Not Match',tag:'Tell us — you are not in trouble',desc:'Sometimes the count and the ledger disagree. That is normal and the office would much rather know. Recount first, including coins. Then type what is actually in the box and add a note — a receipt you found, something you remember, or plainly that you do not know.',tip:'Your note is read by someone who was not in the room. "Found a $20 receipt with no entry" is useful. "Off by a bit" is not.',dos:['Recount before recording','Type the real amount, whatever it is','Write a note, even if the note is "no idea"'],donts:['Adjust entries until it balances','Leave the difference unexplained','Sit on it until your next shift']},
 ];
 // ── Version history ──────────────────────────────────────────────────────────
 // Newest FIRST. Written for staff, not developers: what changed, and what it
@@ -1659,6 +1693,7 @@ function showStatus(key,el){if(openStatus===key){document.getElementById('status
 function buildSteps(data,id,fn){document.getElementById(id).innerHTML=data.map((s,i)=>`<div class="step" onclick="${fn}(${i})"><div class="step-header"><div class="step-num">${String(i+1).padStart(2,'0')}</div><div class="step-title">${s.title}</div><div class="step-tag">${s.tag}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${s.desc}</div><div class="tip-box"><div class="tip-label">💡 Pro tip</div><div class="tip-text">${s.tip}</div></div><div class="do-list" style="margin-bottom:6px">${(s.dos||[]).map(d=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span>${d}</div>`).join('')}</div><div class="do-list">${(s.donts||[]).map(d=>`<div class="do-item"><span style="color:var(--hot);flex-shrink:0">✗</span>${d}</div>`).join('')}</div></div></div></div>`).join('');}
 buildSteps(CRM_STEPS,'crm-steps','toggleCrm');
 buildSteps(CLIENT_STEPS,'client-steps','toggleClient');
+buildSteps(PETTY_STEPS,'petty-steps','togglePetty');
 function toggleCrm(i){const s=document.querySelectorAll('#crm-steps .step');if(openCrm===i){s[i].classList.remove('open');openCrm=null;return;}if(openCrm!==null)s[openCrm].classList.remove('open');s[i].classList.add('open');openCrm=i;}
 function toggleClient(i){const s=document.querySelectorAll('#client-steps .step');if(openClient===i){s[i].classList.remove('open');openClient=null;return;}if(openClient!==null)s[openClient].classList.remove('open');s[i].classList.add('open');openClient=i;}
 
@@ -1666,6 +1701,8 @@ function toggleClient(i){const s=document.querySelectorAll('#client-steps .step'
 // where the step number goes and the date is the tag.
 function buildVersions(){document.getElementById('version-list').innerHTML=VERSIONS.map((v,i)=>`<div class="step" onclick="toggleVer(${i})"><div class="step-header"><div class="step-num" style="width:auto;padding:0 7px;font-size:9px">${v.ver}</div><div class="step-title">${v.headline}</div><div class="step-tag">${v.date}</div><div class="step-chevron">▼</div></div><div class="step-body"><div class="step-inner"><div class="step-desc">${v.desc}</div><div class="do-list" style="margin-bottom:6px">${v.changes.map(c=>`<div class="do-item"><span style="color:var(--accent);flex-shrink:0">✓</span><span>${c}</span></div>`).join('')}</div><div class="tip-box"><div class="tip-label">👉 What this means for you</div><div class="tip-text">${v.affects}</div></div>${(v.dev&&v.dev.length)?`<details class="dev-notes" onclick="event.stopPropagation()"><summary>Dev notes — under the hood</summary><div class="dev-body">${v.dev.map(d=>`<div class="dev-item">${d}</div>`).join('')}<div class="dev-foot">Mirrors <code>docs/CHANGELOG.md</code> in the repo, which is the canonical copy and also lists migrations and files touched.</div></div></details>`:''}</div></div></div>`).join('');}
 buildVersions();
+let openPetty=null;
+function togglePetty(i){const s=document.querySelectorAll('#petty-steps .step');if(openPetty===i){s[i].classList.remove('open');openPetty=null;return;}if(openPetty!==null)s[openPetty].classList.remove('open');s[i].classList.add('open');openPetty=i;}
 function toggleVer(i){const s=document.querySelectorAll('#version-list .step');if(openVer===i){s[i].classList.remove('open');openVer=null;return;}if(openVer!==null)s[openVer].classList.remove('open');s[i].classList.add('open');openVer=i;}
 </script>
 </body>

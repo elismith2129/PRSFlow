@@ -55,7 +55,7 @@ COMMENT ON COLUMN petty_cash_balances.amount IS
   'That day''s OPENING balance, derived by petty_cash_opening() and stamped on save. No longer typed by the runner.';
 
 -- ── 3 · The opening rule. ONE definition, read by both surfaces. ───────────
-CREATE OR REPLACE FUNCTION petty_cash_opening(p_studio text, p_date date)
+CREATE OR REPLACE FUNCTION petty_cash_opening(p_studio text, p_date text)
 RETURNS numeric
 LANGUAGE plpgsql
 STABLE
@@ -63,25 +63,25 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_since date;
+  v_since text;
   v_base  numeric(10,2);
   v_move  numeric(10,2);
 BEGIN
   -- The most recent night anyone actually counted the box.
-  SELECT b.date, b.counted_close
+  SELECT b.date::text, b.counted_close
     INTO v_since, v_base
     FROM petty_cash_balances b
    WHERE b.studio = p_studio
-     AND b.date < p_date
+     AND b.date::text < p_date
      AND b.counted_close IS NOT NULL
-   ORDER BY b.date DESC
+   ORDER BY b.date::text DESC
    LIMIT 1;
 
   IF v_since IS NULL THEN
     -- Never counted: start from the seed and take everything since.
     SELECT COALESCE(s.amount, 0) INTO v_base FROM petty_cash_seed s WHERE s.studio = p_studio;
     v_base  := COALESCE(v_base, 0);
-    v_since := '-infinity'::date;
+    v_since := '0000-00-00';
   END IF;
 
   -- Everything logged AFTER that count and BEFORE the day we are opening.
@@ -89,15 +89,15 @@ BEGIN
     INTO v_move
     FROM petty_cash_entries e
    WHERE e.studio = p_studio
-     AND e.date > v_since
-     AND e.date < p_date;
+     AND e.date::text > v_since
+     AND e.date::text < p_date;
 
   RETURN ROUND(v_base + v_move, 2);
 END;
 $$;
 
-REVOKE ALL ON FUNCTION petty_cash_opening(text, date) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION petty_cash_opening(text, date) TO authenticated;
+REVOKE ALL ON FUNCTION petty_cash_opening(text, date) FROM PUBLIC;  -- superseded by 20260923140000
+GRANT EXECUTE ON FUNCTION petty_cash_opening(text, text) TO authenticated;
 
 -- ── 4 · Seed rows for the four studios, so nothing reads NULL on day one. ──
 -- Amount 0 deliberately: the real cutover is a COUNTED CLOSE typed tonight,
