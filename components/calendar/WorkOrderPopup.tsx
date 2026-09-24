@@ -7755,10 +7755,12 @@ export function WorkOrderPopup({
                               for days that are tentative where we don't know
                               yet"). An explicit not-decided, as opposed to a
                               blank someone forgot. Tapping clears the times and
-                              marks the day; typing a time un-marks it. Hidden on
-                              a confirmed session — TBD is a tentative thing, and
-                              the confirm guard refuses it. Office only. */}
-                          {!runner && !readOnly && effDayStatus(r) !== 'confirmed' && wo.session_status !== 'lockout' && (
+                              marks the day; typing a time un-marks it. Shown on
+                              confirmed days too (Eli, 2026-09-23 — the confirm
+                              guard no longer refuses TBD; a chip is a decision,
+                              a blank is an oversight). Lockouts never: their
+                              times are runner-entered live. Office only. */}
+                          {!runner && !readOnly && wo.session_status !== 'lockout' && (
                             <button
                               type="button"
                               onClick={() => updateStRow(r.id, r.times_tbd ? { times_tbd: false } : { times_tbd: true, from_time: '', to_time: '' })}

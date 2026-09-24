@@ -281,6 +281,14 @@ export function duplicateStaffMessage(problems: RowTimeProblem[]): string | null
  * exempt entirely via woNeedsTimes: nobody knows their times in advance and
  * the runner enters them live.
  *
+ * TIMES TBD SAVES TOO (Eli, 2026-09-23 — reverses the 2026-09-19 line that a
+ * confirmed day "has to have decided times"). The gate exists to catch a
+ * BLANK nobody noticed; a TBD chip is the opposite — somebody looked at the
+ * day and said the times aren't set. Blocking it left a real WO (WO-1172:
+ * days marked TBD while tentative, then confirmed) unsaveable. Complete WO
+ * still refuses (findMissingTimes reads the blank times TBD leaves), so an
+ * invoice never goes out with a TBD day.
+ *
  * Returns the blocking message plus the rows to highlight, or null to proceed.
  */
 export function confirmStartProblem(
@@ -290,14 +298,11 @@ export function confirmStartProblem(
   if (sessionStatus !== 'confirmed') return null
   const missing = rows
     .filter(r => r.studio && r.studio.trim() !== '' && (r.date ?? '').trim() !== '')
-    .filter(r => r.times_tbd || badTime(r.from_time) || badTime(r.to_time))
+    .filter(r => !r.times_tbd && (badTime(r.from_time) || badTime(r.to_time)))
     .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
   if (missing.length === 0) return null
 
   const label = (r: ValidatableStudioRow) => {
-    // TBD is a tentative thing (2026-09-19): a confirmed day has to have its
-    // times decided, so the marker is named as the reason.
-    if (r.times_tbd) return `${whereDate(r.date)} (marked TBD)`
     const f: string[] = []
     if (badTime(r.from_time)) f.push('From')
     if (badTime(r.to_time)) f.push('To')
