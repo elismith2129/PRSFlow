@@ -7315,18 +7315,21 @@ export function WorkOrderPopup({
                         </div>
                         {/* THE PAYMENT — the line's number. Hot on a COD card
                             row (it's what the terminal runs), plain otherwise. */}
-                        <div style={{ ...cellS, gap: 8, alignItems: 'baseline', flexWrap: 'wrap', rowGap: 0, ...(isMobile ? { gridColumn: '1 / -1', order: 3, paddingTop: 0 } : {}) }}>
-                          <span className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', whiteSpace: 'nowrap', color: p.amount ? (p.fee_amount ? 'var(--c-st-hot)' : 'var(--c-fg)') : 'var(--c-fg-3)', opacity: p.amount ? 1 : 0.35 }}>
-                            {p.amount || '$0.00'}
-                          </span>
+                        {/* Reads as the sum it is (Eli, 2026-09-24): seed + fee
+                            = the payment. The fee sits BETWEEN, not after. */}
+                        <div style={{ ...cellS, gap: 6, alignItems: 'baseline', flexWrap: 'wrap', rowGap: 0, ...(isMobile ? { gridColumn: '1 / -1', order: 3, paddingTop: 0 } : {}) }}>
                           {p.fee_amount && (
                             <span style={{ fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', whiteSpace: 'nowrap' }}>
                               + {p.fee_amount} fee
                               {!readOnly && (
                                 <button type="button" title="Waive the card fee on this payment" onClick={() => setPayRows(prev => prev.map(x => x.id === p.id ? withFeeWaived(x) : x))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 9.5, fontFamily: 'Inter', padding: 0, marginLeft: 5, textDecoration: 'underline' }}>waive</button>
                               )}
+                              <span style={{ marginLeft: 6, color: 'var(--c-fg-3)' }}>=</span>
                             </span>
                           )}
+                          <span className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', whiteSpace: 'nowrap', color: p.amount ? (p.fee_amount ? 'var(--c-st-hot)' : 'var(--c-fg)') : 'var(--c-fg-3)', opacity: p.amount ? 1 : 0.35 }}>
+                            {p.amount || '$0.00'}
+                          </span>
                         </div>
                         <div style={{ ...cellIn, ...(isMobile ? { gridColumn: needsLast4 ? '1 / 2' : '1 / -1', order: 4 } : {}) }}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
                         {needsLast4 && (
