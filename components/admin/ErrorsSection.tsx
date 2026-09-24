@@ -1,12 +1,17 @@
 'use client'
-// Admin → Errors tab (Phase 0/1 audit follow-up). Surfaces the app_errors sink
-// so logged failures are actually visible — crashes, unhandled rejections, and
+// DEV → Errors (Phase 0/1 audit follow-up). Surfaces the app_errors sink so
+// logged failures are actually visible — crashes, unhandled rejections, and
 // failed saves reported by lib/errlog + lib/db. RLS limits SELECT to
-// owner/manager; the tab is also hidden from other roles in the Admin nav.
+// owner/manager; the DEV page also hides the tab from everyone but Eli.
+//
+// RECARVED 2026-09-23: carved tokens, and the three-column row (time · source ·
+// message) stacks on a phone — a 130px+110px grid left the message ten
+// characters wide.
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { SectionHeader } from '@/components/ui/SectionHeader'
+import { dbResult } from '@/lib/db'
 import { fmtTimestamp } from '@/lib/format'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 type AppError = {
   id: string
@@ -21,6 +26,7 @@ type AppError = {
 const PAGE_SIZE = 50
 
 export function ErrorsSection() {
+  const isMobile = useIsMobile()
   const [rows, setRows] = useState<AppError[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -28,11 +34,12 @@ export function ErrorsSection() {
   const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('app_errors')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit)
+    if (!dbResult('Loading errors', error)) { setLoading(false); return }
     setRows((data as AppError[]) ?? [])
     setLoading(false)
   }, [limit])
@@ -74,54 +81,54 @@ export function ErrorsSection() {
 
   return (
     <div>
-      <SectionHeader
-        title="App Errors"
-        count={rows.length > 0 ? rows.length : undefined}
-        countColor="orange"
-        action={rows.length > 0
-          ? { label: copied ? '✓ Copied' : 'Copy for Claude', onClick: copyErrors }
-          : undefined}
-      />
-      <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'Inter', marginBottom: 12 }}>
-        Crashes, unhandled rejections, and failed saves reported from the app. Newest first.
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div className="c-label">App errors{rows.length > 0 ? ` · ${rows.length}` : ''}</div>
+        {rows.length > 0 && (
+          <button type="button" className={`c-soft${copied ? ' c-on' : ''}`} onClick={copyErrors} style={{ marginLeft: 'auto' }}>
+            {copied ? '✓ Copied' : 'Copy for Claude'}
+          </button>
+        )}
       </div>
 
       {loading ? (
-        <div style={{ color: 'var(--text2)', fontFamily: 'Inter', fontSize: 12 }}>Loading…</div>
+        <div className="c-sub" style={{ padding: '18px 4px' }}>Loading…</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 12 }}>
-          No errors logged. Quiet is good.
-        </div>
+        <div className="c-sub" style={{ padding: '28px 4px', textAlign: 'center' }}>No errors logged. Quiet is good.</div>
       ) : (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-          {rows.map(e => (
-            <div key={e.id} style={{ borderBottom: '1px solid var(--border)' }}>
-              <div
-                onClick={() => setExpanded(expanded === e.id ? null : e.id)}
-                style={{ display: 'grid', gridTemplateColumns: '130px 110px 1fr', gap: 10, padding: '9px 12px', cursor: 'pointer', alignItems: 'baseline', background: expanded === e.id ? 'var(--surface2)' : 'transparent' }}
-              >
-                <span style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{fmtTimestamp(e.created_at)}</span>
-                <span style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--warm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sourceOf(e)}</span>
-                <span style={{ fontFamily: 'Inter', fontSize: 11, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: expanded === e.id ? 'normal' : 'nowrap' }}>{e.message}</span>
-              </div>
-              {expanded === e.id && (
-                <div style={{ padding: '10px 12px 14px', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {e.url && <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text2)' }}>page: {e.url}</div>}
-                  {e.user_agent && <div style={{ fontFamily: 'Inter', fontSize: 10, color: 'var(--text3)' }}>{e.user_agent}</div>}
-                  {e.stack && (
-                    <pre style={{ margin: 0, padding: 10, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontFamily: 'DM Mono', fontSize: 10, color: 'var(--text2)', overflowX: 'auto', whiteSpace: 'pre-wrap', maxHeight: 260 }}>
-                      {e.stack}
-                    </pre>
-                  )}
+        <div className="c-panel" style={{ padding: 6 }}>
+          {rows.map(e => {
+            const open = expanded === e.id
+            return (
+              <div key={e.id} className={open ? 'c-inset2' : undefined} style={{ borderRadius: 12, marginBottom: 2 }}>
+                <div
+                  onClick={() => setExpanded(open ? null : e.id)}
+                  style={isMobile
+                    ? { display: 'flex', flexDirection: 'column', gap: 3, padding: '9px 10px', cursor: 'pointer' }
+                    : { display: 'grid', gridTemplateColumns: '130px 110px minmax(0, 1fr)', gap: 10, padding: '8px 10px', cursor: 'pointer', alignItems: 'baseline' }}
+                >
+                  <span style={{ display: 'flex', gap: 8, minWidth: 0 }}>
+                    <span className="c-mono" style={{ fontSize: 10, color: 'var(--c-fg-3)', whiteSpace: 'nowrap' }}>{fmtTimestamp(e.created_at)}</span>
+                    {isMobile && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-st-warm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sourceOf(e)}</span>}
+                  </span>
+                  {!isMobile && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-st-warm)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sourceOf(e)}</span>}
+                  <span style={{ fontSize: 12, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: open ? 'normal' : 'nowrap', wordBreak: 'break-word' }}>{e.message}</span>
                 </div>
-              )}
-            </div>
-          ))}
+                {open && (
+                  <div style={{ padding: '2px 10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {e.url && <div className="c-mono" style={{ fontSize: 10, color: 'var(--c-fg-2)', wordBreak: 'break-all' }}>page: {e.url}</div>}
+                    {e.user_agent && <div style={{ fontSize: 10, color: 'var(--c-fg-3)', wordBreak: 'break-word' }}>{e.user_agent}</div>}
+                    {e.stack && (
+                      <pre className="c-mono" style={{ margin: 0, padding: 10, background: 'var(--c-bg)', borderRadius: 10, fontSize: 10, color: 'var(--c-fg-2)', overflowX: 'auto', whiteSpace: 'pre', maxHeight: 260 }}>
+                        {e.stack}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
           {rows.length >= limit && (
-            <button
-              onClick={() => setLimit(l => l + PAGE_SIZE)}
-              style={{ width: '100%', padding: '9px 0', background: 'transparent', border: 'none', borderTop: '1px solid var(--border)', color: 'var(--text2)', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer' }}
-            >
+            <button type="button" className="c-soft" onClick={() => setLimit(l => l + PAGE_SIZE)} style={{ margin: '6px auto 2px', display: 'flex' }}>
               Load more
             </button>
           )}

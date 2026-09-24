@@ -1,19 +1,35 @@
 'use client'
-// TEMPORARY: remove when rollout period ends
-// Lightweight staff feedback board for the rollout period (bugs / suggestions /
-// questions). Backed by the temporary `app_feedback` table + RLS
+// ─────────────────────────────────────────────────────────────────────────────
+// /feedback — the DEV page: Feedback · Runner · Testing · Errors.
+//
+// RECARVED 2026-09-23 (Eli: "the Dev section has the old UI and doesn't work
+// on phone, all scrambled"). This page and its three sections were the last
+// surfaces still on the pre-carved tokens (--surface / --accent / Syne) with
+// a fixed 200px sidebar copied from /admin — on a phone the sidebar ate half
+// the width and the content wrapped under it. Now: one heading, a c-seg
+// section switcher that wraps, and each section on the carved tokens with an
+// isMobile branch where the desktop layout is a grid.
+//
+// Sections:
+//   Feedback — the rollout board, open to any signed-in staff member
+//   Runner   — bugs/ideas filed from the runner hub (same table, source='runner')
+//   Testing  — PIN-gated (4321) test batches
+//   Errors   — the app_errors sink. ELI ONLY: staff seeing raw stack traces
+//              invites alarm about things already handled.
+//
+// Backed by the `app_feedback` table + RLS
 // (supabase/migrations/20260713120000_app_feedback_temporary.sql).
+// ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { dbResult } from '@/lib/db'
 import { TestingSection } from '@/components/dev/TestingSection'
 import { RunnerSubmissionsSection } from '@/components/dev/RunnerSubmissionsSection'
 import { ErrorsSection } from '@/components/admin/ErrorsSection'
 
-// TEMPORARY: remove when rollout period ends
 type FeedbackType = 'bug' | 'suggestion' | 'question'
 
-// TEMPORARY: remove when rollout period ends
 interface AppFeedback {
   id: string
   created_at: string
@@ -23,22 +39,22 @@ interface AppFeedback {
   resolved: boolean
 }
 
-// TEMPORARY: remove when rollout period ends — type badge colors (red/lime/blue)
-const TYPE_META: Record<FeedbackType, { label: string; color: string }> = {
-  bug: { label: 'Bug', color: 'var(--hot)' },
-  suggestion: { label: 'Suggestion', color: 'var(--accent)' },
-  question: { label: 'Question', color: 'var(--uncontacted)' },
+// Status colours, never the retired accent: a bug is hot, an idea is booked-
+// green (something to build), a question is harbor blue.
+const TYPE_META: Record<FeedbackType, { label: string; color: string; ink: string }> = {
+  bug: { label: 'Bug', color: 'var(--c-st-hot)', ink: 'var(--c-hot-text)' },
+  suggestion: { label: 'Suggestion', color: 'var(--c-st-booked)', ink: 'var(--c-chip-ink)' },
+  question: { label: 'Question', color: 'var(--c-st-uncon)', ink: 'var(--c-chip-ink)' },
 }
 
-// TEMPORARY: remove when rollout period ends
 function fmtWhen(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
   })
 }
 
-// The rollout feedback board. Body untouched — it works and Eli asked that it not
-// be changed; it simply became a tab rather than the whole page.
+// The rollout feedback board. Same table, same writes as before — only the
+// surface changed.
 function FeedbackBoard() {
   const { profile } = useUserProfile()
   const authorName = profile?.display_name || 'Staff'
@@ -49,15 +65,17 @@ function FeedbackBoard() {
   const [type, setType] = useState<FeedbackType>('bug')
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [showResolved, setShowResolved] = useState(false)
 
   async function load() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('app_feedback')
       .select('*')
       // Runner submissions share this table (source='runner', 2026-08-31) and
       // have their own tab — this board is the OFFICE's.
       .eq('source', 'office')
       .order('created_at', { ascending: false })
+    if (!dbResult('Loading feedback', error)) { setLoading(false); return }
     setItems((data as AppFeedback[]) || [])
     setLoading(false)
   }
@@ -75,155 +93,97 @@ function FeedbackBoard() {
   async function handleSubmit() {
     if (!note.trim() || submitting) return
     setSubmitting(true)
-    await supabase.from('app_feedback').insert({
+    const { error } = await supabase.from('app_feedback').insert({
       author_name: authorName,
       type,
       note: note.trim(),
       resolved: false,
     })
+    setSubmitting(false)
+    if (!dbResult('Posting feedback', error)) return
     setNote('')
     setType('bug')
-    setSubmitting(false)
     load()
   }
 
   async function toggleResolved(item: AppFeedback) {
     if (!canModerate) return
-    await supabase.from('app_feedback').update({ resolved: !item.resolved }).eq('id', item.id)
+    const { error } = await supabase.from('app_feedback').update({ resolved: !item.resolved }).eq('id', item.id)
+    if (!dbResult('Saving', error)) return
     load()
   }
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontFamily: 'Inter', fontWeight: 500, letterSpacing: '0.08em',
-    textTransform: 'uppercase', color: 'var(--text2)', marginBottom: 8,
-  }
+  const open = items.filter(i => !i.resolved)
+  const done = items.filter(i => i.resolved)
+  const shown = showResolved ? done : open
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      {/* TEMPORARY: remove when rollout period ends — banner */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 20, padding: '8px 12px', border: '1px dashed rgba(var(--accent-rgb),0.4)', borderRadius: 8, background: 'rgba(var(--accent-rgb),0.06)' }}>
-        <span style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent)' }}>Temporary</span>
-        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text2)' }}>
-          Rollout feedback board — report bugs, suggestions, and questions about the app.
-        </span>
-      </div>
-
-      {/* Title */}
-      <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, marginBottom: 16, color: 'var(--text)' }}>
-        Staff Feedback
-      </h1>
-
-      {/* ── Submit form ─────────────────────────────── */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 24 }}>
-        <div style={labelStyle}>Type</div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {(Object.keys(TYPE_META) as FeedbackType[]).map(t => {
-            const meta = TYPE_META[t]
-            const selected = type === t
-            return (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                style={{
-                  flex: 1, padding: '8px 0', fontSize: 11, fontFamily: 'Syne', fontWeight: 700,
-                  letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
-                  borderRadius: 8, transition: 'all 0.15s',
-                  color: selected ? 'var(--bg)' : meta.color,
-                  background: selected ? meta.color : 'transparent',
-                  border: `1px solid ${selected ? meta.color : 'var(--border)'}`,
-                }}
-              >
-                {meta.label}
+    <div style={{ maxWidth: 720 }}>
+      {/* ── Post ──────────────────────────────────────────────────────── */}
+      <div className="c-panel" style={{ marginBottom: 18 }}>
+        <div className="c-label" style={{ marginBottom: 8 }}>Report something</div>
+        <div className="c-seg-wrap" style={{ marginBottom: 10 }}>
+          <span className="c-seg">
+            {(Object.keys(TYPE_META) as FeedbackType[]).map(t => (
+              <button key={t} type="button" className={type === t ? 'c-on' : ''} onClick={() => setType(t)}>
+                {TYPE_META[t].label}
               </button>
-            )
-          })}
+            ))}
+          </span>
         </div>
-
-        <div style={labelStyle}>Note</div>
         <textarea
+          className="c-textarea"
           value={note}
           onChange={e => setNote(e.target.value)}
           placeholder="Describe the bug, suggestion, or question…"
           rows={4}
-          style={{
-            width: '100%', padding: 10, fontSize: 12, fontFamily: 'Inter',
-            background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8,
-            color: 'var(--text)', outline: 'none', resize: 'vertical', boxSizing: 'border-box',
-          }}
+          style={{ minHeight: 90 }}
         />
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 12 }}>
-          <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
-            Posting as {authorName}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10.5, color: 'var(--c-fg-3)' }}>Posting as {authorName}</span>
           <button
+            type="button"
+            className="c-btn"
             onClick={handleSubmit}
             disabled={!note.trim() || submitting}
-            style={{
-              padding: '8px 18px', fontSize: 11, fontFamily: 'Syne', fontWeight: 700,
-              letterSpacing: '0.06em', textTransform: 'uppercase', borderRadius: 8, border: 'none',
-              background: note.trim() ? 'var(--accent)' : 'var(--surface2)',
-              color: note.trim() ? 'var(--bg)' : 'var(--text3)',
-              cursor: note.trim() && !submitting ? 'pointer' : 'default',
-            }}
+            style={{ opacity: note.trim() && !submitting ? 1 : 0.45, cursor: note.trim() && !submitting ? 'pointer' : 'default' }}
           >
-            {submitting ? 'Submitting…' : 'Submit'}
+            {submitting ? 'Posting…' : 'Post'}
           </button>
         </div>
       </div>
 
-      {/* ── Feed ─────────────────────────────── */}
-      <div style={labelStyle}>Feed</div>
+      {/* ── Feed ──────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div className="c-label">Feed</div>
+        <span className="c-seg" style={{ marginLeft: 'auto' }}>
+          <button type="button" className={!showResolved ? 'c-on' : ''} onClick={() => setShowResolved(false)}>Open · {open.length}</button>
+          <button type="button" className={showResolved ? 'c-on' : ''} onClick={() => setShowResolved(true)}>Resolved · {done.length}</button>
+        </span>
+      </div>
       {loading ? (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11, fontFamily: 'Inter' }}>Loading…</div>
-      ) : items.length === 0 ? (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 11, fontFamily: 'Inter' }}>No feedback yet.</div>
+        <div className="c-sub" style={{ padding: '18px 4px' }}>Loading…</div>
+      ) : shown.length === 0 ? (
+        <div className="c-sub" style={{ padding: '18px 4px' }}>{showResolved ? 'Nothing resolved yet.' : 'Nothing open.'}</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {items.map(item => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {shown.map(item => {
             const meta = TYPE_META[item.type] || TYPE_META.question
             return (
-              <div
-                key={item.id}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
-                  padding: '12px 14px', opacity: item.resolved ? 0.5 : 1, transition: 'opacity 0.15s',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-                  <span style={{
-                    fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em',
-                    textTransform: 'uppercase', padding: '2px 7px', borderRadius: 4,
-                    color: meta.color, background: `${meta.color}1f`, border: `1px solid ${meta.color}55`,
-                  }}>
-                    {meta.label}
-                  </span>
-                  <span style={{ fontSize: 12, fontFamily: 'Syne', fontWeight: 700, color: 'var(--text)' }}>
-                    {item.author_name || 'Staff'}
-                  </span>
-                  <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                    {fmtWhen(item.created_at)}
-                  </span>
-                  {/* TEMPORARY: remove when rollout period ends — owner/manager-only resolve toggle */}
-                  {canModerate && (
-                    <button
-                      onClick={() => toggleResolved(item)}
-                      style={{
-                        flexShrink: 0, padding: '3px 8px', fontSize: 9, fontFamily: 'Syne', fontWeight: 700,
-                        letterSpacing: '0.04em', textTransform: 'uppercase', borderRadius: 4, cursor: 'pointer',
-                        background: 'transparent',
-                        border: `1px solid ${item.resolved ? 'var(--accent)' : 'var(--border)'}`,
-                        color: item.resolved ? 'var(--accent)' : 'var(--text3)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      ✓ Resolved
+              <div key={item.id} className="c-panel" style={{ opacity: item.resolved ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <span className="c-pill" style={{ background: meta.color, color: meta.ink }}>{meta.label}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{item.author_name || 'Staff'}</span>
+                  <span className="c-mono" style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{fmtWhen(item.created_at)}</span>
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{item.note}</div>
+                {canModerate && (
+                  <div style={{ marginTop: 10 }}>
+                    <button type="button" className={`c-soft${item.resolved ? ' c-on' : ''}`} onClick={() => toggleResolved(item)}>
+                      {item.resolved ? '✓ Resolved · reopen' : 'Mark resolved'}
                     </button>
-                  )}
-                </div>
-                <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {item.note}
-                </div>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -234,13 +194,6 @@ function FeedbackBoard() {
 }
 
 // ─── DEV page shell ──────────────────────────────────────────────────────────
-// Left sidebar matching the Admin page, so the two internal tool pages navigate
-// the same way. Sections:
-//   Feedback — the rollout board, open to any signed-in staff member
-//   Testing  — PIN-gated (4321) test batches
-//   Errors   — the app_errors sink, moved here from Admin. ELI ONLY: staff seeing
-//              raw stack traces invites alarm about things that are already handled,
-//              and it's a developer tool, not an operations one.
 type DevSection = 'feedback' | 'runner' | 'testing' | 'errors'
 
 const DEV_NAV: { key: DevSection; label: string }[] = [
@@ -250,58 +203,44 @@ const DEV_NAV: { key: DevSection; label: string }[] = [
   { key: 'errors', label: 'Errors' },
 ]
 
+const BLURB: Record<DevSection, string> = {
+  feedback: 'Bugs, suggestions and questions about the app, from the office.',
+  runner: 'Sent from the runner hub — bugs and ideas from the people using the app on the floor.',
+  testing: 'Checklists for recent work. Pick a batch, work through it, mark what broke.',
+  errors: 'Crashes, unhandled rejections and failed saves reported from the app. Newest first.',
+}
+
 export default function DevPage() {
   const [section, setSection] = useState<DevSection>('feedback')
   const { profile } = useUserProfile()
-  // Eli only — matched on his accounts, the same gate the CRM Campaigns tab uses.
-  // Deliberately narrower than the app_errors RLS policy (which allows
-  // owner/manager); RLS stays as-is, this just hides the surface.
+  // Eli only — matched on his account, the same gate the CRM Campaigns tab uses.
+  // Deliberately narrower than the app_errors RLS policy (owner/manager); RLS
+  // stays as-is, this just hides the surface.
   const isEli = profile?.email === 'eli@paramountrecording.com'
   const visibleNav = DEV_NAV.filter(n => n.key !== 'errors' || isEli)
 
-  // Layout matches app/(main)/admin/page.tsx exactly — no negative margins, so the
-  // sidebar sits inside the layout's padding rather than pinned to the window edge.
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar — mirrors components/../admin/page.tsx */}
-      <div data-panel="admin-sidebar" style={{
-        width: 200, flexShrink: 0, borderRight: '1px solid var(--border)',
-        padding: '28px 0', display: 'flex', flexDirection: 'column', gap: 2,
-      }}>
-        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', padding: '0 20px 12px' }}>
-          Dev
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', margin: '2px 0 4px' }}>
+        <h1 className="c-arch" style={{ fontSize: 22, letterSpacing: '-0.01em', margin: 0 }}>Dev</h1>
+        <div className="c-seg-wrap">
+          <span className="c-seg">
+            {visibleNav.map(({ key, label }) => (
+              <button key={key} type="button" className={section === key ? 'c-on' : ''} onClick={() => setSection(key)}>
+                {label}
+              </button>
+            ))}
+          </span>
         </div>
-        {visibleNav.map(({ key, label }) => {
-          const active = section === key
-          return (
-            <button
-              key={key}
-              onClick={() => setSection(key)}
-              style={{
-                display: 'block', width: '100%', textAlign: 'left',
-                padding: '8px 20px', border: 'none', cursor: 'pointer',
-                fontFamily: 'Inter', fontSize: 12,
-                background: active ? 'var(--surface2)' : 'transparent',
-                color: active ? 'var(--text)' : 'var(--text2)',
-                borderLeft: active ? '2px solid var(--accent)' : '2px solid transparent',
-              }}
-            >
-              {label}
-            </button>
-          )
-        })}
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--c-fg-3)', marginBottom: 16, maxWidth: 620 }}>
+        {BLURB[section]}
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, padding: '28px 32px', minWidth: 0 }}>
-        {/* Reading-width and centred, which is how the feedback board looked before
-            it became a tab. Errors is a dense table and takes the full width. */}
-        {section === 'feedback' && <div style={{ maxWidth: 720, margin: '0 auto' }}><FeedbackBoard /></div>}
-        {/* Wider than the feedback board: Testing is two columns, not reading-width prose. */}
-        {section === 'runner' && <RunnerSubmissionsSection />}
-        {section === 'testing' && <div style={{ maxWidth: 1100, margin: '0 auto' }}><TestingSection /></div>}
-        {section === 'errors' && isEli && <ErrorsSection />}
-      </div>
+      {section === 'feedback' && <FeedbackBoard />}
+      {section === 'runner' && <RunnerSubmissionsSection />}
+      {section === 'testing' && <TestingSection />}
+      {section === 'errors' && isEli && <ErrorsSection />}
     </div>
   )
 }

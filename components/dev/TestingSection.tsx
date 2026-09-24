@@ -10,6 +10,9 @@
 // The PIN is a soft gate, NOT security: everything behind it is already readable by
 // any signed-in staff member under RLS. Don't let this pattern spread to anything
 // that matters.
+//
+// RECARVED 2026-09-23 — carved tokens and classes; the two-column grid already
+// collapsed on a phone (auto-fit), the cards and buttons did not.
 import React, { useState } from 'react'
 import { TEST_BATCHES, batchNeedsPhone, phoneItemCount } from '@/lib/testBatches'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -26,9 +29,9 @@ export function TestingSection() {
 
   if (!unlocked) {
     return (
-      <div style={{ maxWidth: 320, margin: '40px auto', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, color: 'var(--text)', marginBottom: 6 }}>Testing</div>
-        <div style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text2)', marginBottom: 18, lineHeight: 1.6 }}>
+      <div className="c-panel" style={{ maxWidth: 320, margin: '24px auto', textAlign: 'center', padding: 22 }}>
+        <div className="c-arch" style={{ fontSize: 16, marginBottom: 6 }}>Testing</div>
+        <div className="c-sub" style={{ marginBottom: 16, lineHeight: 1.6 }}>
           Enter the testing PIN to open the checklists.
         </div>
         <input
@@ -45,14 +48,13 @@ export function TestingSection() {
           inputMode="numeric"
           autoFocus
           placeholder="••••"
+          className="c-input c-mono"
           style={{
-            width: 140, textAlign: 'center', letterSpacing: '0.5em',
-            background: 'var(--surface2)', border: `1px solid ${pinError ? 'var(--hot)' : 'var(--border)'}`,
-            borderRadius: 8, color: 'var(--text)', fontFamily: 'DM Mono, monospace', fontSize: 20,
-            padding: '12px 0', outline: 'none',
+            width: 150, margin: '0 auto', textAlign: 'center', letterSpacing: '0.5em', fontSize: 20, height: 46,
+            boxShadow: pinError ? 'inset 0 0 0 1px var(--c-st-hot)' : undefined,
           }}
         />
-        {pinError && <div style={{ marginTop: 10, fontSize: 11, fontFamily: 'Inter', color: 'var(--hot)' }}>Incorrect PIN</div>}
+        {pinError && <div style={{ marginTop: 10, fontSize: 11, color: 'var(--c-st-hot)', fontWeight: 700 }}>Incorrect PIN</div>}
       </div>
     )
   }
@@ -73,25 +75,25 @@ export function TestingSection() {
           opening this for the first time shouldn't have to find them, and the
           phone setup has to be read BEFORE starting a batch. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 18 }}>
-        <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 10 }}>
+      <div className="c-panel" style={{ padding: 16 }}>
+        <div className="c-arch" style={{ fontSize: 15, marginBottom: 10 }}>
           How testing works
         </div>
-        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.8 }}>
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, color: 'var(--c-fg-2)', lineHeight: 1.8 }}>
           <li><b>Pick a batch below</b> and press <b>Start testing</b>. A batch is one list of checks for recent work.</li>
           <li>A <b>small window appears in the corner</b> showing <b>one check at a time</b>: what to look at, and exactly what to do.</li>
           <li>Do the thing it describes, then press <b>Works</b> or <b>Broken</b>. You can’t move on until you pick one.</li>
           <li>If something’s wrong, <b>type what you saw in the notes box first</b>, then press Broken. The note is the part that gets it fixed — “didn’t work” on its own tells us nothing.</li>
           <li>Press <b>Next</b>. Use <b>Prev</b> any time to go back and change an answer.</li>
         </ol>
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.75 }}>
-          <b style={{ color: 'var(--text)' }}>About that little window:</b> drag it by the <span style={{ fontFamily: 'DM Mono, monospace' }}>⠿</span> handle at the top —
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--c-wash2)', fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.75 }}>
+          <b style={{ color: 'var(--c-fg)' }}>About that little window:</b> drag it by the <span style={{ fontFamily: 'DM Mono, monospace' }}>⠿</span> handle at the top —
           it <b>will</b> end up covering something you need to click, so just move it. Press <b>▾</b> to shrink it
           to a bar, <b>▴</b> to open it back up. It follows you around the app, so you never come back to this page
           to tick something off. Closing it with <b>×</b> doesn’t lose anything — press Continue on the batch to pick
           up where you stopped.
         </div>
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)', fontSize: 12, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.7 }}>
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--c-wash2)', fontSize: 12, color: 'var(--c-fg-3)', lineHeight: 1.7 }}>
           Nothing you do here can break anything. Wrong answers are fine — you can change them.
           If you get stuck on a check, mark it Broken, say why in the note, and move on.
         </div>
@@ -104,9 +106,7 @@ export function TestingSection() {
 
       {/* ── RIGHT: the batches themselves ──────────────────────────────── */}
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 10, paddingBottom: 7, borderBottom: '1px solid var(--border)' }}>
-          Batches
-        </div>
+        <div className="c-label" style={{ marginBottom: 10 }}>Batches</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {TEST_BATCHES.map(b => (
             <BatchCard
@@ -133,42 +133,43 @@ function PhoneSetupCallout() {
   const url = typeof window !== 'undefined' ? window.location.origin : 'https://prsflow.paramountrecording.com'
 
   return (
-    <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.4)', borderRadius: 12, padding: 18 }}>
+    <div className="c-panel" style={{ padding: 16, outline: '1px solid rgba(255,169,77,.4)', outlineOffset: -1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <span style={{ fontSize: 16 }}>📱</span>
-        <span style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 15, color: 'var(--warm)' }}>
+        <span className="c-arch" style={{ fontSize: 14, color: 'var(--c-st-warm)' }}>
           Some checks need a phone — set this up first
         </span>
       </div>
-      <div style={{ fontSize: 12.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.8, marginBottom: 12 }}>
-        Checks tagged <b style={{ color: 'var(--warm)' }}>📱 PHONE</b> are done on your phone, in the Runner app.
+      <div style={{ fontSize: 12.5, color: 'var(--c-fg-2)', lineHeight: 1.8, marginBottom: 12 }}>
+        Checks tagged <b style={{ color: 'var(--c-st-warm)' }}>📱 PHONE</b> are done on your phone, in the Runner app.
         Keep this checklist open on the computer and mark them here after you’ve done them on the phone.
       </div>
-      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.9 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, color: 'var(--c-fg-2)', lineHeight: 1.9 }}>
         <li>On your phone, open <b>Safari</b> (iPhone) or <b>Chrome</b> (Android) and go to the address below.</li>
         <li>Sign in with the <b>shared runner PIN</b> — ask Eli or a manager for it. You’ll land on the studio list.</li>
         <li>Tap the <b>Share</b> button, then <b>Add to Home Screen</b>. It installs as <b>“Runner”</b> with its own icon.</li>
         <li>Open it from your home screen from then on. That’s the version the runners actually use, so it’s the one to test.</li>
       </ol>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        <code style={{ fontFamily: 'DM Mono, monospace', fontSize: 12, color: 'var(--text)', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '7px 10px' }}>
+        <code className="c-mono c-inset2" style={{ fontSize: 12, borderRadius: 10, padding: '7px 10px', wordBreak: 'break-all' }}>
           {url}/runner
         </code>
         <button
+          type="button"
+          className={`c-soft${copied ? ' c-on' : ''}`}
           onClick={() => {
             navigator.clipboard.writeText(`${url}/runner`).then(() => setCopied(true), () => setCopied(false))
             setTimeout(() => setCopied(false), 2000)
           }}
-          style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: copied ? 'var(--accent)' : 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
         >
           {copied ? '✓ Copied' : 'Copy link'}
         </button>
-        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>
+        <span style={{ fontSize: 11, color: 'var(--c-fg-3)' }}>
           — text it to yourself, or type it in
         </span>
       </div>
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(249,115,22,0.25)', fontSize: 11.5, fontFamily: 'Inter', color: 'var(--text3)', lineHeight: 1.7 }}>
-        <b style={{ color: 'var(--text2)' }}>Note:</b> signing in as the runner on your phone signs you out of your own
+      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--c-wash2)', fontSize: 11.5, color: 'var(--c-fg-3)', lineHeight: 1.7 }}>
+        <b style={{ color: 'var(--c-fg-2)' }}>Note:</b> signing in as the runner on your phone signs you out of your own
         account <i>on that phone only</i>. Your computer is unaffected. Use a private/incognito tab if you’d rather keep both.
       </div>
     </div>
@@ -193,55 +194,44 @@ function BatchCard({ batchId, isActive, onStart, onReview }: {
     : prog.tested === 0 ? 'new'
     : prog.complete ? 'done'
     : 'progress'
-  const meta: Record<string, { label: string; color: string }> = {
-    loading: { label: '…', color: 'var(--text3)' },
-    new: { label: 'Not started', color: 'var(--text3)' },
-    progress: { label: `${prog.tested}/${prog.total} tested`, color: 'var(--warm)' },
-    done: { label: prog.failed > 0 ? `Done · ${prog.failed} broken` : 'Done · all working', color: prog.failed > 0 ? 'var(--hot)' : 'var(--booked)' },
+  const meta: Record<string, { label: string; color: string; ink: string }> = {
+    loading: { label: '…', color: 'var(--c-wash2)', ink: 'var(--c-fg)' },
+    new: { label: 'Not started', color: 'var(--c-wash2)', ink: 'var(--c-fg)' },
+    progress: { label: `${prog.tested}/${prog.total} tested`, color: 'var(--c-st-warm)', ink: 'var(--c-chip-ink)' },
+    done: { label: prog.failed > 0 ? `Done · ${prog.failed} broken` : 'Done · all working', color: prog.failed > 0 ? 'var(--c-st-hot)' : 'var(--c-st-booked)', ink: prog.failed > 0 ? 'var(--c-hot-text)' : 'var(--c-chip-ink)' },
   }
   const m = meta[state]
 
   return (
-    <div style={{
-      background: 'var(--surface)',
-      // A finished batch reads as finished without hiding it — you may still want
-      // to look at what failed.
-      border: `1px solid ${state === 'done' ? (prog.failed > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(20,184,166,0.4)') : 'var(--border)'}`,
-      borderRadius: 12, padding: 16,
-      opacity: state === 'done' ? 0.85 : 1,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>{batch.title}</div>
-          <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)' }}>{batch.version} · {batch.date} · {batch.items.length} checks</div>
+    // A finished batch reads as finished without hiding it — you may still want
+    // to look at what failed.
+    <div className="c-panel" style={{ padding: 14, opacity: state === 'done' ? 0.85 : 1 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="c-arch" style={{ fontSize: 14, lineHeight: 1.3 }}>{batch.title}</div>
+          <div className="c-mono" style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginTop: 2 }}>{batch.version} · {batch.date} · {batch.items.length} checks</div>
           {batchNeedsPhone(batch) && (
-            <div style={{ marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--warm)', border: '1px solid rgba(249,115,22,0.45)', background: 'rgba(249,115,22,0.10)', borderRadius: 999, padding: '3px 9px' }}>
+            <div style={{ marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-st-warm)' }}>
               📱 {phoneItemCount(batch)} need a phone
             </div>
           )}
         </div>
-        <span style={{ flexShrink: 0, fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: m.color, border: `1px solid ${m.color}`, borderRadius: 999, padding: '3px 9px' }}>
+        <span className="c-pill" style={{ background: m.color, color: m.ink }}>
           {m.label}
         </span>
       </div>
 
-      <div style={{ display: 'flex', height: 5, borderRadius: 3, overflow: 'hidden', background: 'var(--surface2)', marginBottom: 12 }}>
-        <div style={{ width: `${(prog.passed / prog.total) * 100}%`, background: 'var(--booked)' }} />
-        <div style={{ width: `${(prog.failed / prog.total) * 100}%`, background: 'var(--hot)' }} />
+      <div className="c-inset2" style={{ display: 'flex', height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 12 }}>
+        <div style={{ width: `${(prog.passed / prog.total) * 100}%`, background: 'var(--c-st-booked)' }} />
+        <div style={{ width: `${(prog.failed / prog.total) * 100}%`, background: 'var(--c-st-hot)' }} />
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button
-          onClick={onStart}
-          style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: isActive ? 'var(--surface2)' : 'var(--accent)', color: isActive ? 'var(--text2)' : 'var(--bg)', fontFamily: 'Syne', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
-        >
+        <button type="button" className={isActive ? 'c-soft' : 'c-btn'} onClick={onStart}>
           {isActive ? 'Open in panel' : prog.tested === 0 ? 'Start testing' : 'Continue'}
         </button>
         {prog.tested > 0 && (
-          <button
-            onClick={onReview}
-            style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
-          >
+          <button type="button" className="c-soft" onClick={onReview}>
             Review results
           </button>
         )}
@@ -269,16 +259,16 @@ function BatchReview({ batchId, onBack }: { batchId: string; onBack: () => void 
   const row = (i: typeof batch.items[number], tone: string) => {
     const v = results[i.id]
     return (
-      <div key={i.id} style={{ padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderLeft: `3px solid ${tone}`, borderRadius: '0 8px 8px 0' }}>
-        <div style={{ fontSize: 9, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 3 }}>{i.area}</div>
-        <div style={{ fontSize: 13, fontFamily: 'Inter', color: 'var(--text)', lineHeight: 1.45 }}>{i.what}</div>
+      <div key={i.id} className="c-panel" style={{ padding: '10px 12px 10px 14px', borderLeft: `3px solid ${tone}` }}>
+        <div className="c-label" style={{ marginBottom: 3, opacity: 0.6 }}>{i.area}</div>
+        <div style={{ fontSize: 13, lineHeight: 1.45 }}>{i.what}</div>
         {v?.note && (
-          <div style={{ marginTop: 7, padding: '7px 9px', background: 'var(--surface2)', borderRadius: 5, fontSize: 12, fontFamily: 'Inter', color: 'var(--text2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          <div className="c-inset2" style={{ marginTop: 7, padding: '7px 9px', borderRadius: 10, fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {v.note}
           </div>
         )}
         {v && (
-          <div style={{ marginTop: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--text3)' }}>
+          <div className="c-mono" style={{ marginTop: 6, fontSize: 10, color: 'var(--c-fg-3)' }}>
             {v.tested_by || 'Staff'} · {new Date(v.updated_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
           </div>
         )}
@@ -288,8 +278,8 @@ function BatchReview({ batchId, onBack }: { batchId: string; onBack: () => void 
 
   const group = (title: string, items: typeof batch.items, tone: string) => items.length === 0 ? null : (
     <div style={{ marginBottom: 18 }}>
-      <div style={{ fontSize: 10, fontFamily: 'Syne', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: tone, marginBottom: 8 }}>
-        {title} ({items.length})
+      <div className="c-label" style={{ color: tone, opacity: 1, marginBottom: 8 }}>
+        {title} · {items.length}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(i => row(i, tone))}
@@ -326,21 +316,18 @@ function BatchReview({ batchId, onBack }: { batchId: string; onBack: () => void 
 
   return (
     <div>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontFamily: 'Inter', fontSize: 11, cursor: 'pointer', padding: 0, marginBottom: 12 }}>← Batches</button>
-      <div style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{batch.title}</div>
-      <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text3)', marginBottom: 12 }}>
+      <button type="button" className="c-soft" onClick={onBack} style={{ marginBottom: 12 }}>← Batches</button>
+      <div className="c-arch" style={{ fontSize: 16 }}>{batch.title}</div>
+      <div className="c-mono" style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginBottom: 12 }}>
         {prog.passed} working · {prog.failed} broken · {prog.untested} not tested
         {canReset && ' · results are kept until reset in Supabase'}
       </div>
-      <button
-        onClick={copyFailures}
-        style={{ marginBottom: 18, padding: '8px 14px', borderRadius: 7, border: `1px solid ${copied ? 'rgba(var(--accent-rgb),0.5)' : 'var(--border)'}`, background: copied ? 'rgba(var(--accent-rgb),0.12)' : 'transparent', color: copied ? 'var(--accent)' : 'var(--text)', fontFamily: 'Syne', fontWeight: 700, fontSize: 11, cursor: 'pointer' }}
-      >
+      <button type="button" className={`c-soft${copied ? ' c-on' : ''}`} onClick={copyFailures} style={{ marginBottom: 18 }}>
         {copied ? '✓ Copied' : 'Copy failures + notes'}
       </button>
-      {group('Broken', failedItems, 'var(--hot)')}
-      {group('Not tested', untestedItems, 'var(--text3)')}
-      {group('Working', passedItems, 'var(--booked)')}
+      {group('Broken', failedItems, 'var(--c-st-hot)')}
+      {group('Not tested', untestedItems, 'var(--c-fg-3)')}
+      {group('Working', passedItems, 'var(--c-st-booked)')}
     </div>
   )
 }

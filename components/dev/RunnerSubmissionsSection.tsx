@@ -31,10 +31,10 @@ const STUDIO_ABBR: Record<string, string> = {
   paramount: 'PRS', ameraycan: 'ARS', encore: 'ERS', track: 'TRK',
 }
 
-const TYPE_LABEL: Record<string, { label: string; color: string }> = {
-  bug: { label: 'Broken', color: 'var(--c-st-hot, #ff5a4d)' },
-  suggestion: { label: 'Idea', color: 'var(--c-st-booked, #43dfae)' },
-  question: { label: 'Question', color: 'var(--c-st-uncon, #7fb2e5)' },
+const TYPE_LABEL: Record<string, { label: string; color: string; ink: string }> = {
+  bug: { label: 'Broken', color: 'var(--c-st-hot)', ink: 'var(--c-hot-text)' },
+  suggestion: { label: 'Idea', color: 'var(--c-st-booked)', ink: 'var(--c-chip-ink)' },
+  question: { label: 'Question', color: 'var(--c-st-uncon)', ink: 'var(--c-chip-ink)' },
 }
 
 function fmtWhen(iso: string): string {
@@ -97,66 +97,39 @@ export function RunnerSubmissionsSection() {
   const done = items.filter(i => i.resolved)
   const shown = showResolved ? done : open
 
+  // RECARVED 2026-09-23 — carved tokens, c-seg filter, c-panel cards. The
+  // page shell carries the heading and blurb now.
   return (
-    <div style={{ maxWidth: 820, margin: '0 auto' }}>
-      <h1 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, letterSpacing: -0.5, marginBottom: 6, color: 'var(--text)' }}>
-        Runner submissions
-      </h1>
-      <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 18 }}>
-        Sent from the runner hub — bugs and ideas from the people using the app on the floor.
-      </p>
-
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {([false, true] as const).map(r => (
-          <button
-            key={String(r)}
-            onClick={() => setShowResolved(r)}
-            style={{
-              padding: '7px 14px', fontSize: 11, fontFamily: 'Inter', fontWeight: 600,
-              borderRadius: 8, cursor: 'pointer',
-              border: `1px solid ${showResolved === r ? 'var(--accent)' : 'var(--border)'}`,
-              background: showResolved === r ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
-              color: showResolved === r ? 'var(--text)' : 'var(--text2)',
-            }}
-          >
-            {r ? `Resolved (${done.length})` : `Open (${open.length})`}
-          </button>
-        ))}
+    <div style={{ maxWidth: 720 }}>
+      <div className="c-seg-wrap" style={{ marginBottom: 12 }}>
+        <span className="c-seg">
+          <button type="button" className={!showResolved ? 'c-on' : ''} onClick={() => setShowResolved(false)}>Open · {open.length}</button>
+          <button type="button" className={showResolved ? 'c-on' : ''} onClick={() => setShowResolved(true)}>Resolved · {done.length}</button>
+        </span>
       </div>
 
       {loading ? (
-        <div style={{ fontSize: 12, color: 'var(--text2)' }}>Loading…</div>
+        <div className="c-sub" style={{ padding: '18px 4px' }}>Loading…</div>
       ) : shown.length === 0 ? (
-        <div style={{ fontSize: 12, color: 'var(--text2)', padding: '18px 0' }}>
+        <div className="c-sub" style={{ padding: '18px 4px' }}>
           {showResolved ? 'Nothing resolved yet.' : 'Nothing open — the runners have nothing to report.'}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {shown.map(item => {
             const meta = TYPE_LABEL[item.type] ?? TYPE_LABEL.question
             return (
-              <div
-                key={item.id}
-                style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 12, padding: 14, opacity: item.resolved ? 0.6 : 1,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <span style={{
-                    fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
-                    color: meta.color, border: `1px solid ${meta.color}`, borderRadius: 99, padding: '2px 8px',
-                  }}>{meta.label}</span>
+              <div key={item.id} className="c-panel" style={{ opacity: item.resolved ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <span className="c-pill" style={{ background: meta.color, color: meta.ink }}>{meta.label}</span>
                   {item.studio && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text2)' }}>
-                      {STUDIO_ABBR[item.studio] ?? item.studio}
-                    </span>
+                    <span className="c-label" style={{ opacity: 0.7 }}>{STUDIO_ABBR[item.studio] ?? item.studio}</span>
                   )}
-                  <span style={{ fontSize: 11, color: 'var(--text2)' }}>{item.author_name || 'Runner'}</span>
-                  <span style={{ fontSize: 10.5, color: 'var(--text3)', marginLeft: 'auto' }}>{fmtWhen(item.created_at)}</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{item.author_name || 'Runner'}</span>
+                  <span className="c-mono" style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{fmtWhen(item.created_at)}</span>
                 </div>
 
-                <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                <div style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {item.note}
                 </div>
 
@@ -167,25 +140,20 @@ export function RunnerSubmissionsSection() {
                       <img
                         src={photos[item.id]}
                         alt="Runner photo"
-                        style={{ marginTop: 10, maxHeight: 160, borderRadius: 8, display: 'block' }}
+                        style={{ marginTop: 10, maxHeight: 160, maxWidth: '100%', borderRadius: 10, display: 'block' }}
                       />
                     </a>
                   ) : (
-                    <div style={{ marginTop: 10, fontSize: 10.5, color: 'var(--text3)' }}>Photo attached — loading…</div>
+                    <div style={{ marginTop: 10, fontSize: 10.5, color: 'var(--c-fg-3)' }}>Photo attached — loading…</div>
                   )
                 )}
 
                 {canModerate && (
-                  <button
-                    onClick={() => toggleResolved(item)}
-                    style={{
-                      marginTop: 10, padding: '6px 12px', fontSize: 10.5, fontWeight: 600,
-                      borderRadius: 8, cursor: 'pointer', background: 'transparent',
-                      border: '1px solid var(--border)', color: 'var(--text2)',
-                    }}
-                  >
-                    {item.resolved ? 'Reopen' : 'Mark resolved'}
-                  </button>
+                  <div style={{ marginTop: 10 }}>
+                    <button type="button" className={`c-soft${item.resolved ? ' c-on' : ''}`} onClick={() => toggleResolved(item)}>
+                      {item.resolved ? '✓ Resolved · reopen' : 'Mark resolved'}
+                    </button>
+                  </div>
                 )}
               </div>
             )
