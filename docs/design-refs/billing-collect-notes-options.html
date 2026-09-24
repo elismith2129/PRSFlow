@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Collection notes on the billing row</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  Eli, 2026-09-24: "a small clickable pop-up notes that lives on WO rows in
+  billing. Notes regarding operations on collecting payments. It will not live
+  on the WO, internal only, not part of billing ever."
+
+  So: a per-work-order collections scratchpad, visible ONLY on the billing hub
+  row. Never on the WO screen, never on the package/PDF, never on the runner
+  side. "Called Tuesday, said Friday." "PO coming from Maria, not the A&R."
+  "Card declined twice — use Zelle."
+
+  Options (all the same data — a thread of short notes, who + when):
+    A  Note glyph in the row's ⋯ cluster; dot when notes exist; click → popover
+       thread with a one-line composer. Row stays exactly as wide as today.
+    B  Same glyph, but the LATEST note peeks in the flag cell (truncated) when
+       the flag cell has nothing else to say — glanceable without a click.
+    C  A sticky: one editable text per WO (no thread), inline in the flag cell,
+       click to edit in place. Simplest; loses the who/when trail.
+  Recommendation: A, with B's peek as a follow-up if rows feel too quiet.
+  The trail (who said what, when) is the point of a collections note.
+-->
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06);--wash2:rgba(242,239,231,.12);--fg2:rgba(242,239,231,.72);--fg3:rgba(242,239,231,.45);--hot:#ff5a4d;--hot-text:#fff4f2;--warm:#ffa94d;--booked:#43dfae;--uncon:#7fb2e5;--chip-ink:#1c2626;--srf:#151412;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 120px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:34px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:12px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:18px;padding:10px 12px 6px;box-shadow:var(--softsh);max-width:1000px;position:relative}
+.hd,.row{display:grid;grid-template-columns:104px 76px minmax(0,1fr) 234px 84px 120px 26px;align-items:center;gap:10px}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 10px 6px}
+.hd .r{text-align:right}.hd .c{text-align:center}
+.row{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px;position:relative}
+.row:hover{background:var(--wash)}
+.bin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.bin.rev{background:var(--warm);color:var(--chip-ink)}.bin.bal{background:var(--hot);color:var(--hot-text)}.bin.appr{background:var(--uncon);color:var(--chip-ink)}.bin.po{background:#b9d5f1;color:var(--chip-ink)}.bin.ok{background:var(--booked);color:var(--chip-ink)}
+.inv{font-family:'DM Mono',monospace;font-size:11px;opacity:.6}
+.who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who b{font-weight:700}.who span{opacity:.5;font-size:11px}
+.amt{font-family:'DM Mono',monospace;font-size:11.5px;text-align:right}
+.flag{display:flex;justify-content:flex-end;min-width:0;align-items:center;gap:8px}
+.hint{font-size:9.5px;font-weight:700;font-style:italic;opacity:.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--warm);white-space:nowrap}
+.acts{display:flex;justify-content:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg);opacity:.8;white-space:nowrap}
+.more{display:flex;justify-content:flex-end;align-items:center;gap:8px;opacity:.9}
+.more .dots{opacity:.5}
+/* the note glyph */
+.ng{position:relative;width:18px;height:18px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--fg3);font-size:12px;flex-shrink:0}
+.ng:hover{background:var(--wash2);color:var(--fg)}
+.ng.has{color:var(--fg2)}
+.ng.has::after{content:'';position:absolute;top:1px;right:1px;width:6px;height:6px;border-radius:99px;background:var(--warm)}
+.ng .cnt{position:absolute;top:-4px;right:-5px;font:700 8px 'DM Mono',monospace;background:var(--warm);color:var(--chip-ink);border-radius:99px;padding:0 4px;line-height:12px}
+/* popover */
+.pop{position:absolute;right:10px;top:calc(100% - 4px);width:340px;background:var(--srf);border-radius:14px;padding:10px 12px;box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 0 1px var(--wash2);z-index:5;display:none}
+.pop.open{display:block}
+.pop .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pop .ph b{font-size:11px}.pop .ph .k{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3)}
+.pop .ph .cl{margin-left:auto;color:var(--fg3);cursor:pointer;font-size:14px}
+.note{padding:7px 9px;border-radius:10px;background:var(--wash);margin-bottom:5px}
+.note .m{font-size:9.5px;color:var(--fg3);margin-bottom:2px;display:flex;gap:6px}
+.note .m b{color:var(--fg2);font-weight:700}.note .m i{font-style:normal;font-family:'DM Mono',monospace}
+.note .t{font-size:12px;line-height:1.45;white-space:pre-wrap}
+.comp{display:flex;gap:6px;margin-top:8px}
+.comp .in{flex:1;background:var(--bg);border-radius:10px;padding:7px 10px;font-size:12px;color:var(--fg3);box-shadow:inset 3px 3px 9px rgba(0,0,0,.34),inset -3px -3px 9px rgba(255,255,255,.03)}
+.comp .go{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:0 12px;border-radius:99px;background:#d5d0c2;color:#1b1a17;display:flex;align-items:center;cursor:pointer}
+.pop .foot{font-size:9.5px;color:var(--fg3);margin-top:8px;padding-top:6px;border-top:1px solid var(--wash2)}
+/* B peek */
+.peek{font-size:10px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;cursor:pointer}
+.peek b{color:var(--fg3);font-weight:700;margin-right:4px}
+/* C sticky */
+.sticky{font-size:10.5px;color:var(--fg2);background:rgba(255,169,77,.10);border-radius:8px;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;cursor:text}
+.sticky.empty{color:var(--fg3);font-style:italic;background:transparent;outline:1px dashed var(--wash2)}
+</style>
+</head>
+<body>
+
+<h1>Collection notes on the billing row</h1>
+<p class="lede">A scratchpad per work order for the people chasing money: "called Tues, said Fri", "PO comes from Maria not the A&R", "card declined ×2, use Zelle". Lives on the billing hub row only — not on the work order, not on the package, not on the runner side. Three placements below; the popover in A and B is clickable.</p>
+
+<!-- ============ A ============ -->
+<h2><span class="n">A</span>Glyph in the ⋯ cluster, popover thread <span class="rec">Recommended</span></h2>
+<p class="sub">A small note glyph beside ⋯. Plain when empty; a warm dot (or count) when there are notes. Click → a popover: the thread newest-first, who + when on each, one-line composer at the bottom. Row width unchanged; nothing else moves. Click the glyphs.</p>
+<div class="panel" id="pa">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="row"><span class="bin bal">Balance due</span><span class="inv">WO-1174</span><span class="who"><b>Phillip Riian</b><span> · Sep 22 · A</span></span><span class="flag"></span><span class="amt">$777.00</span><span class="acts"></span><span class="more"><span class="ng has" onclick="tog('p1',event)">✎<span class="cnt">3</span></span><span class="dots">⋯</span></span>
+    <div class="pop" id="p1">
+      <div class="ph"><span class="k">Collection notes</span><b>Phillip Riian · WO-1174</b><span class="cl" onclick="tog('p1',event)">×</span></div>
+      <div class="note"><div class="m"><b>Fernando</b><i>Sep 24 · 1:52 PM</i></div><div class="t">30% deposit ran on his Visa ($342.99). Rest on card at pickup — he asked for the number in advance, texted him $800.31.</div></div>
+      <div class="note"><div class="m"><b>Fernando</b><i>Sep 23 · 11:40 AM</i></div><div class="t">Card declined twice yesterday. Says it's a limit thing, will call the bank.</div></div>
+      <div class="note"><div class="m"><b>Lori Beth</b><i>Sep 22 · 9:12 AM</i></div><div class="t">COD — collect before the session, not after (last time was a chase).</div></div>
+      <div class="comp"><span class="in">Add a note…</span><span class="go">Post</span></div>
+      <div class="foot">Internal. Never on the work order, the package, or the runner app.</div>
+    </div>
+  </div>
+  <div class="row"><span class="bin po">Awaiting PO</span><span class="inv">WO-1155</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 16 · C</span></span><span class="flag"><span class="hint">Approved Sep 18</span></span><span class="amt">$2,900.00</span><span class="acts"><span class="bact">Add PO</span></span><span class="more"><span class="ng has" onclick="tog('p2',event)">✎<span class="cnt">1</span></span><span class="dots">⋯</span></span>
+    <div class="pop" id="p2">
+      <div class="ph"><span class="k">Collection notes</span><b>Def Jam · WO-1155</b><span class="cl" onclick="tog('p2',event)">×</span></div>
+      <div class="note"><div class="m"><b>Lori Beth</b><i>Sep 19 · 3:05 PM</i></div><div class="t">PO comes from Maria in AP, not the A&R. Emailed her Thu, she said "next week."</div></div>
+      <div class="comp"><span class="in">Add a note…</span><span class="go">Post</span></div>
+      <div class="foot">Internal. Never on the work order, the package, or the runner app.</div>
+    </div>
+  </div>
+  <div class="row"><span class="bin appr">Needs approval</span><span class="inv">WO-1159</span><span class="who"><b>Warner · Zeddy</b><span> · Sep 18–19 · A</span></span><span class="flag"></span><span class="amt">$5,100.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more"><span class="ng" onclick="tog('p3',event)">✎</span><span class="dots">⋯</span></span>
+    <div class="pop" id="p3">
+      <div class="ph"><span class="k">Collection notes</span><b>Warner · WO-1159</b><span class="cl" onclick="tog('p3',event)">×</span></div>
+      <div style="font-size:11px;color:var(--fg3);padding:6px 2px 2px">No notes yet.</div>
+      <div class="comp"><span class="in">Add a note…</span><span class="go">Post</span></div>
+      <div class="foot">Internal. Never on the work order, the package, or the runner app.</div>
+    </div>
+  </div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Submitted by Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more"><span class="ng">✎</span><span class="dots">⋯</span></span></div>
+</div>
+<p class="cap"><b>Why here:</b> the flag cell is spoken for (it's the row's "what happened last"), the action cell is "only ever the next real act" (Aug 11 ruling), and ⋯ is already the row's "more" corner. A note is neither a flag nor an act. <b>Data:</b> one small table, <code>wo_collection_notes</code> (work_order_id, author, text, created_at), append-only, RLS = owner/manager/billing/asst_manager, techs and runners never. <b>Not</b> on WorkOrderPopup, <b>not</b> in woPdf, <b>not</b> in the activity log — a separate table is what keeps it out of all three by construction.</p>
+
+<!-- ============ B ============ -->
+<h2><span class="n">B</span>A, plus the latest note peeks in the flag cell</h2>
+<p class="sub">Same glyph and popover. When the flag cell has nothing else to say, the newest note shows there, truncated, in the author's name — so "said Friday" is readable while scanning the Awaiting-payment tab without opening anything. A real flag (Never submitted, Built not sent) always wins the cell.</p>
+<div class="panel" id="pb">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="row"><span class="bin bal">Balance due</span><span class="inv">WO-1174</span><span class="who"><b>Phillip Riian</b><span> · Sep 22 · A</span></span><span class="flag"><span class="peek" onclick="tog('p4',event)"><b>Fernando ·</b>Rest on card at pickup — texted him $800.31</span></span><span class="amt">$777.00</span><span class="acts"></span><span class="more"><span class="ng has" onclick="tog('p4',event)">✎<span class="cnt">3</span></span><span class="dots">⋯</span></span>
+    <div class="pop" id="p4">
+      <div class="ph"><span class="k">Collection notes</span><b>Phillip Riian · WO-1174</b><span class="cl" onclick="tog('p4',event)">×</span></div>
+      <div class="note"><div class="m"><b>Fernando</b><i>Sep 24 · 1:52 PM</i></div><div class="t">30% deposit ran on his Visa ($342.99). Rest on card at pickup — he asked for the number in advance, texted him $800.31.</div></div>
+      <div class="note"><div class="m"><b>Fernando</b><i>Sep 23 · 11:40 AM</i></div><div class="t">Card declined twice yesterday. Says it's a limit thing, will call the bank.</div></div>
+      <div class="note"><div class="m"><b>Lori Beth</b><i>Sep 22 · 9:12 AM</i></div><div class="t">COD — collect before the session, not after (last time was a chase).</div></div>
+      <div class="comp"><span class="in">Add a note…</span><span class="go">Post</span></div>
+      <div class="foot">Internal. Never on the work order, the package, or the runner app.</div>
+    </div>
+  </div>
+  <div class="row"><span class="bin po">Awaiting PO</span><span class="inv">WO-1155</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 16 · C</span></span><span class="flag"><span class="hint">Approved Sep 18</span></span><span class="amt">$2,900.00</span><span class="acts"><span class="bact">Add PO</span></span><span class="more"><span class="ng has">✎<span class="cnt">1</span></span><span class="dots">⋯</span></span></div>
+  <div class="row"><span class="bin ok">Sent</span><span class="inv">WO-1148</span><span class="who"><b>Atlantic · Kali</b><span> · Sep 12 · A</span></span><span class="flag"><span class="peek"><b>Lori Beth ·</b>AP says check cut 9/26, mailed</span></span><span class="amt">$3,300.00</span><span class="acts"><span class="bact">Mark paid</span></span><span class="more"><span class="ng has">✎<span class="cnt">2</span></span><span class="dots">⋯</span></span></div>
+</div>
+<p class="cap"><b>Trade:</b> more glanceable, but the flag cell now carries two kinds of thing (a system flag vs. a person's note) and the precedence rule ("real flag wins") has to be right on every row. Do A first; add the peek if the rows feel too quiet on the chase tab.</p>
+
+<!-- ============ C ============ -->
+<h2><span class="n">C</span>One sticky per WO, edited in place</h2>
+<p class="sub">No thread. One text field per work order, sits in the flag cell, click to edit, saves on blur. The fastest thing to type into — and it forgets who said it and when.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="row"><span class="bin bal">Balance due</span><span class="inv">WO-1174</span><span class="who"><b>Phillip Riian</b><span> · Sep 22 · A</span></span><span class="flag"><span class="sticky">Rest on card at pickup, texted him $800.31</span></span><span class="amt">$777.00</span><span class="acts"></span><span class="more"><span class="dots">⋯</span></span></div>
+  <div class="row"><span class="bin po">Awaiting PO</span><span class="inv">WO-1155</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 16 · C</span></span><span class="flag"><span class="sticky">PO from Maria in AP — "next week"</span></span><span class="amt">$2,900.00</span><span class="acts"><span class="bact">Add PO</span></span><span class="more"><span class="dots">⋯</span></span></div>
+  <div class="row"><span class="bin appr">Needs approval</span><span class="inv">WO-1159</span><span class="who"><b>Warner · Zeddy</b><span> · Sep 18–19 · A</span></span><span class="flag"><span class="sticky empty">note…</span></span><span class="amt">$5,100.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more"><span class="dots">⋯</span></span></div>
+</div>
+<p class="cap"><b>Trade:</b> a collections note is a trail — "who told the client what, when" is the thing you need on the fourth call. A sticky overwrites it. Also collides with the flag cell on every row that has a real flag.</p>
+
+<p class="cap" style="margin-top:28px"><b>Recommendation: A.</b> Glyph beside ⋯, warm dot/count when notes exist, popover thread with author + time, one-line composer. New table <code>wo_collection_notes</code>, office roles only. Nothing on the WO screen, the PDF, the activity log, or the runner app touches it. B's peek is a cheap follow-up once A is in.</p>
+
+<script>
+function tog(id,e){e.stopPropagation();document.querySelectorAll('.pop').forEach(p=>{if(p.id!==id)p.classList.remove('open')});document.getElementById(id).classList.toggle('open')}
+document.addEventListener('click',()=>document.querySelectorAll('.pop').forEach(p=>p.classList.remove('open')))
+document.querySelectorAll('.pop').forEach(p=>p.addEventListener('click',e=>e.stopPropagation()))
+</script>
+</body>
+</html>

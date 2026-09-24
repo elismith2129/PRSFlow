@@ -56,6 +56,7 @@ import { supabase, type Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { ApCard, type ApProfile } from '@/components/billing/ApCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { CollectNotesModal, useCollectNoteCounts } from '@/components/billing/CollectNotes'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
@@ -152,6 +153,10 @@ export default function BillingPage() {
     else toast(`Could not delete — ${res.reason ?? 'unknown error'}`)
   }
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
+  // COLLECTION NOTES (Eli, 2026-09-24): the ✎ beside ⋯. Counts drive the dot;
+  // the modal holds the log. components/billing/CollectNotes.tsx.
+  const [notesFor, setNotesFor] = useState<InvoiceRow | null>(null)
+  const noteCounts = useCollectNoteCounts()
   // AP submission card (2026-09-08). Reference only — it gates nothing.
   // The row carries apProfileId so the chip can render without a lookup; the
   // profile body is fetched on open, because 20 rows do not need 20 procedures
@@ -798,6 +803,8 @@ export default function BillingPage() {
               onAct={() => act(r)}
               onAttach={() => attachFor(r)}
               onMore={() => setMoreFor(r)}
+              noteCount={noteCounts[r.workOrderId] ?? 0}
+              onNotes={() => setNotesFor(r)}
               onOpen={() => openRow(r)}
               onAp={() => setApFor(r)}
               dragOver={dragOver === r.workOrderId}
@@ -904,6 +911,13 @@ export default function BillingPage() {
         />
       )}
 
+      {notesFor && (
+        <CollectNotesModal
+          workOrderId={notesFor.workOrderId}
+          title={`${notesFor.client}${notesFor.artist ? ` · ${notesFor.artist}` : ''} · ${notesFor.woNumber || notesFor.invoiceNumber || ''}`}
+          onClose={() => setNotesFor(null)}
+        />
+      )}
       {moreFor && (
         <MoreModal
           row={moreFor}
@@ -1116,6 +1130,7 @@ function SortHd({ col, label, right, searching, sortCol, sortDir, clickSort }: {
 function Row({
   row, searching, isOwner, busy, dragOver, showAge, badge, stage,
   onAct, onAttach, onMore, onOpen, onAp, onDragOver, onDragLeave, onDrop,
+  noteCount, onNotes,
 }: {
   row: InvoiceRow
   searching: boolean
@@ -1137,6 +1152,9 @@ function Row({
   onDragOver: (e: React.DragEvent) => void
   onDragLeave: () => void
   onDrop: (e: React.DragEvent) => void
+  /** Collection notes on this work order (2026-09-24) — the dot, never the text. */
+  noteCount: number
+  onNotes: () => void
 }) {
   const overdue = isPastDue(row)
   const label = nextAction(row)
@@ -1391,6 +1409,14 @@ function Row({
         )}
       </span>
       <span className="c-bmorecell" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+        {/* COLLECTION NOTES (Eli, 2026-09-24): a ✎ that only says a note EXISTS
+            (the dot) — never the note itself. The pop-up is the log. */}
+        <button
+          className={`c-bnoteg${noteCount > 0 ? ' c-has' : ''}`}
+          onClick={onNotes}
+          title={noteCount > 0 ? `${noteCount} collection note${noteCount === 1 ? '' : 's'} — internal` : 'Add a collection note — internal'}
+          aria-label="Collection notes"
+        >✎</button>
         {hasMore && (
           <button className="c-bmore" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
         )}

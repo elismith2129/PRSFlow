@@ -1954,33 +1954,33 @@ select.c-input {
    not that row has a flag, which is what makes the column scannable. */
 .c-brow, .c-browhd {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 26px;
+  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 48px;
   align-items: center; gap: 10px;
 }
 /* AGE IS ONLY MEANINGFUL ONCE SOMETHING HAS BEEN SENT (Eli, 2026-08-11). On
    In progress, Needs review and Upcoming it is a column of dashes, so the
    column is dropped rather than filled with nothing. */
 .c-bage-off .c-brow, .c-bage-off .c-browhd {
-  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
+  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 48px;
 }
 /* COD LATCHED BINS (2026-08-19): with 2+ bins merged into one list, a leading
    badge column says each row's home bin. The class only exists on desktop —
    mobile rows never carry the badge. */
 .c-bmulti .c-brow, .c-bmulti .c-browhd {
-  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 26px;
+  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 48px;
 }
 .c-bmulti.c-bage-off .c-brow, .c-bmulti.c-bage-off .c-browhd {
-  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 120px 26px;
+  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 120px 48px;
 }
 /* THE STAGE BADGE LAYOUT (Eli, 2026-09-03) — billing rows (and search, which
    mixes both pipelines) lead with a stage badge and the three lights are GONE:
    the ladder is linear, so the badge already says how far along a row is. The
    old 210px lights column becomes the flag column's room. */
 .c-bstaged .c-brow, .c-bstaged .c-browhd {
-  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 46px 120px 26px;
+  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 46px 120px 48px;
 }
 .c-bstaged.c-bage-off .c-brow, .c-bstaged.c-bage-off .c-browhd {
-  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 120px 26px;
+  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 120px 48px;
 }
 /* Sortable header (billing only): the active column is legible, the caret says
    which way. Sort only, never filter — the buckets already are the filters. */
@@ -2052,7 +2052,21 @@ select.c-input {
    the middle of the gap and on a row with one it crowded the primary. A control
    that means "everything else" belongs at the end, in the same place on every
    row, out of the flow. */
-.c-bmorecell { display: flex; justify-content: flex-end; }
+.c-bmorecell { display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+/* The collection-notes glyph (2026-09-24), beside ⋯. Quiet until a note
+   exists; then the glyph brightens and a warm dot sits on its corner. The
+   dot is the whole indication — the row never shows the note. Last column
+   widened 26 → 48px to seat it. */
+.c-bnoteg {
+  position: relative; font-size: 11px; line-height: 1; padding: 4px 3px; border: none; background: none;
+  color: var(--c-fg); opacity: .25; cursor: pointer; border-radius: 5px;
+}
+.c-bnoteg:hover { opacity: .9; background: var(--c-wash2); }
+.c-bnoteg.c-has { opacity: .8; }
+.c-bnoteg.c-has::after {
+  content: ''; position: absolute; top: 1px; right: 0; width: 6px; height: 6px; border-radius: 99px;
+  background: var(--c-st-warm);
+}
 .c-bmore {
   font-size: 12px; line-height: 1; padding: 4px 2px; border: none; background: none;
   color: var(--c-fg); opacity: .3; cursor: pointer;
