@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Billing hub: "what needs me today" vs "what hasn't been checked"</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ROUND 3 (Eli, 2026-09-23): "for the badges in the hub, the multiday sessions,
+  it's hard to tell right away if that's been reviewed — it just says Needs
+  review + in progress. You can't right away see that yesterday is reviewed.
+  The biggest thing: very easily see 'what needs admin to review and work on
+  today' and 'what has not been checked yet'."
+
+  The v1.33.3 two-word badge (2A) collapses a multi-day's timeline into one
+  summary. It can't say WHICH night is waiting, or that yesterday's was done.
+
+  Options:
+    A  The badge names the night: LAST NIGHT (fresh, expected) vs
+       UNCHECKED · 2 (older nights nobody reviewed, or never submitted).
+       Everything reviewed → REVIEWED · Tue (grey, quiet).
+    B  The flag cell carries the last act: runner turned it in (amber, needs
+       you) or the office checked it (green, done) — "Reviewed thru Tue ·
+       Fernando 9:12 AM". Badge unchanged.
+    C  Night dots, capped: the last 6 nights as dots (green reviewed / amber
+       waiting / red missed / hollow tonight), "+N" for the rest. Eli said no
+       to bars per day on 2026-09-17; this is the smallest version of that
+       idea, here only so it's been seen and rejected on purpose.
+    D  The list splits Needs review into TWO groups: "Last night" (today's
+       work) and "Still unchecked" (backlog). Row-level unchanged.
+  Recommendation: A + B + D. A says what kind of review it is; B stamps who
+  did what last; D makes the two questions the first two headings on the tab.
+-->
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06);--wash2:rgba(242,239,231,.12);--fg2:rgba(242,239,231,.72);--fg3:rgba(242,239,231,.45);--hot:#ff5a4d;--hot-text:#fff4f2;--warm:#ffa94d;--booked:#43dfae;--uncon:#7fb2e5;--chip-ink:#1c2626;--srf:#151412;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:34px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:12px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.no{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--wash2);color:var(--fg2);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:18px;padding:10px 12px 6px;box-shadow:var(--softsh);max-width:1000px}
+.hd,.row{display:grid;grid-template-columns:104px 76px minmax(0,1fr) 234px 84px 120px 26px;align-items:center;gap:10px}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 10px 6px}
+.hd .r{text-align:right}.hd .c{text-align:center}
+.row{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.day{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:12px 10px 4px}
+.day.first{padding-top:4px}
+.day b{color:var(--fg2)}.day.hot b{color:var(--warm)}.day.bad b{color:var(--hot)}
+.bin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.bin.rev{background:var(--warm);color:var(--chip-ink)}
+.bin.prog{background:var(--wash2);color:var(--fg)}
+.bin.bad{background:var(--hot);color:var(--hot-text)}
+.bin.done{background:var(--wash2);color:var(--fg);opacity:.75}
+.bin.inv{background:var(--warm);color:var(--chip-ink);opacity:.75}
+.bin.two{white-space:normal;padding:2px 6px;line-height:1.25}
+.bin small{display:block;font-size:7px;font-weight:700;opacity:.8;text-transform:none;letter-spacing:.03em}
+.bin .k{display:inline-block;margin-right:3px}
+.inv{font-family:'DM Mono',monospace;font-size:11px;opacity:.6}
+.who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who b{font-weight:700}.who span{opacity:.5;font-size:11px}
+.amt{font-family:'DM Mono',monospace;font-size:11.5px;text-align:right}
+.flag{display:flex;justify-content:flex-end;min-width:0;align-items:center;gap:8px}
+.hint{font-size:9.5px;font-weight:700;font-style:italic;opacity:.4;white-space:nowrap}
+.sb{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--warm);white-space:nowrap}
+.sb small,.ok small,.drift small{font-weight:600;text-transform:none;letter-spacing:0;opacity:.75;font-family:'DM Mono',monospace;font-size:9px}
+.ok{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--booked);white-space:nowrap}
+.drift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--hot);white-space:nowrap}
+.acts{display:flex;justify-content:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg);opacity:.8;white-space:nowrap}
+.more{text-align:right;opacity:.5}
+/* option C — night dots */
+.nd{display:inline-flex;gap:3px;align-items:center;flex-shrink:0}
+.nd i{width:7px;height:7px;border-radius:99px;background:var(--booked);display:block}
+.nd i.w{background:var(--warm)}.nd i.x{background:var(--hot)}.nd i.o{background:transparent;border:1px solid var(--fg3)}
+.nd em{font:600 9px 'DM Mono',monospace;color:var(--fg3);margin-left:2px;font-style:normal}
+/* option D — tab strip */
+.tabs{display:flex;gap:6px;margin:0 0 10px 0;flex-wrap:wrap}
+.tab{font-size:10px;font-weight:700;padding:5px 11px;border-radius:99px;background:var(--wash);color:var(--fg2)}
+.tab.on{background:var(--fg);color:var(--bg)}
+.tab i{font-style:normal;font-family:'DM Mono',monospace;opacity:.6;margin-left:5px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--fg3);margin:8px 0 0}
+.legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:99px;margin-right:5px;vertical-align:-1px;background:var(--x)}
+.side{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:1000px}
+@media(max-width:900px){.side{grid-template-columns:1fr}}
+.mini{background:var(--srf);border-radius:14px;padding:10px 12px;box-shadow:var(--softsh)}
+.mini h3{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px}
+.mini .row{grid-template-columns:104px minmax(0,1fr) 150px}
+</style>
+</head>
+<body>
+
+<h1>Billing hub — "what needs me today" vs "what hasn't been checked"</h1>
+<p class="lede">The two-word badge (v1.33.3) tells you a running multi-day has <em>something</em> unreviewed. It can't tell you whether that something is last night (expected — today's work) or a night from three days ago that slipped (a miss), and once you've reviewed yesterday nothing on the row says so. Four ideas below, then the recommended combination as it would look on the In progress tab. Same sample rows throughout; "today" is Wed Sep 23.</p>
+
+<p class="cap"><b>The sample rows.</b> Havelange · 4 nights Sep 20–23: 20 &amp; 21 reviewed, 22 submitted by Hunter, not reviewed yet, 23 is tonight. &nbsp;·&nbsp; DJ Camper · 3 nights Sep 19–21: 19 reviewed, 20 never submitted, 21 submitted, neither checked. &nbsp;·&nbsp; Mustard · monthly, 12 nights so far, all reviewed through 21, 22 submitted. &nbsp;·&nbsp; Invoke · 5 nights Sep 21–25: 21 &amp; 22 both reviewed, nothing waiting. &nbsp;·&nbsp; Lonzo · one night Sep 22, submitted.</p>
+
+<!-- ================= TODAY ================= -->
+<h2><span class="n">0</span>Today, for reference</h2>
+<p class="sub">Every row in Needs review looks the same. Havelange (last night, expected) and DJ Camper (two nights nobody checked, one never even submitted) are the same amber. Mustard was reviewed through Sep 21 this morning — nothing says so.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first">Needs review · <b>4</b></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Never submitted · Marcus</span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>11:58 PM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Submitted by Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">In progress · <b>1</b></div>
+  <div class="row"><span class="bin prog two">In progress<small>all reviewed</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>12:40 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+
+<!-- ================= A ================= -->
+<h2><span class="n">A</span>The badge names the night <span class="rec">Recommended</span></h2>
+<p class="sub">"Needs review" splits into what kind of review it is. <b>LAST NIGHT</b> is amber — it landed while you slept, it's today's work, expected. <b>UNCHECKED · N</b> is hot — nights older than last night that nobody has reviewed, or that were never submitted; that's a miss, and it should look like one. A running multi-day with everything reviewed says <b>REVIEWED · Tue</b> in grey: still in progress, nothing for you. One-night sessions keep the plain word.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="row"><span class="bin bad two">Unchecked · 2<small>Sep 20 · 21</small></span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Never submitted · Sep 20 · Marcus</span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Last night<small>2 of 4 reviewed</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Last night<small>21 of 22 reviewed</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>11:58 PM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Submitted by Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin done two">Reviewed · Tue<small>2 of 5 · in progress</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="hint">Nothing waiting · next night tonight</span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>Why this works:</b> the badge column already answers "where is this on the ladder"; for a multi-day the honest answer is a <em>night</em>, not a stage. Three states, three colours, and the hot one is the only red on the tab so it can't hide. <b>Cost:</b> one new StageKey pair (<code>last_night</code>, <code>unchecked</code>) derived from data <code>lib/billing.ts</code> already computes (per-day submitted/locked map + <code>unsubmittedDays</code>); QUEUE_RANK puts unchecked above last night. <b>Watch-out:</b> "last night" means the shift-log night (<code>opsToday()</code> boundary, 8:50 AM), not the calendar date — a 1 AM submission is last night.</p>
+
+<!-- ================= B ================= -->
+<h2><span class="n">B</span>The flag cell carries the last act <span class="rec">Recommended, with A</span></h2>
+<p class="sub">Today the flag cell only ever says what the <em>runner</em> did. It should say the most recent act on the row, whoever did it: amber when a runner turned a night in and it's waiting on you; green when the office reviewed it and nothing is waiting. That's the missing "yesterday is reviewed" stamp — and the trail: who checked, when.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>11:58 PM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin prog two">In progress<small>all reviewed</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="ok">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Sep 20 never submitted · Marcus</span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>What changes:</b> "Submitted by Hunter" becomes "Sep 22 in · Hunter" (the night, then the runner — the date is the point on a multi-day). A reviewed row gets "✓ Reviewed thru &lt;last locked night&gt; · &lt;who&gt; &lt;when&gt;". <b>Needs data:</b> <code>studio_time_rows</code> has <code>admin_locked</code> but no <code>locked_by</code> / <code>locked_at</code> — one migration (two nullable columns, written by the lock action in WorkOrderPopup). Without it the green line can still say "Reviewed thru Sep 22" with no name. <b>On its own</b> this fixes the "did I do yesterday" question but not the fresh-vs-stale one — that's why it pairs with A.</p>
+
+<!-- ================= C ================= -->
+<h2><span class="n">C</span>Night dots, capped <span class="no">Shown to reject on purpose</span></h2>
+<p class="sub">You said no to per-day bars on Sep 17 ("a 20-day session would not fit"). This is the smallest version of that idea: the last six nights as 7px dots in the flag cell, "+N" for the rest. Green reviewed, amber waiting, red never submitted, hollow tonight. It reads instantly for a 3-nighter and says almost nothing for Mustard.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Hunter <small>12:14 AM</small></span><span class="nd"><i></i><i></i><i class="w"></i><i class="o"></i></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Marcus</span><span class="nd"><i></i><i class="x"></i><i class="w"></i></span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="sb">Hunter <small>11:58 PM</small></span><span class="nd"><em>+16</em><i></i><i></i><i></i><i></i><i></i><i class="w"></i><i class="o"></i></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin prog two">In progress<small>all reviewed</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="nd"><i></i><i></i><i class="o"></i><i class="o"></i><i class="o"></i></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<div class="legend"><span style="--x:var(--booked)">reviewed</span><span style="--x:var(--warm)">submitted, waiting on you</span><span style="--x:var(--hot)">never submitted</span><span style="--x:transparent;outline:1px solid var(--fg3);outline-offset:-1px">still to come</span></div>
+<p class="cap"><b>Verdict:</b> pretty, and it makes the row do the reading for you — but it's a fourth vocabulary on a row that already has a badge, a flag and a button, and the cap means the monthlies (the ones that actually go wrong) show the least. If it ever earns a place it's inside the WO pop-up's day strip, not on the list.</p>
+
+<!-- ================= D ================= -->
+<h2><span class="n">D</span>The tab answers the two questions in its headings <span class="rec">Recommended, with A + B</span></h2>
+<p class="sub">Row-level fixes still make you read every row. The In progress tab already opens in queue order under stage headings ("Needs review · 6"). Split that first heading in two, in the order you'd work them: <b>Still unchecked</b> first (the backlog — should be empty by 10 AM), then <b>Last night</b> (today's stack), then the rest as today. The counts in the headings are the two numbers you asked for; the tab count on the dashboard money tile could mirror them (hot count · amber count).</p>
+<div class="tabs"><span class="tab on">In progress <i>7</i></span><span class="tab">Not started <i>3</i></span><span class="tab">Awaiting PO <i>2</i></span><span class="tab">Awaiting payment <i>11</i></span><span class="tab">Paid</span><span class="tab">Closed</span></div>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first bad">Still unchecked · <b>1</b> <span style="font-weight:600;letter-spacing:0;text-transform:none;opacity:.7">— nights older than last night nobody has reviewed</span></div>
+  <div class="row"><span class="bin bad two">Unchecked · 2<small>Sep 20 · 21</small></span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Sep 20 never submitted · Marcus</span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day hot">Last night · <b>3</b> <span style="font-weight:600;letter-spacing:0;text-transform:none;opacity:.7">— Tue Sep 22, landed overnight</span></div>
+  <div class="row"><span class="bin rev two">Last night<small>2 of 4 reviewed</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Last night<small>21 of 22 reviewed</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>11:58 PM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Sep 22 in · Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Needs invoice · <b>1</b></div>
+  <div class="row"><span class="bin inv">Needs invoice</span><span class="inv">WO-1159</span><span class="who"><b>Warner · Zeddy</b><span> · Sep 18–19 · A</span></span><span class="flag"><span class="hint">Drop invoice here · or click</span></span><span class="amt">$5,100.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Needs approval · <b>1</b></div>
+  <div class="row"><span class="bin" style="background:var(--uncon);color:var(--chip-ink)">Needs approval</span><span class="inv">WO-1155</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 16 · C</span></span><span class="flag"></span><span class="amt">$2,900.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+  <div class="day">In progress · <b>1</b> <span style="font-weight:600;letter-spacing:0;text-transform:none;opacity:.7">— running, everything in is reviewed</span></div>
+  <div class="row"><span class="bin done two">Reviewed · Tue<small>2 of 5 · in progress</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="ok">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>The morning read, top to bottom:</b> anything red = I missed something, fix first. Amber block = last night, work through it. Below that, billing's own ladder as today. When the red group is empty its heading doesn't render (data-emptiness is fine; the heading only appears with a count). <b>Cost:</b> QUEUE_RANK gets two entries; the divider builder already iterates stage keys. No migration for A + D. B's name/time wants the two columns above.</p>
+
+<!-- ================= WHOLE DESIGN ================= -->
+<h2><span class="n">+</span>While I was in there — two smaller things on the same tab</h2>
+<div class="side">
+  <div class="mini">
+    <h3>The "all reviewed" badge is the odd one out</h3>
+    <div class="row" style="grid-template-columns:104px minmax(0,1fr)"><span class="bin prog two">In progress<small>all reviewed</small></span><span class="who" style="font-size:11px;opacity:.7">"In progress" is a state; "all reviewed" is a report. Every other badge says what the row <em>needs</em> (Sep 22 ruling: Approved → Ready to send). Option A's <b>REVIEWED · Tue</b> fixes this the same way — it says the last thing done, so the reader knows there's nothing to do.</span></div>
+  </div>
+  <div class="mini">
+    <h3>The flag cell is the runner's line — make it the <em>last act</em> line</h3>
+    <div class="row" style="grid-template-columns:104px minmax(0,1fr)"><span class="ok" style="text-align:left">✓ Reviewed thru Sep 22</span><span class="who" style="font-size:11px;opacity:.7">Today it can say "Never submitted" (red) or "Submitted by" (amber) or, once the office covers a missed night, the green "trail closes" line from v1.39.3. Option B is just extending that same trail rule to ordinary review: the cell is always the most recent thing that happened, coloured by who it's waiting on. One rule, four states, no new column.</span></div>
+  </div>
+</div>
+
+<p class="cap" style="margin-top:28px"><b>Recommendation: A + B + D.</b> A makes the badge honest for a multi-day (it names the night, and a miss looks like a miss). B stamps the review so "did I do yesterday" is on the row. D puts the two questions in the first two headings so you don't read rows at all until you've decided where to start. C stays rejected. Build order: A + D first (derivation + QUEUE_RANK + labels, no migration, one session); B second (migration for <code>locked_by</code>/<code>locked_at</code>, then the flag cell).</p>
+
+</body>
+</html>
