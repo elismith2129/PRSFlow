@@ -75,7 +75,7 @@ import {
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
   CLOSED_REASONS, closedReasonLabel,
-  type SortCol, type StageKey,
+  type SortCol, type StageKey, stageGroup,
 } from '@/lib/billing'
 
 export default function BillingPage() {
@@ -770,11 +770,12 @@ export default function BillingPage() {
                 <u>{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length} session{pageRows.filter(x => (x.sessionDate ?? '') === (r.sessionDate ?? '')).length === 1 ? '' : 's'}</u>
               </div>
             )}
-            {stageDividers && (i === 0 || billingStage(pageRows[i - 1]).key !== billingStage(r).key) && (() => {
-              const k = billingStage(r).key
+            {stageDividers && (i === 0 || stageGroup(billingStage(pageRows[i - 1]).key) !== stageGroup(billingStage(r).key)) && (() => {
+              const k = stageGroup(billingStage(r).key)
               // Count across the WHOLE tab, not the page — "Needs review · 6"
               // must say six even when four of them are on the next page.
-              const n = visible.filter(x => billingStage(x).key === k).length
+              // Grey and green IN PROGRESS are one section (stageGroup).
+              const n = visible.filter(x => stageGroup(billingStage(x).key) === k).length
               return (
                 <div className="c-bday">
                   <b>{billingStage(r).label}</b><i />
@@ -1060,6 +1061,13 @@ const STAGE_STYLE: Record<StageKey, React.CSSProperties> = {
   // APPROVAL takes COD's freed blue (waiting on an owner). Review and
   // approval finally differ. The dashboard money tiles mirror this.
   progress:     { background: 'var(--c-wash2)', color: 'var(--c-fg)' },
+  // GREEN IN PROGRESS (Eli, 2026-09-23, docs/design-refs/billing-multiday-
+  // green.html): a running multi-day with every submitted night reviewed.
+  // Same word as grey IN PROGRESS; the colour says "you've done last night,
+  // nothing more today". Shares the fill with Ready to send / Paid on
+  // purpose — Eli's call, the two-line badge and the missing button tell them
+  // apart.
+  progress_reviewed: { background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' },
   not_started:  { background: 'var(--c-wash2)', color: 'var(--c-fg)', opacity: 0.55 },
   review:       { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' },
   invoice:      { background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', opacity: 0.75 },
@@ -1189,10 +1197,10 @@ function Row({
            a night waiting on review says NEEDS REVIEW over "in progress"; a
            running one with everything reviewed says IN PROGRESS over "all
            reviewed". One-night sessions are one word, as before. */
-        <span className={`c-bbin${(stage.key === 'review' || stage.key === 'progress') && row.stillRunning && row.daysTotal > 1 ? ' c-bbin-two' : ''}`} style={STAGE_STYLE[stage.key]}>
+        <span className={`c-bbin${(stage.key === 'review' && row.stillRunning && row.daysTotal > 1) || stage.key === 'progress_reviewed' ? ' c-bbin-two' : ''}`} style={STAGE_STYLE[stage.key]}>
           {stage.label}
           {stage.key === 'review' && row.stillRunning && row.daysTotal > 1 && <small>in progress</small>}
-          {stage.key === 'progress' && row.stillRunning && row.daysTotal > 1 && row.daysSubmitted > 0 && <small>all reviewed</small>}
+          {stage.key === 'progress_reviewed' && <small>all reviewed</small>}
         </span>
       )}
       <span className="c-binv">{row.woNumber || row.invoiceNumber || '—'}</span>
@@ -1295,6 +1303,15 @@ function Row({
           <span className="c-bflag c-soon" title={row.closedNote || undefined}>
             {closedReasonLabel(row.closedReason)}
             {row.closedNote ? ` · ${row.closedNote}` : ''}
+          </span>
+        ) : stage?.key === 'progress_reviewed' && row.reviewedThru ? (
+          /* THE REVIEW STAMP (Eli, 2026-09-23): once the office has checked
+             every night that's in, the runner's line gives way to the office's
+             — same cell, green, the last act on the row. "Did I do yesterday"
+             is answered without opening the WO. (Who and when need
+             locked_by/locked_at on studio_time_rows — not yet; date only.) */
+          <span className="c-bflag c-brev" title={`Every submitted night is reviewed through ${fmtDayHeading(row.reviewedThru)}`}>
+            ✓ Reviewed thru {fmtDayHeading(row.reviewedThru)}
           </span>
         ) : row.step === 0 && row.submittedBy ? (
           /* WHO TURNED IT IN (Eli, 2026-09-17, option 1A): the same column

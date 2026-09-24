@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — multi-day badge colours: "a night needs me" vs "all reviewed, nothing till tomorrow"</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ROUND 4 (Eli, 2026-09-23): "I like A + B but I really want an indication on
+  the colour of the badge for 'a multi-day in progress has a day that needs to
+  be reviewed' vs 'a multi-day in progress but you have reviewed all days, no
+  work until tomorrow'. I don't want grey for in-progress-all-reviewed. It's
+  gotta be green, or orange-and-green, or something."
+
+  So the three multi-day states, by colour:
+    UNCHECKED    hot    — older nights nobody reviewed / never submitted (a miss)
+    LAST NIGHT   amber  — landed overnight, today's work
+    ALL REVIEWED green  — running, nothing waiting until tomorrow
+
+  Variants below differ only in HOW the green one is drawn and whether the
+  "still running" fact rides on the badge:
+    V1  solid green, two words          REVIEWED · TUE / 2 of 5 · running
+    V2  split badge, amber/green halves  top = what it needs, bottom = progress
+    V3  green outline (hollow)          keeps solid green for Ready to send / Paid
+    V4  green + running dot             solid green, a pulsing dot = still running
+  The collision to look at: solid green already means Ready to send and Paid
+  on this tab. V3 is the version that keeps those apart; V1/V4 share the fill.
+-->
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06);--wash2:rgba(242,239,231,.12);--fg2:rgba(242,239,231,.72);--fg3:rgba(242,239,231,.45);--hot:#ff5a4d;--hot-text:#fff4f2;--warm:#ffa94d;--booked:#43dfae;--uncon:#7fb2e5;--chip-ink:#1c2626;--srf:#151412;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:34px 0 4px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:12px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:18px;padding:10px 12px 6px;box-shadow:var(--softsh);max-width:1000px}
+.hd,.row{display:grid;grid-template-columns:104px 76px minmax(0,1fr) 234px 84px 120px 26px;align-items:center;gap:10px}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 10px 6px}
+.hd .r{text-align:right}.hd .c{text-align:center}
+.row{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.day{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:12px 10px 4px}
+.day.first{padding-top:4px}
+.day b{color:var(--fg2)}.day.hot b{color:var(--warm)}.day.bad b{color:var(--hot)}.day.ok b{color:var(--booked)}
+.bin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;position:relative}
+.bin.rev{background:var(--warm);color:var(--chip-ink)}
+.bin.bad{background:var(--hot);color:var(--hot-text)}
+.bin.ok{background:var(--booked);color:var(--chip-ink)}
+.bin.inv{background:var(--warm);color:var(--chip-ink);opacity:.75}
+.bin.appr{background:var(--uncon);color:var(--chip-ink)}
+.bin.prog{background:var(--wash2);color:var(--fg)}
+.bin.two{white-space:normal;padding:2px 6px;line-height:1.25}
+.bin small{display:block;font-size:7px;font-weight:700;opacity:.8;text-transform:none;letter-spacing:.03em}
+/* V2 split */
+.bin.split{padding:0;overflow:hidden;background:none}
+.bin.split>span{display:block;padding:2px 6px}
+.bin.split>span:first-child{padding-top:3px}
+.bin.split>span:last-child{font-size:7px;font-weight:700;text-transform:none;letter-spacing:.03em;padding-bottom:3px}
+.bin.split .a{background:var(--warm);color:var(--chip-ink)}
+.bin.split .h{background:var(--hot);color:var(--hot-text)}
+.bin.split .g{background:var(--booked);color:var(--chip-ink)}
+.bin.split .gd{background:rgba(67,223,174,.28);color:var(--booked)}
+/* V3 outline */
+.bin.okline{background:rgba(67,223,174,.10);color:var(--booked);border:1px solid var(--booked);padding:1px 5px}
+.bin.okline small{opacity:.85}
+/* V4 dot */
+.bin .dot{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:99px;background:var(--booked);border:2px solid var(--srf);animation:pulse 2.2s ease-in-out infinite}
+.bin .dot.w{background:var(--warm)}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.25);opacity:.7}}
+.inv{font-family:'DM Mono',monospace;font-size:11px;opacity:.6}
+.who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who b{font-weight:700}.who span{opacity:.5;font-size:11px}
+.amt{font-family:'DM Mono',monospace;font-size:11.5px;text-align:right}
+.flag{display:flex;justify-content:flex-end;min-width:0;align-items:center;gap:8px}
+.hint{font-size:9.5px;font-weight:700;font-style:italic;opacity:.4;white-space:nowrap}
+.sb{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--warm);white-space:nowrap}
+.sb small,.okt small,.drift small{font-weight:600;text-transform:none;letter-spacing:0;opacity:.75;font-family:'DM Mono',monospace;font-size:9px}
+.okt{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--booked);white-space:nowrap}
+.drift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--hot);white-space:nowrap}
+.acts{display:flex;justify-content:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg);opacity:.8;white-space:nowrap}
+.more{text-align:right;opacity:.5}
+/* the badge strip */
+.strip{display:grid;grid-template-columns:150px repeat(4,120px);gap:14px 18px;align-items:center;background:var(--srf);border-radius:14px;padding:14px 16px;box-shadow:var(--softsh);max-width:760px;margin-bottom:6px}
+.strip .lab{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3)}
+.strip .lab b{display:block;color:var(--fg2);font-size:10px;letter-spacing:.02em;text-transform:none;font-weight:700}
+.strip .hdr{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);text-align:center}
+.strip .bin{width:104px;margin:0 auto}
+</style>
+</head>
+<body>
+
+<h1>Multi-day badge colours</h1>
+<p class="lede">Same rows and layout as A + B. Only the badge changes. The three multi-day states each get a colour — hot for a miss, amber for last night, <b>green</b> for all-reviewed-and-running — and the four variants below differ only in how the green one is drawn. Look at the green badge next to <b>Ready to send</b> in each tab view; that's the collision to decide on.</p>
+
+<!-- ============ STRIP ============ -->
+<h2><span class="n">·</span>The badges side by side</h2>
+<div class="strip">
+  <span></span><span class="hdr">V1 solid</span><span class="hdr">V2 split</span><span class="hdr">V3 outline</span><span class="hdr">V4 dot</span>
+
+  <span class="lab"><b>Unchecked</b>older nights nobody reviewed</span>
+  <span class="bin bad two">Unchecked · 2<small>Sep 20 · 21</small></span>
+  <span class="bin split"><span class="h">Unchecked · 2</span><span class="gd">1 of 3 · running</span></span>
+  <span class="bin bad two">Unchecked · 2<small>Sep 20 · 21</small></span>
+  <span class="bin bad two">Unchecked · 2<small>Sep 20 · 21</small><i class="dot"></i></span>
+
+  <span class="lab"><b>Last night</b>landed overnight, today's work</span>
+  <span class="bin rev two">Last night<small>2 of 4 reviewed</small></span>
+  <span class="bin split"><span class="a">Last night</span><span class="gd">2 of 4 · running</span></span>
+  <span class="bin rev two">Last night<small>2 of 4 reviewed</small></span>
+  <span class="bin rev two">Last night<small>2 of 4 reviewed</small><i class="dot"></i></span>
+
+  <span class="lab"><b>All reviewed</b>running, nothing till tomorrow</span>
+  <span class="bin ok two">Reviewed · Tue<small>2 of 5 · running</small></span>
+  <span class="bin split"><span class="g">Reviewed · Tue</span><span class="gd">2 of 5 · running</span></span>
+  <span class="bin okline two">Reviewed · Tue<small>2 of 5 · running</small></span>
+  <span class="bin ok two">Reviewed · Tue<small>2 of 5 · running</small><i class="dot"></i></span>
+
+  <span class="lab"><b>Ready to send</b>for comparison — today's green</span>
+  <span class="bin ok">Ready to send</span>
+  <span class="bin ok">Ready to send</span>
+  <span class="bin ok">Ready to send</span>
+  <span class="bin ok">Ready to send</span>
+</div>
+<p class="cap"><b>V1</b> is the plain answer to what you asked: green = done for now. <b>V2</b> carries "still running" as a green strip under whatever the top half says — every multi-day badge is two-tone, so orange-over-green literally means "a night waiting, session running". <b>V3</b> is green without spending the Ready-to-send fill: hollow means "green, but nothing to ship". <b>V4</b> is V1 with a small pulsing dot that only appears while the session is running — the dot drops off when the last night lands.</p>
+
+<!-- ============ V1 ============ -->
+<h2><span class="n">V1</span>Solid green</h2>
+<p class="sub">Exactly what you described. Amber has a night for you; green means you've done everything that's in. The heading order (D) still puts the red group first, amber second, and the green ones drop into "In progress" where nothing needs a click.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first bad">Still unchecked · <b>1</b></div>
+  <div class="row"><span class="bin bad two">Unchecked · 2<small>Sep 20 · 21</small></span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Sep 20 never submitted · Marcus</span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day hot">Last night · <b>2</b></div>
+  <div class="row"><span class="bin rev two">Last night<small>2 of 4 reviewed</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Sep 22 in · Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Needs approval · <b>1</b></div>
+  <div class="row"><span class="bin appr">Needs approval</span><span class="inv">WO-1155</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 16 · C</span></span><span class="flag"></span><span class="amt">$2,900.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+  <div class="day">Ready to send · <b>1</b></div>
+  <div class="row"><span class="bin ok">Ready to send</span><span class="inv">WO-1149</span><span class="who"><b>Atlantic · Kali</b><span> · Sep 12 · A</span></span><span class="flag"></span><span class="amt">$3,300.00</span><span class="acts"><span class="bact">Mark sent</span></span><span class="more">⋯</span></div>
+  <div class="day ok">In progress · <b>2</b> <span style="font-weight:600;letter-spacing:0;text-transform:none;opacity:.7">— running, everything in is reviewed</span></div>
+  <div class="row"><span class="bin ok two">Reviewed · Tue<small>2 of 5 · running</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin ok two">Reviewed · Tue<small>22 of 30 · running</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:20 AM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>The collision, in one glance:</b> Atlantic (Ready to send, has a button) and Invoke (all reviewed, no button) are the same green. The button is the tell, and they live under different headings — but if you scan for "green = ship it", Invoke is a false hit.</p>
+
+<!-- ============ V2 ============ -->
+<h2><span class="n">V2</span>Split badge — need on top, progress underneath <span class="rec">My pick</span></h2>
+<p class="sub">Every running multi-day wears a thin green strip under its state. Orange-over-green is your exact phrase: "a night needs me <em>and</em> it's still running". Green-over-green is "all clear, still running". A one-nighter or a finished multi-day has no strip, so the strip alone says "running" and the top half says what it needs. No confusion with Ready to send — that badge is one solid block, these are visibly two.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first bad">Still unchecked · <b>1</b></div>
+  <div class="row"><span class="bin split"><span class="h">Unchecked · 2</span><span class="gd">1 of 3 · running</span></span><span class="inv">WO-1163</span><span class="who"><b>DJ Camper</b><span> · Sep 19–21 · B</span></span><span class="flag"><span class="drift">Sep 20 never submitted · Marcus</span></span><span class="amt">$4,200.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day hot">Last night · <b>2</b></div>
+  <div class="row"><span class="bin split"><span class="a">Last night</span><span class="gd">2 of 4 · running</span></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Sep 22 in · Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Needs approval · <b>1</b></div>
+  <div class="row"><span class="bin appr">Needs approval</span><span class="inv">WO-1155</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 16 · C</span></span><span class="flag"></span><span class="amt">$2,900.00</span><span class="acts"><span class="bact">Send for approval</span></span><span class="more">⋯</span></div>
+  <div class="day">Ready to send · <b>1</b></div>
+  <div class="row"><span class="bin ok">Ready to send</span><span class="inv">WO-1149</span><span class="who"><b>Atlantic · Kali</b><span> · Sep 12 · A</span></span><span class="flag"></span><span class="amt">$3,300.00</span><span class="acts"><span class="bact">Mark sent</span></span><span class="more">⋯</span></div>
+  <div class="day ok">In progress · <b>2</b> <span style="font-weight:600;letter-spacing:0;text-transform:none;opacity:.7">— running, everything in is reviewed</span></div>
+  <div class="row"><span class="bin split"><span class="g">Reviewed · Tue</span><span class="gd">2 of 5 · running</span></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin split"><span class="g">Reviewed · Tue</span><span class="gd">22 of 30 · running</span></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:20 AM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>Why I'd pick it:</b> it's the only variant where the badge carries both facts you named — <em>what it needs</em> and <em>that it's running</em> — in colour rather than words, and it can't be mistaken for Ready to send. The strip is the one place on the tab that's allowed to be "green but not done", which is precisely the state you're trying to name. <b>Cost:</b> one CSS class (<code>c-bbin-split</code>) and the same derivation as A.</p>
+
+<!-- ============ V3 ============ -->
+<h2><span class="n">V3</span>Green outline</h2>
+<p class="sub">If the collision in V1 bothers you but the split feels busy: solid green keeps meaning "ship it"; hollow green means "good, nothing to ship". Same three states, same words.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first hot">Last night · <b>1</b></div>
+  <div class="row"><span class="bin rev two">Last night<small>2 of 4 reviewed</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Ready to send · <b>1</b></div>
+  <div class="row"><span class="bin ok">Ready to send</span><span class="inv">WO-1149</span><span class="who"><b>Atlantic · Kali</b><span> · Sep 12 · A</span></span><span class="flag"></span><span class="amt">$3,300.00</span><span class="acts"><span class="bact">Mark sent</span></span><span class="more">⋯</span></div>
+  <div class="day ok">In progress · <b>1</b></div>
+  <div class="row"><span class="bin okline two">Reviewed · Tue<small>2 of 5 · running</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>Trade:</b> reads clearly next to Ready to send, but an outline is the quietest thing on the row — it's closer to the grey you didn't want than V1 is. Only StatusBadge elsewhere in the app uses an outlined pill (tinted bg + border), so there's precedent.</p>
+
+<!-- ============ V4 ============ -->
+<h2><span class="n">V4</span>Solid green + a running dot</h2>
+<p class="sub">V1, plus a small pulsing dot on the badge's corner while the session is still running. Amber gets it too (a running multi-day with a night waiting). The dot vanishes when the last night lands, so it's the only thing separating "running" from "finished" — and Ready to send never has one.</p>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first hot">Last night · <b>1</b></div>
+  <div class="row"><span class="bin rev two">Last night<small>2 of 4 reviewed</small><i class="dot"></i></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Sep 22 in · Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Ready to send · <b>1</b></div>
+  <div class="row"><span class="bin ok">Ready to send</span><span class="inv">WO-1149</span><span class="who"><b>Atlantic · Kali</b><span> · Sep 12 · A</span></span><span class="flag"></span><span class="amt">$3,300.00</span><span class="acts"><span class="bact">Mark sent</span></span><span class="more">⋯</span></div>
+  <div class="day ok">In progress · <b>1</b></div>
+  <div class="row"><span class="bin ok two">Reviewed · Tue<small>2 of 5 · running</small><i class="dot"></i></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>Trade:</b> motion is the strongest attention signal on the page, and the dashboard already uses a breathing block for web inquiries (the thing that <em>does</em> need you). Spending it on "nothing to do" is backwards. If you like the dot, make it static.</p>
+
+<p class="cap" style="margin-top:28px"><b>Summary:</b> all four give you green for "all reviewed, still running" and amber for "a night needs me". <b>V2</b> is my pick — it's the only one where orange-and-green and green-and-green are literally what you see, and it never looks like Ready to send. <b>V1</b> if you'd rather keep badges one solid block and live with the collision. V3 and V4 are the fallbacks if V1's collision bothers you but V2 feels like too much.</p>
+
+</body>
+</html>

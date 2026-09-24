@@ -363,6 +363,12 @@ export type InvoiceRow = {
    * in Needs review for its entire run.
    */
   needsReview: boolean
+  /**
+   * The latest night the office has reviewed (every submitted row of that
+   * day admin-locked), as YYYY-MM-DD. Null until the first night is locked.
+   * The green "Reviewed thru Sep 22" line reads it (Eli, 2026-09-23).
+   */
+  reviewedThru: string | null
 }
 
 /**
@@ -377,8 +383,18 @@ export type InvoiceRow = {
  * BILLING ROWS ONLY: COD keeps its bins untouched.
  */
 export type StageKey =
-  | 'progress' | 'not_started' | 'review' | 'invoice' | 'approval' | 'po'
+  | 'progress' | 'progress_reviewed' | 'not_started' | 'review' | 'invoice' | 'approval' | 'po'
   | 'approved' | 'not_approved' | 'sent' | 'paid' | 'closed' | 'balance'
+
+/**
+ * The two IN PROGRESS keys are one section on the tab. `progress_reviewed`
+ * exists only so the badge can be GREEN (Eli, 2026-09-23: "I don't want grey
+ * for in-progress-all-reviewed") — it is not a different place in the queue,
+ * so dividers and ranks group them.
+ */
+export function stageGroup(key: StageKey): StageKey {
+  return key === 'progress_reviewed' ? 'progress' : key
+}
 
 export function billingStage(row: InvoiceRow): { key: StageKey; label: string } {
   if (row.bucket === 'closed') return { key: 'closed', label: 'Closed' }
@@ -437,9 +453,15 @@ export function billingStage(row: InvoiceRow): { key: StageKey; label: string } 
   if (row.step === 1) return { key: 'invoice', label: 'Needs invoice' }
   // Step 0: either the session is still running (nothing to do — COD's exact
   // "In progress" meaning) or it has arrived and is waiting on billing's eyes.
-  return row.arrived
-    ? { key: 'review', label: 'Needs review' }
-    : { key: 'progress', label: 'In progress' }
+  if (row.arrived) return { key: 'review', label: 'Needs review' }
+  // GREEN IN PROGRESS (Eli, 2026-09-23): a running multi-day whose submitted
+  // nights are all reviewed. Same word, same place in the queue — the colour
+  // is the point: amber = last night is in and you haven't looked; green =
+  // you have, nothing more today; grey = nothing has come in yet.
+  if (row.stillRunning && row.daysTotal > 1 && row.daysSubmitted > 0) {
+    return { key: 'progress_reviewed', label: 'In progress' }
+  }
+  return { key: 'progress', label: 'In progress' }
 }
 
 /**
@@ -724,10 +746,13 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     const daysTotal = byDay.size
     let daysSubmitted = 0
     let unreviewedSubmitted = false
-    for (const rows of byDay.values()) {
+    let reviewedThru: string | null = null
+    for (const [day, rows] of byDay.entries()) {
       const sub = rows.some(r => r.status === 'submitted' || r.status === 'approved')
       if (sub) daysSubmitted++
       if (sub && rows.some(r => (r.status === 'submitted' || r.status === 'approved') && !r.admin_locked)) unreviewedSubmitted = true
+      // A reviewed night: submitted, and every submitted row locked.
+      else if (sub && (!reviewedThru || day > reviewedThru)) reviewedThru = day
     }
     const unsubmittedDays = unsubmittedDaysOf(stRows, today)
     const stillRunning = !ended && daysSubmitted < daysTotal
@@ -858,6 +883,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       daysSubmitted,
       stillRunning,
       needsReview,
+      reviewedThru,
     }
   })
 
@@ -1012,7 +1038,7 @@ export type SortCol = 'date' | 'wo' | 'client' | 'status' | 'balance' | 'age' | 
  */
 export const QUEUE_RANK: Partial<Record<StageKey, number>> = {
   // balance (COD's hot stage) outranks everything — collection was missed.
-  balance: -1, review: 0, invoice: 1, approval: 2, not_approved: 3, approved: 4, po: 5, progress: 6,
+  balance: -1, review: 0, invoice: 1, approval: 2, not_approved: 3, approved: 4, po: 5, progress: 6, progress_reviewed: 6,
 }
 export function queueRank(row: InvoiceRow): number {
   return QUEUE_RANK[billingStage(row).key] ?? 9

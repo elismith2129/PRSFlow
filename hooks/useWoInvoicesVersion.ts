@@ -15,6 +15,13 @@
 // a COD work order between Balance due and Paid — the billing hub watched both
 // tables before this hook existed, and the badge/banner refetch is cheap.
 //
+// `studio_time_rows` rides it too (2026-09-23): the office's day review is a
+// lock on those rows, and it is what moves a multi-day between Needs review
+// and In progress — the stage every invoice surface (and the dashboard's
+// "WOs need review" tile) is derived from. Without it, marking a night
+// reviewed changed nothing on screen until a refresh. TenantsView dropped its
+// own studio_time_rows channel for this one (no duplicates on a page).
+//
 // Usage:
 //   const v = useWoInvoicesVersion()
 //   useEffect(() => { load() }, [load, v])
@@ -34,6 +41,10 @@ function open() {
       listeners.forEach(fn => fn(version))
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_rows' }, () => {
+      version += 1
+      listeners.forEach(fn => fn(version))
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => {
       version += 1
       listeners.forEach(fn => fn(version))
     })

@@ -2732,6 +2732,47 @@ export function WorkOrderPopup({
     }
   }
 
+  // ── Per-DAY review (Eli, 2026-09-23) ──────────────────────────────────────
+  //
+  // THE REVIEW WAS UNREACHABLE. The lock IS the admin review (house
+  // convention 2026-09-01), lib/billing keys "Needs review" on it, and the
+  // dashboard's "WOs need review" counts that stage — but the only lock
+  // buttons were per-row in the LIST view, and Cards has been the default
+  // since v1.35. Nobody switches to List, so no night was ever locked, every
+  // running multi-day sat in Needs review for its whole run, and the tile
+  // never zeroed. This is the day-sized lock for the card and the sheet: one
+  // tap locks (or reopens) every row of that day — room rows and the day's
+  // standalone staff rows together, because a reviewed night is reviewed.
+  async function handleToggleDayReview(date: string, currentLocked: boolean) {
+    const rows = stRows.filter(r => r.date === date)
+    if (rows.length === 0) return
+    const newLocked = !currentLocked
+    const ids = rows.map(r => r.id)
+    const { error: lockErr } = await supabase.from('studio_time_rows').update({
+      admin_checked: newLocked,
+      admin_locked: newLocked,
+    }).in('id', ids)
+    if (!dbResult('Saving day review', lockErr)) return
+    if (woIdRef.current) {
+      void logWoActivity({
+        workOrderId: woIdRef.current,
+        actorId: profile?.id ?? null,
+        actorName: profile?.display_name || '',
+        source: 'office',
+        kind: 'reviewed',
+        afterInvoice: hadInvoiceRef.current,
+        changes: [{ what: newLocked ? 'Reviewed the day' : 'Review reopened', day: date }],
+      })
+    }
+    setStRows(prev => prev.map(r => ids.includes(r.id)
+      ? { ...r, admin_checked: newLocked, admin_locked: newLocked }
+      : r
+    ))
+    if (!newLocked) {
+      setPendingLockedEdits(p => { const n = { ...p }; for (const id of ids) delete n[id]; return n })
+    }
+  }
+
   // ── Runner mode: needs-attention photos, flag sync, Submit ─────────────────
   // All three ported from the deleted app/runner/[studio]/wo/[id]/page.tsx —
   // behaviour unchanged, they just live on the shared component now.
@@ -3822,6 +3863,32 @@ export function WorkOrderPopup({
           >{st === 'confirmed' ? 'Confirmed' : st === 'tentative' ? 'Tentative' : 'Cancelled'}</button>
         ))}
       </span>
+    )
+  }
+  // The day's review chip (2026-09-23): green "✓ Reviewed" once every row of
+  // the day is locked, a dashed "Mark reviewed" until then. Office only, and
+  // only on days that have happened — a future night has nothing to review.
+  // Sits beside the status pill on the card and the sheet; stops the tap so
+  // the card underneath doesn't open.
+  function dayReviewPill(date: string, small = false) {
+    if (!wo || runner || readOnly || !date) return null
+    if (date > getLocalToday()) return null
+    const rows = stRows.filter(r => r.date === date)
+    if (rows.length === 0) return null
+    const locked = rows.every(r => r.admin_locked)
+    return (
+      <button type="button"
+        onClick={e => { e.stopPropagation(); void handleToggleDayReview(date, locked) }}
+        title={locked ? 'Reviewed by the office — tap to reopen the day' : 'Mark this day reviewed'}
+        style={{
+          flexShrink: 0, borderRadius: 99, padding: small ? '3px 8px' : '4px 10px', cursor: 'pointer', font: 'inherit',
+          fontSize: small ? 8 : 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+          background: locked ? 'var(--c-st-booked)' : 'var(--c-wash2)',
+          color: locked ? 'var(--c-chip-ink)' : 'var(--c-fg-2)',
+          border: locked ? '1px solid transparent' : '1px dashed var(--c-fg-3)',
+          whiteSpace: 'nowrap',
+        }}
+      >{locked ? '✓ Reviewed' : 'Mark reviewed'}</button>
     )
   }
   const metaLabel: React.CSSProperties = {
@@ -6893,6 +6960,7 @@ export function WorkOrderPopup({
                             {renderDateChip(g.date, cardLocked, 'card')}
                             {dayStateTag(g.rows, g.date, true)}
                           </span>
+                          {dayReviewPill(g.date, true)}
                           {dayStatusPill(g.date, true)}
                           {/* The signpost (Eli, 2026-08-16): the whole card
                               opens the sheet, but nothing SAID so. Not a
@@ -7695,6 +7763,7 @@ export function WorkOrderPopup({
                     )}
                     {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>{dayIdx + 1} of {allDates.length}</span>}
                     {dayStateTag(sheetRows, daySheetDate, true)}
+                    {dayReviewPill(daySheetDate, true)}
                     {dayStatusPill(daySheetDate, true)}
                   </span>
                   <span style={fldK}>

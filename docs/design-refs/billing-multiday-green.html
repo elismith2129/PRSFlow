@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — multi-day: amber needs you, green means checked</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  ROUND 5 (Eli, 2026-09-23): "A single day is just Needs review — once done it
+  goes into the pipeline, Needs invoice. Multi-day is really the issue: show
+  orange NEEDS REVIEW + in progress, meaning you have last night and it's not
+  a single day. So what we really need is: in progress and you have last
+  night to check, OR in progress and you've checked last night, no more work
+  today."  No dots, no "last night" wording.
+
+  So: the v1.33.3 two-word badge stays exactly as it is, and the ONE change is
+  IN PROGRESS / all reviewed turns GREEN instead of grey. Plus the flag cell
+  stamps the review (B).
+-->
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06);--wash2:rgba(242,239,231,.12);--fg2:rgba(242,239,231,.72);--fg3:rgba(242,239,231,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--chip-ink:#1c2626;--srf:#151412;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:14px}
+h2{font-family:'Archivo Black',sans-serif;font-size:13px;margin:26px 0 8px;color:var(--fg2)}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:18px;padding:10px 12px 6px;box-shadow:var(--softsh);max-width:1000px}
+.hd,.row{display:grid;grid-template-columns:104px 76px minmax(0,1fr) 234px 84px 120px 26px;align-items:center;gap:10px}
+.hd{font-size:8.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:0 10px 6px}
+.hd .r{text-align:right}.hd .c{text-align:center}
+.row{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px}
+.row:hover{background:var(--wash)}
+.day{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);padding:12px 10px 4px}
+.day.first{padding-top:4px}.day b{color:var(--fg2)}
+.bin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.bin.rev{background:var(--warm);color:var(--chip-ink)}
+.bin.ok{background:var(--booked);color:var(--chip-ink)}
+.bin.prog{background:var(--wash2);color:var(--fg)}
+.bin.inv{background:var(--warm);color:var(--chip-ink);opacity:.75}
+.bin.two{white-space:normal;padding:2px 6px;line-height:1.25}
+.bin small{display:block;font-size:7px;font-weight:700;opacity:.8;text-transform:none;letter-spacing:.03em}
+.inv{font-family:'DM Mono',monospace;font-size:11px;opacity:.6}
+.who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.who b{font-weight:700}.who span{opacity:.5;font-size:11px}
+.amt{font-family:'DM Mono',monospace;font-size:11.5px;text-align:right}
+.flag{display:flex;justify-content:flex-end;min-width:0;align-items:center}
+.hint{font-size:9.5px;font-weight:700;font-style:italic;opacity:.4;white-space:nowrap}
+.sb{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--warm);white-space:nowrap}
+.sb small,.okt small{font-weight:600;text-transform:none;letter-spacing:0;opacity:.75;font-family:'DM Mono',monospace;font-size:9px}
+.okt{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--booked);white-space:nowrap}
+.drift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--hot);white-space:nowrap}
+.acts{display:flex;justify-content:center}
+.bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--wash2);color:var(--fg);opacity:.8;white-space:nowrap}
+.more{text-align:right;opacity:.5}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1000px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+.mini{background:var(--srf);border-radius:14px;padding:10px 12px;box-shadow:var(--softsh)}
+.mini h3{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px}
+.mini .row{grid-template-columns:104px minmax(0,1fr) 190px;min-height:34px}
+</style>
+</head>
+<body>
+
+<h1>Multi-day: amber needs you, green means checked</h1>
+<p class="lede">The badge stays the two-word badge it already is. One change: <b>IN PROGRESS / all reviewed</b> goes green. Amber on a multi-day = last night is in and you haven't looked. Green = you have, nothing more today. A single day is just <b>NEEDS REVIEW</b>, then the ladder.</p>
+
+<div class="two-col">
+  <div class="mini">
+    <h3>Today</h3>
+    <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="who" style="font-size:11px;opacity:.7">last night in, not looked at</span><span></span></div>
+    <div class="row"><span class="bin prog two">In progress<small>all reviewed</small></span><span class="who" style="font-size:11px;opacity:.7">looked at, nothing more today — <b>grey, reads like "not started"</b></span><span></span></div>
+    <div class="row"><span class="bin rev">Needs review</span><span class="who" style="font-size:11px;opacity:.7">single day</span><span></span></div>
+  </div>
+  <div class="mini">
+    <h3>Proposed</h3>
+    <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="who" style="font-size:11px;opacity:.7">unchanged</span><span></span></div>
+    <div class="row"><span class="bin ok two">In progress<small>all reviewed</small></span><span class="who" style="font-size:11px;opacity:.7"><b>green</b> — you've done last night</span><span></span></div>
+    <div class="row"><span class="bin rev">Needs review</span><span class="who" style="font-size:11px;opacity:.7">unchanged</span><span></span></div>
+  </div>
+</div>
+
+<h2>On the tab</h2>
+<div class="panel">
+  <div class="hd"><span>Stage</span><span>WO</span><span>Client</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Action</span><span></span></div>
+  <div class="day first">Needs review · <b>3</b></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1168</span><span class="who"><b>Havelange</b><span> · Sep 20–23 · A</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>12:14 AM</small></span></span><span class="amt">$6,400.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev two">Needs review<small>in progress</small></span><span class="inv">WO-1142</span><span class="who"><b>Mustard</b><span> · Sep 1–30 · C</span></span><span class="flag"><span class="sb">Submitted by Hunter <small>11:58 PM</small></span></span><span class="amt">$18,000.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin rev">Needs review</span><span class="inv">WO-1171</span><span class="who"><b>Lonzo</b><span> · Sep 22 · X</span></span><span class="flag"><span class="sb">Submitted by Cris <small>1:02 AM</small></span></span><span class="amt">$1,800.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">Needs invoice · <b>1</b></div>
+  <div class="row"><span class="bin inv">Needs invoice</span><span class="inv">WO-1159</span><span class="who"><b>Warner · Zeddy</b><span> · Sep 18–19 · A</span></span><span class="flag"><span class="hint">Drop invoice here · or click</span></span><span class="amt">$5,100.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="day">In progress · <b>2</b></div>
+  <div class="row"><span class="bin ok two">In progress<small>all reviewed</small></span><span class="inv">WO-1170</span><span class="who"><b>Invoke</b><span> · Sep 21–25 · D</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:12 AM</small></span></span><span class="amt">$9,500.00</span><span class="acts"></span><span class="more">⋯</span></div>
+  <div class="row"><span class="bin ok two">In progress<small>all reviewed</small></span><span class="inv">WO-1150</span><span class="who"><b>Def Jam · Fridayy</b><span> · Sep 22–24 · B</span></span><span class="flag"><span class="okt">✓ Reviewed thru Sep 22 · Fernando <small>9:20 AM</small></span></span><span class="amt">$4,950.00</span><span class="acts"></span><span class="more">⋯</span></div>
+</div>
+<p class="cap"><b>The morning read:</b> amber = something to look at, green = you already did, everything else is billing's ladder as before. A multi-day that hasn't had a night submitted yet (booked, running, nothing in) stays grey <b>IN PROGRESS</b> with no second line — grey still means "nothing has happened".</p>
+<p class="cap"><b>The flag cell (B):</b> "Submitted by Hunter 12:14 AM" when a night is waiting, "✓ Reviewed thru Sep 22 · Fernando 9:12 AM" once it's checked. The name and time need <code>locked_by</code> / <code>locked_at</code> on <code>studio_time_rows</code> — one migration. Without it the green line can still say "Reviewed thru Sep 22". A never-submitted night keeps its red "Never submitted" line in the same cell, as today.</p>
+<p class="cap"><b>Cost:</b> the badge is a one-line change in <code>STAGE_STYLE</code> keyed on a new <code>progress_reviewed</code> stage (so grey IN PROGRESS and green IN PROGRESS / all reviewed can differ). No migration for the badge; one small one for the reviewer's name.</p>
+
+</body>
+</html>

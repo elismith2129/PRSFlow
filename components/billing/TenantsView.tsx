@@ -69,7 +69,6 @@ export function TenantsView() {
   const [sheetMonth, setSheetMonth] = useState<string | null>(null) // null = board
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const [stVersion, setStVersion] = useState(0)
 
   // The incidentals month on the board is the month BEFORE the rent month —
   // September's board carries August's incidentals (they go out the 2nd–3rd).
@@ -95,17 +94,13 @@ export function TenantsView() {
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [loadStamps])
-  useEffect(() => {
-    const ch = supabase
-      .channel('tenants-shared-strows')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => { setStVersion(v => v + 1) })
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [])
+  // studio_time_rows now rides the shared wo-invoices channel (2026-09-23) —
+  // woVersion already bumps on it, so the private channel here would have
+  // been a duplicate on the billing page.
 
   useEffect(() => { loadStamps() }, [loadStamps])
-  useEffect(() => { loadShared(incMonth) }, [loadShared, incMonth, woVersion, stVersion])
-  useEffect(() => { if (sheetMonth) loadShared(sheetMonth) }, [loadShared, sheetMonth, woVersion, stVersion])
+  useEffect(() => { loadShared(incMonth) }, [loadShared, incMonth, woVersion])
+  useEffect(() => { if (sheetMonth) loadShared(sheetMonth) }, [loadShared, sheetMonth, woVersion])
 
   async function run(key: string, fn: () => Promise<boolean>) {
     if (busy) return

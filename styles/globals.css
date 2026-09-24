@@ -2119,6 +2119,9 @@ select.c-input {
    Needs-review badge it sits beside; the time drops to mono and quiets. */
 .c-bflag.c-bsub { color: var(--c-st-warm); }
 .c-bflag.c-bsub .c-bsubat { font-family: 'DM Mono', ui-monospace, monospace; font-weight: 600; letter-spacing: 0; text-transform: none; opacity: .75; }
+/* "✓ Reviewed thru Sep 22" — the office's line, once every submitted night is
+   locked (2026-09-23). Green like the badge it sits beside. */
+.c-bflag.c-brev { color: var(--c-st-booked); }
 /* Two-word stage badge for a running multi-day (v1.33.3, option 2A). */
 .c-bbin.c-bbin-two { white-space: normal; line-height: 1.25; padding: 2px 6px; }
 .c-bbin.c-bbin-two small { display: block; font-size: 7px; font-weight: 700; letter-spacing: .03em; text-transform: none; opacity: .8; }
