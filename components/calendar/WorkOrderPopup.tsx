@@ -3870,12 +3870,28 @@ export function WorkOrderPopup({
   // only on days that have happened — a future night has nothing to review.
   // Sits beside the status pill on the card and the sheet; stops the tap so
   // the card underneath doesn't open.
-  function dayReviewPill(date: string, small = false) {
+  function dayReviewPill(date: string, small = false, big = false) {
     if (!wo || runner || readOnly || !date) return null
     if (date > getLocalToday()) return null
     const rows = stRows.filter(r => r.date === date)
     if (rows.length === 0) return null
     const locked = rows.every(r => r.admin_locked)
+    if (big) {
+      // The sheet's footer button — sized like Save / Cancel beside it.
+      return (
+        <button type="button"
+          onClick={e => { e.stopPropagation(); void handleToggleDayReview(date, locked) }}
+          title={locked ? 'Reviewed by the office — tap to reopen the day' : 'Mark this day reviewed'}
+          style={{
+            flex: 1.4, minHeight: 46, borderRadius: 12, cursor: 'pointer', font: 'inherit', fontSize: 12.5, fontWeight: 800,
+            background: locked ? 'var(--c-st-booked)' : 'var(--c-wash2)',
+            color: locked ? 'var(--c-chip-ink)' : 'var(--c-fg)',
+            border: locked ? '1px solid transparent' : '1px dashed var(--c-fg-3)',
+            whiteSpace: 'nowrap',
+          }}
+        >{locked ? '✓ Reviewed' : 'Mark reviewed ✓'}</button>
+      )
+    }
     return (
       <button type="button"
         onClick={e => { e.stopPropagation(); void handleToggleDayReview(date, locked) }}
@@ -6903,6 +6919,10 @@ export function WorkOrderPopup({
                                 </span>
                               ) : (
                                 <span style={{ display: 'flex', gap: 10, alignSelf: 'flex-end', alignItems: 'center' }}>
+                                  {/* THE REVIEW CHIP, top right where the eye
+                                      goes (Eli, 2026-09-23: "top right where
+                                      the x is"). */}
+                                  {dayReviewPill(g.date, true)}
                                   <span style={kLabel}>{cardLocked ? '👁 view' : '✎ edit'}</span>
                                   {/* Day-card × — ADMIN ONLY (runner renders the
                                       phone card, never this branch). */}
@@ -7763,7 +7783,6 @@ export function WorkOrderPopup({
                     )}
                     {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>{dayIdx + 1} of {allDates.length}</span>}
                     {dayStateTag(sheetRows, daySheetDate, true)}
-                    {dayReviewPill(daySheetDate, true)}
                     {dayStatusPill(daySheetDate, true)}
                   </span>
                   <span style={fldK}>
@@ -8267,6 +8286,12 @@ export function WorkOrderPopup({
                   >
                     Cancel
                   </button>
+                  {/* REVIEWED ✓ (Eli, 2026-09-23): the office opens the sheet,
+                      reads the night, taps this. Full-size, between Cancel and
+                      Save — it is the act this sheet exists for on a past
+                      night. Locks every row of the day (handleToggleDayReview)
+                      the moment it is tapped; Save is still for the edits. */}
+                  {dayReviewPill(daySheetDate, false, true)}
                   <button
                     type="button"
                     onClick={closeSheet}
