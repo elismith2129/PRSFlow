@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Payments: the 3% goes on top of what you type</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Eli, 2026-09-24 (Phillip Riian WO, Fernando's report): "we need to input the
+  payment amount independently of the total, and that payment amount should
+  calculate the 3% and add that to the amount we are going to charge, period.
+  30% deposit on a card carries 3%; the remainder on a card carries its own 3%."
+
+  This is what shipped (the commit "Card fee goes ON TOP of what's typed").
+  Same Payments block as today; the AMOUNT field now means "what the client
+  is paying toward the balance", and a card row answers with the number to run.
+-->
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06);--wash2:rgba(242,239,231,.12);--fg2:rgba(242,239,231,.72);--fg3:rgba(242,239,231,.45);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--chip-ink:#1c2626;--srf:#151412}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 70px;max-width:1100px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:820px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:30px 0 8px}h2 .n{color:var(--fg3);margin-right:8px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:820px}.cap b{color:var(--fg2)}
+.panel{background:var(--srf);border-radius:16px;padding:14px;box-shadow:inset 5px 5px 15px rgba(0,0,0,.4),inset -5px -5px 15px rgba(255,255,255,.03);max-width:560px}
+.sh{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:var(--wash2);border-radius:99px;padding:4px 11px;margin-bottom:10px}
+.collect{background:var(--wash);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.collect .k{display:flex;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:4px}
+.cl{display:flex;align-items:baseline;gap:10px;padding:4px 6px;margin:0 -6px;border-radius:9px}
+.cl.on{background:var(--wash2)}
+.cl .amt{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em;min-width:100px;color:var(--hot)}
+.cl .how{font-size:11px;color:var(--fg2)}.cl .how b{color:var(--fg)}
+.cl.dim .amt,.cl.dim .how{color:var(--fg3)}
+.hist{font-size:10px;color:var(--fg3);margin-top:6px;padding-top:6px;border-top:1px solid var(--wash2)}
+.row{display:grid;grid-template-columns:130px 80px 1fr 70px 24px;align-items:center;background:var(--wash);border-radius:12px;margin-bottom:6px}
+.row.nol4{grid-template-columns:130px 80px 1fr 24px}
+.cell{padding:3px 6px;font-size:11px;font-weight:500;min-width:0;display:flex;align-items:center}
+.tin{font-size:11px;font-weight:500;padding:3px 6px;border-radius:6px;background:var(--wash);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tin.mono{font-family:'DM Mono',monospace}
+.tin.ph{opacity:.3;font-weight:400}
+.tin.focus{background:var(--wash2);outline:1px solid rgba(242,239,231,.18)}
+.x{text-align:center;color:var(--fg3);font-size:14px}
+.sub{grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:0 12px 7px;flex-wrap:wrap}
+.sub .run{font-size:11px}.sub .run b{font-family:'DM Mono',monospace;font-weight:700;color:var(--hot)}
+.sub .split{font-size:10px;color:var(--fg2)}
+.sub .waive{font-size:10px;color:var(--fg3);text-decoration:underline}
+.add{font-size:10px;color:var(--fg2);padding:9px 4px 0}
+.tot{margin-top:14px;padding-top:10px;border-top:1px solid var(--wash2);display:grid;grid-template-columns:1fr auto;gap:4px 18px;font-size:12px}
+.tot .k{color:var(--fg2)}.tot .v{font-family:'DM Mono',monospace;text-align:right}
+.tot .g .k,.tot .g .v{font-weight:700}
+.tot .bal .v{color:var(--hot);font-weight:700;font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.01em}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:1000px}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+.old{opacity:.75}
+.bad{color:var(--hot)}
+.tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.tag.was{background:var(--wash2);color:var(--fg2)}.tag.now{background:var(--booked);color:var(--chip-ink)}
+</style>
+</head>
+<body>
+
+<h1>Payments — the 3% goes on top of what you type</h1>
+<p class="lede">Phillip Riian's WO: $1,110.00, nothing collected yet, client is putting 30% down on a card and the rest on a card later. Left is how the block behaved this morning; right is what shipped. Same block, same storage — the only change is what the <b>Amount</b> field means.</p>
+
+<div class="two">
+  <!-- ================= BEFORE ================= -->
+  <div>
+    <h2>Before <span class="tag was">this morning</span></h2>
+    <div class="panel old">
+      <span class="sh">Payments</span>
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cl dim"><span class="amt">$1110.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+        <div class="cl on"><span class="amt">$1143.30</span><span class="how"><b>card</b> · incl. 3% fee $33.30</span></div>
+      </div>
+      <div class="row">
+        <div class="cell"><span class="tin">Credit Card · $1143.30</span></div>
+        <div class="cell"><span class="tin mono">$333.00</span></div>
+        <div class="cell"><span class="tin ph">memo</span></div>
+        <div class="cell"><span class="tin mono">4412</span></div>
+        <div class="x">×</div>
+        <div class="sub"><span class="split">includes $9.70 card fee (3%)</span><span class="waive">waive</span></div>
+      </div>
+      <div class="add">+ Add payment</div>
+      <div class="tot">
+        <span class="k">Studio</span><span class="v">$1110.00</span>
+        <span class="k">Card fees</span><span class="v">$9.70</span>
+        <span class="k g">Grand total</span><span class="v g">$1119.70</span>
+        <span class="k">Paid</span><span class="v">$333.00</span>
+        <span class="k bal">Balance due</span><span class="v bal">$786.70</span>
+      </div>
+    </div>
+    <p class="cap"><b>What went wrong:</b> Fernando typed the deposit — $333 — and the app read that as "$333 hit the card", so it carved the fee <em>out</em> of it. The studio kept $323.30, the fee was $9.70 instead of $9.99, and the balance came out $786.70 instead of $777.00. Every value he tried moved the fee with it — exactly what he reported.</p>
+  </div>
+
+  <!-- ================= AFTER ================= -->
+  <div>
+    <h2>Now <span class="tag now">shipped</span></h2>
+    <div class="panel">
+      <span class="sh">Payments</span>
+      <div class="collect">
+        <div class="k"><span>Collect</span><span>COD</span></div>
+        <div class="cl dim"><span class="amt">$1110.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+        <div class="cl on"><span class="amt">$1143.30</span><span class="how"><b>card</b> · incl. 3% fee $33.30</span></div>
+      </div>
+      <div class="row">
+        <div class="cell"><span class="tin">Credit Card · $1143.30</span></div>
+        <div class="cell"><span class="tin mono focus">$333.00</span></div>
+        <div class="cell"><span class="tin ph">memo</span></div>
+        <div class="cell"><span class="tin mono">4412</span></div>
+        <div class="x">×</div>
+        <div class="sub"><span class="run">Run <b>$342.99</b> on the card</span><span class="split">· $333.00 + $9.99 fee (3%)</span><span class="waive">waive</span></div>
+      </div>
+      <div class="add">+ Add payment</div>
+      <div class="tot">
+        <span class="k">Studio</span><span class="v">$1110.00</span>
+        <span class="k">Card fees</span><span class="v">$9.99</span>
+        <span class="k g">Grand total</span><span class="v g">$1119.99</span>
+        <span class="k">Paid</span><span class="v">$342.99</span>
+        <span class="k bal">Balance due</span><span class="v bal">$777.00</span>
+      </div>
+    </div>
+    <p class="cap"><b>What you type is what he's paying toward the balance.</b> Pick Credit Card, type $333.00, and the row answers: <b>Run $342.99 on the card</b>. The balance drops by exactly $333. Cash / Zelle / check rows: the amount is the amount, no fee line.</p>
+  </div>
+</div>
+
+<!-- ================= LATER ================= -->
+<h2><span class="n">2</span>Later — the remainder, on a card, with its own 3%</h2>
+<div class="panel">
+  <span class="sh">Payments</span>
+  <div class="collect">
+    <div class="k"><span>Collect</span><span>COD</span></div>
+    <div class="cl dim"><span class="amt">$777.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+    <div class="cl on"><span class="amt">$800.31</span><span class="how"><b>card</b> · incl. 3% fee $23.31</span></div>
+    <div class="hist">Already collected: $342.99 across 1 payment · card fees $9.99</div>
+  </div>
+  <div class="row">
+    <div class="cell"><span class="tin">Credit Card</span></div>
+    <div class="cell"><span class="tin mono">$333.00</span></div>
+    <div class="cell"><span class="tin">30% deposit</span></div>
+    <div class="cell"><span class="tin mono">4412</span></div>
+    <div class="x">×</div>
+    <div class="sub"><span class="run">Run <b>$342.99</b> on the card</span><span class="split">· $333.00 + $9.99 fee (3%)</span><span class="waive">waive</span></div>
+  </div>
+  <div class="row">
+    <div class="cell"><span class="tin">Credit Card · $800.31</span></div>
+    <div class="cell"><span class="tin mono focus">$777.00</span></div>
+    <div class="cell"><span class="tin ph">memo</span></div>
+    <div class="cell"><span class="tin mono">4412</span></div>
+    <div class="x">×</div>
+    <div class="sub"><span class="run">Run <b>$800.31</b> on the card</span><span class="split">· $777.00 + $23.31 fee (3%)</span><span class="waive">waive</span></div>
+  </div>
+  <div class="add">+ Add payment</div>
+  <div class="tot">
+    <span class="k">Studio</span><span class="v">$1110.00</span>
+    <span class="k">Card fees</span><span class="v">$33.30</span>
+    <span class="k g">Grand total</span><span class="v g">$1143.30</span>
+    <span class="k">Paid</span><span class="v">$1143.30</span>
+    <span class="k bal" style="color:var(--booked)">Balance due</span><span class="v bal" style="color:var(--booked)">$0.00</span>
+  </div>
+</div>
+<p class="cap"><b>Picking Credit Card on the new row pre-fills the remaining balance</b> ($777.00) as the base, so the common case is: pick the method, read the number, run it. Total card fees $33.30 = 3% of $1,110 — the same as if he'd paid it all at once. Each payment carried its own fee; nothing was computed off the lump sum.</p>
+
+<p class="cap" style="margin-top:22px"><b>For the Riian WO today:</b> open it, set the deposit row's amount to $333.00 (the base). The row will read Run $342.99. If the terminal was already run at a different number, that's the figure to square with the client.</p>
+
+</body>
+</html>

@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate, oneLine } from '@/lib/format'
-import { computeWoTotals, engChargeForRow, cardFeeOfCharged, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_PCT, foodFeePct, foodServiceFee } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_PCT, foodFeePct, foodServiceFee } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail, confirmStartProblem,
   findMissingEngRates, missingEngRatesMessage,
@@ -275,9 +275,27 @@ type PayRow = {
   memo: string
   last_four: string
   /** 3% card surcharge slice of `amount` (COD + Credit/Debit only; migration
-   *  20260826160000). Auto-derived from the charged amount — amount is what
-   *  hit the card, fee_amount is the fee inside it. Cleared = waived. */
+   *  20260826160000). `amount` is what hit the card, fee_amount is the fee
+   *  inside it. Cleared = waived. */
   fee_amount: string
+  /** UI ONLY (Eli, 2026-09-24): what the client is paying TOWARD THE BALANCE
+   *  — the number staff types. On a COD card row the 3% goes ON TOP of this
+   *  (amount = base × 1.03, fee = the difference); on any other row amount =
+   *  base. Derived on load as amount − fee, never stored. This flips the
+   *  Aug 26 direction (type what the terminal charged, carve the fee out),
+   *  which had staff typing the deposit as the base and the studio eating
+   *  the fee: "we need to input the payment amount independently of the
+   *  total, and that payment amount should calculate the 3% and add that to
+   *  the amount we are going to charge, period." */
+  base: string
+}
+
+/** The base of a stored payment: what hit the card minus the fee inside it. */
+function payBaseOf(amount: number | string | null | undefined, fee: number | string | null | undefined): string {
+  const a = stripCurrency(String(amount ?? '')) ?? 0
+  const f = stripCurrency(String(fee ?? '')) ?? 0
+  const b = a - f
+  return b > 0 ? formatCurrency(String(parseFloat(b.toFixed(2)))) : ''
 }
 
 /* Payment methods live in lib/payments.ts — one list for the WO's payment rows
@@ -671,7 +689,7 @@ export function WorkOrderPopup({
     { id: crypto.randomUUID(), qty: '', item: '', supplier: '', dates_used: '', rate: '', charge: '' },
   ])
   const [payRows, setPayRows] = useState<PayRow[]>([
-    { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '', fee_amount: '' },
+    { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '', fee_amount: '', base: '' },
   ])
   // Food-budget expense report (2026-08-24 — the paper sheet, live). Rows write
   // IMMEDIATELY (equip-note pattern), not through the WO's batched save: the
@@ -1599,7 +1617,7 @@ export function WorkOrderPopup({
         rentSnapRef.current = JSON.stringify(arr)
       }
       if (pay?.length) {
-        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '' }))
+        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '', base: payBaseOf(p.amount, p.fee_amount) }))
         setPayRows(arr)
         paySnapRef.current = JSON.stringify(arr)
       }
@@ -1707,7 +1725,7 @@ export function WorkOrderPopup({
       })
     }
     if (pay) {
-      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '' }))
+      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '', base: payBaseOf(p.amount, p.fee_amount) }))
       setPayRows(prev => {
         const untouched = paySnapRef.current
           ? JSON.stringify(prev) === paySnapRef.current
@@ -3692,12 +3710,15 @@ export function WorkOrderPopup({
   const totalPaid = woTotals.paid
   const balanceDue = woTotals.balance
 
-  // ── 3% COD card surcharge (Eli, 2026-08-26) ────────────────────────────────
-  // COD only — billing/label sessions never carry the fee. The AMOUNT field is
-  // what actually hit the card; the fee is the 3% slice inside it, derived by
-  // cardFeeOfCharged so the runner types exactly what the terminal charged and
-  // the split is exact. The number staff reads to the terminal — balance ×
-  // 1.03 — lives in the COLLECT block at the top of Payments (below).
+  // ── 3% COD card surcharge (Eli, 2026-08-26; direction flipped 2026-09-24) ──
+  // COD only — billing/label sessions never carry the fee. Staff type the
+  // BASE (what the client is paying toward the balance); on a card row the
+  // 3% goes on top (cardTotalForBase) and the row says what to run on the
+  // terminal. Stored shape is unchanged: payment_rows.amount = what hit the
+  // card, fee_amount = the fee inside it. (Aug 26 → Sep 24 it was the other
+  // way round — type the charged amount, carve the fee out — and a deposit
+  // typed as its base quietly cost the studio the fee.) The number for the
+  // FULL balance lives in the COLLECT block at the top of Payments (below).
   // wo is still null on the first render (before initWO resolves) — this block
   // sits ABOVE the loading/early returns, so it must never dereference wo bare.
   const isCodWo = wo?.payment_status === 'COD'
@@ -3751,13 +3772,26 @@ export function WorkOrderPopup({
     return null as 'card' | 'cash' | null
   })()
 
-  /** Re-derive a payment row's fee from its type + amount. Card + COD → 3%
-   *  slice of the charged amount; anything else → no fee. */
+  /** Re-derive a payment row's amount + fee FROM ITS BASE (Eli, 2026-09-24).
+   *  Card + COD → the 3% goes on top: amount = base × 1.03, fee = the
+   *  difference — so a 30% deposit typed as $333.00 runs $342.99 on the card
+   *  and the balance drops by exactly $333.00. Anything else → amount = base,
+   *  no fee. (Before this the runner typed what the terminal charged and the
+   *  fee was carved OUT of it; typing the base then cost the studio the fee.) */
   function withCardFee(row: PayRow): PayRow {
-    if (!isCodWo || !CARD_PAY_TYPES.includes(row.payment_type)) return { ...row, fee_amount: '' }
-    const charged = stripCurrency(row.amount) ?? 0
-    const fee = cardFeeOfCharged(charged)
-    return { ...row, fee_amount: fee > 0 ? formatCurrency(String(fee)) : '' }
+    const base = stripCurrency(row.base) ?? 0
+    const baseStr = base > 0 ? formatCurrency(String(base)) : ''
+    if (!isCodWo || !CARD_PAY_TYPES.includes(row.payment_type) || !(base > 0)) {
+      return { ...row, amount: baseStr, fee_amount: '' }
+    }
+    const charged = cardTotalForBase(base)
+    const fee = parseFloat((charged - base).toFixed(2))
+    return { ...row, amount: formatCurrency(String(charged)), fee_amount: fee > 0 ? formatCurrency(String(fee)) : '' }
+  }
+  /** Waive the fee on a card row: the base is what hits the card. */
+  function withFeeWaived(row: PayRow): PayRow {
+    const base = stripCurrency(row.base) ?? 0
+    return { ...row, amount: base > 0 ? formatCurrency(String(base)) : '', fee_amount: '' }
   }
 
   // Food budget math — spent is the expense rows' sum; remaining against
@@ -7228,7 +7262,12 @@ export function WorkOrderPopup({
                   {payRows.map((p, idx) => {
                     const needsLast4 = p.payment_type === 'Credit Card' || p.payment_type === 'Debit Card'
                     return (
-                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: needsLast4 ? '130px 80px 1fr 70px 24px' : '130px 80px 1fr 24px', alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6 }}>
+                      /* SEED → LINE (Eli, 2026-09-24, docs/design-refs/wo-card-fee-
+                         on-top.html): the small box is what the client is paying
+                         toward the balance; the big number beside it is the
+                         PAYMENT — what runs on the card and what's recorded.
+                         "It still felt like you were typing in the number." */
+                      <div key={p.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 96px 24px' : (needsLast4 ? '118px 96px minmax(150px, 1.2fr) minmax(70px, 1fr) 64px 24px' : '118px 96px minmax(150px, 1.2fr) minmax(70px, 1fr) 24px'), alignItems: 'center', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6, minHeight: 46 }}>
                         <div style={cellS}>
                           <select value={p.payment_type} onChange={e => {
                             const method = e.target.value
@@ -7236,11 +7275,13 @@ export function WorkOrderPopup({
                             // on a row not yet saved, and only when the amount
                             // is empty or was itself pre-filled — a typed
                             // amount is the runner's and is never overwritten.
-                            const fill = isUnsavedPay(p.id) && !!method && (!p.amount || prefilledPayIdsRef.current.has(p.id))
-                            const target = fill ? collectAmountFor(method) : 0
+                            // The fill is the BASE (what's owed); withCardFee
+                            // puts the 3% on top for a card method.
+                            const fill = isUnsavedPay(p.id) && !!method && (!p.base || prefilledPayIdsRef.current.has(p.id))
+                            const target = fill ? collectBase : 0
                             if (fill && target > 0) prefilledPayIdsRef.current.add(p.id)
                             setPayRows(prev => prev.map(x => x.id === p.id
-                              ? withCardFee({ ...x, payment_type: method, last_four: '', amount: fill && target > 0 ? formatCurrency(String(target)) : x.amount })
+                              ? withCardFee({ ...x, payment_type: method, last_four: '', base: fill && target > 0 ? formatCurrency(String(target)) : x.base })
                               : x))
                           }} className="c-tin c-tin-show" style={{ cursor: 'pointer' }}>
                             <option value="">— type —</option>
@@ -7253,32 +7294,37 @@ export function WorkOrderPopup({
                             })}
                           </select>
                         </div>
-                        <div style={cellIn}><input value={p.amount} onChange={e => { prefilledPayIdsRef.current.delete(p.id); setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, amount: e.target.value } : x)) }} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, amount: formatCurrency(e.target.value) }) : x))} placeholder="0.00" className="c-tin c-tin-mono c-tin-show" /></div>
-                        <div style={cellIn}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
+                        <div style={{ ...cellIn, flexDirection: 'column', alignItems: 'stretch', gap: 1, padding: '4px 0' }}>
+                          <span style={{ fontSize: 7.5, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--c-fg-3)', padding: '0 6px', whiteSpace: 'nowrap' }}>Toward balance</span>
+                          <input value={p.base} onChange={e => { prefilledPayIdsRef.current.delete(p.id); setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, base: e.target.value } : x)) }} onBlur={e => setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, base: formatCurrency(e.target.value) }) : x))} placeholder="0.00" title="What the client is paying toward the balance" className="c-tin c-tin-mono c-tin-show" />
+                        </div>
+                        {/* THE PAYMENT — the line's number. Hot on a COD card
+                            row (it's what the terminal runs), plain otherwise. */}
+                        <div style={{ ...cellS, gap: 8, alignItems: 'baseline', flexWrap: 'wrap', rowGap: 0, ...(isMobile ? { gridColumn: '1 / -1', order: 3, paddingTop: 0 } : {}) }}>
+                          <span className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em', whiteSpace: 'nowrap', color: p.amount ? (p.fee_amount ? 'var(--c-st-hot)' : 'var(--c-fg)') : 'var(--c-fg-3)', opacity: p.amount ? 1 : 0.35 }}>
+                            {p.amount || '$0.00'}
+                          </span>
+                          {p.fee_amount && (
+                            <span style={{ fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-2)', whiteSpace: 'nowrap' }}>
+                              + {p.fee_amount} fee
+                              {!readOnly && (
+                                <button type="button" title="Waive the card fee on this payment" onClick={() => setPayRows(prev => prev.map(x => x.id === p.id ? withFeeWaived(x) : x))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 9.5, fontFamily: 'Inter', padding: 0, marginLeft: 5, textDecoration: 'underline' }}>waive</button>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ ...cellIn, ...(isMobile ? { gridColumn: needsLast4 ? '1 / 2' : '1 / -1', order: 4 } : {}) }}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
                         {needsLast4 && (
-                          <div style={cellIn}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono c-tin-show" /></div>
+                          <div style={{ ...cellIn, ...(isMobile ? { gridColumn: '2 / -1', order: 5 } : {}) }}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono c-tin-show" /></div>
                         )}
-                        <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
+                        <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center', ...(isMobile ? { order: 2 } : {}) }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                         </div>
-                        {/* 3% card fee chip — full-width sub-line under the row.
-                            Shows the fee slice of the charged amount; the ×
-                            waives it (whole amount then credits the balance). */}
-                        {p.fee_amount && (
-                          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 7px' }}>
-                            <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
-                              includes {p.fee_amount} card fee (3%)
-                            </span>
-                            {!readOnly && (
-                              <button type="button" title="Waive the card fee on this payment" onClick={() => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, fee_amount: '' } : x))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 10, fontFamily: 'Inter', padding: 0, textDecoration: 'underline' }}>waive</button>
-                            )}
-                          </div>
-                        )}
                       </div>
                     )
                   })}
                   <div style={{ padding: '9px 4px 0' }}>
-                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '', fee_amount: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
+                    {!readOnly && <button type="button" onClick={() => setPayRows(p => [...p, { id: crypto.randomUUID(), payment_type: '', amount: '', memo: '', last_four: '', fee_amount: '', base: '' }])} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0 }}>+ Add payment</button>}
                   </div>
                 </div>
               </div>
