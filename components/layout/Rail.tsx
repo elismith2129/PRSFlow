@@ -53,6 +53,7 @@ const BUSINESS: RailItem[] = [
     href: '/billing', label: 'Billing', ic: '▽',
     children: [
       { href: '/billing', label: 'Billing Hub', ic: '·' },
+      { href: '/petty-cash', label: 'Petty Cash', ic: '·' },
       { href: '/ap-protocols', label: 'Client AP Protocols', ic: '·' },
     ],
   },
@@ -129,7 +130,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     if (profile?.role === 'tech' && item.href === '/crm') return false
     // Tech gets neither the money nor the CRM (Eli, 2026-09-16: "they don't
     // need much but cal and flags"). The billing group and its children go.
-    if (profile?.role === 'tech' && (item.href.startsWith('/billing') || item.href === '/ap-protocols')) return false
+    if (profile?.role === 'tech' && (item.href.startsWith('/billing') || item.href === '/ap-protocols' || item.href === '/petty-cash')) return false
     if (item.href === '/nadines' && !isEli) return false
     // Hiring holds pay and separations — owner/manager only (2026-09-21); the
     // page body and RLS say the same.

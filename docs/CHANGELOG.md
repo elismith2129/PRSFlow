@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.39.6 — Petty cash moves to its own route under Billing — Sep 24, 2026
+
+**Why.** Eli: *"you put it in the billing hub as a tab, I want it as a selector on the rail under billing."*
+
+It shipped a day earlier in the billing hub's heading, beside Billing, COD, Tenants and Financials. Wrong shelf. Those words are **pipelines and views of one thing — invoices** — and the heading's job is to say which pipeline you are looking at. A month of cash movements is not a pipeline, has no bucket and no next action. Sitting up there it also competed with the **COD** toggle, which is in the title on purpose so nobody forgets COD (ruling 2026-08-13).
+
+Now `/petty-cash`, in the rail under **Billing** between *Billing Hub* and *Client AP Protocols* — billing-adjacent things the same people need, reached without changing what the billing page is about. Same component, same behaviour, same CSV and print.
+
+Techs are excluded from the route alongside `/billing*` and `/ap-protocols`.
+
+**Migrations:** none. **Files:** `app/(main)/petty-cash/page.tsx` (new), `components/layout/Rail.tsx`, `app/(main)/billing/page.tsx`.
+
+---
+
 ## v1.39.5 — The morning pop-up is last night only — Sep 23, 2026
 
 **Why.** Eli: *"I think it should only show last night's unsubmitted WOs… ideally we are correcting all of those every day. There should never be an unsubmitted WO hanging around."*
