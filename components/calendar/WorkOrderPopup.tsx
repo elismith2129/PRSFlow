@@ -3734,32 +3734,46 @@ export function WorkOrderPopup({
   // THE RULE: never show one without the other. Both amounts, equal weight,
   // BEFORE any selection; then the method pick fills the matching amount.
   //
-  // The collect numbers are computed from the PERSISTED payments (paySnapRef
-  // — "the database now"), not the live rows. Otherwise picking Cash on a new
-  // row pre-fills $180, the live balance drops to $0, and switching that same
-  // row to Credit Card would pre-fill… $0. The row being filled in IS the
-  // collection in progress; the block must keep showing what it was filled
-  // from until Save re-baselines the snapshot.
+  // LIVE (Eli, 2026-09-24: "that big section should always show the
+  // balance — one for cash and Zelle, one for card"). From Sep 14 to today it
+  // was computed from the PERSISTED payments only, so typing a $333 deposit
+  // moved the Balance due line but not this block — it kept quoting the full
+  // $1,110 / $1,143.30 until Save. The Sep 14 reason for freezing it (picking
+  // Cash on a new row pre-filled $180, the live balance dropped to $0, and
+  // switching that row to Credit Card pre-filled… $0) is solved at the root
+  // instead: a row's pre-fill is computed from the balance EXCLUDING THAT ROW
+  // (collectBaseExcluding), so it can never eat itself. The block itself
+  // reads every row, saved or not — it is the balance as the sheet stands.
   //
   // Nothing about the money model changes: the 3% still attaches to each
-  // PAYMENT (payment_rows.fee_amount, cardFeeOfCharged), never the invoice.
+  // PAYMENT (payment_rows.fee_amount), never the invoice.
   const persistedPay: PayRow[] = (() => {
     try { return paySnapRef.current ? (JSON.parse(paySnapRef.current) as PayRow[]) : [] } catch { return [] }
   })()
+  const collectDiscount = { kind: (wo as any)?.discount_kind ?? null, value: (wo as any)?.discount_value ?? null }
   const collectTotals = computeWoTotals({
     studioRows: stRows,
     rentalRows: rentRows,
-    paymentRows: persistedPay,
-    discount: { kind: (wo as any)?.discount_kind ?? null, value: (wo as any)?.discount_value ?? null },
+    paymentRows: payRows,
+    discount: collectDiscount,
   })
   /** What the client owes now, by cash / Zelle / check. */
   const collectBase = collectTotals.balance > 0 ? parseFloat(collectTotals.balance.toFixed(2)) : 0
   /** What to run on the card so the base above is what the studio keeps. COD only. */
   const collectCard = isCodWo && collectBase > 0 ? cardTotalForBase(collectBase) : 0
-  const collectPaidCount = persistedPay.filter(p => (stripCurrency(p.amount) ?? 0) > 0).length
-  /** The amount a method pick fills in: card methods get the card total. */
-  function collectAmountFor(method: string): number {
-    return CARD_PAY_TYPES.includes(method) && collectCard > 0 ? collectCard : collectBase
+  const collectPaidCount = payRows.filter(p => (stripCurrency(p.amount) ?? 0) > 0).length
+  const collectUnsaved = payRows.filter(p => (stripCurrency(p.amount) ?? 0) > 0 && !persistedPay.some(q => q.id === p.id)).length
+  /** The balance with ONE row taken out — what that row should be pre-filled
+   *  with, and what its dropdown labels quote. */
+  function collectBaseExcluding(rowId: string): number {
+    const t = computeWoTotals({ studioRows: stRows, rentalRows: rentRows, paymentRows: payRows.filter(p => p.id !== rowId), discount: collectDiscount })
+    return t.balance > 0 ? parseFloat(t.balance.toFixed(2)) : 0
+  }
+  /** The amount a method pick would collect for a given row: card methods get
+   *  the card total of the balance excluding that row. */
+  function collectAmountFor(method: string, rowId: string): number {
+    const base = collectBaseExcluding(rowId)
+    return CARD_PAY_TYPES.includes(method) && isCodWo && base > 0 ? cardTotalForBase(base) : base
   }
   /** A row that is not yet in the database — the collection in progress. */
   const isUnsavedPay = (id: string) => !persistedPay.some(p => p.id === id)
@@ -7245,15 +7259,16 @@ export function WorkOrderPopup({
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '4px 0' }}>
                         <span style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, letterSpacing: '-0.02em', minWidth: 100, color: 'var(--c-st-booked)' }}>$0.00</span>
-                        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>paid in full</span>
+                        <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{collectUnsaved > 0 ? 'paid in full once saved' : 'paid in full'}</span>
                       </div>
                     )}
                     {/* HISTORY — fees already taken never fold into the number
                         above. A later payment (OT next week) carries its own 3%. */}
                     {collectPaidCount > 0 && (
                       <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--c-wash2)' }}>
-                        Already collected: ${collectTotals.paid.toFixed(2)} across {collectPaidCount} payment{collectPaidCount === 1 ? '' : 's'}
+                        Collected: ${collectTotals.paid.toFixed(2)} across {collectPaidCount} payment{collectPaidCount === 1 ? '' : 's'}
                         {collectTotals.cardFees > 0 ? ` · card fees $${collectTotals.cardFees.toFixed(2)}` : ''}
+                        {collectUnsaved > 0 ? ` · ${collectUnsaved} not saved yet` : ''}
                       </div>
                     )}
                   </div>
@@ -7278,7 +7293,7 @@ export function WorkOrderPopup({
                             // The fill is the BASE (what's owed); withCardFee
                             // puts the 3% on top for a card method.
                             const fill = isUnsavedPay(p.id) && !!method && (!p.base || prefilledPayIdsRef.current.has(p.id))
-                            const target = fill ? collectBase : 0
+                            const target = fill ? collectBaseExcluding(p.id) : 0
                             if (fill && target > 0) prefilledPayIdsRef.current.add(p.id)
                             setPayRows(prev => prev.map(x => x.id === p.id
                               ? withCardFee({ ...x, payment_type: method, last_four: '', base: fill && target > 0 ? formatCurrency(String(target)) : x.base })
@@ -7289,7 +7304,7 @@ export function WorkOrderPopup({
                                 decision and the amount are in one place. Only
                                 for the row being collected now. */}
                             {PAY_TYPES.map(t => {
-                              const amt = isUnsavedPay(p.id) && collectBase > 0 ? collectAmountFor(t) : 0
+                              const amt = isUnsavedPay(p.id) ? collectAmountFor(t, p.id) : 0
                               return <option key={t} value={t}>{amt > 0 ? `${t} · $${amt.toFixed(2)}` : t}</option>
                             })}
                           </select>
