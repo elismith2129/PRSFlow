@@ -254,6 +254,9 @@ export default function DashboardPage() {
   // Flo's AI briefing (the 8:50 cron). Null = none yet — no affordance shows.
   const [briefing, setBriefing] = useState<FloBriefing | null>(null)
   const [briefOpen, setBriefOpen] = useState(false)
+  // Owners see ONE briefing (Eli, 2026-09-24: "all the different versions —
+  // it's confusing"); the per-seat versions fold under a link.
+  const [briefSeatsOpen, setBriefSeatsOpen] = useState(false)
   const [briefBusy, setBriefBusy] = useState(false)
   const [briefErr, setBriefErr] = useState<string | null>(null)
   const canBrief = isEli || ['owner', 'manager', 'billing'].includes(profile?.role ?? '')
@@ -814,8 +817,12 @@ export default function DashboardPage() {
             </div>
             {briefing.shared.map((ln, i) => briefLine(ln, `s${i}`))}
             {/* THE AUDIENCE RULING (Eli): each person sees their own seat's
-                accountability; owners see every seat. Sliced by REAL role —
-                the view-as toggle previews layouts, not people's mail. */}
+                accountability. Sliced by REAL role — the view-as toggle
+                previews layouts, not people's mail. OWNERS SEE ONE BRIEFING
+                (Eli, 2026-09-24): the shared part + "Across the seats". The
+                per-seat versions used to stack underneath — four briefings in
+                one window, "confusing" — and now fold under a link at the
+                foot for the times he wants to check what a seat was told. */}
             {(() => {
               const seatDefs: { key: 'manager' | 'billing' | 'asst_manager'; label: string }[] = [
                 { key: 'manager', label: gridRows.find(g => g.role === 'manager')?.who ?? 'Manager' },
@@ -835,12 +842,29 @@ export default function DashboardPage() {
                       {briefing.slices.owner!.map((ln, i) => briefLine(ln, `o${i}`))}
                     </div>
                   )}
-                  {seats.map(s => (briefing.slices[s.key]?.length ?? 0) > 0 && (
+                  {!isOwnerRole && seats.map(s => (briefing.slices[s.key]?.length ?? 0) > 0 && (
                     <div key={s.key} className="n-bmseat">
-                      <div className="n-bmseathd">{isOwnerRole ? s.label : 'For you'}</div>
+                      <div className="n-bmseathd">For you</div>
                       {briefing.slices[s.key]!.map((ln, i) => briefLine(ln, `${s.key}${i}`))}
                     </div>
                   ))}
+                  {isOwnerRole && seats.some(s => (briefing.slices[s.key]?.length ?? 0) > 0) && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setBriefSeatsOpen(v => !v)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--n-ink3)', font: 'inherit', fontSize: 10.5, fontWeight: 700, textDecoration: 'underline', padding: '10px 0 0' }}
+                      >
+                        What each seat was told · {briefSeatsOpen ? 'hide ▴' : 'show ▾'}
+                      </button>
+                      {briefSeatsOpen && seats.map(s => (briefing.slices[s.key]?.length ?? 0) > 0 && (
+                        <div key={s.key} className="n-bmseat">
+                          <div className="n-bmseathd">{s.label}</div>
+                          {briefing.slices[s.key]!.map((ln, i) => briefLine(ln, `${s.key}${i}`))}
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </>
               )
             })()}
