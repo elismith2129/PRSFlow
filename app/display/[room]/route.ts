@@ -25,7 +25,7 @@
 import { createHash } from 'crypto'
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { timeToMins } from '@/lib/time'
+import { timeToMins, toStudioLetter } from '@/lib/time'
 import { findDisplayRoom } from '@/lib/displayRooms'
 
 export const runtime = 'nodejs'
@@ -43,7 +43,39 @@ const supabaseAdmin = createClient(
 
 const COLS =
   'id,location,studio,start_date,end_date,from_time,to_time,status,session_type,' +
-  'payment_type,cod_method,artist,label,client_name,engineer_name,assistant_name,invoice_num'
+  'payment_type,cod_method,artist,label,client_name,engineer_name,assistant_name,invoice_num,' +
+  'work_order_id'
+
+// PER-DAY TIMES AND STAFF (Eli, 2026-09-25, WO-1240 Molly Santana: "on my cal
+// it shows 9p day one and 7p day 2 ... the cal displays just [have] two days
+// listed at 9p"). A `bookings` row is a projection card carrying DAY ONE's
+// from/to and the folded staff; the per-day truth is `studio_time_rows` (the
+// WO is source of truth). The app calendar has read that table per day since
+// 2026-09-18 (B1 spine) — this wall never did, so a multi-day card stamped
+// day one's time on every day. Same fix, same shape: one batched read for the
+// WOs on screen, keyed work_order_id|date[|room], room key first, dateless
+// key as fallback, booking's own time when the WO has no row for that day
+// (legacy / pre-WO). Display only — nothing here writes.
+type DayTime = { from: string; to: string; tbd: boolean }
+type DayStaff = { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }
+type PerDay = { times: Record<string, DayTime>; staff: Record<string, DayStaff> }
+const NO_PERDAY: PerDay = { times: {}, staff: {} }
+
+function timesOn(b: B, day: string, pd: PerDay): { from: string; to: string; tbd: boolean } {
+  if (b.work_order_id) {
+    const base = `${b.work_order_id}|${day}`
+    const t = pd.times[`${base}|${toStudioLetter(b.studio ?? '')}`] ?? pd.times[base]
+    if (t) return t
+  }
+  return { from: b.from_time ?? '', to: b.to_time ?? '', tbd: false }
+}
+
+function staffOn(b: B, day: string, pd: PerDay): string {
+  const hit = b.work_order_id ? pd.staff[`${b.work_order_id}|${day}`] : undefined
+  const eng = hit ? (initials(hit.eng ?? null) || (hit.engTbd ? '?' : '')) : initials(b.engineer_name)
+  const asst = hit ? (initials(hit.asst ?? null) || (hit.asstTbd ? '?' : '')) : initials(b.assistant_name)
+  return [eng && `1ST-${eng}`, asst && `2ND-${asst}`].filter(Boolean).join(' · ')
+}
 
 // TV CONTRAST OVERRIDE (Eli, 2026-09-03): the carved dark register
 // (#1b1a17 ground, warm-ivory ink) reads muddy from across a live room, so
@@ -156,16 +188,17 @@ const ARCHIVO = "'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif"
 const MONO = "'Courier New',Courier,monospace"
 
 /** The §10b payload: Archivo name, client line, mono times. */
-function payload(b: B, ink: string, big: boolean) {
+function payload(b: B, ink: string, big: boolean, day: string, pd: PerDay) {
   const isBilling = b.payment_type === 'billing'
   // Billing leads with the artist; COD leads with who's paying.
   const name = isBilling
     ? (b.artist || b.label || b.client_name || '')
     : (b.client_name || '')
   const labelLine = isBilling && b.label && b.label !== name ? b.label : ''
-  const time = b.from_time && b.to_time
-    ? `${fmtTime(b.from_time)}–${fmtTime(b.to_time)}`
-    : b.from_time ? fmtTime(b.from_time) : ''
+  const dt = timesOn(b, day, pd)
+  const time = dt.tbd ? 'TBD'
+    : dt.from && dt.to ? `${fmtTime(dt.from)}–${fmtTime(dt.to)}`
+    : dt.from ? fmtTime(dt.from) : ''
   // The accent border on non-recording types is retired (§12); it returns as a tag.
   const tag = b.session_type === 'filming' ? 'FILM'
     : b.session_type === 'event_playback' ? 'EVENT' : ''
@@ -192,8 +225,10 @@ function payload(b: B, ink: string, big: boolean) {
   return out + `</div>`
 }
 
-/** Full card — one day, full §10b anatomy: payload, footer band, COD strip. */
-function card(b: B): string {
+/** Full card — one day, full §10b anatomy: payload, footer band, COD strip.
+ *  `day` is the calendar cell being drawn: a multi-day card shows THAT day's
+ *  times and staff, not day one's. */
+function card(b: B, day: string, pd: PerDay): string {
   const slot = SLOT[b.status] ?? 'dead'
   const cancelled = b.status === 'cancelled'
   const ink = cancelled ? HOT_TEXT : INK
@@ -201,13 +236,10 @@ function card(b: B): string {
   const showPayment = !BLOCKS.includes(b.status ?? '') && !isBilling
   const cod = b.cod_method === 'Credit Card' ? 'CC' : String(b.cod_method ?? '').toUpperCase()
   const inv = b.invoice_num ? `#${b.invoice_num}` : ''
-  const staff = [
-    b.engineer_name && `1ST-${initials(b.engineer_name)}`,
-    b.assistant_name && `2ND-${initials(b.assistant_name)}`,
-  ].filter(Boolean).join(' · ')
+  const staff = staffOn(b, day, pd)
 
   let out = `<div style="background:${FILL[slot]};border-radius:14px;overflow:hidden;margin-bottom:5px">`
-  out += payload(b, ink, true)
+  out += payload(b, ink, true, day, pd)
   // The footer is a SHADE of the chip, not a second surface (§10b) — rgba black
   // over the fill works against every status without a per-status variant.
   if (inv || staff) {
@@ -404,13 +436,48 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   // the hash on its own and reload the wall every few seconds for no reason.
   bookings.sort((a, b) => String(a.id).localeCompare(String(b.id)))
 
+  // Per-day rows for every WO on screen — one query, never per-card. Sorted so
+  // the hash below is stable. Whitelisted columns only: no rates, no notes.
+  const woIds = Array.from(new Set(bookings.map(b => b.work_order_id).filter(Boolean)))
+  let stRows: B[] = []
+  let stError: unknown = null
+  if (!error && woIds.length) {
+    const r = await supabaseAdmin
+      .from('studio_time_rows')
+      .select('work_order_id,date,studio,from_time,to_time,times_tbd,eng_name,eng_role,eng_visible')
+      .in('work_order_id', woIds)
+    stRows = r.data ?? []
+    stError = r.error
+    stRows.sort((a, b) => `${a.work_order_id}|${a.date}|${a.studio}|${a.eng_role}|${a.eng_name}`
+      .localeCompare(`${b.work_order_id}|${b.date}|${b.studio}|${b.eng_role}|${b.eng_name}`))
+  }
+  const perDay: PerDay = { times: {}, staff: {} }
+  for (const row of stRows) {
+    if (!row.date) continue
+    const key = `${row.work_order_id}|${row.date}`
+    const slot = row.eng_role === 'engineer' ? 'eng' : 'asst'
+    if (row.eng_name) {
+      perDay.staff[key] = { ...(perDay.staff[key] || {}), [slot]: row.eng_name }
+    } else if (row.eng_visible !== false) {
+      perDay.staff[key] = { ...(perDay.staff[key] || {}), [slot === 'eng' ? 'engTbd' : 'asstTbd']: true }
+    }
+    if ((row.studio ?? '').trim()) {
+      const t: DayTime = { from: row.from_time ?? '', to: row.to_time ?? '', tbd: row.times_tbd === true }
+      perDay.times[`${key}|${toStudioLetter(row.studio)}`] = t
+      if (!perDay.times[key]) perDay.times[key] = t
+    }
+  }
+
   // An outage gets a CONSTANT hash, not an error page hashed as content. The
   // error page embeds this same value, so a wall that loses the database sits
   // quietly on its message instead of reloading every POLL_MS for hours — and
   // the moment data returns the hash changes and it heals itself.
-  const hash = error
+  // The rows are hashed too: a WO time edit changes what the wall shows, so
+  // it must change the hash, or the panel would sit on the old time until the
+  // 15-minute meta refresh.
+  const hash = error || stError
     ? 'unavailable'
-    : createHash('sha1').update(JSON.stringify(bookings)).digest('hex').slice(0, 16)
+    : createHash('sha1').update(JSON.stringify([bookings, stRows])).digest('hex').slice(0, 16)
 
   // The probe: same query, no HTML. Answered before anything is rendered, so a
   // check costs one query and 16 bytes rather than a full page build. Must sit
@@ -424,7 +491,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   const probeUrl = req.nextUrl.pathname + (key ? `?k=${encodeURIComponent(key)}&probe=1` : '?probe=1')
 
   // A wall that goes blank is worse than a wall that says why.
-  if (error) {
+  if (error || stError) {
     return html(page(
       room.label,
       `<div style="padding:40px;font-size:20px;color:${HOT}">Data unavailable. Retrying.</div>`,
@@ -476,7 +543,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
       // covers, same as the app's calendar communicates it.
       for (const b of todays) {
         const isBlockish = BLOCKS.includes(b.status ?? '')
-        inner += (b.start_date === b.end_date || !isBlockish) ? card(b) : spanBar(b, ds)
+        inner += (b.start_date === b.end_date || !isBlockish) ? card(b, ds, perDay) : spanBar(b, ds)
       }
 
       rows += `<td style="height:${MIN_ROW_H}px;padding:5px 6px;`
