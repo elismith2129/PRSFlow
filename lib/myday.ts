@@ -72,6 +72,15 @@ export type MyDayDuty = {
    * anyone ever sees is a wall of red for work nobody was asked to do.
    */
   created_at: string | null
+  /**
+   * PERSONAL ITEMS (2026-09-24, migration 20260924190000). NULL = the role's
+   * duty, as every seeded row; set = one person's own item (it still carries
+   * `role` so the seat's card picks it up unchanged).
+   */
+  owner_profile_id: string | null
+  created_by: string | null
+  /** Set by an owner (or seeded): nobody but an owner may edit or retire it. */
+  locked: boolean
 }
 
 export type MyDayEntry = {
@@ -295,7 +304,87 @@ function toDuty(r: any): MyDayDuty {
     is_active: r.is_active !== false,
     always_available: r.always_available === true,
     created_at: r.created_at ?? null,
+    owner_profile_id: r.owner_profile_id ?? null,
+    created_by: r.created_by ?? null,
+    locked: r.locked === true,
   }
+}
+
+// ─── Personal recurring items (Eli, 2026-09-24) ──────────────────────────────
+//
+// "Anyone with a task list can add a recurring one for themselves — daily,
+// weekly, monthly, set the day — but can't remove the ones I created."
+// The engine is the same myday_duties row; these helpers only decide the
+// ownership columns. RLS enforces the lock server-side; `dutyLocked` is the
+// UI's copy of the same rule so the × never renders on a row the write would
+// refuse.
+
+/** May this viewer edit / retire this duty? Owners: anything. Others: their
+ *  own, unlocked. */
+export function dutyEditable(duty: MyDayDuty, viewer: { id: string; role: string } | null | undefined): boolean {
+  if (!viewer) return false
+  if (viewer.role === 'owner') return true
+  return !duty.locked && duty.created_by === viewer.id
+}
+
+export type PersonalDutyInput = {
+  label: string
+  cadence: DutyCadence
+  /** Weekly: 0=Sun…6=Sat (several). Monthly: [day-of-month] (1–31). Daily: null. */
+  due_days: number[] | null
+  role: MyDayRole
+}
+
+/** Create a recurring item. An owner creating one makes it the ROLE's (owner
+ *  null, locked) — that is "Eli set it"; anyone else makes it their own. */
+export async function createPersonalDuty(input: PersonalDutyInput, by: { id: string; role: string }): Promise<boolean> {
+  const isOwner = by.role === 'owner'
+  const { error } = await supabase.from('myday_duties').insert({
+    duty_key: `personal-${crypto.randomUUID()}`,
+    role: input.role,
+    label: input.label.trim(),
+    cadence: input.cadence,
+    due_days: input.cadence === 'daily' ? null : input.due_days,
+    dtype: 'point',
+    captures: [],
+    sub_items: [],
+    sort_order: 500,
+    is_active: true,
+    always_available: false,
+    owner_profile_id: isOwner ? null : by.id,
+    created_by: by.id,
+    locked: isOwner,
+  })
+  return dbResult('Adding to your list', error)
+}
+
+export async function updatePersonalDuty(id: string, input: Pick<PersonalDutyInput, 'label' | 'cadence' | 'due_days'>): Promise<boolean> {
+  const { error } = await supabase.from('myday_duties').update({
+    label: input.label.trim(),
+    cadence: input.cadence,
+    due_days: input.cadence === 'daily' ? null : input.due_days,
+  }).eq('id', id)
+  return dbResult('Saving your item', error)
+}
+
+/** Retire, never delete — the ticks it earned stay in myday_entries. */
+export async function retirePersonalDuty(id: string): Promise<boolean> {
+  const { error } = await supabase.from('myday_duties').update({ is_active: false }).eq('id', id)
+  return dbResult('Removing from your list', error)
+}
+
+/** "Weekly · Mon Wed Fri", "Monthly · 25th", "Daily". */
+export function cadenceLabel(duty: Pick<MyDayDuty, 'cadence' | 'due_days'>): string {
+  if (duty.cadence === 'daily') return 'Daily'
+  const days = duty.due_days ?? []
+  if (duty.cadence === 'weekly') {
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    return `Weekly · ${days.slice().sort((a, b) => a - b).map(d => names[d] ?? '?').join(' ')}`
+  }
+  const d = days[0]
+  if (!d) return 'Monthly'
+  const suf = d % 10 === 1 && d !== 11 ? 'st' : d % 10 === 2 && d !== 12 ? 'nd' : d % 10 === 3 && d !== 13 ? 'rd' : 'th'
+  return `Monthly · ${d}${suf}`
 }
 
 function toEntry(r: any): MyDayEntry {

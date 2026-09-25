@@ -33,6 +33,7 @@ import { initials } from '@/components/calendar/SessionCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { fetchMyTasks } from '@/lib/tasks'
+import { YourListModal } from '@/components/dashboard/YourListModal'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { formatCurrency } from '@/lib/format'
@@ -546,6 +547,21 @@ export default function DashboardPage() {
   const qRows = queueRows()
   const qDone = qRows.filter(r => r.done).length
 
+  // ── THE FULL LIST (Eli, 2026-09-24): the box is a door. The modal gets the
+  // same views/tasks/approvals the box draws, so the two can't disagree; it
+  // refreshes through the same loaders on any change.
+  const [listOpen, setListOpen] = useState(false)
+  const listWho = qTab === 'mine'
+    ? (profile?.display_name?.split(' ')[0] || 'Me')
+    : (gridRows.find(g => g.role === dutyRole)?.who ?? (dutyRole === 'manager' ? 'Manager' : 'Billing'))
+  const listRoleLabel = dutyRole === 'manager' ? 'Manager' : dutyRole === 'billing' ? 'Billing' : (isOwnerHere ? 'Owner' : '')
+  const listIsOwnSeat = isOwnerHere || qTab === effectiveView
+  const listSeatDuties = (myDay?.duties ?? []).filter(d => d.is_active && d.role === dutyRole)
+  const refreshList = () => {
+    loadMyDay()
+    if (profile?.id) fetchMyTasks(profile.id).then(setTasks)
+  }
+
   // ── Tonight's rooms. ───────────────────────────────────────────────────────
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
   function openNewRoomBooking(room: { venue: string; studio: string }) {
@@ -927,7 +943,7 @@ export default function DashboardPage() {
       {/* ── ROW 2: Tonight · Your list · Landed & in the air ── */}
       <div className="n-row1">
 
-        <div className="n-portal" style={{ cursor: 'default' }}>
+        <div className="n-portal" style={{ cursor: 'pointer' }} onClick={() => setListOpen(true)} title="Open the full list">
           <div className="n-pt">
             <b>Your list</b>
             {effectiveView === 'eli' && isEli && (
@@ -942,9 +958,9 @@ export default function DashboardPage() {
               </span>
             )}
             <span className="n-prog">{qDone} of {qRows.length}</span>
-            <span className="n-arrow" style={{ marginLeft: 8 }} onClick={() => router.push('/flags')}>→</span>
+            <span className="n-arrow" style={{ marginLeft: 8 }}>→</span>
           </div>
-          <div className="n-qscroll">
+          <div className="n-qscroll" onClick={e => e.stopPropagation()}>
             {qRows.map(r => (
               <div
                 key={r.key}
@@ -1072,6 +1088,24 @@ export default function DashboardPage() {
       </div>
 
       {/* Booked room card → the Work Order directly (Step 8 — the WO IS the booking). */}
+      {listOpen && (
+        <YourListModal
+          who={listWho}
+          roleLabel={listRoleLabel}
+          seatRole={dutyRole}
+          viewer={profile}
+          isOwnSeat={listIsOwnSeat}
+          approvals={qTab === 'mine' ? approvals : []}
+          views={qTab === 'mine' ? [] : (myDay?.views ?? [])}
+          tasks={qTab === 'mine' || qTab === effectiveView ? tasks : []}
+          seatDuties={listSeatDuties}
+          savingDutyId={savingDuty}
+          onToggleDuty={toggleDuty}
+          onGoto={href => { setListOpen(false); router.push(href) }}
+          onChanged={refreshList}
+          onClose={() => setListOpen(false)}
+        />
+      )}
       {dashEditBooking && (
         <WorkOrderPopup
           booking={dashEditBooking}
