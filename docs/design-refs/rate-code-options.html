@@ -1,0 +1,67 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Wall rate code — options</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;padding:28px 34px}
+h1{font-family:'Arial Black',Arial;font-size:26px;margin:0 0 6px;text-transform:uppercase}
+p{opacity:.75;font-size:15px;max-width:760px;line-height:1.45}
+.key{display:inline-grid;grid-template-columns:repeat(10,44px);gap:0;margin:14px 0 30px;border:1px solid rgba(255,255,255,.3)}
+.key div{text-align:center;padding:6px 0;border-right:1px solid rgba(255,255,255,.16);font-weight:800}
+.key div:nth-child(10n){border-right:0}
+.key .l{font-family:'Arial Black',Arial;font-size:20px}
+.key .n{font-family:'Courier New',monospace;opacity:.6;border-top:1px solid rgba(255,255,255,.16)}
+.opts{display:flex;gap:34px;flex-wrap:wrap}
+.opt{width:250px}
+.opt h2{font-size:14px;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin:0 0 10px;font-weight:800}
+.opt .why{font-size:13px;opacity:.7;line-height:1.4;margin-top:10px}
+.cell{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);padding:5px 6px;height:170px}
+.day{width:26px;height:26px;border-radius:50%;text-align:center;line-height:26px;font-size:17px;font-weight:900;opacity:.75;margin-bottom:3px}
+.card{background:rgba(67,223,174,.72);border-radius:14px;overflow:hidden;margin-bottom:5px;color:#1c2626;position:relative}
+.pay{padding:4px 10px 3px}
+.name{font-family:'Arial Black',Arial;font-weight:900;font-size:22px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbl{font-size:15px;font-weight:800;opacity:.9;line-height:1.2}
+.time{font-family:'Courier New',monospace;font-size:15px;font-weight:700;opacity:.95;line-height:1.25}
+.foot{background:rgba(0,0,0,.3);padding:2px 10px;font-size:13px;font-weight:800;line-height:1.35;display:flex;justify-content:space-between}
+.cod{background:#ff5a4d;color:#fff4f2;padding:1px 10px;font-size:13px;font-weight:800;letter-spacing:.07em;text-align:center}
+.code{font-family:'Courier New',monospace;font-weight:700;letter-spacing:.06em}
+/* A — top-right corner tag, over the payload */
+.a .code{position:absolute;top:5px;right:9px;font-size:13px;opacity:.85}
+.a .name{padding-right:52px}
+/* B — footer, between invoice and staff */
+.b .code{font-size:13px;opacity:.9}
+/* C — on the time line, trailing */
+.c .code{font-size:15px;margin-left:12px;opacity:.85}
+</style></head><body>
+<h1>Wall rate code</h1>
+<p>Old-calendar cipher, wall displays only. Each day of a multi-day session shows that day's own rate from <code>studio_time_rows.rate</code> (same read as the per-day times). Zeros kept. Hourly rows get a trailing <b>H</b>; day rate is bare.</p>
+<div class="key">
+<div class="l">W</div><div class="l">A</div><div class="l">L</div><div class="l">K</div><div class="l">T</div><div class="l">H</div><div class="l">E</div><div class="l">D</div><div class="l">O</div><div class="l">G</div>
+<div class="n">1</div><div class="n">2</div><div class="n">3</div><div class="n">4</div><div class="n">5</div><div class="n">6</div><div class="n">7</div><div class="n">8</div><div class="n">9</div><div class="n">0</div>
+</div>
+<p>$1,500/day → <b class="code">WTGG</b> &nbsp;·&nbsp; $850/day → <b class="code">DTG</b> &nbsp;·&nbsp; $150/hr → <b class="code">WTG H</b> &nbsp;·&nbsp; $2,000/day → <b class="code">AGGG</b></p>
+
+<div class="opts">
+<div class="opt a"><h2>A · corner tag</h2>
+<div class="cell"><div class="day">25</div>
+<div class="card"><span class="code">WTGG</span><div class="pay"><div class="name">Molly Santana</div><div class="lbl">Sony Music</div><div class="time">9P–3A</div></div>
+<div class="foot"><span>#1240</span><span>1ST-JC · 2ND-LR</span></div><div class="cod">COD CC</div></div></div>
+<div class="why">Where the old cal had it. Always the same spot, reads at a glance. Costs ~50px of the name line on long names.</div></div>
+
+<div class="opt b"><h2>B · footer band</h2>
+<div class="cell"><div class="day">25</div>
+<div class="card"><div class="pay"><div class="name">Molly Santana</div><div class="lbl">Sony Music</div><div class="time">9P–3A</div></div>
+<div class="foot"><span>#1240</span><span class="code">WTGG</span><span>1ST-JC · 2ND-LR</span></div><div class="cod">COD CC</div></div></div>
+<div class="why">Sits with the other "office" facts (invoice, staff) in the shaded band. Name stays full width. Footer gets crowded on a two-engineer day.</div></div>
+
+<div class="opt c"><h2>C · on the time line</h2>
+<div class="cell"><div class="day">25</div>
+<div class="card"><div class="pay"><div class="name">Molly Santana</div><div class="lbl">Sony Music</div><div class="time">9P–3A<span class="code">WTGG</span></div></div>
+<div class="foot"><span>#1240</span><span>1ST-JC · 2ND-LR</span></div><div class="cod">COD CC</div></div></div>
+<div class="why">Time and rate are both per-day, so they change together — one mono line carries both. Reads as part of the schedule, which is the disguise.</div></div>
+</div>
+
+<p style="margin-top:34px"><b>Day 2 of the same WO</b> (7P start, different rate) under option C:</p>
+<div class="opt c"><div class="cell"><div class="day">26</div>
+<div class="card"><div class="pay"><div class="name">Molly Santana</div><div class="lbl">Sony Music</div><div class="time">7P–1A<span class="code">WAGG</span></div></div>
+<div class="foot"><span>#1240</span><span>1ST-JC</span></div><div class="cod">COD CC</div></div></div></div>
+
+<p style="margin-top:30px;opacity:.5;font-size:13px">Open question for the build: rates currently never leave the display route on purpose (column whitelist). Adding <code>rate</code> to the studio_time_rows select is a deliberate exception — the cipher is the mitigation.</p>
+</body></html>

@@ -56,18 +56,37 @@ const COLS =
 // WOs on screen, keyed work_order_id|date[|room], room key first, dateless
 // key as fallback, booking's own time when the WO has no row for that day
 // (legacy / pre-WO). Display only — nothing here writes.
-type DayTime = { from: string; to: string; tbd: boolean }
+type DayTime = { from: string; to: string; tbd: boolean; code: string }
+
+// RATE CODE (Eli, 2026-09-25, docs/design-refs/rate-code-options.html, option
+// C). The old calendar carried each session's rate on the card in a cipher —
+// staff read it, a client in the room sees noise. WALK THE DOG: ten distinct
+// letters, digits 1–9 then 0. $1,500 -> WTGG. Zeros kept (Eli: "can keep
+// zeros") so 15 / 150 / 1500 cannot be confused. Hourly rows carry a trailing
+// H; a day rate is bare. Per day, from studio_time_rows.rate, so day 2 of a
+// WO shows day 2's rate — same read as the per-day times.
+//
+// This is a DELIBERATE exception to the column whitelist above ("rates …
+// never leave this process"). The cipher is the mitigation; do not widen it
+// to eng_rate, charge or totals, and never print a dollar figure on the wall.
+const CIPHER = 'WALKTHEDOG' // index = digit, with G standing in for 0
+function rateCode(rate: unknown, type: unknown): string {
+  const digits = String(rate ?? '').replace(/[^0-9.]/g, '').split('.')[0].replace(/^0+/, '')
+  if (!digits) return ''
+  const code = digits.replace(/\d/g, d => CIPHER[d === '0' ? 9 : parseInt(d) - 1])
+  return type === 'hour' ? code + ' H' : code
+}
 type DayStaff = { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }
 type PerDay = { times: Record<string, DayTime>; staff: Record<string, DayStaff> }
 const NO_PERDAY: PerDay = { times: {}, staff: {} }
 
-function timesOn(b: B, day: string, pd: PerDay): { from: string; to: string; tbd: boolean } {
+function timesOn(b: B, day: string, pd: PerDay): DayTime {
   if (b.work_order_id) {
     const base = `${b.work_order_id}|${day}`
     const t = pd.times[`${base}|${toStudioLetter(b.studio ?? '')}`] ?? pd.times[base]
     if (t) return t
   }
-  return { from: b.from_time ?? '', to: b.to_time ?? '', tbd: false }
+  return { from: b.from_time ?? '', to: b.to_time ?? '', tbd: false, code: '' }
 }
 
 function staffOn(b: B, day: string, pd: PerDay): string {
@@ -217,10 +236,14 @@ function payload(b: B, ink: string, big: boolean, day: string, pd: PerDay) {
     out += `<div style="font-size:15px;font-weight:800;opacity:.9;line-height:1.2;color:${ink};`
       + `white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(labelLine)}</div>`
   }
-  if (time) {
+  // The rate code trails the time on the same mono line (option C): both are
+  // per-day, so they change together, and a code that reads as part of the
+  // schedule is the disguise.
+  const code = dt.code ? `<span style="margin-left:12px;letter-spacing:.06em;opacity:.85">${esc(dt.code)}</span>` : ''
+  if (time || code) {
     out += `<div style="font-family:${MONO};font-size:15px;font-weight:700;opacity:.95;line-height:1.25;`
       + `color:${ink};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">`
-      + `${esc(time)}${tag ? '  ' + esc(tag) : ''}</div>`
+      + `${esc(time)}${tag ? '  ' + esc(tag) : ''}${code}</div>`
   }
   return out + `</div>`
 }
@@ -444,7 +467,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   if (!error && woIds.length) {
     const r = await supabaseAdmin
       .from('studio_time_rows')
-      .select('work_order_id,date,studio,from_time,to_time,times_tbd,eng_name,eng_role,eng_visible')
+      .select('work_order_id,date,studio,from_time,to_time,times_tbd,eng_name,eng_role,eng_visible,rate,row_rate_type')
       .in('work_order_id', woIds)
     stRows = r.data ?? []
     stError = r.error
@@ -462,7 +485,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
       perDay.staff[key] = { ...(perDay.staff[key] || {}), [slot === 'eng' ? 'engTbd' : 'asstTbd']: true }
     }
     if ((row.studio ?? '').trim()) {
-      const t: DayTime = { from: row.from_time ?? '', to: row.to_time ?? '', tbd: row.times_tbd === true }
+      const t: DayTime = {
+        from: row.from_time ?? '', to: row.to_time ?? '', tbd: row.times_tbd === true,
+        code: rateCode(row.rate, row.row_rate_type),
+      }
       perDay.times[`${key}|${toStudioLetter(row.studio)}`] = t
       if (!perDay.times[key]) perDay.times[key] = t
     }
