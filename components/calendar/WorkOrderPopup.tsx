@@ -1011,6 +1011,8 @@ export function WorkOrderPopup({
   const [stView, setStView] = useState<'list' | 'cards' | null>(null)
   // The day sheet: which date's card is open for editing (card view only).
   const [daySheetDate, setDaySheetDate] = useState<string | null>(null)
+  // The sheet header's status DROPDOWN (Eli, 2026-09-24): open/closed.
+  const [sheetStatusOpen, setSheetStatusOpen] = useState(false)
   /**
    * THE ADD-DATES PROMPT (Eli, 2026-09-09: "we just need to be able to add
    * dates to a session. one day multidays whatever… a simple interface through
@@ -3953,6 +3955,45 @@ export function WorkOrderPopup({
           whiteSpace: 'nowrap',
         }}
       >{locked ? '✓ Reviewed' : 'Mark reviewed'}</button>
+    )
+  }
+  // ONE PILL, DROPS DOWN (Eli, 2026-09-24: "one line please — the status
+  // could be a dropdown"). The sheet header is a single row and the three-
+  // segment pill was ~180px of it: "3 of 9" folded into a column and the room
+  // code was crushed at the edge. This is the same setDayStatus write behind
+  // one pill in the status colour; the other two statuses drop under it. The
+  // day CARDS keep the three-segment pill — they have the room.
+  function dayStatusDropdown(date: string) {
+    if (!wo || runner || readOnly || !date || !perDayStatusAllowed(wo.session_status)) return null
+    const rows = stRows.filter(r => r.date === date)
+    if (rows.length === 0) return null
+    const cur = effDayStatus(rows.find(r => r.studio !== '') ?? rows[0])
+    const label = (st: string) => st === 'confirmed' ? 'Confirmed' : st === 'tentative' ? 'Tentative' : 'Cancelled'
+    return (
+      <span style={{ position: 'relative', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+        <button
+          type="button"
+          className={`c-pill ${statusFillClass(cur)}`}
+          onClick={() => setSheetStatusOpen(v => !v)}
+          title={rows[0].day_status ? 'This day\'s own status' : 'Same as the session — tap to set this day'}
+          style={{ cursor: 'pointer', border: 'none', font: 'inherit', fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', padding: '5px 10px', gap: 5, ...(cur === 'cancelled' ? { color: 'var(--c-hot-text)' } : {}) }}
+        >
+          {label(cur)} <span style={{ fontSize: 8, opacity: .8 }}>▾</span>
+        </button>
+        {sheetStatusOpen && (
+          <span style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4, padding: 6, borderRadius: 12, background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', minWidth: 130 }}>
+            {DAY_STATUSES.filter(st => st !== cur).map(st => (
+              <button
+                key={st}
+                type="button"
+                className={`c-pill ${statusFillClass(st)}`}
+                onClick={() => { setDayStatus(date, st); setSheetStatusOpen(false) }}
+                style={{ cursor: 'pointer', border: 'none', font: 'inherit', fontSize: 9, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', padding: '6px 10px', justifyContent: 'center', ...(st === 'cancelled' ? { color: 'var(--c-hot-text)' } : {}) }}
+              >{label(st)}</button>
+            ))}
+          </span>
+        )}
+      </span>
     )
   }
   const metaLabel: React.CSSProperties = {
@@ -7746,7 +7787,7 @@ export function WorkOrderPopup({
           const otChargeDay = sheetRows.reduce((a, r) => a + (r.ot_charge ?? 0), 0)
           const agreedCharge = sheetRows.reduce((a, r) => a + (r.charge ?? 0), 0) + sheetStaffRows.reduce((a, r) => a + engChargeFor(r), 0)
           const sheetTotal = agreedCharge + otChargeDay
-          const closeSheet = () => { setDaySheetDate(null); setOpenNoteKey(null); setTimeDDKey(null) }
+          const closeSheet = () => { setDaySheetDate(null); setOpenNoteKey(null); setTimeDDKey(null); setSheetStatusOpen(false) }
           // One big time well: type into it (TimeInput smart-parse) or open the
           // half-hour preset list with the ▾.
           const timeWell = (r: StRow, field: 'from_time' | 'to_time' | 'eng_from_time' | 'eng_to_time' | 'actual_from_time' | 'actual_to_time', label: string, value: string, dashed = false) => {
@@ -7833,8 +7874,13 @@ export function WorkOrderPopup({
                   : { width: 'min(620px, 94vw)', maxHeight: '82vh', background: 'var(--c-bg)', borderRadius: 22, padding: '14px 18px 16px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', boxShadow: 'var(--c-softsh)' }}
               >
                 {isMobile && <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--c-wash2)', margin: '0 auto 10px', flexShrink: 0 }} />}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                  <span className="c-arch" style={{ fontSize: 17, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* ONE LINE (Eli, 2026-09-24; mock docs/design-refs/wo-sheet-header-
+                    options.html, option B): ‹ date › · room · "3 of 9" on the left,
+                    the day's state — NOT SUBMITTED + the status dropdown — pinned
+                    right. The three-segment status pill lived in this row (v1.36)
+                    and folded "3 of 9" into a column and crushed the room code. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }} onClick={() => sheetStatusOpen && setSheetStatusOpen(false)}>
+                  <span className="c-arch" style={{ fontSize: 17, display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                     {/* ‹ › step BETWEEN the WO's days — only drawn when there
                         are days to step between (they read as dead otherwise).
                         The date itself is the chip: − / + / picker. */}
@@ -7845,18 +7891,19 @@ export function WorkOrderPopup({
                     {allDates.length > 1 && (
                       <button type="button" disabled={dayIdx >= allDates.length - 1} onClick={() => goDay(1)} aria-label="Next day of this work order" style={{ width: 30, height: 30, borderRadius: 99, fontSize: 15, color: 'var(--c-fg-2)', background: 'var(--c-wash)', border: 'none', cursor: dayIdx < allDates.length - 1 ? 'pointer' : 'default', opacity: dayIdx < allDates.length - 1 ? 1 : 0.3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
                     )}
-                    {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>{dayIdx + 1} of {allDates.length}</span>}
-                    {dayStateTag(sheetRows, daySheetDate, true)}
-                    {dayStatusPill(daySheetDate, true)}
                   </span>
-                  <span style={fldK}>
+                  <span style={{ ...fldK, whiteSpace: 'nowrap' }}>
                     {Array.from(new Set(sheetStudioRows.map(r => roomCode(toStudioLetter(r.studio), r.location || booking.location)).filter(Boolean))).join(' · ')}
+                  </span>
+                  {allDates.length > 1 && <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--c-fg-3)', whiteSpace: 'nowrap' }}>· {dayIdx + 1} of {allDates.length}</span>}
+                  <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    {dayStateTag(sheetRows, daySheetDate, true)}
+                    {dayStatusDropdown(daySheetDate)}
                   </span>
                 </div>
                 <div style={{ fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', margin: '2px 0 10px', flexShrink: 0 }}>
                   {agreedLabel && <>Agreed with client: <b style={{ color: 'var(--c-fg-2)', fontWeight: 700 }}>{agreedLabel}</b></>}
                   {dayLocked && <span style={{ marginLeft: agreedLabel ? 8 : 0 }}>🔒 Approved by the office — view only</span>}
-                  {allDates.length > 1 && <span style={{ float: 'right' }}>{isMobile ? 'swipe' : '‹ ›'} for other days · {dayIdx + 1}/{allDates.length}</span>}
                 </div>
 
                 <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>

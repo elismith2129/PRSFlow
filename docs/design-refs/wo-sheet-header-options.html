@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Day sheet header: room for the status</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  Eli, 2026-09-24: "the top of the WO got a little messed up UI-wise when we
+  added the status thing." The day sheet's header is ONE flex row: ‹ date › ·
+  "3 of 9" · NOT SUBMITTED · Confirmed/Tentative/Cancelled · room code. With
+  the per-day status pill (v1.36) in it, "3 of 9" wraps to three lines and
+  the room code is squeezed off the right edge.
+
+  Options:
+    A  Two rows. Row 1: ‹ Wed, Sep 23 › · 3 of 9 · PRS B (the WHERE/WHEN).
+       Row 2: NOT SUBMITTED · Confirmed/Tentative/Cancelled (the STATE).
+    B  One row, re-ordered: ‹ Wed, Sep 23 › · PRS B · 3 of 9 on the left,
+       status cluster pinned right, "3 of 9" nowrap. Wraps to two rows on
+       a phone by itself.
+  Recommendation: A — the state row is where the Reviewed/TBD chips can
+  also go later without re-breaking it.
+-->
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06);--wash2:rgba(242,239,231,.12);--fg2:rgba(242,239,231,.72);--fg3:rgba(242,239,231,.45);--hot:#ff5a4d;--hot-text:#fff4f2;--warm:#ffa94d;--booked:#43dfae;--chip-ink:#1c2626;--srf:#151412}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 80px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:-.02em;margin-bottom:6px}
+.lede{font-size:12px;opacity:.68;max-width:860px;line-height:1.65;margin-bottom:8px}
+h2{font-family:'Archivo Black',sans-serif;font-size:14px;margin:30px 0 8px}h2 .n{color:var(--fg3);margin-right:8px}
+.sub{font-size:11.5px;opacity:.62;max-width:860px;line-height:1.6;margin-bottom:12px}
+.cap{font-size:10.5px;color:var(--fg3);margin-top:8px;line-height:1.55;max-width:860px}.cap b{color:var(--fg2)}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.sheet{background:var(--srf);border-radius:18px;padding:14px 14px 10px;max-width:620px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.sheet.narrow{max-width:400px}
+.rowh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nav{width:30px;height:30px;border-radius:99px;background:var(--wash2);display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:var(--fg2);flex-shrink:0}
+.date{display:inline-flex;align-items:center;gap:6px;background:var(--wash2);border-radius:99px;padding:4px 8px;flex-shrink:0}
+.date .pm{width:22px;height:22px;border-radius:99px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;color:var(--fg2)}
+.date b{font-size:14px;font-weight:700;padding:0 4px}
+.date .c{font-size:9px;color:var(--fg3)}
+.cnt{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--fg3);white-space:nowrap}
+.room{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);white-space:nowrap}
+.tag{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:99px;padding:5px 10px;white-space:nowrap}
+.tag.ns{background:var(--hot);color:var(--hot-text)}
+.seg{display:inline-flex;background:var(--bg);border-radius:99px;padding:3px;gap:2px;box-shadow:3px 3px 9px rgba(0,0,0,.5),-3px -3px 9px rgba(255,255,255,.04)}
+.seg span{border-radius:99px;padding:5px 11px;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;white-space:nowrap}
+.seg span.on{opacity:1;background:var(--booked);color:var(--chip-ink)}
+.agreed{font-size:10.5px;color:var(--fg3);margin-top:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.agreed b{color:var(--fg2)}
+.card{margin-top:12px;background:var(--wash);border-radius:14px;height:64px}
+/* today (broken) */
+.bad .cnt{white-space:normal;width:14px;line-height:1.2}
+.bad .room{margin-left:auto;width:26px;white-space:normal;line-height:1.2;text-align:right}
+</style>
+</head>
+<body>
+
+<h1>Day sheet header — room for the status</h1>
+<p class="lede">The per-day status pill joined a header row that was already full, so "3 of 9" folds into a column and the room code gets crushed at the edge. Two ways to give it room.</p>
+
+<h2><span class="n">0</span>Today</h2>
+<div class="sheet bad">
+  <div class="rowh" style="flex-wrap:nowrap">
+    <span class="nav">‹</span>
+    <span class="date"><span class="pm">−</span><b>Wed, Sep 23</b><span class="c">▾</span><span class="pm">+</span></span>
+    <span class="nav">›</span>
+    <span class="cnt">3 of 9</span>
+    <span class="tag ns">Not submitted</span>
+    <span class="seg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span></span>
+    <span class="room">PRS B</span>
+  </div>
+  <div class="agreed"><span>Agreed with client: <b>2:00 PM – 8:30 PM</b></span><span>‹ › for other days · 3/9</span></div>
+  <div class="card"></div>
+</div>
+<p class="cap">One row, no wrap, seven things. The two flexible items — "3 of 9" and the room code — are what give.</p>
+
+<!-- ===== A ===== -->
+<h2><span class="n">A</span>Two rows: where/when, then state <span class="rec">Recommended</span></h2>
+<p class="sub">Row 1 is navigation and identity: ‹ date › · 3 of 9 · PRS B. Row 2 is the day's state: NOT SUBMITTED · Confirmed / Tentative / Cancelled. Anything we add later that's about the day's state (Reviewed, Times TBD) goes on row 2 without touching row 1.</p>
+<div class="sheet">
+  <div class="rowh" style="flex-wrap:nowrap">
+    <span class="nav">‹</span>
+    <span class="date"><span class="pm">−</span><b>Wed, Sep 23</b><span class="c">▾</span><span class="pm">+</span></span>
+    <span class="nav">›</span>
+    <span class="cnt">3 of 9</span>
+    <span class="room" style="margin-left:auto">PRS B</span>
+  </div>
+  <div class="rowh" style="margin-top:8px">
+    <span class="tag ns">Not submitted</span>
+    <span class="seg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span></span>
+  </div>
+  <div class="agreed"><span>Agreed with client: <b>2:00 PM – 8:30 PM</b></span><span>‹ › for other days · 3/9</span></div>
+  <div class="card"></div>
+</div>
+<p class="cap"><b>Phone:</b> row 1 already fits at 390px (the date chip is the only wide thing); row 2 wraps its two chips if it has to. <b>Cost:</b> split one <code>&lt;span&gt;</code> into two; the "for other days · 3/9" tail on the Agreed line becomes redundant with "3 of 9" sitting right above it — drop it.</p>
+
+<!-- ===== B ===== -->
+<h2><span class="n">B</span>One row, state pinned right</h2>
+<p class="sub">Keep one row: identity on the left (date, room, count), the status cluster pushed to the right with <code>margin-left:auto</code>, and "3 of 9" told not to wrap. Wraps to two rows by itself when there isn't room.</p>
+<div class="sheet">
+  <div class="rowh">
+    <span class="nav">‹</span>
+    <span class="date"><span class="pm">−</span><b>Wed, Sep 23</b><span class="c">▾</span><span class="pm">+</span></span>
+    <span class="nav">›</span>
+    <span class="room">PRS B</span>
+    <span class="cnt">· 3 of 9</span>
+    <span style="margin-left:auto;display:inline-flex;gap:8px;align-items:center"><span class="tag ns">Not submitted</span><span class="seg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span></span></span>
+  </div>
+  <div class="agreed"><span>Agreed with client: <b>2:00 PM – 8:30 PM</b></span></div>
+  <div class="card"></div>
+</div>
+<p class="cap"><b>At 400px</b> it wraps to this on its own:</p>
+<div class="sheet narrow">
+  <div class="rowh">
+    <span class="nav">‹</span>
+    <span class="date"><span class="pm">−</span><b>Wed, Sep 23</b><span class="c">▾</span><span class="pm">+</span></span>
+    <span class="nav">›</span>
+    <span class="room">PRS B</span>
+    <span class="cnt">· 3 of 9</span>
+    <span style="display:inline-flex;gap:8px;align-items:center"><span class="tag ns">Not submitted</span><span class="seg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span></span></span>
+  </div>
+  <div class="agreed"><span>Agreed with client: <b>2:00 PM – 8:30 PM</b></span></div>
+  <div class="card"></div>
+</div>
+<p class="cap"><b>Trade:</b> fewer lines on a wide iPad, but the wrap point moves with the date's length ("Wed, Sep 23" vs "Thu, Oct 1") so the header changes shape day to day. A is the same shape every day.</p>
+
+</body>
+</html>
