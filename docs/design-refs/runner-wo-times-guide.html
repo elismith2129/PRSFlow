@@ -1,0 +1,82 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Work order — the three time pairs</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+@page{size:11in 7in;margin:0}
+*{box-sizing:border-box}
+body{margin:0;background:#0b0a09;color:#f2efe7;font-family:Inter,system-ui,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:1056px;height:672px;margin:0 auto;padding:34px 52px 44px;display:grid;grid-template-columns:330px 1fr;column-gap:70px;position:relative}
+h1{grid-column:1/-1;margin:0 0 16px;font-size:22px;font-weight:800;letter-spacing:-.01em}
+h1 span{font-weight:400;opacity:.55;margin-left:12px;font-size:16px}
+/* the card */
+.card{background:#151311;border-radius:20px;padding:14px 14px;box-shadow:0 20px 60px rgba(0,0,0,.6);align-self:start}
+.mast{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;padding:0 2px}
+.mast b{font-size:15px}.mast i{font-family:'DM Mono',monospace;font-style:normal;font-size:12px;opacity:.55}
+.blk{background:rgba(242,239,231,.05);border-radius:14px;padding:9px 12px;margin-bottom:9px;position:relative}
+.blk.hl{outline:2.5px solid var(--hl);outline-offset:3px}
+.rowhd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.rowhd b{font-size:12px}.chip{font-family:'DM Mono',monospace;font-size:10px;background:rgba(242,239,231,.12);border-radius:99px;padding:2px 8px;opacity:.8}
+.pair{display:flex;gap:8px}
+.well{flex:1;background:rgba(242,239,231,.12);border-radius:12px;padding:7px 10px 6px}
+.well.dash{background:transparent;border:1.5px dashed rgba(242,239,231,.3)}
+.well .k{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin-bottom:1px}
+.well .v{font-family:'DM Mono',monospace;font-size:17px;font-weight:500}
+.sub{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.6;margin:9px 0 5px}
+.sub em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:400;opacity:.8}
+.num{position:absolute;left:-14px;top:-14px;width:26px;height:26px;border-radius:50%;background:var(--hl);color:#1c2626;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+/* notes */
+.notes{display:flex;flex-direction:column;justify-content:flex-start;padding-top:6px}
+.note{position:relative;padding-left:34px;margin-bottom:14px}
+.note:before{content:"";position:absolute;left:0;top:11px;width:22px;height:2.5px;background:var(--hl)}
+.note:after{content:"";position:absolute;left:-2px;top:6px;border:6px solid transparent;border-right:9px solid var(--hl);}
+.note h2{margin:0 0 5px;font-size:17px;font-weight:800;color:var(--hl)}
+.note p{margin:0 0 3px;font-size:13.5px;line-height:1.35;opacity:.92}
+.note p b{font-weight:800}
+.note .law{display:inline-block;margin-top:6px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--hl);color:#1c2626;border-radius:99px;padding:3px 11px}
+.n1{--hl:#43dfae}.n2{--hl:#ffa94d}.n3{--hl:#b5a3ef}
+.foot{position:absolute;left:52px;right:52px;bottom:14px;font-size:10px;opacity:.4;display:flex;justify-content:space-between}
+.submit{--hl:#ff5a4d;position:absolute;left:52px;right:52px;bottom:38px;display:flex;align-items:center;gap:18px;background:rgba(255,90,77,.14);border:2.5px solid var(--hl);border-radius:16px;padding:12px 18px}
+.submit .tag{flex-shrink:0;font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--hl);color:#fff4f2;border-radius:99px;padding:7px 16px}
+.submit p{margin:0;font-size:14.5px;line-height:1.35}
+.submit b{font-weight:800}
+</style></head><body><div class="page">
+<h1>Four things on every work order <span>every session, no exceptions</span></h1>
+
+<div class="card">
+  <div class="mast"><b>Molly Santana · Studio B</b><i>#1240</i></div>
+
+  <div class="blk hl n1"><div class="num">1</div>
+    <div class="rowhd"><b>Fri Sep 25</b><span class="chip">6h</span></div>
+    <div class="pair"><div class="well"><div class="k">Start</div><div class="v">9:00 PM</div></div><div class="well"><div class="k">End</div><div class="v">3:00 AM</div></div></div>
+  </div>
+
+  <div class="blk hl n2"><div class="num">2</div>
+    <div class="sub" style="margin-top:0">Client actually here <em>· billed stays as booked</em></div>
+    <div class="pair"><div class="well dash"><div class="k">Arrived</div><div class="v">9:40 PM</div></div><div class="well dash"><div class="k">Left</div><div class="v">2:15 AM</div></div></div>
+  </div>
+
+  <div class="blk hl n3"><div class="num">3</div>
+    <div class="rowhd"><b>2ND · Jordan C.</b><span class="chip">6h</span></div>
+    <div class="pair"><div class="well"><div class="k">Start</div><div class="v">9:00 PM</div></div><div class="well"><div class="k">End</div><div class="v">3:00 AM</div></div></div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="note n1"><h2>1 · Booked times</h2>
+    <p>The hours the client agreed to pay for. <b>This is what gets billed.</b></p>
+    <p>They go over? <b>Change the End time.</b><br>They leave early? <b>Do not touch it.</b></p>
+    <span class="law">Over = change it · Early = leave it</span></div>
+
+  <div class="note n2"><h2>2 · Arrived / Left</h2>
+    <p>The real clock. When the client actually walked in and actually walked out.</p>
+    <p>Never changes the bill. It tells the office what happened in the room overnight — <b>we are not here, you are.</b></p>
+    <span class="law">Always fill in · required to submit</span></div>
+
+  <div class="note n3"><h2>3 · Assistant times</h2>
+    <p><b>Same as the Booked times.</b> Nothing else.</p>
+    <p>Only exception: the office tells you a big setup starts the assistant early. Otherwise it matches line 1 exactly.</p>
+    <span class="law">Match the booked times</span></div>
+</div>
+
+<div class="submit"><span class="tag">4 · Then hit Submit</span><p>On the work order <b>and</b> every checklist. Submitting is the only way the office knows what happened in your room. We rely on <b>complete</b> submissions to do our job — <b>unsubmitted duties and work orders will result in write-ups.</b></p></div>
+<div class="foot"><span>PRSFlo · runner work order</span><span>Booked = the bill · Arrived/Left = the truth · Assistant = the bill</span></div>
+</div></body></html>

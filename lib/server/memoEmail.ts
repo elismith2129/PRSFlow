@@ -5,13 +5,20 @@
 // newsletter, just for the owners and office admin… owners aren't on the app
 // as much and I want them to see how much work goes into this."
 //
-// The email is deliberately NOT the designed page pasted into a mail body:
-// mail clients strip CSS variables, color-mix, grid and most of what the
-// designed pages are made of. Instead it is a clean, light, table-based
-// newsletter (ivory paper, ink text, one green accent) carrying the title,
-// who sent it, the memo's own lede, and one button — "Read the full memo" —
-// to a login-free copy at /m/<token>. A typed note ('note' kind) rides
-// inline in full, since its HTML is only bold and bullets.
+// THE WHOLE MEMO RIDES IN THE MAIL (Eli, 2026-09-25: "completely contained
+// in the body of the email and not a link to the app. these are for old
+// owners. i just want them to read in the email"). It used to carry only the
+// page's lede and a "Read the full memo" button to /m/<token>; now a designed
+// page is inlined in full — its <style> blocks hoisted into the mail's head,
+// its <body> contents dropped into the card — and there is no button at all.
+// The /m/ page still exists for anyone who has an old mail.
+//
+// The catch is unchanged: mail clients strip CSS variables, color-mix, grid
+// and most of what the app's own pages are made of. A page meant for the
+// mail therefore has to be authored MAIL-SAFE — tables, inline styles, no
+// webfonts (docs/memos/*.html are built this way). A page pasted in from the
+// app's design language will still arrive, but degraded. A typed note
+// ('note' kind) is only bold and bullets and has always ridden inline.
 //
 // Signatures are not collected by email. The footer says so.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,29 +89,45 @@ function fmtDate(iso: string): string {
 
 const AUD: Record<MemoForMail['audience'], string> = { admin: 'the office', runners: 'runners', everyone: 'everyone' }
 
+/** A designed page split for inlining: its <style> blocks and its body markup. */
+export function pageForMail(html: string): { styles: string; body: string } {
+  const styles = (html.match(/<style[^>]*>[\s\S]*?<\/style>/gi) ?? []).join('\n')
+  let body = html
+  const m = /<body[^>]*>([\s\S]*?)<\/body>/i.exec(html)
+  if (m) body = m[1]
+  else body = body.replace(/<!doctype[^>]*>/i, '').replace(/<\/?(html|head|body)[^>]*>/gi, '')
+  body = body
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<link\b[^>]*>/gi, '')
+    .replace(/<meta\b[^>]*>/gi, '')
+    .replace(/<title>[\s\S]*?<\/title>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+  return { styles, body: body.trim() }
+}
+
 export function buildMemoEmail(memo: MemoForMail, origin: string): { subject: string; html: string; text: string } {
-  const link = `${origin}/m/${memo.email_token}`
-  const appLink = `${origin}/memos`
   const from = memo.sent_by_name?.trim() || 'the office'
   const date = fmtDate(memo.sent_at)
   const subject = `Memo — ${memo.title}`
 
   let bodyHtml: string
   let bodyText: string
+  let pageStyles = ''
   if (memo.kind === 'note') {
     bodyHtml = `<div style="font-size:16px;line-height:1.6;color:#2a2722">${sanitizeNoteServer(memo.body_html)}</div>`
     bodyText = plainText(memo.body_html)
   } else {
-    const { heading, lede } = pageExcerpt(memo.body_html)
-    bodyHtml = `${heading && heading !== memo.title ? `<p style="margin:0 0 8px;font-size:17px;font-weight:700;color:#2a2722">${esc(heading)}</p>` : ''}<p style="margin:0;font-size:16px;line-height:1.6;color:#2a2722">${esc(lede)}</p>`
-    bodyText = [heading, lede].filter(Boolean).join('\n\n')
+    // The page itself, in full. A mail-safe page brings its own layout; the
+    // wrapper only supplies the masthead and the footer around it.
+    const page = pageForMail(memo.body_html)
+    pageStyles = page.styles
+    bodyHtml = page.body
+    bodyText = plainText(page.body)
   }
 
-  const button = (label: string, href: string, primary: boolean) =>
-    `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto"><tr><td style="border-radius:999px;background:${primary ? '#2a2722' : '#e9e6df'}"><a href="${href}" style="display:inline-block;padding:13px 26px;font-family:Inter,Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:${primary ? '#f5f3ee' : '#2a2722'};text-decoration:none">${label}</a></td></tr></table>`
-
   const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><title>${esc(subject)}</title></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><title>${esc(subject)}</title>${pageStyles}</head>
 <body style="margin:0;padding:0;background:#f5f3ee;-webkit-font-smoothing:antialiased">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(bodyText.slice(0, 140))}</div>
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f5f3ee"><tr><td align="center" style="padding:32px 16px 40px">
@@ -118,9 +141,6 @@ export function buildMemoEmail(memo: MemoForMail, origin: string): { subject: st
     <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#2fbf93">From ${esc(from)} · to ${AUD[memo.audience]}</p>
     <h1 style="margin:0 0 18px;font-size:27px;line-height:1.15;letter-spacing:-.02em;color:#2a2722;font-weight:800">${esc(memo.title)}</h1>
     ${bodyHtml}
-    <div style="height:26px"></div>
-    ${memo.kind === 'page' ? button('Read the full memo', link, true) : button('Open in PRSFlo', appLink, true)}
-    ${memo.kind === 'page' ? `<p style="margin:12px 0 0;text-align:center;font-size:11.5px;color:#8d8880">Opens in your browser — no sign-in needed.</p>` : ''}
   </td></tr>
   <tr><td style="padding:18px 8px 0;font-family:Inter,Helvetica,Arial,sans-serif;font-size:11.5px;line-height:1.55;color:#8d8880">
     This is the read-along copy for owners and office admin. ${memo.requires_ack ? 'Signatures are collected in the app, not by replying here.' : 'Nothing to sign on this one.'}
@@ -130,7 +150,7 @@ export function buildMemoEmail(memo: MemoForMail, origin: string): { subject: st
 </td></tr></table>
 </body></html>`
 
-  const text = `${memo.title}\nFrom ${from} · ${date} · to ${AUD[memo.audience]}\n\n${bodyText}\n\n${memo.kind === 'page' ? `Read the full memo: ${link}` : `Open in PRSFlo: ${appLink}`}\n\nRead-along copy for owners and office admin. ${memo.requires_ack ? 'Signatures are collected in the app.' : ''}`
+  const text = `${memo.title}\nFrom ${from} · ${date} · to ${AUD[memo.audience]}\n\n${bodyText}\n\nRead-along copy for owners and office admin. ${memo.requires_ack ? 'Signatures are collected in the app.' : ''}`
   return { subject, html, text }
 }
 
