@@ -120,12 +120,13 @@ const FILL: Record<string, string> = {
   dead: 'rgba(204,209,207,.5)',
   hot: 'rgba(255,90,77,.7)',
   cold: 'rgba(95,201,232,.68)',
+  tenant: 'rgba(240,154,192,.66)',
 }
 
 // STATUS_ALIASES, components/carved/index.tsx — booking status -> carved slot.
 const SLOT: Record<string, string> = {
   confirmed: 'booked', tentative: 'warm', cancelled: 'hot',
-  tour: 'uncon', tech: 'tech', open_hours: 'dead', lockout: 'booked', tenant: 'booked',
+  tour: 'uncon', tech: 'tech', open_hours: 'dead', lockout: 'booked', tenant: 'tenant',
 }
 
 // Tour/Tech/Open Hours are BLOCK events: no work order, nothing to collect, so

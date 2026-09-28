@@ -21,7 +21,7 @@ import React from 'react'
    Deliberately NOT the same mapping as the legacy StatusBadge: there, `open`
    and `uncontacted` were both grey. Here `uncontacted` is harbor (it's a live
    lead state) and `open`/`tech` are driftglass (they're inert). */
-export type CarvedStatus = 'hot' | 'warm' | 'cold' | 'booked' | 'uncon' | 'tech' | 'lease' | 'dead'
+export type CarvedStatus = 'hot' | 'warm' | 'cold' | 'booked' | 'uncon' | 'tech' | 'lease' | 'tenant' | 'dead'
 
 const STATUS_ALIASES: Record<string, CarvedStatus> = {
   hot: 'hot',
@@ -53,8 +53,10 @@ const STATUS_ALIASES: Record<string, CarvedStatus> = {
   // as a booked room (2026-08-26): green like confirmed. The ops exclusion is
   // the status value itself, never the colour.
   lockout: 'booked',
-  // Unstaffed lease block (2026-09-28) — same green, same reason.
-  tenant: 'booked',
+  // Unstaffed lease block (2026-09-28) — rose (--c-st-tenant), its own slot:
+  // a tenant room should read differently from a booked session at a glance,
+  // and orchid is already Tech on the same calendar.
+  tenant: 'tenant',
 }
 
 function normalize(status: string): string {

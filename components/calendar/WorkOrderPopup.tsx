@@ -107,7 +107,7 @@ const SESSION_STATUSES: [string, string][] = [
 const SESSION_STATUS_COLORS: Record<string, string> = {
   confirmed: 'var(--c-st-booked)', tentative: 'var(--c-st-warm)', cancelled: 'var(--c-st-hot)',
   tour: 'var(--c-st-uncon)', tech: 'var(--c-fg-3)', open_hours: 'var(--c-fg-2)',
-  lockout: 'var(--c-st-booked)', tenant: 'var(--c-st-booked)',
+  lockout: 'var(--c-st-booked)', tenant: 'var(--c-st-tenant)',
 }
 const SESSION_TYPES: [string, string][] = [
   ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
@@ -5208,13 +5208,15 @@ export function WorkOrderPopup({
             {/* c-seg-tiny on wide (Eli, 2026-08-18: "sesstoin status is two
                 rows") — six pills at the tiny size fit the words column on one
                 line. Non-wide keeps the full-size seg. */}
+            {/* EIGHT NOW (Tenant, 2026-09-28): the housing wraps to two rows of
+                four — see .c-seg-status. One line was the rule at seven. */}
             {/* ALL SEVEN VISIBLE, ONE LINE, NO SCROLL (Eli, 2026-09-03).
                 The 2026-08-26 version scrolled sideways when Lockout made it
                 seven, which hid Lockout itself at the non-wide width — the
                 status you cannot see is the status nobody sets. `c-seg-status`
                 (globals.css) fits them at every width by tightening padding and
                 tracking; the horizontal scroll is deliberately gone. */}
-            <div className={`c-seg c-seg-status${wide ? ' c-seg-tiny' : ''}`} style={{ order: wide ? 1 : undefined, alignSelf: 'stretch', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+            <div className={`c-seg c-seg-status${wide ? ' c-seg-tiny' : ''}`} style={{ order: wide ? 1 : undefined, alignSelf: 'stretch', whiteSpace: 'nowrap' }}>
               {/* MIXED (2026-09-19): when day cards disagree with the session,
                   the bar stops claiming one status. Tapping any status here is
                   "all days" — it writes session_status AND clears every day's

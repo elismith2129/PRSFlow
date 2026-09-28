@@ -102,6 +102,11 @@
      separately so call sites read as what they are. */
   --c-st-lease:  var(--c-st-tech);
   --c-st-dead:   #cfd6d4;             /* driftglass   — DNB / open hours */
+  /* Tenant room (2026-09-28). A NEW hex, on purpose: a tenant block sits on
+     the calendar next to Confirmed (green), Tour (harbor) and Tech (orchid),
+     so it needs a colour none of those own — rose. Eli: a tenant room should
+     read differently from a booked session at a glance. */
+  --c-st-tenant: #f09ac0;             /* rose         — tenant room (unstaffed lease) */
 
   /* Muted ink steps. The spec works in opacity, which is right for whole elements
      but useless when only the text colour should drop — these give the legacy
@@ -1357,6 +1362,7 @@ select.c-input {
 .c-fill-uncon  { background: var(--c-st-uncon); }
 .c-fill-tech   { background: var(--c-st-tech); }
 .c-fill-lease  { background: var(--c-st-lease); }
+.c-fill-tenant { background: var(--c-st-tenant); }
 .c-fill-dead   { background: var(--c-st-dead); }
 
 /* Dark register — calendar chips become alpha fills so they sit in the room. */
@@ -1367,6 +1373,7 @@ select.c-input {
 :root:not([data-theme="light"]) .c-ev.c-fill-dead   { background: rgba(204, 209, 207, .5); }
 :root:not([data-theme="light"]) .c-ev.c-fill-hot    { background: rgba(255, 90, 77, .7); }
 :root:not([data-theme="light"]) .c-ev.c-fill-cold   { background: rgba(95, 201, 232, .68); }
+:root:not([data-theme="light"]) .c-ev.c-fill-tenant { background: rgba(240, 154, 192, .66); }
 
 /* Dark register — room pools are faint washes with normal ink, not bright slabs. */
 :root:not([data-theme="light"]) .c-room.c-fill-booked { background: rgba(67, 223, 174, .18); }
@@ -1726,6 +1733,7 @@ select.c-input {
 .c-seg > button.c-on.c-fill-uncon:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)  { background: var(--c-st-uncon);  color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-tech:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-tech);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-lease:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)  { background: var(--c-st-lease);  color: var(--c-chip-ink); }
+.c-seg > button.c-on.c-fill-tenant:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) { background: var(--c-st-tenant); color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-dead:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)   { background: var(--c-st-dead);   color: var(--c-chip-ink); }
 .c-seg > button.c-on.c-fill-hot:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore)    { background: var(--c-st-hot);    color: var(--c-hot-text); }
 /* TINY — the housing variant for segments that sit inside an already-raised
@@ -1745,9 +1753,12 @@ select.c-input {
    So this variant is applied at EVERY width, and buys its room from padding,
    tracking and font-size rather than from wrapping or scrolling. Measured:
    ~470px of content, against a column that is never narrower than ~540.
-   If an EIGHTH status is ever added, this is the thing that breaks — shorten
-   labels (OPEN HRS is already the short form of Open Hours), don't re-add
-   overflow. Same :not() chain as the base rule — see the specificity note. */
+   THE EIGHTH STATUS CAME (Tenant, 2026-09-28) and it broke exactly as
+   predicted — CONFIRMED and TENTATIVE ran into each other. The fix is the
+   one the note ruled out for seven: the housing WRAPS into two rows of four
+   (flex-basis 22% + grow), still one housing, still no scroll, every pill
+   full-size and legible. Same :not() chain as the base rule — see the
+   specificity note. */
 .c-seg-status {
   /* FULL-WIDTH HOUSING, PILLS DIVIDE IT. Sizing the housing to its content is
      what let the seventh pill spill past the rounded edge once the horizontal
@@ -1755,10 +1766,10 @@ select.c-input {
      housing takes the column's width and every pill gets an equal share of it
      (flex-basis 0), so the row fits BY CONSTRUCTION at any width instead of by
      a padding measurement that a longer label could invalidate. */
-  display: flex; width: 100%; padding: 3px; gap: 1px;
+  display: flex; flex-wrap: wrap; width: 100%; padding: 3px; gap: 2px 1px;
 }
 .c-seg-status > button:not(.c-x):not(.c-btn):not(.c-soft):not(.c-pill):not(.c-signoff):not(.c-lz-action):not(.c-bact):not(.c-bmore) {
-  flex: 1 1 0; min-width: 0; padding: 5px 4px; text-align: center;
+  flex: 1 1 22%; min-width: 0; padding: 5px 4px; text-align: center;
   font-size: 9px; letter-spacing: .02em;
 }
 
