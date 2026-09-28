@@ -596,10 +596,12 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
     // gets every point the money columns can spare. It WRAPS rather than
     // truncating (see Col.wrap): this is the client's record of what was worked
     // on, and a printed page has no popover to open.
-    { head: 'Session info', w: 66, wrap: true },
+    { head: 'Session info', w: 60, wrap: true },
     { head: 'From', w: 46 },
     { head: 'To', w: 46 },
-    { head: 'Hrs', w: 22, align: 'right' },
+    // 28, not 22 (2026-09-28): "12.5" and "16.5" printed as "12." / "16." on
+    // WO 34792 — a half-hour day is common. Points came from Session info.
+    { head: 'Hrs', w: 28, align: 'right' },
     { head: 'Type', w: 26 },
     { head: 'Rate', w: 50, align: 'right' },
     { head: 'OT hrs', w: 28, align: 'right' },
