@@ -6746,13 +6746,22 @@ export function WorkOrderPopup({
               <div style={{ position: 'relative' }}>
               <div ref={stBinRef} data-st-cards="" style={wide ? { maxHeight: ST_BIN_H, overflowY: 'auto', paddingRight: 4 } : undefined}>
                 {(() => {
-                  const groups: { date: string; rows: StRow[] }[] = []
+                  // CHRONOLOGICAL, ALWAYS (Eli, 2026-09-28: "day cards on the WO
+                  // are not showing up in chronological order… the order we add
+                  // them"). This used to walk stRows in sort_order and merge only
+                  // CONSECUTIVE same-date rows, so a day added after the fact sat
+                  // at the bottom — and a day whose rows were not adjacent split
+                  // into two cards. Now: group by date, dates ascending, undated
+                  // last. Rows inside a card keep their sort_order.
+                  const byDate = new Map<string, StRow[]>()
                   for (const r of stRows) {
                     const key = r.date || ''
-                    const last = groups[groups.length - 1]
-                    if (last && last.date === key) last.rows.push(r)
-                    else groups.push({ date: key, rows: [r] })
+                    const arr = byDate.get(key)
+                    if (arr) arr.push(r)
+                    else byDate.set(key, [r])
                   }
+                  const groups: { date: string; rows: StRow[] }[] = Array.from(byDate, ([date, rows]) => ({ date, rows }))
+                    .sort((x, y) => (x.date || 'zzzz').localeCompare(y.date || 'zzzz'))
                   return groups.map(g => {
                     const studioRows = g.rows.filter(r => r.studio !== '')
                     // THE SLOT SHOWS EVEN WHEN EMPTY (2026-08-20). This used to
