@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { overlayDayTimes } from '@/lib/dayTimes'
 import type { Booking } from '@/lib/supabase'
 import { DailyOpsModal, type DailyOpsSubmission } from '@/components/dashboard/DailyOpsModal'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
@@ -122,6 +123,8 @@ export function LocationStrip() {
     const woChannel = supabase
       .channel('daily-ops-wos')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, handleChange)
+      // Card times come from studio_time_rows (lib/dayTimes) — refresh on a WO time edit.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, handleChange)
       .subscribe()
 
     // Ops badges/drawer also depend on runner ops submissions + checklists — subscribe
@@ -178,8 +181,9 @@ export function LocationStrip() {
       supabase.from('bookings').select('*').lte('start_date', yesterday).gte('end_date', yesterday).eq('status', 'confirmed').is('imported_at', null).order('from_time'),
     ])
 
-    const locTodayBkgs = (todayBkgsData ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))
-    const locYestBkgs  = (yestBkgsData ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr))
+    // Each day's own times/staff per card (lib/dayTimes, 2026-09-28).
+    const locTodayBkgs = await overlayDayTimes((todayBkgsData ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr)), today)
+    const locYestBkgs  = await overlayDayTimes((yestBkgsData ?? []).filter(b => matchesLoc(b.location, loc.key, loc.abbr)), yesterday)
     const todayBkgIds  = locTodayBkgs.map(b => b.id)
     const yestBkgIds   = locYestBkgs.map(b => b.id)
 

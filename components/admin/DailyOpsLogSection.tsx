@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { overlayDayTimes } from '@/lib/dayTimes'
 import type { Booking } from '@/lib/supabase'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
@@ -102,6 +103,8 @@ export function DailyOpsLogSection() {
       .channel('admin-ops-log')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, refresh)
+      // Card times come from studio_time_rows (lib/dayTimes) — refresh on a WO time edit.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, refresh)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -161,9 +164,10 @@ export function DailyOpsLogSection() {
       supabase.from('daily_ops_submissions').select('*').eq('studio', activeStudio).eq('date', date),
       supabase.from('checklists').select('*').eq('studio', activeStudio).eq('date', date),
     ])
-    const bookings = (bData ?? []).filter((b: any) =>
+    // That date's own times/staff per card (lib/dayTimes, 2026-09-28).
+    const bookings = await overlayDayTimes((bData ?? []).filter((b: any) =>
       (b.location ?? '').toLowerCase().includes(loc) || (b.location ?? '').toLowerCase().includes(abbr)
-    ) as Booking[]
+    ) as Booking[], date)
     const bookingIds = bookings.map((b: any) => b.id)
     const { data: woData } = bookingIds.length
       ? await supabase.from('work_orders').select('*').in('booking_id', bookingIds)

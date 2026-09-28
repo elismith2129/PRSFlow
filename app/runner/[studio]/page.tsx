@@ -10,6 +10,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
+import { overlayDayTimes } from '@/lib/dayTimes'
 import { Hint, useHints, setHintsEnabled } from '@/components/ui/Hint'
 import { useMyMemos } from '@/hooks/useMyMemos'
 import { unreadCount, isHard } from '@/lib/memos'
@@ -108,10 +109,13 @@ export default function StudioDailyOpsPage() {
       .in('status', ['confirmed', 'lockout'])
       .order('from_time', { ascending: true })
 
-    const filtered = (bData ?? []).filter((b: Booking) => {
+    // TODAY'S OWN TIMES AND STAFF (Eli, 2026-09-28, Melly Mike 6P vs 3P):
+    // the card carries day one; lib/dayTimes overlays this date's row and
+    // re-sorts by it. Same read the calendar and the wall do.
+    const filtered = await overlayDayTimes((bData ?? []).filter((b: Booking) => {
       const loc = (b.location ?? '').toLowerCase()
       return loc.includes(studio) || loc.includes(meta.abbr.toLowerCase())
-    })
+    }), today)
     setBookings(filtered)
 
     if (filtered.length > 0) {
@@ -285,6 +289,9 @@ export default function StudioDailyOpsPage() {
     const channel = supabase
       .channel(`runner-bookings-${studio}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { load() })
+      // A WO time edit lands in studio_time_rows, not bookings — the hub
+      // must refresh on that too or today's card sits on the old time.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => { load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [studio, load])

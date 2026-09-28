@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Tenants: leases, periods and the ledger</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  TENANTS, SECOND PASS (Eli, 2026-09-28). Stays a TAB in the billing hub
+  (ruled today — not its own route). What changes underneath:
+
+  · A LEASE is a recurring charge, not a job. Tenant, room(s), monthly
+    amount, start, end, and an ANCHOR DAY. The roster leaves code for a
+    small `leases` table because MBA's cycle is anchored on the 16th —
+    "not prorated, a full month, due the middle of the month" — and a
+    code roster can't carry a cycle.
+  · PERIODS run anchor to anchor. 1st-anchored: Sep 1–30, email the 25th,
+    overdue after the 5th. 16th-anchored: Sep 16 – Oct 15, email the 10th,
+    overdue after the 20th. Same rules, shifted.
+  · The LEDGER freezes the amount on each period row (enterprise rule: an
+    invoice never re-prices when the rent changes) and records what was
+    paid, so partial payments and history are real.
+  · NO WORK ORDERS for unstaffed leases (Camper, MBA). Financials
+    straight-lines rent per day from the lease instead of reading their WO
+    rows. Mustard keeps his WO for runners (hours only, no charge) and it
+    leaves the Billing/COD pipeline.
+
+  ROSTER 2026-09-28: PRS D empty · PRS F Spencer Nezy $2,500 · PRS Treehouse
+  Dada $5,500 · ARS C Oren Yoel $3,250 · TRK PR2 Bobby Raps $2,100 · TRK PR3
+  Sean Dorian $1,622.25 · TRK North Camper $19,500 · TRK South + PR1 MBA
+  $7,000 (one deal, from Sep 16) · ERS B Mustard $29,500 + incidentals.
+-->
+<style>
+:root{
+  --bg:#f5f3ee; --fg:#2a2722;
+  --wash:rgba(42,39,34,.05); --wash2:rgba(42,39,34,.095);
+  --fg2:rgba(42,39,34,.72); --fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d; --warm:#ffa94d; --booked:#43dfae; --uncon:#7fb2e5;
+  --chip-ink:#1c2626; --srf:#ffffff; --ivory:#2a2722; --ivory-ink:#f5f3ee;
+  --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
+}
+[data-theme="dark"]{
+  --bg:#1b1a17; --fg:#d9d6cd;
+  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
+  --fg2:rgba(217,214,205,.72); --fg3:rgba(217,214,205,.45);
+  --srf:#242320; --ivory:#d5d0c2; --ivory-ink:#1b1a17;
+  --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1000px;margin:0 auto}
+.bar{margin-bottom:6px;display:flex;align-items:center;gap:14px}
+.bar h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em}
+.tg{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--wash2);padding:5px 11px;border-radius:99px;cursor:pointer}
+.lede{font-size:12px;opacity:.65;max-width:740px;line-height:1.6;margin-bottom:24px}
+.opt{margin-bottom:34px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:700px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:680px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;
+  background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.crumb{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-bottom:10px}
+.pipes{display:inline-flex;gap:4px;background:var(--wash);border-radius:99px;padding:4px;margin-bottom:14px}
+.pipe{font-size:11px;font-weight:800;letter-spacing:.03em;padding:6px 16px;border-radius:99px;opacity:.55}
+.pipe.on{background:var(--ivory);color:var(--ivory-ink);opacity:1;box-shadow:2px 2px 7px rgba(0,0,0,.3)}
+.mon{display:flex;align-items:center;gap:8px;margin-left:auto;font-weight:700;font-size:12px}
+.mon .a{width:24px;height:24px;border-radius:8px;background:var(--wash2);display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.figs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.fig{background:var(--wash);border-radius:12px;padding:10px 12px}
+.fig .v{font-family:'Archivo Black',sans-serif;font-size:17px}
+.fig .l{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:2px}
+.fig.alert .v{color:var(--hot)}
+.venue{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin:14px 2px 4px}
+.trow{display:grid;grid-template-columns:120px 1fr 150px 96px 118px 112px;gap:10px;align-items:center;
+  background:var(--srf);box-shadow:var(--softsh);border-radius:10px;padding:9px 12px;margin-top:5px;font-size:12px}
+.trow .room{font-weight:800;font-size:11.5px}
+.trow .room small{display:block;font-size:9.5px;font-weight:400;opacity:.5}
+.trow .who{font-weight:700}
+.trow .who small{display:block;font-size:10px;font-weight:400;opacity:.5}
+.trow .per{font-size:11px;opacity:.75;font-variant-numeric:tabular-nums}
+.trow .per small{display:block;font-size:9.5px;opacity:.6}
+.trow .rent{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.trow .rent small{display:block;font-size:9.5px;font-weight:400;opacity:.55}
+.trow.empty{background:transparent;box-shadow:none;outline:1.5px dashed var(--fg3);outline-offset:-1.5px}
+.trow.empty .who{opacity:.4;font-style:italic;font-weight:400}
+.trow.anchor{outline:1.5px solid var(--uncon);outline-offset:-1.5px}
+.st{justify-self:end;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:5px 11px;border-radius:99px;white-space:nowrap}
+.st.paid{background:var(--booked);color:var(--chip-ink)}
+.st.open{background:var(--wash2)}
+.st.part{background:var(--warm);color:var(--chip-ink)}
+.st.late{background:var(--hot);color:#fff}
+.act{justify-self:end;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+  background:var(--ivory);color:var(--ivory-ink);padding:6px 12px;border-radius:99px;white-space:nowrap}
+.act.dim{background:var(--wash2);color:var(--fg);opacity:.7}
+.sub{display:grid;grid-template-columns:120px 1fr 150px 96px 118px 112px;gap:10px;align-items:center;
+  padding:7px 12px 7px 26px;font-size:11px;opacity:.85;margin-top:-2px}
+.sub .lbl{font-weight:700}
+.sub .lbl small{display:block;font-size:9.5px;font-weight:400;opacity:.55}
+.sheetlink{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--wash2);padding:5px 11px;border-radius:99px;justify-self:start}
+.strip{display:flex;align-items:center;gap:12px;margin-top:14px;padding:11px 14px;border-radius:12px;background:var(--wash2);position:relative;overflow:hidden;font-size:11.5px}
+.strip:before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--uncon)}
+/* ledger drawer */
+.drawer{margin-top:12px;border-radius:12px;background:var(--wash);padding:12px 14px}
+.dh{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.dh .t{font-family:'Archivo Black',sans-serif;font-size:13px}
+.dh .m{font-size:10.5px;opacity:.55}
+.lh,.lr{display:grid;grid-template-columns:150px 96px 96px 96px 1fr 100px;gap:10px;align-items:center;padding:7px 10px;font-size:11.5px}
+.lh{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45;padding-bottom:4px}
+.lr{background:var(--srf);box-shadow:var(--softsh);border-radius:9px;margin-top:4px}
+.lr .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.lr .n.dim{opacity:.4;font-weight:400}
+.lr .acts{font-size:10px;opacity:.6}
+.lr .acts b{opacity:1}
+.lr.cur{outline:1.5px solid var(--uncon);outline-offset:-1.5px}
+/* fin table */
+.fh,.fr{display:grid;grid-template-columns:110px 1fr 1fr 1fr 1fr;gap:10px;align-items:center;padding:7px 10px;font-size:11.5px}
+.fh{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45}
+.fr{background:var(--srf);box-shadow:var(--softsh);border-radius:9px;margin-top:4px}
+.fr .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.fr .n.dim{opacity:.35;font-weight:400}
+.fr .d{font-weight:800}
+.ffoot{display:grid;grid-template-columns:110px 1fr 1fr 1fr 1fr;gap:10px;padding:9px 10px;font-weight:800;font-size:11.5px;border-top:1.5px solid var(--wash2);margin-top:8px}
+.ffoot .n{text-align:right;font-variant-numeric:tabular-nums}
+/* pipeline card */
+.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.card{background:var(--wash);border-radius:12px;padding:12px 13px;font-size:11.5px;line-height:1.55}
+.card .t{font-family:'Archivo Black',sans-serif;font-size:12px;margin-bottom:4px}
+.card .k{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;margin-top:8px}
+.card ul{list-style:none}
+.card li:before{content:'· ';opacity:.5}
+.q{background:var(--wash);border-left:4px solid var(--warm);border-radius:8px;padding:10px 14px;font-size:11.5px;line-height:1.6;margin-top:8px}
+.q b{display:block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.6;margin-bottom:3px}
+</style>
+</head>
+<body>
+
+<div class="bar"><h1>Tenants — leases, periods and the ledger</h1><span class="tg" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</span></div>
+<p class="lede">Stays a tab in the hub. Three things change underneath: the roster becomes <b>leases</b> with a
+cycle anchor (MBA runs 16th → 15th, a full month, not prorated); every period row becomes a
+<b>ledger line</b> with a frozen amount and what was paid; and unstaffed tenants stop needing
+<b>work orders</b> — Financials reads rent per day from the lease, not from a fake WO.</p>
+
+<!-- ═══════════════ A ═══════════════ -->
+<div class="opt">
+  <div class="oh">A · The rent roll, with periods<span class="rec">Recommended</span></div>
+  <div class="od">Same board, same one-button flow (Mark sent → Mark paid → In QB). Two additions:
+  a <b>period</b> column so a mid-month cycle reads naturally next to 1st-of-month tenants, and a
+  <b>paid / of</b> figure so a short payment is a Partial, not a lie. MBA is one line for two rooms —
+  one deal, one invoice. The blue outline marks a lease whose cycle isn't the 1st.</div>
+  <div class="page">
+    <div class="crumb">Billing hub · Tenants · September 2026</div>
+    <div style="display:flex;align-items:center">
+      <div class="pipes"><span class="pipe">Billing</span><span class="pipe">COD</span><span class="pipe on">Tenants</span><span class="pipe">Financials</span></div>
+      <div class="mon"><span class="a">‹</span>September 2026<span class="a">›</span></div>
+    </div>
+
+    <div class="figs">
+      <div class="fig"><div class="v">$70,972</div><div class="l">Rent roll / mo</div></div>
+      <div class="fig"><div class="v">$34,600</div><div class="l">Collected · Sep</div></div>
+      <div class="fig alert"><div class="v">$36,372</div><div class="l">Still open</div></div>
+      <div class="fig"><div class="v">8 / 10</div><div class="l">Rooms occupied</div></div>
+    </div>
+
+    <div class="venue">Paramount</div>
+    <div class="trow empty"><span class="room">Studio D</span><span class="who">empty</span><span></span><span class="rent" style="opacity:.3">—</span><span></span><span></span></div>
+    <div class="trow"><span class="room">Studio F</span><span class="who">Spencer Nezy</span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$2,500<small>paid $2,500</small></span><span class="st paid">Paid · Sep 1</span><span class="act dim">In QB ✓</span></div>
+    <div class="trow"><span class="room">Treehouse</span><span class="who">Dada</span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$5,500<small>paid $3,000</small></span><span class="st part">Partial</span><span class="act">Mark paid</span></div>
+
+    <div class="venue">Ameraycan</div>
+    <div class="trow"><span class="room">Studio C</span><span class="who">Oren Yoel</span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$3,250<small>paid $3,250</small></span><span class="st paid">Paid · Sep 2</span><span class="act">In QB</span></div>
+
+    <div class="venue">Track</div>
+    <div class="trow"><span class="room">PR2</span><span class="who">Bobby Raps</span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$2,100<small>paid $2,100</small></span><span class="st paid">Paid · Sep 1</span><span class="act dim">In QB ✓</span></div>
+    <div class="trow"><span class="room">PR3</span><span class="who">Sean Dorian</span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$1,622.25<small>paid —</small></span><span class="st late">Open · 23 days</span><span class="act">Mark paid</span></div>
+    <div class="trow"><span class="room">North</span><span class="who">Camper<small>24/7 · unstaffed · no WO</small></span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$19,500<small>paid $19,500</small></span><span class="st paid">Paid · Sep 1</span><span class="act dim">In QB ✓</span></div>
+    <div class="trow anchor"><span class="room">South + PR1<small>one deal, two rooms</small></span><span class="who">MBA<small>24/7 · unstaffed · no WO · from Sep 16</small></span>
+      <span class="per">Sep 16 – Oct 15<small>email 10th · due 16th</small></span>
+      <span class="rent">$7,000<small>paid $7,000</small></span><span class="st paid">Paid · Sep 16</span><span class="act">In QB</span></div>
+
+    <div class="venue">Encore</div>
+    <div class="trow"><span class="room">Studio B</span><span class="who">Mustard<small>12 hr/day · runner-staffed · WO for hours only</small></span>
+      <span class="per">Sep 1 – 30<small>email 25th · due 1st</small></span>
+      <span class="rent">$29,500<small>paid —</small></span><span class="st open">Open</span><span class="act">Mark sent</span></div>
+    <div class="sub">
+      <span></span>
+      <span class="lbl">Incidentals — August<small>goes out the 2nd–3rd · shared runner ½ vs ERS·A</small></span>
+      <span></span>
+      <span class="rent" style="font-weight:400;opacity:.7">26.5 hrs</span>
+      <span class="sheetlink">Month sheet →</span>
+      <span class="st open" style="justify-self:end">Open</span>
+    </div>
+
+    <div class="strip"><b>Overdue shifts with the anchor.</b>&nbsp;1st-anchored rent goes hot on the 6th; MBA's on the 21st. The board's month picker shows every period that <i>touches</i> the month, so MBA's Sep 16 – Oct 15 row appears under both September and October — same row, not two.</div>
+  </div>
+  <div class="note">What's stored per period: amount (frozen at creation — a rent change never re-prices an old row), paid amount, and the three stamps. Everything else — open, partial, overdue, the totals — derives. The roster (leases) is the only new table besides the columns.</div>
+</div>
+
+<!-- ═══════════════ B ═══════════════ -->
+<div class="opt">
+  <div class="oh">B · Tap a row → the tenant's ledger</div>
+  <div class="od">Where "did Dada pay July?" gets answered without scrolling months. One tenant, every
+  period, newest first: invoiced, paid, balance, and who stamped what. The current period is outlined.
+  This is the piece the current stamp board can't do because it has no amounts.</div>
+  <div class="page">
+    <div class="crumb">Tenants → Dada · Treehouse · ledger</div>
+    <div class="drawer">
+      <div class="dh"><span class="t">Dada — Treehouse</span><span class="m">$5,500 / mo · anchored the 1st · since Mar 2025</span><span class="m" style="margin-left:auto;color:var(--hot);font-weight:800">Balance $2,500</span></div>
+      <div class="lh"><span>Period</span><span style="text-align:right">Invoiced</span><span style="text-align:right">Paid</span><span style="text-align:right">Balance</span><span>Acts</span><span></span></div>
+      <div class="lr cur"><span>Sep 1 – 30, 2026</span><span class="n">$5,500</span><span class="n">$3,000</span><span class="n" style="color:var(--hot)">$2,500</span>
+        <span class="acts">sent Aug 25 <b>LB</b> · paid Sep 3 <b>LB</b> ($3,000)</span><span class="st part" style="justify-self:end">Partial</span></div>
+      <div class="lr"><span>Aug 1 – 31, 2026</span><span class="n">$5,500</span><span class="n">$5,500</span><span class="n dim">$0</span>
+        <span class="acts">sent Jul 25 <b>AA</b> · paid Aug 1 <b>AA</b> · QB Aug 2 <b>AA</b></span><span class="st paid" style="justify-self:end">Paid</span></div>
+      <div class="lr"><span>Jul 1 – 31, 2026</span><span class="n">$5,500</span><span class="n">$5,500</span><span class="n dim">$0</span>
+        <span class="acts">sent Jun 25 <b>AA</b> · paid Jul 8 <b>AA</b> · QB Jul 8 <b>AA</b></span><span class="st paid" style="justify-self:end">Paid</span></div>
+      <div class="lr"><span>Jun 1 – 30, 2026</span><span class="n">$5,000</span><span class="n">$5,000</span><span class="n dim">$0</span>
+        <span class="acts">sent May 25 <b>AA</b> · paid Jun 1 <b>AA</b> · QB Jun 1 <b>AA</b></span><span class="st paid" style="justify-self:end">Paid</span></div>
+    </div>
+    <div class="note">June shows $5,000 because that was the rent then — the row froze it. The rent went to $5,500 in July by editing the lease; old rows didn't move. That is the whole reason amount lives on the row and not only on the lease.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ C ═══════════════ -->
+<div class="opt">
+  <div class="oh">C · Financials — rent per day, from the lease</div>
+  <div class="od">The reason Camper and MBA have work orders today is that Financials only reads
+  <code>studio_time_rows</code>. Instead, tenants become their own stream: each lease's amount is
+  straight-lined across its period's days. Mustard's $29,500 breaks down the same way. No WO needed
+  for any of it, and Mustard's runner-hour rows carry <b>no charge</b> so nothing double counts.</div>
+  <div class="page">
+    <div class="crumb">Financials → Tenants stream · September 2026 · Track + Encore shown</div>
+    <div class="fh"><span>Day</span><span style="text-align:right">Camper · North</span><span style="text-align:right">MBA · South+PR1</span><span style="text-align:right">Mustard · ERS B</span><span style="text-align:right">Tenants / day</span></div>
+    <div class="fr"><span class="d">Sep 1</span><span class="n">$650.00</span><span class="n dim">—</span><span class="n">$983.33</span><span class="n">$1,633.33</span></div>
+    <div class="fr"><span class="d">Sep 15</span><span class="n">$650.00</span><span class="n dim">—</span><span class="n">$983.33</span><span class="n">$1,633.33</span></div>
+    <div class="fr" style="outline:1.5px solid var(--uncon);outline-offset:-1.5px"><span class="d">Sep 16</span><span class="n">$650.00</span><span class="n">$233.33</span><span class="n">$983.33</span><span class="n">$1,866.67</span></div>
+    <div class="fr"><span class="d">Sep 30</span><span class="n">$650.00</span><span class="n">$233.33</span><span class="n">$983.33</span><span class="n">$1,866.67</span></div>
+    <div class="ffoot"><span>September</span><span class="n">$19,500</span><span class="n">$3,500</span><span class="n">$29,500</span><span class="n">$52,500</span></div>
+    <div class="note">Camper: $19,500 ÷ 30 days. MBA: $7,000 ÷ 30 days (Sep 16 – Oct 15), so September carries 15 of them = $3,500 in the <i>chart</i> while the <i>invoice</i> is still a full $7,000 — reporting spreads it, billing doesn't. Mustard: $29,500 ÷ 30. Other tenants (PRS/ARS) do the same under their venue.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ D ═══════════════ -->
+<div class="opt">
+  <div class="oh">D · What leaves the work-order world</div>
+  <div class="od">The pipeline rule in one line: <b>a lockout on a leased room is never an invoice.</b>
+  Two kinds of lease decide what else exists.</div>
+  <div class="page">
+    <div class="cards">
+      <div class="card"><div class="t">Unstaffed lease — Camper, MBA</div>
+        <div class="k">Exists</div><ul><li>Lease row</li><li>Calendar block so the room reads taken</li><li>Ledger period every cycle</li></ul>
+        <div class="k">Does not exist</div><ul><li>Work order — none, ever</li><li>Day cards, runner duty</li><li>Billing / COD row</li></ul></div>
+      <div class="card"><div class="t">Staffed lease — Mustard</div>
+        <div class="k">Exists</div><ul><li>Lease row + incidentals line</li><li>Work order with day cards — runners type start/end daily</li><li>Runner hub card, missing-times gate as today</li></ul>
+        <div class="k">Does not exist</div><ul><li>Charge on his rows — hours only</li><li>Billing / COD row — hidden from the pipeline like Tech / Tour / Open Hours</li></ul></div>
+      <div class="card"><div class="t">One-time cleanup</div>
+        <ul><li>Delete Camper's and MBA's WOs from the hub</li><li>Zero the charge on Mustard's rows (SQL, you review)</li><li>Fix Mustard to $29,500 in the seed</li><li>Track South leaves the daily-room list; calendar shows it leased</li></ul></div>
+    </div>
+    <div class="q"><b>Open question</b>Track South and North were daily rooms. Do they stay on the calendar as a permanent lease block (so nobody books over them and the TV wall shows them), or come off the calendar entirely? The mock assumes a block.</div>
+  </div>
+</div>
+
+<p class="note" style="max-width:760px">Build order if you pick A+B+C: (1) <code>leases</code> table + seed, (2) <code>amount</code> / <code>paid_amount</code> on <code>tenant_rent_months</code> and period keys instead of bare months, (3) Financials tenant stream, (4) pipeline exclusion + cleanup SQL, (5) the tab's UI. Schema first, one change at a time, SQL to you before it runs.</p>
+
+</body>
+</html>

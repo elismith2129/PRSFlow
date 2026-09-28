@@ -126,20 +126,29 @@ export function buildMemoEmail(memo: MemoForMail, origin: string): { subject: st
     bodyText = plainText(page.body)
   }
 
+  // A designed page brings its own ground and its own title; the wrapper
+  // matches the ground (read from the page's <body> background, dark by
+  // default) and skips the white card and the duplicate <h1>. A typed note
+  // keeps the ivory newsletter shell.
+  const isPage = memo.kind === 'page'
+  const bodyBg = /<body[^>]*style="[^"]*background(?:-color)?:\s*([^;"]+)/i.exec(memo.body_html)?.[1]?.trim()
+  const ground = isPage ? (bodyBg || '#0b0a09') : '#f5f3ee'
+  const ink = isPage ? '#f2efe7' : '#2a2722'
+
   const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light only"><title>${esc(subject)}</title>${pageStyles}</head>
-<body style="margin:0;padding:0;background:#f5f3ee;-webkit-font-smoothing:antialiased">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="${isPage ? 'dark' : 'light only'}"><meta name="supported-color-schemes" content="${isPage ? 'dark' : 'light only'}"><title>${esc(subject)}</title>${pageStyles}</head>
+<body style="margin:0;padding:0;background:${ground};-webkit-font-smoothing:antialiased">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(bodyText.slice(0, 140))}</div>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f5f3ee"><tr><td align="center" style="padding:32px 16px 40px">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${ground}"><tr><td align="center" style="padding:32px 16px 40px">
 <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px">
   <tr><td style="padding:0 6px 14px;font-family:Inter,Helvetica,Arial,sans-serif">
-    <span style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:#2a2722">PRSFlo</span>
+    <span style="font-size:15px;font-weight:800;letter-spacing:-.02em;color:${ink}">PRSFlo</span>
     <span style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8d8880;margin-left:10px">Memo</span>
     <span style="float:right;font-size:11px;color:#8d8880">${esc(date)}</span>
   </td></tr>
-  <tr><td style="background:#ffffff;border-radius:18px;padding:30px 30px 26px;font-family:Inter,Helvetica,Arial,sans-serif;box-shadow:0 1px 2px rgba(42,39,34,.06)">
+  <tr><td style="${isPage ? 'padding:0' : 'background:#ffffff;border-radius:18px;padding:30px 30px 26px;box-shadow:0 1px 2px rgba(42,39,34,.06)'};font-family:Inter,Helvetica,Arial,sans-serif">
     <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#2fbf93">From ${esc(from)} · to ${AUD[memo.audience]}</p>
-    <h1 style="margin:0 0 18px;font-size:27px;line-height:1.15;letter-spacing:-.02em;color:#2a2722;font-weight:800">${esc(memo.title)}</h1>
+    ${isPage ? '' : `<h1 style="margin:0 0 18px;font-size:27px;line-height:1.15;letter-spacing:-.02em;color:#2a2722;font-weight:800">${esc(memo.title)}</h1>`}
     ${bodyHtml}
   </td></tr>
   <tr><td style="padding:18px 8px 0;font-family:Inter,Helvetica,Arial,sans-serif;font-size:11.5px;line-height:1.55;color:#8d8880">

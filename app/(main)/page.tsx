@@ -26,6 +26,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, Lead, Booking, DashboardTask } from '@/lib/supabase'
+import { overlayDayTimes } from '@/lib/dayTimes'
 import { useRouter } from 'next/navigation'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { deleteSessionAndWO } from '@/lib/deleteSession'
@@ -396,7 +397,8 @@ export default function DashboardPage() {
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
       ])
       setLeads(leadsData || [])
-      setBookings(bookingsData || [])
+      // Today's own times/staff per card (lib/dayTimes, 2026-09-28).
+      setBookings(await overlayDayTimes(bookingsData || [], today))
       setLoading(false)
     }
     load()
@@ -407,6 +409,8 @@ export default function DashboardPage() {
     const channel = supabase
       .channel('dashboard-data')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => setDashDataVersion(v => v + 1))
+      // Today's card times come from studio_time_rows (lib/dayTimes) — a WO edit must refresh the board too.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, () => setDashDataVersion(v => v + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dashboard_tasks' }, () => setDashDataVersion(v => v + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'flo_briefings' }, () => setDashDataVersion(v => v + 1))
       .subscribe()
@@ -579,7 +583,7 @@ export default function DashboardPage() {
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     const today = d.toISOString().slice(0, 10)
     const { data } = await supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true })
-    setBookings(data || [])
+    setBookings(await overlayDayTimes(data || [], today))
   }
   async function handleDashDelete() {
     if (!dashEditBooking) return
