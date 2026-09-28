@@ -491,8 +491,14 @@ function BookingBlock({
                 className={`c-ev-cell${quiet ? ' c-ev-cell-quiet' : ''}${!c.known ? ' c-ev-cell-tbd' : ''}${c.status !== booking.status ? ` c-ev-cell-own ${sessionFillClass(c.status)}` : ''}${c.status === 'cancelled' ? ' c-ev-cell-cancelled' : ''}`}
                 style={{ width: `${100 / spanDays}%` }}
               >
-                {tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.tbd ? 'TBD' : c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
-                {!spineSlim && <span className="c-ev-cellstaff">{staffStr}</span>}
+                {/* A BLOCK'S DAYS SAY NOTHING (Eli, 2026-09-28, on a Tenant
+                    bar reading "2ND-? / TBD" for a month): no times, no
+                    staff exist for Tour/Tech/Open Hrs/Tenant, so "TBD" is
+                    not a fact, it's a placeholder for a question nobody
+                    will answer. The cells stay for the day grid; the text
+                    goes. */}
+                {!isBlock && tier >= 1 && <span className="c-mono c-ev-celltime">{tier === 2 ? timeStr2 : (c.tbd ? 'TBD' : c.known && c.from ? fmtCardTime(c.from) : '—')}</span>}
+                {!isBlock && !spineSlim && <span className="c-ev-cellstaff">{staffStr}</span>}
               </div>
             )
           })}
