@@ -10,6 +10,7 @@ Newest at the top of each group.*
 - [ ] **Hand Cris Martinez his PIN** (from `set-pins.mjs --only`). *(Sep 18)*
 
 - [ ] **Vercel: turn off Observability Plus** — Settings → Billing → Observability Plus → toggle off. It was on by default and is the $9.88 "Observability Events" line; the free tier covers everything we use. *(Sep 17)*
+- [ ] **Tenant cleanup SQL (v1.40.0):** flip Camper + MBA lockouts to `tenant`, Delete WO on both from the hub, zero Mustard's room rate — the SELECT/UPDATE is in the Sep 28 chat. Financials double-counts those rooms until done. *(Sep 28)*
 - [ ] **Roomless holds:** WO-1161 / WO-1160 / WO-1132 — set the studio or Close; **WO-1131** is the Havelange duplicate — Delete WO from the billing hub ⋯ menu. *(Sep 16)*
 - [ ] **Send the runner update memo** (`docs/staff/runner-update-2026-09-15.html`) with the Email toggle on, now that memo email is live. *(Sep 15)*
 
@@ -27,7 +28,8 @@ Newest at the top of each group.*
 
 - [x] ~~Per-day status + TBD buttons on the WO~~ — shipped v1.35.1 / v1.36.0–v1.36.2. *(Sep 19)*
 
-- [ ] **Tenants out of the billing hub** — its own page/rail entry, separate from regular billing (Eli, Sep 18). Today: a third view inside `app/(main)/billing/page.tsx` (`TenantsView`, `lib/tenants.ts`, roster is code). Next chat. *(Sep 18)*
+- [x] ~~Tenants out of the billing hub~~ — ruled the other way Sep 28: stays a tab. Rework shipped v1.40.0 (leases table, ledger, `tenant` booking status). *(Sep 28)*
+- [ ] **Tenants follow-ups:** drop `tenant_rent_months.room_id` once old stamps don't matter; the 25th/10th rent email as a cron off `leases.anchor_day`; real start dates on the seeded leases (placeholder 2025-01-01). *(Sep 28)*
 
 - [ ] **Unsubmitted WOs, later layers:** a push to the closer at the booked end time ("Havelange is done — submit the work order"), and a 9:05 AM email to the office. Both are one call on `lib/unsubmitted.fetchUnsubmittedSessions`; waiting on push (below) and the cron. Also possible: an "Unsubmitted" filter chip in the billing hub if the row flag isn't enough. *(Sep 17)*
 - [ ] **Push notifications for the notes room** — a mention, a task assigned to you, a memo. The second half of "you asked for Slack." *(Sep 15)*

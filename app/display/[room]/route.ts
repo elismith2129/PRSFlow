@@ -125,7 +125,7 @@ const FILL: Record<string, string> = {
 // STATUS_ALIASES, components/carved/index.tsx — booking status -> carved slot.
 const SLOT: Record<string, string> = {
   confirmed: 'booked', tentative: 'warm', cancelled: 'hot',
-  tour: 'uncon', tech: 'tech', open_hours: 'dead', lockout: 'booked',
+  tour: 'uncon', tech: 'tech', open_hours: 'dead', lockout: 'booked', tenant: 'booked',
 }
 
 // Tour/Tech/Open Hours are BLOCK events: no work order, nothing to collect, so
@@ -133,7 +133,7 @@ const SLOT: Record<string, string> = {
 // lockout joins the no-payment list ONLY for the wall: a rent-only monthly
 // lockout occupies the room ("Lockout · Hiker", Eli 2026-08-26) but a COD
 // strip on it would tell a runner to collect money nobody collects at a desk.
-const BLOCKS = ['tour', 'tech', 'open_hours', 'lockout']
+const BLOCKS = ['tour', 'tech', 'open_hours', 'lockout', 'tenant']
 
 // ROLLING WINDOW, NOT A MONTH (Eli, 2026-09-07: "it's often more important to
 // see what's happened than a lot of blank rows"). The grid anchors on TODAY.

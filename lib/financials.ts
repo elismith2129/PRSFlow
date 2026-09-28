@@ -46,10 +46,17 @@ import { dbResult } from '@/lib/db'
 import { logAppError } from '@/lib/errlog'
 import { engChargeForRow } from '@/lib/woTotals'
 import { combineLocation } from '@/lib/studios'
+import { fetchLeases, periodFor, leaseActiveIn } from '@/lib/tenants'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type FinCategory = 'room' | 'assistant' | 'engineering' | 'rental'
+export type FinCategory = 'room' | 'assistant' | 'engineering' | 'rental' | 'tenant'
+// TENANT is the fifth stream (2026-09-28). Rent is straight-lined from the
+// lease — amount ÷ days in the period, every day of the period — and never
+// read from a work order. That is why Camper's and MBA's WOs could go: they
+// existed only to put their rent on this chart. Mustard's WO stays for his
+// day cards, but its rows carry OT only ($0 rate); his $29,500 comes from
+// here like everyone else's rent.
 
 /** What the single line is currently drawing. */
 export type Metric = 'total' | FinCategory
@@ -60,6 +67,7 @@ export const METRICS: { key: Metric; label: string }[] = [
   { key: 'engineering', label: 'Engineering' },
   { key: 'assistant', label: 'Assistant' },
   { key: 'rental', label: 'Rentals' },
+  { key: 'tenant', label: 'Tenants' },
 ]
 
 /** One dollar figure, attributed to a day, a room and a stream. */
@@ -251,6 +259,30 @@ export async function fetchFinancialLines(fromISO: string, toISO: string): Promi
           date: anchor.date, venue: anchor.venue, room: anchor.room,
           category: 'rental', amount: amt, source: 'live',
         })
+      }
+    }
+  }
+
+  // Tenants: one line per lease per day, straight-lined across its period.
+  const leases = await fetchLeases()
+  if (leases.length > 0) {
+    const [fy, fm, fd] = fromISO.split('-').map(Number)
+    const end = Date.parse(toISO + 'T12:00:00')
+    for (let t = new Date(fy, fm - 1, fd, 12); t.getTime() <= end; t.setDate(t.getDate() + 1)) {
+      const date = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
+      for (const l of leases) {
+        // The period containing this day: starts this month on the anchor if
+        // the day is on/after it, else last month's.
+        const monthKey = date.slice(0, 7)
+        const day = t.getDate()
+        const pm = day >= l.anchorDay ? monthKey : (() => { const d = new Date(t.getFullYear(), t.getMonth() - 1, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })()
+        const p = periodFor(l, pm)
+        if (date < p.start || date > p.end) continue
+        if (!leaseActiveIn(l, p)) continue
+        if (date < l.startDate || (l.endDate && date > l.endDate)) continue
+        const amt = p.days > 0 ? l.amount / p.days : 0
+        if (amt === 0) continue
+        lines.push({ date, venue: l.venue, room: l.roomLabel, category: 'tenant', amount: amt, source: 'live' })
       }
     }
   }

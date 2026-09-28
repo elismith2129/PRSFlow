@@ -41,6 +41,7 @@ const STATUS_SLOT: Record<string, string> = {
   tech:       'tech',
   open_hours: 'open_hours',
   lockout: 'lockout',
+  tenant: 'tenant',
 }
 
 // ─── LAYOUT CONSTANTS ────────────────────────────────────────────────────────
@@ -439,7 +440,7 @@ function BookingBlock({
   }) : []
   if (spineMode) {
     const isBilling2 = booking.payment_type === 'billing'
-    const isBlock = ['tour', 'tech', 'open_hours'].includes(booking.status ?? '')
+    const isBlock = ['tour', 'tech', 'open_hours', 'tenant'].includes(booking.status ?? '')
     const showPayment = !isBlock && !isBilling2
     const codLabel = booking.cod_method === 'Credit Card' ? 'CC' : (booking.cod_method ?? '').toUpperCase()
     const totalSpan = dayDiff(bStart, bEnd) + 1
@@ -2460,7 +2461,7 @@ function CalendarPageInner() {
               boxShadow: 'var(--c-softsh)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                {b.payment_type !== 'billing' && !['tour', 'tech', 'open_hours'].includes(b.status ?? '') && (
+                {b.payment_type !== 'billing' && !['tour', 'tech', 'open_hours', 'tenant'].includes(b.status ?? '') && (
                   <span style={{
                     fontSize: 8, fontWeight: 800, letterSpacing: '0.08em', borderRadius: 99,
                     padding: '3px 9px', background: 'var(--c-st-hot)', color: 'var(--c-hot-text)',

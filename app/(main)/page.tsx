@@ -114,7 +114,7 @@ const VENUE_CODE: Record<string, string> = {
 
 /** Booking status → noir room-card class. Solid fill + chip ink (§5). */
 function roomFill(status: string | null | undefined): string {
-  if (status === 'confirmed' || status === 'lockout') return ' n-on'
+  if (status === 'confirmed' || status === 'lockout' || status === 'tenant') return ' n-on'
   if (status === 'tentative') return ' n-warmc'
   if (status === 'cancelled') return ' n-hotc'
   return ''

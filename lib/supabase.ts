@@ -185,7 +185,15 @@ export interface Engineer {
 // exclusion flag elsewhere; the status IS the exclusion. Deliberately NOT in
 // NON_SESSION_STATUSES (lib/createWorkOrder.ts): unlike Tour/Tech/Open-Hours
 // blocks it DOES get a work order, because rent gets invoiced.
-export type BookingStatus = 'confirmed' | 'tentative' | 'cancelled' | 'tour' | 'tech' | 'open_hours' | 'lockout'
+// 'tenant' (2026-09-28): an UNSTAFFED lease — Camper, MBA, every tenant but
+// Mustard. The room is blocked on the calendar and that is the whole story:
+// no work order, no day cards, nothing in Billing. Rent is tracked on the
+// billing hub's Tenants tab from the `leases` table (lib/tenants.ts). It is a
+// BLOCK like Tour/Tech/Open Hours (NON_SESSION_STATUSES) but paints green
+// like lockout, because the room is taken. 'lockout' now means the STAFFED
+// kind only — Mustard: a real WO, runners fill day cards, $0 rate / 12h
+// incl. / OT priced on the WO.
+export type BookingStatus = 'confirmed' | 'tentative' | 'cancelled' | 'tour' | 'tech' | 'open_hours' | 'lockout' | 'tenant'
 export type SessionType = 'recording' | 'filming' | 'event_playback'
 export type EngineerStatus = 'hold' | 'confirmed' | 'not_needed'
 

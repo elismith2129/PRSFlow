@@ -99,13 +99,15 @@ const SESSION_STATUSES: [string, string][] = [
   // Rent-only monthly lockout — full WO (rent is invoiced) but invisible to
   // every daily-ops surface because they all select status='confirmed'.
   ['lockout', 'Lockout'],
+  // Unstaffed lease (2026-09-28) — a block, no WO; rent is on the Tenants tab.
+  ['tenant', 'Tenant'],
 ]
 // Mirror the booking-form status colors (STATUS_TOP_COLORS). Active pill fills
 // with its status color; inactive stays neutral.
 const SESSION_STATUS_COLORS: Record<string, string> = {
   confirmed: 'var(--c-st-booked)', tentative: 'var(--c-st-warm)', cancelled: 'var(--c-st-hot)',
   tour: 'var(--c-st-uncon)', tech: 'var(--c-fg-3)', open_hours: 'var(--c-fg-2)',
-  lockout: 'var(--c-st-booked)',
+  lockout: 'var(--c-st-booked)', tenant: 'var(--c-st-booked)',
 }
 const SESSION_TYPES: [string, string][] = [
   ['recording', 'Recording'], ['filming', 'Filming'], ['event_playback', 'Event / Playback'],
@@ -3214,7 +3216,7 @@ export function WorkOrderPopup({
   // ── Non-session block save (Tour / Tech / Open Hours) ──────────────────────
   // A block is a simple calendar event with a title + times, no work-order body.
   // We persist those fields onto the booking card and leave the (dormant) WO row.
-  const BLOCK_STATUSES = ['tour', 'tech', 'open_hours']
+  const BLOCK_STATUSES = ['tour', 'tech', 'open_hours', 'tenant']
   async function handleBlockSave() {
     if (!wo) { onClose(); return }
     setSaving(true)

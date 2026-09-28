@@ -53,6 +53,8 @@ const STATUS_ALIASES: Record<string, CarvedStatus> = {
   // as a booked room (2026-08-26): green like confirmed. The ops exclusion is
   // the status value itself, never the colour.
   lockout: 'booked',
+  // Unstaffed lease block (2026-09-28) — same green, same reason.
+  tenant: 'booked',
 }
 
 function normalize(status: string): string {

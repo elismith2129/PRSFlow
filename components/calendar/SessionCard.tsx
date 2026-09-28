@@ -42,7 +42,7 @@ export type Sessionish = {
 // Tour / Tech / Open Hours are BLOCK events, not sessions: no work order, no
 // client, nothing to collect. They must never show a payment element — a red COD
 // bar on a tech-work block is a false alarm about money that doesn't exist.
-const BLOCK_STATUSES = ['tour', 'tech', 'open_hours']
+const BLOCK_STATUSES = ['tour', 'tech', 'open_hours', 'tenant']
 
 /** The fill class for a session's status — the ONE place that decision is made.
  *

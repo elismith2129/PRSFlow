@@ -30,14 +30,16 @@ const EQUIPMENT_ITEMS = ['Speakers', 'Microphone', 'Console']
 // `open_hours` (the calendar's "Open Hrs") IS the staff session — a runner or
 // engineer using a room on their own time (Eli, 2026-09-23). No client, no
 // work order, nothing to collect.
-const NON_SESSION_STATUSES = ['tour', 'tech', 'open_hours']
+// `tenant` (2026-09-28): an unstaffed lease block. Rent lives on the Tenants
+// tab (leases table), never on a work order — see BookingStatus.
+const NON_SESSION_STATUSES = ['tour', 'tech', 'open_hours', 'tenant']
 
 /**
  * True when a booking should have a work order — i.e. money can be involved.
- * Excludes Tech / Tour / Open Hours blocks ONLY.
+ * Excludes Tech / Tour / Open Hours / Tenant blocks ONLY.
  *
- * Includes 'cancelled' since 2026-09-10 (see above) and 'lockout' always (rent
- * gets invoiced — CLAUDE.md).
+ * Includes 'cancelled' since 2026-09-10 (see above) and 'lockout' always (the
+ * STAFFED lease — Mustard's OT and shared-runner hours get invoiced).
  *
  * ⚠ THIS IS A BILLING GATE, NOT AN OPERATIONAL ONE. It answers "should this
  *   reach a work order and the billing hub", never "is anything happening in

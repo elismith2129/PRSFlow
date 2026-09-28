@@ -20,6 +20,30 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.40.0 — Tenants: leases are data, rent has a ledger, only Mustard has a work order — Sep 28, 2026
+
+**Why.** Eli: *"tenants pay rent, not work orders."* Camper's and MBA's monthly lockouts had full work orders that nobody filled, approved or invoiced — they existed only because Financials reads `studio_time_rows`, so a fake WO was the only way to get rent on the chart. And MBA's deal (Track South + PR1, $7,000, from Sep 16) runs 16th → 15th as a full month, which a code roster can't express. The rework, in three staff-facing rules (`docs/design-refs/tenants-simple.html`):
+
+1. **Rent is on the Tenants tab, three taps a month.** Sent → Paid → In QB. Unpaid five days past the period start goes red.
+2. **Tenants don't have work orders — except Mustard.** His is a normal WO (runners fill day cards, office approves daily) priced $0 room / 12 hrs included / $165 OT; rent is on the tab, OT + shared-runner hours bill through Billing.
+3. **Financials spreads rent per day by itself.**
+
+**What changed.**
+- **`leases` table** (migration `20260928120000_leases.sql`) replaces `TENANT_ROOMS` in code. Tenant, venue, room label, amount, `anchor_day` (1; MBA 16), start/end date, `has_work_order` (Mustard only), notes. Seeded from the Sep roster with Mustard corrected to **$29,500** and MBA added. Owner/manager edit; everyone on the rent board reads. Delete is owner-only and refused once a month is stamped — a departing tenant gets an end date.
+- **`tenant_rent_months`** gains `lease_id` (new key; `room_id` kept nullable until a later drop), `amount` (frozen on the period's first stamp — a rent change never re-prices history) and `paid_amount`. Backfilled from the old room keys.
+- **Periods** (`lib/tenants.periodFor`): anchor to anchor, keyed by the month they start in. Send-by = start − 6 days, late from start + 5 days. Nothing is prorated.
+- **Tenants tab** (`components/billing/TenantsView.tsx`): period + due date on each row; **Mark paid asks how much** (prefilled in full; less = **Partial**, row keeps offering Mark paid for the balance); tap a name for the **ledger** (every period: invoiced / paid / balance / who stamped what); **✎ edits the tenant**, **+ Tenant** adds one; past/future tenants fold under a toggle. Incidentals line + Mustard sheet follow `has_work_order`.
+- **Financials**: fifth stream **Tenants** — each lease straight-lined (amount ÷ period days) across its period; `FinCategory` gains `'tenant'`.
+- **Booking status `tenant`** (`lib/supabase.ts`): an unstaffed lease block. In `NON_SESSION_STATUSES` (no WO ever), paints booked-green everywhere (`carved` alias, TV wall, dashboard), no payment strip. **`lockout` now means the staffed kind only** (Mustard). Picker label "Tenant" in the WO popup.
+
+**One-time cleanup (SQL, Eli):** flip Camper's and MBA's lockout bookings to `status = 'tenant'`, delete their WOs from the hub (⋯ → Delete WO), zero the room rate on Mustard's rows so his $29,500 isn't counted twice. Until this runs, September double-counts those rooms on Financials.
+
+**Watch-outs.** `TenantsView` still opens its own channels and must never mount beside `WorkOrderPopup`. `fetchFinancialLines` now calls `fetchLeases()` — one extra query per load. `room_id` on `tenant_rent_months` is dead weight: drop it in a later migration once no old stamps matter.
+
+**Migrations:** `20260928120000_leases.sql`. **Files:** `lib/tenants.ts`, `components/billing/TenantsView.tsx`, `lib/financials.ts`, `lib/supabase.ts`, `lib/createWorkOrder.ts`, `app/(main)/calendar/page.tsx`, `app/(main)/page.tsx`, `app/display/[room]/route.ts`, `components/calendar/SessionCard.tsx`, `components/calendar/WorkOrderPopup.tsx`, `components/carved/index.tsx`, `app/(main)/billing/page.tsx`, `docs/design-refs/tenants-simple.html`, `docs/design-refs/tenants-ledger-options.html`.
+
+---
+
 ## v1.39.6 — Petty cash moves to its own route under Billing — Sep 24, 2026
 
 **Why.** Eli: *"you put it in the billing hub as a tab, I want it as a selector on the rail under billing."*
