@@ -74,7 +74,7 @@ export type WoPdfInput = {
   studioRows: WoPdfRow[]
   rentalRows: WoPdfRow[]
   paymentRows: WoPdfRow[]
-  totals: { studio: number; engineer: number; rentals: number; cardFees: number; subtotal: number; discount: number; grand: number; paid: number; balance: number }
+  totals: { studio: number; engineer: number; rentals: number; food?: number; cardFees: number; subtotal: number; discount: number; grand: number; paid: number; balance: number }
   /** What the discount is CALLED on the client's invoice, e.g. "Cancellation — 50% kill fee". */
   discountLabel?: string | null
   /** Whole-building blanket rates (wo_rate_bundles). RULING 3: the client sees
@@ -808,6 +808,8 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   totalLine('Studio total', money(totals.studio))
   if (blank || totals.engineer > 0) totalLine('Eng total', money(totals.engineer))
   totalLine('Rentals total', money(totals.rentals))
+  // Food receipts + service fee (2026-09-28) — a real charge, printed whenever present.
+  if ((totals.food ?? 0) > 0) totalLine('Food (receipts + service fee)', money(totals.food ?? 0))
   // THE DISCOUNT IS NAMED ON THE DOCUMENT, not folded silently into the total
   // (2026-09-10). A client who was quoted $4,000 and receives an invoice for
   // $2,000 with no line explaining it will call and ask — and a kill fee is

@@ -3689,6 +3689,9 @@ export function WorkOrderPopup({
     studioRows: stRows,
     rentalRows: rentRows,
     paymentRows: payRows,
+    // Food receipts + service fee join the total (2026-09-28, WO-1253).
+    expenseRows: expenses,
+    foodFeePct: wo?.food_fee_pct,
     // Read from `wo` (live state), not the booking — the discount is a property
     // of the invoice, and it must move the totals as you type it, not after a
     // save round-trip.
@@ -7393,6 +7396,8 @@ export function WorkOrderPopup({
                   { label: 'Studio Total', value: stTotal, color: 'var(--c-fg)', bold: false },
                   ...(engTotal > 0 ? [{ label: 'Eng Total', value: engTotal, color: 'var(--c-fg)', bold: false }] : []),
                   { label: 'Rentals Total', value: rentTotal, color: 'var(--c-fg)', bold: false },
+                  // Food: receipts + service fee, shown only when there is any.
+                  ...(woTotals.food > 0 ? [{ label: `Food (receipts + ${foodPct}% fee)`, value: woTotals.food, color: 'var(--c-fg)', bold: false }] : []),
                   // The pre-discount figure, shown ONLY when something is being
                   // discounted. Without a discount it just restates Grand Total
                   // one line up, and a total that appears twice is a total

@@ -616,7 +616,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, invoice_closed_note, completed_by_name')
+    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, food_fee_pct, invoice_closed_note, completed_by_name')
     .order('session_date', { ascending: false })
     // Secondary order = id: without it Postgres returns equal-date rows in
     // ARBITRARY order that can differ per refetch (the page-2 churn bug —
@@ -665,7 +665,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   // the wrong direction — reading a dead column would let a stale pre-rebuild
   // rate ADD engineering cost to an invoice that correctly had none. The rows
   // are the truth; if a row has no eng_rate, there is no engineer charge.
-  const [st, rent, pay] = await Promise.all([
+  const [st, rent, pay, exp] = await Promise.all([
     supabase
       .from('studio_time_rows')
       .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, status, studio, admin_locked, submitted_by_name, submitted_at, day_status')
@@ -677,6 +677,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // $136.80 here against $180.00 on the work order — exactly the $43.20 fee.
     // An under-stated balance is money quietly dropped from AR.
     supabase.from('payment_rows').select('work_order_id, amount, fee_amount').in('work_order_id', ids),
+    // Food joins the total (2026-09-28) — without this the hub bills short.
+    supabase.from('wo_expenses').select('work_order_id, amount').in('work_order_id', ids),
   ])
   if (!dbResult('Loading invoice line items', st.error || rent.error || pay.error)) return []
 
@@ -706,6 +708,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
   const stBy = group(st.data as any[])
   const rentBy = group(rent.data as any[])
   const payBy = group(pay.data as any[])
+  const expBy = group(exp.data as any[])
 
   const today = getLocalToday()
 
@@ -715,6 +718,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       studioRows: stRows,
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
+      expenseRows: expBy.get(w.id) ?? [],
+      foodFeePct: (w as any).food_fee_pct,
       // WITHOUT THIS the hub bills the undiscounted amount: a 50% kill fee
       // would show the client owing the full session in AR, on the ladder and
       // on the invoice total. Every computeWoTotals caller has to pass it.

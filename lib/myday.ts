@@ -999,7 +999,7 @@ export async function fetchBalancesQueue(opts?: {
 
   const { data: wosAll, error } = await supabase
     .from('work_orders')
-    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status, discount_kind, discount_value')
+    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status, discount_kind, discount_value, food_fee_pct')
     .gte('session_date', from)
     .lte('session_date', to)
   if (!dbResult('Loading work orders for balances', error)) return []
@@ -1014,15 +1014,17 @@ export async function fetchBalancesQueue(opts?: {
   const ids = wos.map(w => w.id)
 
   // Three bulk reads rather than per-WO queries — this runs on dashboard load.
-  const [st, rent, pay] = await Promise.all([
+  const [st, rent, pay, exp] = await Promise.all([
     supabase
       .from('studio_time_rows')
       .select('work_order_id, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, day_status')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
     supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
+    // Food joins the total (2026-09-28).
+    supabase.from('wo_expenses').select('work_order_id, amount').in('work_order_id', ids),
   ])
-  if (!dbResult('Loading work-order line items', st.error || rent.error || pay.error)) return []
+  if (!dbResult('Loading work-order line items', st.error || rent.error || pay.error || exp.error)) return []
 
   const group = <T extends { work_order_id: string }>(rows: T[] | null) => {
     const m = new Map<string, T[]>()
@@ -1036,6 +1038,7 @@ export async function fetchBalancesQueue(opts?: {
   const stBy = group(st.data as any[])
   const rentBy = group(rent.data as any[])
   const payBy = group(pay.data as any[])
+  const expBy = group(exp.data as any[])
 
   const out: BalanceItem[] = []
   for (const w of wos) {
@@ -1043,6 +1046,8 @@ export async function fetchBalancesQueue(opts?: {
       studioRows: stBy.get(w.id) ?? [],
       rentalRows: rentBy.get(w.id) ?? [],
       paymentRows: payBy.get(w.id) ?? [],
+      expenseRows: expBy.get(w.id) ?? [],
+      foodFeePct: (w as any).food_fee_pct,
       // Or a discounted session sits in the collections queue for money the
       // client was never asked for.
       discount: { kind: (w as any).discount_kind ?? null, value: (w as any).discount_value ?? null },

@@ -46,6 +46,9 @@ export type TotalsStudioRow = {
 /** A rental row, reduced to the charge. */
 export type TotalsRentalRow = { charge?: number | string | null }
 
+/** A food expense row (wo_expenses), reduced to the receipt amount. */
+export type TotalsExpenseRow = { amount?: number | string | null }
+
 /** A payment row, reduced to the amount + card surcharge.
  *  fee_amount (2026-08-26): the 3% card surcharge portion of a Credit/Debit
  *  payment on a COD work order. The AMOUNT is what actually hit the card
@@ -74,6 +77,14 @@ export type WoTotalsInput = {
   /** Optional — omitting it is exactly equivalent to no discount, so every
    *  existing caller keeps its current numbers without being touched. */
   discount?: WoDiscount
+  /** FOOD JOINS THE TOTAL (Eli, 2026-09-28, WO-1253: "the food budget is not
+   *  being reflected in the money total"). The receipts plus the service fee
+   *  are a charge on the work order like rentals are. Optional so a caller
+   *  that has no expenses passes nothing and gets the same numbers as before;
+   *  every caller that CAN fetch wo_expenses must, or its balance is short. */
+  expenseRows?: TotalsExpenseRow[]
+  /** work_orders.food_fee_pct — NULL/blank = FOOD_SERVICE_FEE_PCT. */
+  foodFeePct?: string | number | null
   // NO FALLBACK RATE. Removed 2026-08-13 along with its last caller. It existed
   // to inherit `bookings.engineer_rate`, which is vestigial — the booking form
   // is deleted and `buildBookingProjection` never writes that column. The WO
@@ -91,12 +102,14 @@ export type WoTotals = {
   studio: number
   engineer: number
   rentals: number
+  /** Food receipts + service fee (2026-09-28). 0 when there are no expenses. */
+  food: number
   /** Σ payment fee_amount — the 3% card surcharges, which are charges.
    *  NOT affected by the discount: a card fee attaches to a PAYMENT, not to
    *  the invoice, because clients pay in increments and OT lands after the
    *  fact (Eli, 2026-09-10). */
   cardFees: number
-  /** studio + engineer + rentals, BEFORE any discount. Kept because "what was
+  /** studio + engineer + rentals + food, BEFORE any discount. Kept because "what was
    *  this session worth before we discounted it" is the first question anyone
    *  asks about a kill fee, and the rows must never be rewritten to answer it. */
   subtotal: number
@@ -126,8 +139,11 @@ export const DAY_HOUR_RATIO = 10
  * (work_orders.food_fee_pct, whole percent as text; NULL/blank = default).
  * Applied to the receipts SUBTOTAL, shown on the expense modal and on the
  * Food Budget page of the package. The budget itself is compared against
- * receipts (what the runners spent), not the billed total. Not part of
- * computeWoTotals — the expense report bills separately.
+ * receipts (what the runners spent), not the billed total.
+ *
+ * 2026-09-28: the billed food total now JOINS computeWoTotals (expenseRows +
+ * foodFeePct). It used to bill separately on the expense report only, and
+ * WO-1253's grand total came up short by the food.
  */
 export const FOOD_SERVICE_FEE_PCT = 45
 /** The WO's fee percent, or the default when unset / unparseable. */
@@ -201,30 +217,34 @@ export function computeWoTotals(input: WoTotalsInput): WoTotals {
     0,
   )
   const rentals = rentalRows.reduce((s, r) => s + money(r.charge), 0)
+  const receipts = (input.expenseRows ?? []).reduce((s, e) => s + money(e.amount), 0)
+  const food = receipts > 0 ? parseFloat((receipts + foodServiceFee(receipts, foodFeePct(input.foodFeePct))).toFixed(2)) : 0
   const paid = paymentRows.reduce((s, p) => s + money(p.amount), 0)
   const cardFees = paymentRows.reduce((s, p) => s + money(p.fee_amount), 0)
 
-  // THE DISCOUNT APPLIES TO THE WHOLE WORK ORDER — studio, engineering and
-  // rentals alike (Eli's ruling, 2026-09-10; studio-only was offered and
-  // declined). It is computed HERE and never written into a row's `charge`:
-  // that is the blanket-rate landmine, a derived value waiting for a recompute
-  // to wipe it.
-  const subtotal = studio + engineer + rentals
+  // THE DISCOUNT APPLIES TO STUDIO TIME AND ENGINEERING ONLY (Eli,
+  // 2026-09-28: "discounts only to studio time/eng"). This narrows the
+  // 2026-09-10 ruling, which had rentals in the base as well; rentals and food
+  // are pass-through costs and are never discounted. It is computed HERE and
+  // never written into a row's `charge`: that is the blanket-rate landmine, a
+  // derived value waiting for a recompute to wipe it.
+  const subtotal = studio + engineer + rentals + food
+  const discountBase = studio + engineer
   const discount = (() => {
     const d = input.discount
     if (!d || !d.kind) return 0
     const v = money(d.value)
     if (!(v > 0)) return 0
-    const raw = d.kind === 'pct' ? subtotal * (v / 100) : v
+    const raw = d.kind === 'pct' ? discountBase * (v / 100) : v
     // Never discount past zero into a credit. A work order that owes NEGATIVE
     // money is not a thing this app models, and letting one exist would put a
     // negative balance into AR where every consumer reads it as "overpaid".
-    return parseFloat(Math.min(raw, subtotal).toFixed(2))
+    return parseFloat(Math.min(raw, discountBase).toFixed(2))
   })()
 
   // Card fees are added AFTER, untouched by the discount — they are per-payment
   // surcharges on money that actually moved, not a function of the invoice.
   const grand = subtotal - discount + cardFees
 
-  return { studio, engineer, rentals, cardFees, subtotal, discount, grand, paid, balance: grand - paid }
+  return { studio, engineer, rentals, food, cardFees, subtotal, discount, grand, paid, balance: grand - paid }
 }

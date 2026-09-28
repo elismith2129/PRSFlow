@@ -156,9 +156,15 @@ export async function GET(req: NextRequest) {
   // The DOCUMENT the client receives. If the discount is missing here the
   // invoice asks for the full amount while the app shows the discounted one —
   // the worst of the four places to get this wrong.
+  // Food joins the total (2026-09-28) — fetched here for the arithmetic, and
+  // reused below for the expense report when the package wants it.
+  const { data: expRowsAll } = await supabaseAdmin
+    .from('wo_expenses').select('*').eq('work_order_id', id).order('sort_order')
   const totals = computeWoTotals({
     studioRows, rentalRows, paymentRows,
     discount: { kind: (wo as any)?.discount_kind ?? null, value: (wo as any)?.discount_value ?? null },
+    expenseRows: expRowsAll ?? [],
+    foodFeePct: (wo as any)?.food_fee_pct,
   })
   const discountLabel = (wo as any)?.discount_label ?? null
 
@@ -195,8 +201,7 @@ export async function GET(req: NextRequest) {
   // download skips that photo rather than failing the file.
   let expenseReport: Uint8Array | null = null
   if (!woOnly && wo.food_budget) {
-    const { data: expRows } = await supabaseAdmin
-      .from('wo_expenses').select('*').eq('work_order_id', id).order('sort_order')
+    const expRows = expRowsAll
     if (expRows && expRows.length > 0) {
       const receipts: { bytes: Uint8Array; contentType: string; caption: string }[] = []
       for (const e of expRows) {
