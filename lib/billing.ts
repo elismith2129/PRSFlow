@@ -812,6 +812,17 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // the drift flag says what happened, and Pull it back is the deliberate act
     // that restarts the cycle.
     if (invoiceDrift && step === 3) step = 2
+    // THE CLIENT EXTENDED (Eli, 2026-09-28: "we added new days but it's
+    // still in approval"). An invoice raised for a session that then grew
+    // is for a session that no longer exists: new day cards are waiting on
+    // runners, and there is nothing for the owner to approve yet. So an
+    // invoiced-but-unsent work order that is STILL RUNNING goes back to In
+    // progress on its own — same shape as drift, derived, never written.
+    // The attached package stays on file; once the new nights are in and
+    // reviewed the row returns to step 2 and drift says the package is
+    // stale until a corrected one is dropped. Not applied once SENT (step 4+)
+    // — that invoice is with the client; Pull it back is the deliberate act.
+    if (stillRunning && (step === 2 || step === 3)) step = 1
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
     const notStarted = ((firstDate ?? w.session_date) ?? '') > today

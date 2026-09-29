@@ -38,6 +38,8 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 **One-time cleanup (SQL, Eli):** flip Camper's and MBA's lockout bookings to `status = 'tenant'`, delete their WOs from the hub (⋯ → Delete WO), zero the room rate on Mustard's rows so his $29,500 isn't counted twice. Until this runs, September double-counts those rooms on Financials.
 
+**Also in this version — the client extended.** An invoiced-but-unsent work order that is still running (new day cards not yet submitted) derives back to **In progress** instead of sitting in the owner's approval queue (`lib/billing.ts`, beside the drift rule). Derived, never written; once the new nights are in and reviewed it returns to Needs approval, and drift flags the stale package until a corrected one is dropped. Not applied once sent — Pull it back is the deliberate act there.
+
 **Watch-outs.** `TenantsView` still opens its own channels and must never mount beside `WorkOrderPopup`. `fetchFinancialLines` now calls `fetchLeases()` — one extra query per load. `room_id` on `tenant_rent_months` is dead weight: drop it in a later migration once no old stamps matter.
 
 **Migrations:** `20260928120000_leases.sql`. **Files:** `lib/tenants.ts`, `components/billing/TenantsView.tsx`, `lib/financials.ts`, `lib/supabase.ts`, `lib/createWorkOrder.ts`, `app/(main)/calendar/page.tsx`, `app/(main)/page.tsx`, `app/display/[room]/route.ts`, `components/calendar/SessionCard.tsx`, `components/calendar/WorkOrderPopup.tsx`, `components/carved/index.tsx`, `app/(main)/billing/page.tsx`, `docs/design-refs/tenants-simple.html`, `docs/design-refs/tenants-ledger-options.html`.
