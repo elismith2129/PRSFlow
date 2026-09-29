@@ -52,11 +52,13 @@ import { fetchLeases, periodFor, leaseActiveIn } from '@/lib/tenants'
 
 export type FinCategory = 'room' | 'assistant' | 'engineering' | 'rental' | 'tenant'
 // TENANT is the fifth stream (2026-09-28). Rent is straight-lined from the
-// lease — amount ÷ days in the period, every day of the period — and never
-// read from a work order. That is why Camper's and MBA's WOs could go: they
-// existed only to put their rent on this chart. Mustard's WO stays for his
-// day cards, but its rows carry OT only ($0 rate); his $29,500 comes from
-// here like everyone else's rent.
+// lease — amount ÷ days in the period, every day of the period — for every
+// lease WITHOUT a work order. That is why Camper's and MBA's WOs could go:
+// they existed only to put their rent on this chart. A lease WITH a work
+// order (Mustard) carries its rent ON the work order — the Monthly split
+// puts $29,500 across his day rows, they land in the ROOM stream as they
+// always did, and this stream skips him so nothing is counted twice (Eli,
+// 2026-09-28: "Mustard's WO still needs to reflect the total rent").
 
 /** What the single line is currently drawing. */
 export type Metric = 'total' | FinCategory
@@ -271,6 +273,7 @@ export async function fetchFinancialLines(fromISO: string, toISO: string): Promi
     for (let t = new Date(fy, fm - 1, fd, 12); t.getTime() <= end; t.setDate(t.getDate() + 1)) {
       const date = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`
       for (const l of leases) {
+        if (l.hasWorkOrder) continue   // rent lives on the WO rows — see header
         // The period containing this day: starts this month on the anchor if
         // the day is on/after it, else last month's.
         const monthKey = date.slice(0, 7)
