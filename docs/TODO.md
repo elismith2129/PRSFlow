@@ -38,6 +38,8 @@ Newest at the top of each group.*
 
 - [ ] **Billing hub Mark paid takes a date** — same as the Tenants tab now does: a small pop-up, date received, defaults to today. Today it stamps "now". COD is fine (its payment rows carry their own date). *(Sep 28)*
 
+- [ ] **Texting: the sending side** — provider (Twilio/etc.), 10DLC brand + campaign registration (needs a public privacy-policy URL on the website), STOP/HELP webhook → `sms_consent_log` source `sms`, quiet hours 8am–9pm. The list and consent record exist (v1.40.1). *(Sep 29)*
+
 ## Small / maybe
 
 - [ ] **Phone day card / synopsis for per-day status:** the phone grid keeps separate chips per status (no spine); the tap synopsis could list the days with their status. *(Sep 19)*

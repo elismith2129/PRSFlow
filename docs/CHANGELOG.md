@@ -20,6 +20,23 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.40.1 — SMS opt-in on the registration form + the Texting list — Sep 29, 2026
+
+**Why.** Eli asked whether the form's "Communication" paragraph was a clear enough opt-in for promotional texts. It wasn't: buried in the T&C behind one "I agree", never says "text", no frequency/rates/STOP, nothing stored. TCPA wants prior express written consent as its own unchecked box; 10DLC registration asks to see it. *(Not legal advice — the shape is the standard one carriers accept.)*
+
+**What changed.**
+- **The box.** `SMS_CONSENT_TEXT` (`lib/terms.ts`) rendered as its own unchecked checkbox directly under the phone field on `/register/[token]`. Optional. The T&C "Communication" section now points at it and separates email from text.
+- **Stored** (migration `20260929120000_sms_opt_in.sql`): `clients.sms_opt_in / sms_opt_in_at / sms_opt_in_phone / sms_opt_out_at`, plus append-only **`sms_consent_log`** (client, phone, opt_in/opt_out, source registration|staff|sms, the exact consent text, IP, user agent, by_staff). The register route writes both with the service role. Consent is tied to the number: the list flags ⚠ when the client's phone no longer matches the one they consented on.
+- **Texting tab in the CRM** (`components/crm/TextingListView.tsx`): the clients table filtered on `sms_opt_in` — grows on its own. Filters: search, opted-in date range, source (how heard), city, last session (90d / 6mo / 1yr / never), show opted-out. **Export CSV** of the current filter. Per row: **Opt out** (records a STOP) / **Opt in** (a yes the office took) — both confirmed inline and logged as `staff`.
+- RegViewModal shows a "Text messages" line beside Terms.
+- Terms tidy: one name throughout ("Paramount Recording Studios"), the technical-issues sentence fixed, policy bullets punctuated.
+
+**Not done, deliberately:** nothing sends texts. When a provider is wired up, the STOP webhook writes `sms_consent_log` with `source = 'sms'` and flips the flag; the send job reads this list. A public privacy policy URL is still needed for 10DLC.
+
+**Migrations:** `20260929120000_sms_opt_in.sql`. **Files:** `lib/terms.ts`, `lib/supabase.ts`, `app/register/[token]/page.tsx`, `app/api/register/route.ts`, `components/crm/TextingListView.tsx` (new), `app/(main)/crm/page.tsx`, `components/shared/RegViewModal.tsx`.
+
+---
+
 ## v1.40.0 — Tenants: leases are data, rent has a ledger, only Mustard has a work order — Sep 28, 2026
 
 **Why.** Eli: *"tenants pay rent, not work orders."* Camper's and MBA's monthly lockouts had full work orders that nobody filled, approved or invoiced — they existed only because Financials reads `studio_time_rows`, so a fake WO was the only way to get rent on the chart. And MBA's deal (Track South + PR1, $7,000, from Sep 16) runs 16th → 15th as a full month, which a code roster can't express. The rework, in three staff-facing rules (`docs/design-refs/tenants-simple.html`):

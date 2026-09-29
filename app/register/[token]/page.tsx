@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import type { Client } from '@/lib/supabase'
-import { TERMS_SECTIONS } from '@/lib/terms'
+import { TERMS_SECTIONS, SMS_CONSENT_TEXT } from '@/lib/terms'
 import PhoneInput from '@/components/shared/PhoneInput'
 
 type PageState = 'loading' | 'invalid' | 'expired' | 'used' | 'form' | 'submitting' | 'conflict' | 'success'
@@ -22,6 +22,7 @@ interface FormData {
   address_zip: string
   id_file: File | null
   terms_accepted: boolean
+  sms_opt_in: boolean
   signature: string
 }
 
@@ -39,6 +40,7 @@ const EMPTY_FORM: FormData = {
   address_zip: '',
   id_file: null,
   terms_accepted: false,
+  sms_opt_in: false,
   signature: '',
 }
 
@@ -189,6 +191,7 @@ export default function RegisterPage() {
       fd.append('address_state', form.address_state.trim())
       fd.append('address_zip', form.address_zip.trim())
       fd.append('signature', form.signature.trim())
+      fd.append('sms_opt_in', form.sms_opt_in ? 'true' : 'false')
       if (form.id_file) fd.append('id_file', form.id_file)
 
       const res = await fetch('/api/register', { method: 'POST', body: fd })
@@ -482,6 +485,33 @@ export default function RegisterPage() {
           />
         </div>
         {errors.phone && <FieldError>{errors.phone}</FieldError>}
+
+        {/* SMS OPT-IN (2026-09-29). Its own box, UNCHECKED, right under the
+            number it applies to — never bundled into the T&C "I agree". This
+            is the TCPA prior-express-written-consent line and what 10DLC
+            registration asks to see. The wording is SMS_CONSENT_TEXT and is
+            stored verbatim with the consent record. Optional: not ticking it
+            changes nothing about the booking. */}
+        <div style={{
+          padding: '12px 14px',
+          background: 'var(--surface2)',
+          border: '1px solid var(--border)',
+          borderRadius: 6,
+          marginTop: 10,
+        }}>
+          <label style={{ display: 'flex', gap: 12, cursor: 'pointer', alignItems: 'flex-start' }}>
+            <input
+              type="checkbox"
+              checked={form.sms_opt_in}
+              onChange={e => set('sms_opt_in', e.target.checked)}
+              disabled={isSubmitting}
+              style={{ marginTop: 2, accentColor: 'var(--accent)', width: 14, height: 14, flexShrink: 0 }}
+            />
+            <span style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--text2)', lineHeight: 1.6 }}>
+              {SMS_CONSENT_TEXT}
+            </span>
+          </label>
+        </div>
 
         <Spacer />
 

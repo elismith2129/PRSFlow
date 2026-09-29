@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { SMS_CONSENT_TEXT } from '@/lib/terms'
 
 // This route runs on the Node.js runtime (needs Buffer + the service-role client).
 export const runtime = 'nodejs'
@@ -132,6 +133,7 @@ export async function POST(req: NextRequest) {
     address_state: ((form.get('address_state') as string | null) || '').trim().toUpperCase(),
     address_zip: ((form.get('address_zip') as string | null) || '').trim(),
     signature: ((form.get('signature') as string | null) || '').trim(),
+    sms_opt_in: (form.get('sms_opt_in') as string | null) === 'true',
   }
   const acknowledgeConflict = (form.get('acknowledge_conflict') as string | null) === 'true'
   const idFile = form.get('id_file') as File | null
@@ -200,6 +202,15 @@ export async function POST(req: NextRequest) {
         registered_at: new Date().toISOString(),
       }
       if (idFileUrl) updateFields.id_file_url = idFileUrl
+      // SMS: the box only ever turns consent ON here. A migrated client who
+      // leaves it unticked keeps whatever they had — an unticked box on a
+      // form is not a STOP.
+      if (fields.sms_opt_in) {
+        updateFields.sms_opt_in = true
+        updateFields.sms_opt_in_at = new Date().toISOString()
+        updateFields.sms_opt_in_phone = fields.phone
+        updateFields.sms_opt_out_at = null
+      }
 
       const { error: clientError } = await supabaseAdmin
         .from('clients')
@@ -232,6 +243,9 @@ export async function POST(req: NextRequest) {
           registered_at: new Date().toISOString(),
           source_lead_id: tokenRow.lead_id || null,
           artists: [],
+          sms_opt_in: fields.sms_opt_in,
+          sms_opt_in_at: fields.sms_opt_in ? new Date().toISOString() : null,
+          sms_opt_in_phone: fields.sms_opt_in ? fields.phone : null,
         })
 
       if (clientError) throw new Error(`Registration failed: ${clientError.message}`)
@@ -244,6 +258,22 @@ export async function POST(req: NextRequest) {
 
         if (leadError) throw new Error(`Lead link failed: ${leadError.message}`)
       }
+    }
+
+    // The consent record — the exact words, the number, where it came from.
+    // Append-only; this is the thing you produce if a carrier or a court asks.
+    if (fields.sms_opt_in) {
+      const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || req.headers.get('x-real-ip') || null
+      const { error: logErr } = await supabaseAdmin.from('sms_consent_log').insert({
+        client_id: clientId,
+        phone: fields.phone,
+        action: 'opt_in',
+        source: 'registration',
+        consent_text: SMS_CONSENT_TEXT,
+        ip,
+        user_agent: req.headers.get('user-agent'),
+      })
+      if (logErr) throw new Error(`Consent log failed: ${logErr.message}`)
     }
 
     const { error: tokenUpdErr } = await supabaseAdmin

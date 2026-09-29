@@ -90,6 +90,12 @@ export interface Client {
   signature_url: string | null
   terms_accepted: boolean | null
   terms_accepted_at: string | null
+  // SMS opt-in (2026-09-29) — promotional texting consent, its own box on
+  // the registration form, tied to the number it was given for.
+  sms_opt_in?: boolean | null
+  sms_opt_in_at?: string | null
+  sms_opt_in_phone?: string | null
+  sms_opt_out_at?: string | null
   how_heard: string | null
   registered_at: string | null
   source_lead_id: number | null

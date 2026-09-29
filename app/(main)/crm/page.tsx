@@ -19,6 +19,7 @@ import { addArtistToLabel } from '@/lib/roster'
 import { ClientsPageInner } from '@/app/(main)/clients/page'
 import { RegistrationBanner } from '@/components/clients/RegistrationBanner'
 import { RegistrationsView } from '@/components/crm/RegistrationsView'
+import { TextingListView } from '@/components/crm/TextingListView'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -406,7 +407,7 @@ export default function CRMPage() {
   // Real-time: leadsVersion bumps on any realtime leads INSERT/UPDATE (from the
   // shared WebInquiryProvider channel), so the leads list re-fetches live.
   const { leadsVersion } = useWebInquiries()
-  const [tab, setTab] = useState<'leads' | 'clients' | 'registrations' | 'campaigns'>('leads')
+  const [tab, setTab] = useState<'leads' | 'clients' | 'registrations' | 'texting' | 'campaigns'>('leads')
   const [initialClientId, setInitialClientId] = useState<string | null>(null)
 
   // Switch to clients tab if ?clientId= or ?id= is present on load;
@@ -643,9 +644,9 @@ export default function CRMPage() {
 
       {/* LEADS / CLIENTS / REGISTRATIONS / CAMPAIGNS toggle */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexShrink: 0, flexWrap: 'wrap' }}>
-        {(['leads', 'clients', 'registrations', ...(profile?.role === 'owner' && (profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'registrations' | 'campaigns') => (
+        {(['leads', 'clients', 'registrations', 'texting', ...(profile?.role === 'owner' && (profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'registrations' | 'texting' | 'campaigns') => (
           <button key={t} onClick={() => setTab(t)} className={`c-soft c-control c-raised${tab === t ? ' c-on' : ''}`} style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em' }}>
-            {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : t === 'registrations' ? 'Registrations' : 'Campaigns'}
+            {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : t === 'registrations' ? 'Registrations' : t === 'texting' ? 'Texting' : 'Campaigns'}
           </button>
         ))}
       </div>
@@ -775,6 +776,12 @@ export default function CRMPage() {
       {tab === 'registrations' && (
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <RegistrationsView />
+        </div>
+      )}
+
+      {tab === 'texting' && (
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <TextingListView />
         </div>
       )}
 

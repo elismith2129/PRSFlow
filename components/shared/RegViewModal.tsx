@@ -186,6 +186,14 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                   {client.terms_accepted_at ? ` · ${new Date(client.terms_accepted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
                 </span>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
+                <span style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)' }}>Text messages</span>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'Inter', background: client.sms_opt_in ? 'rgba(78,240,162,0.12)' : 'var(--c-wash)', color: client.sms_opt_in ? 'var(--c-st-booked)' : 'var(--c-fg-3)', border: `1px solid ${client.sms_opt_in ? 'rgba(78,240,162,0.3)' : 'var(--c-wash2)'}` }}>
+                  {client.sms_opt_in ? '✓ Opted in' : client.sms_opt_out_at ? 'Opted out' : 'Not opted in'}
+                  {client.sms_opt_in && client.sms_opt_in_at ? ` · ${new Date(client.sms_opt_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                  {client.sms_opt_in && client.sms_opt_in_phone ? ` · ${client.sms_opt_in_phone}` : ''}
+                </span>
+              </div>
               <div>
                 <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)', marginBottom: 8 }}>Government-Issued ID</div>
                 {!client.id_file_url ? (

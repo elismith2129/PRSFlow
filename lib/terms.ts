@@ -1,3 +1,9 @@
+/** The exact words beside the SMS box. Stored verbatim in sms_consent_log
+ *  on every opt-in — if the wording ever changes, old records keep the words
+ *  the person actually saw. Keep it one sentence group; carriers read it. */
+export const SMS_CONSENT_TEXT =
+  'Yes, text me. I agree to receive promotional and session-related text messages from Paramount Recording Studios at the number above. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking.'
+
 export const TERMS_SECTIONS: { heading: string; body: string }[] = [
   {
     heading: 'Explanation of Rates',
@@ -9,7 +15,7 @@ export const TERMS_SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: 'Payment',
-    body: 'Unless a Purchase Order has been arranged, you are required to pay for all studio time, rentals, riders, contractor fees, and any services to be provided by the studio prior to starting the session. If additional services are rendered during your session, you are required to pay at the time the services are rendered. All session media belongs to the studio until all services rendered are paid in full. Paramount Studios is not responsible for back up of media. All clients are encouraged to back up their files prior to leaving.\n\nUpon the client\'s receipt of recording media from Paramount Studios, it is mutually agreed that the quality of all services provided by Paramount Studios is deemed satisfactory by the client and all affiliated parties.',
+    body: 'Unless a Purchase Order has been arranged, you are required to pay for all studio time, rentals, riders, contractor fees, and any services to be provided by the studio prior to starting the session. If additional services are rendered during your session, you are required to pay at the time the services are rendered. All session media belongs to the studio until all services rendered are paid in full. Paramount Recording Studios is not responsible for back up of media. All clients are encouraged to back up their files prior to leaving.\n\nUpon the client\'s receipt of recording media from Paramount Recording Studios, it is mutually agreed that the quality of all services provided by Paramount Recording Studios is deemed satisfactory by the client and all affiliated parties.',
   },
   {
     heading: 'Cancellation Policy',
@@ -25,22 +31,22 @@ export const TERMS_SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: 'Studio Technical Issues',
-    body: 'Clients agree to hold Paramount Studios and all affiliated studios harmless from any losses or damages caused by technical issues resulting in session stoppage. Any studio time lost due to a technical issue at the fault of the studio will not be billed. If available, sessions may extend their session equal to the amount of downtime created by the technical issue. In the event that an extension is not an option, the client may add said time to a future booking. The studio\'s liability shall be limited to the duration of the time lost during the session.',
+    body: 'Clients agree to hold Paramount Recording Studios and all affiliated studios harmless from any losses or damages caused by technical issues resulting in session stoppage. Any studio time lost due to a technical issue at the fault of the studio will not be billed. If the studio is available, the client may extend the session by the amount of downtime created by the technical issue. In the event that an extension is not an option, the client may add said time to a future booking. The studio\'s liability shall be limited to the duration of the time lost during the session.',
   },
   {
     heading: 'Lost and Found',
-    body: 'Paramount Recording is not responsible for any items left at our facilities.',
+    body: 'Paramount Recording Studios is not responsible for any items left at our facilities.',
   },
   {
     heading: 'Damages',
-    body: 'By confirming sessions with Paramount Recording Studio, you are agreeing that the person/entity paying for the session, as well as the client, producers, assistants, staff and guests of the client and record company will all be responsible for any theft of, or damage to or destruction of studio equipment, studio property, or studio facilities. You agree to indemnify the studio for any loss, damages or claims brought against it as a result of the actions or conduct of the artist, their guests, and any others present at the session.',
+    body: 'By confirming sessions with Paramount Recording Studios, you are agreeing that the person/entity paying for the session, as well as the client, producers, assistants, staff and guests of the client and record company will all be responsible for any theft of, or damage to or destruction of studio equipment, studio property, or studio facilities. You agree to indemnify the studio for any loss, damages or claims brought against it as a result of the actions or conduct of the artist, their guests, and any others present at the session.',
   },
   {
     heading: 'Communication',
-    body: 'When you sign up, you might hear from us now and then about cool stuff like discounts, sales, and updates. Don\'t worry — you can unsubscribe anytime.',
+    body: 'We may email you about your sessions, and now and then about discounts, news and events — you can unsubscribe anytime. Text messages are separate: we only send promotional texts if you tick the "Yes, text me" box on this form, and you can reply STOP at any time.',
   },
   {
     heading: 'Studio Policies',
-    body: '- No firearms allowed on the premises.\n- No illegal drugs allowed on the premises.\n- No drinks or food on the consoles\n- Guests are not permitted at the premises unless they appear on a guest list provided at time of booking\n- All studios have capacity limits which will be communicated by the studio in advance.\n- All clients are invited to provide their own licensed security.',
+    body: '- No firearms allowed on the premises.\n- No illegal drugs allowed on the premises.\n- No drinks or food on the consoles.\n- Guests are not permitted on the premises unless they appear on a guest list provided at the time of booking.\n- All studios have capacity limits which will be communicated by the studio in advance.\n- All clients are invited to provide their own licensed security.',
   },
 ]
