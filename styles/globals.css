@@ -2149,9 +2149,6 @@ select.c-input {
 /* "✓ Reviewed thru Sep 22" — the office's line, once every submitted night is
    locked (2026-09-23). Green like the badge it sits beside. */
 .c-bflag.c-brev { color: var(--c-st-booked); }
-/* "LATE · 23 DAYS" — the rent board's overdue line (Eli, 2026-09-28: the red
-   bubble made the row ends messy; a red line like the hub's is the shape). */
-.c-bflag.c-blate { color: var(--c-st-hot); }
 /* Two-word stage badge for a running multi-day (v1.33.3, option 2A). */
 .c-bbin.c-bbin-two { white-space: normal; line-height: 1.25; padding: 2px 6px; }
 .c-bbin.c-bbin-two small { display: block; font-size: 7px; font-weight: 700; letter-spacing: .03em; text-transform: none; opacity: .8; }

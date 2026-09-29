@@ -128,7 +128,12 @@ export function TenantsView() {
   }, 0)
   const anyLate = active.some(l => isRentLate(stamps.get(stampKey(l.id, boardMonth, 'rent')), periodFor(l, boardMonth)))
 
-  // ── The stamp cell: chip + one button + undo ───────────────────────────────
+  // ── The stamp cell: ONE WORD + ONE BUTTON, fixed columns ──────────────────
+  // (Eli, 2026-09-28, docs/design-refs/tenants-status-rail-options.html
+  // option D: "so busy… lets make all the buttons the same size".) Every row
+  // ends in the same two columns whatever stage it's at: a coloured status
+  // word with its date underneath, and a button the same width on every
+  // row. No chips, no rail. Undo: the status word is the ↩ — tap it.
 
   function StampCell({ lease, month, kind }: { lease: Lease; month: string; kind: RentKind }) {
     const key = stampKey(lease.id, month, kind)
@@ -136,57 +141,51 @@ export function TenantsView() {
     const p = periodFor(lease, month)
     const late = isRentLate(st, p)
     const partial = kind === 'rent' && isRentPartial(st)
-    // LATE IS A LINE, NOT A BUBBLE (Eli, 2026-09-28): the hub's red flag
-    // text, so the row end stays chip-free while it's the button's turn.
     const daysLate = late ? Math.max(1, Math.round((Date.parse(getLocalToday() + 'T12:00:00') - Date.parse(p.start + 'T12:00:00')) / 86400000)) : 0
-    const chip = st?.qbAt
-      ? <span style={chipStyle('paid')} title={`Paid ${st.paidAt ? fmtStampDay(st.paidAt) : ''} · entered in QuickBooks`}>In QB · {fmtStampDay(st.qbAt)}</span>
+    const amt = st?.amount ?? lease.amount
+
+    let word: string, sub: string, color: string | undefined, dim = false
+    if (st?.qbAt) { word = 'In QB'; sub = `paid ${st.paidAt ? fmtStampDay(st.paidAt) : ''}`; color = 'var(--c-st-booked)' }
+    else if (st?.paidAt) { word = 'Paid'; sub = fmtStampDay(st.paidAt); color = 'var(--c-st-booked)' }
+    else if (partial) { word = late ? 'Partial · late' : 'Partial'; sub = `${money(st!.paidAmount!)} in · ${money(amt - st!.paidAmount!)} open`; color = late ? 'var(--c-st-hot)' : 'var(--c-st-warm)' }
+    else if (late) { word = 'Late'; sub = `${daysLate} days · ${st?.sentAt ? `sent ${fmtStampDay(st.sentAt)}` : 'not sent'}`; color = 'var(--c-st-hot)' }
+    else if (st?.sentAt) { word = 'Sent'; sub = fmtStampDay(st.sentAt); dim = true }
+    else { word = 'Not sent'; sub = `send by ${fmtStampDay(p.sendBy + 'T12:00:00')}`; dim = true }
+
+    const undoable = !!(st?.qbAt || st?.paidAt || st?.sentAt || partial)
+    const undo = () => run(key, () => st?.qbAt
+      ? undoRentQb(lease, month, kind)
+      : (st?.paidAt || partial)
+        ? undoRentPaid(lease, month, kind)
+        : undoRentSent(lease, month, kind))
+
+    const btn: CSSProperties = { width: 96, textAlign: 'center', justifyContent: 'center' }
+    const action = st?.qbAt
+      ? <button className="c-bact" disabled={busy === key} style={{ ...btn, opacity: 0.45 }} title="Undo — not actually in QuickBooks" onClick={undo}>Done ↩</button>
       : st?.paidAt
-        ? <span style={chipStyle('paid')}>Paid · {fmtStampDay(st.paidAt)}</span>
-        : late
-          ? <span className="c-bflag c-blate" title={`Unpaid since ${fmtStampDay(p.start + 'T12:00:00')} · overdue from ${fmtStampDay(p.lateFrom + 'T12:00:00')}`}>
-              {partial ? `Partial · ${money(st!.paidAmount!)} in` : 'Late'} · {daysLate} days
-            </span>
-          : partial
-            ? <span style={chipStyle('partial')} title={`${money(st!.paidAmount!)} of ${money(st!.amount ?? lease.amount)}`}>Partial</span>
-            : st?.sentAt
-              ? <span style={chipStyle('open')}>Open</span>
-              : <span style={chipStyle('none')}>Not sent</span>
-    const action = st?.qbAt ? null : st?.paidAt
-      ? <button className="c-bact" disabled={busy === key}
-          title="The payment has been entered in QuickBooks (manual for now)"
-          onClick={() => run(key, () => markRentQb(lease, month, kind, profile?.id ?? null))}>
-          In QB
-        </button>
-      : !st?.sentAt && !partial
-        ? <button className="c-bact" disabled={busy === key}
-            onClick={() => run(key, () => markRentSent(lease, month, kind, profile?.id ?? null))}>
-            Mark sent
-          </button>
-        : <button className="c-bact" disabled={busy === key}
-            onClick={() => kind === 'rent'
-              ? setPayFor({ lease, month })
-              : run(key, () => markRentPaid(lease, month, kind, profile?.id ?? null))}>
-            Mark paid
-          </button>
-    const undo = (st?.qbAt || st?.paidAt || st?.sentAt || partial) && (
-      <button
-        title={st?.qbAt ? 'Undo — not actually in QuickBooks' : (st?.paidAt || partial) ? 'Undo — not actually paid' : 'Undo — the email didn’t go out'}
-        disabled={busy === key}
-        onClick={() => run(key, () => st?.qbAt
-          ? undoRentQb(lease, month, kind)
-          : (st?.paidAt || partial)
-            ? undoRentPaid(lease, month, kind)
-            : undoRentSent(lease, month, kind))}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--c-fg)', opacity: 0.35, fontSize: 12, padding: '2px 4px' }}
-      >↩</button>
-    )
+        ? <button className="c-bact" disabled={busy === key} style={btn} title="The payment has been entered in QuickBooks (manual for now)"
+            onClick={() => run(key, () => markRentQb(lease, month, kind, profile?.id ?? null))}>In QB</button>
+        : !st?.sentAt && !partial
+          ? <button className="c-bact" disabled={busy === key} style={btn}
+              onClick={() => run(key, () => markRentSent(lease, month, kind, profile?.id ?? null))}>Mark sent</button>
+          : <button className="c-bact" disabled={busy === key} style={btn}
+              onClick={() => kind === 'rent'
+                ? setPayFor({ lease, month })
+                : run(key, () => markRentPaid(lease, month, kind, profile?.id ?? null))}>Mark paid</button>
+
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
-        {st?.sentAt && !st?.paidAt && !isMobile && (
-          <span style={{ fontSize: 10, opacity: 0.45, whiteSpace: 'nowrap' }}>sent {fmtStampDay(st.sentAt)}</span>
-        )}
-        {chip}{action}{undo}
+      <span style={{ display: 'inline-grid', gridTemplateColumns: isMobile ? '1fr 96px' : '150px 96px', gap: 10, alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
+        <button
+          type="button"
+          disabled={!undoable || busy === key}
+          onClick={undoable ? undo : undefined}
+          title={undoable ? (st?.qbAt ? 'Undo — not actually in QuickBooks' : (st?.paidAt || partial) ? 'Undo — not actually paid' : 'Undo — the email didn’t go out') : undefined}
+          style={{ background: 'none', border: 'none', padding: 0, textAlign: 'right', cursor: undoable ? 'pointer' : 'default', color: color ?? 'var(--c-fg)', opacity: dim ? 0.5 : 1, fontFamily: 'inherit' }}
+        >
+          <span style={{ display: 'block', fontSize: 9.5, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{word}</span>
+          <span className="c-mono" style={{ display: 'block', fontSize: 9, opacity: 0.6, whiteSpace: 'nowrap' }}>{sub}</span>
+        </button>
+        {action}
       </span>
     )
   }
@@ -392,9 +391,9 @@ export function TenantsView() {
           month={payFor.month}
           stamp={stamps.get(stampKey(payFor.lease.id, payFor.month, 'rent'))}
           onClose={() => setPayFor(null)}
-          onSave={async amt => {
+          onSave={async (amt, onDate) => {
             const key = stampKey(payFor.lease.id, payFor.month, 'rent')
-            await run(key, () => markRentPaid(payFor.lease, payFor.month, 'rent', profile?.id ?? null, amt))
+            await run(key, () => markRentPaid(payFor.lease, payFor.month, 'rent', profile?.id ?? null, amt, onDate))
             setPayFor(null)
           }}
         />
@@ -415,29 +414,39 @@ export function TenantsView() {
 
 function PayModal({ lease, month, stamp, onClose, onSave }: {
   lease: Lease; month: string; stamp: RentStamp | undefined
-  onClose: () => void; onSave: (amount: number) => Promise<void>
+  onClose: () => void; onSave: (amount: number, onDate: string) => Promise<void>
 }) {
   const amt = stamp?.amount ?? lease.amount
   const already = stamp?.paidAmount ?? 0
   const [val, setVal] = useState(String(amt))
+  const [date, setDate] = useState(getLocalToday())
   const [saving, setSaving] = useState(false)
   const n = parseFloat(val)
-  const ok = !isNaN(n) && n > 0 && n <= amt + 0.005
+  const ok = !isNaN(n) && n > 0 && n <= amt + 0.005 && !!date
   const p = periodFor(lease, month)
   return (
     <div className="c-modal-backdrop" onClick={onClose}>
-      <div className="c-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+      <div className="c-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
         <div className="c-arch" style={{ fontSize: 15, marginBottom: 2 }}>{lease.tenant} — paid</div>
         <div style={{ fontSize: 11.5, opacity: 0.6, marginBottom: 14 }}>{p.label} · {money(amt)} due{already > 0 ? ` · ${money(already)} already in` : ''}</div>
-        <label style={lbl}>Amount received (total for this period)</label>
-        <input className="c-input" type="number" step="0.01" min="0" value={val} onChange={e => setVal(e.target.value)} autoFocus
-          style={{ width: '100%', fontSize: 16, fontWeight: 700 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={lbl}>Amount received (total)</label>
+            <input className="c-input" type="number" step="0.01" min="0" value={val} onChange={e => setVal(e.target.value)} autoFocus
+              style={{ width: '100%', fontSize: 15, fontWeight: 700 }} />
+          </div>
+          <div>
+            <label style={lbl}>Date received</label>
+            <input className="c-input" type="date" value={date} max={getLocalToday()} onChange={e => setDate(e.target.value)}
+              style={{ width: '100%', fontSize: 13, fontWeight: 700 }} />
+          </div>
+        </div>
         {ok && n < amt - 0.005 && (
           <div style={{ fontSize: 11, marginTop: 8, color: 'var(--c-st-warm)', fontWeight: 700 }}>Partial — {money(amt - n)} still open.</div>
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
           <button className="c-bact" onClick={onClose}>Cancel</button>
-          <button className="c-bact" disabled={!ok || saving} onClick={async () => { setSaving(true); await onSave(n) }}>
+          <button className="c-bact" disabled={!ok || saving} onClick={async () => { setSaving(true); await onSave(n, date) }}>
             {ok && n < amt - 0.005 ? 'Record partial' : 'Paid in full'}
           </button>
         </div>

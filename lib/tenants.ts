@@ -278,16 +278,19 @@ export function markRentSent(lease: Lease, month: string, kind: RentKind, byId: 
 
 /** The money arrived. `paid` defaults to the period's amount (paid in full);
  *  anything less is a Partial and the row stays open for the rest. */
-export function markRentPaid(lease: Lease, month: string, kind: RentKind, byId: string | null, paid?: number): Promise<boolean> {
+export function markRentPaid(lease: Lease, month: string, kind: RentKind, byId: string | null, paid?: number, onDate?: string): Promise<boolean> {
   const patch: Record<string, string | number | null> = { paid_by: byId }
+  // The date the money ARRIVED, not the date someone got round to stamping
+  // it (Eli, 2026-09-28) — an ISO day from the pop-up, noon local.
+  const when = onDate ? new Date(onDate + 'T12:00:00').toISOString() : new Date().toISOString()
   if (kind === 'rent') {
     const amt = paid ?? lease.amount
     patch.paid_amount = amt
     // paid_at means "settled" — a partial payment leaves it null so the
     // ladder keeps offering Mark paid for the balance.
-    patch.paid_at = amt >= lease.amount - 0.005 ? new Date().toISOString() : null
+    patch.paid_at = amt >= lease.amount - 0.005 ? when : null
   } else {
-    patch.paid_at = new Date().toISOString()
+    patch.paid_at = when
   }
   return writeStamp(lease, month, kind, patch, 'Marking rent paid')
 }

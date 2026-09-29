@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Tenants: one status rail, same place on every row</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<!-- (Eli, 2026-09-28) "different tenants are in different stages so the end
+     of their row has bubbles in different places — messy. A status bar that's
+     always there." Also: Mark paid must take a DATE, not default to today. -->
+<style>
+:root{--bg:#f5f3ee;--fg:#2a2722;--wash:rgba(42,39,34,.05);--wash2:rgba(42,39,34,.095);--fg3:rgba(42,39,34,.45);
+  --hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--chip-ink:#1c2626;--srf:#fff;--ivory:#2a2722;--ivory-ink:#f5f3ee;
+  --softsh:0 1px 3px rgba(42,39,34,.08),0 5px 16px rgba(42,39,34,.07)}
+[data-theme="dark"]{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--fg3:rgba(217,214,205,.45);
+  --srf:#242320;--ivory:#d5d0c2;--ivory-ink:#1b1a17;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 60px;max-width:1040px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;margin-bottom:4px}
+.lede{font-size:12px;opacity:.6;max-width:760px;line-height:1.6;margin-bottom:22px}
+.tg{float:right;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--wash2);padding:5px 11px;border-radius:99px;cursor:pointer}
+.opt{margin-bottom:34px}
+.oh{font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:3px}
+.od{font-size:11.5px;opacity:.6;margin-bottom:11px;max-width:740px;line-height:1.6}
+.page{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.note{font-size:10.5px;opacity:.5;margin-top:10px;line-height:1.6;max-width:720px}
+.venue{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin:12px 2px 4px}
+.row{display:grid;grid-template-columns:96px 150px 110px 90px 1fr auto;gap:12px;align-items:center;background:var(--srf);box-shadow:var(--softsh);border-radius:10px;padding:9px 12px;margin-top:5px;font-size:12px}
+.row .room{font-weight:800;font-size:11.5px}
+.row .who{font-weight:700;font-size:12.5px}
+.row .per{font-size:11px;opacity:.6}.row .per small{display:block;font-size:9.5px}
+.row .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .amt small{display:block;font-size:9.5px;font-weight:400;opacity:.6}
+.flag{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;justify-self:end;white-space:nowrap}
+.flag.late{color:var(--hot)}.flag.ok{opacity:.35}.flag.part{color:var(--warm)}
+.pen{opacity:.35;font-size:13px;margin-left:6px}
+
+/* A — three-step rail */
+.rail{display:inline-flex;align-items:center;gap:0;background:var(--wash);border-radius:99px;padding:3px;width:300px;justify-content:space-between}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 6px;border-radius:99px;opacity:.45;white-space:nowrap}
+.step b{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0;text-transform:none;opacity:.85}
+.step.done{opacity:1;background:var(--booked);color:var(--chip-ink)}
+.step.next{opacity:1;background:var(--ivory);color:var(--ivory-ink);cursor:pointer;box-shadow:2px 2px 7px rgba(0,0,0,.3)}
+.step.late{opacity:1;background:var(--hot);color:#fff}
+.step.part{opacity:1;background:var(--warm);color:var(--chip-ink)}
+
+/* B — three dots + one fixed button slot */
+.dots{display:inline-flex;align-items:center;gap:14px;width:300px;justify-content:flex-end}
+.dot{display:flex;align-items:center;gap:5px;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.dot i{width:8px;height:8px;border-radius:99px;background:var(--wash2);display:inline-block}
+.dot.done{opacity:1}.dot.done i{background:var(--booked)}
+.dot.late{opacity:1;color:var(--hot)}.dot.late i{background:var(--hot)}
+.dot.part{opacity:1;color:var(--warm)}.dot.part i{background:var(--warm)}
+.slot{width:92px;display:flex;justify-content:flex-end}
+.btn{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:var(--ivory);color:var(--ivory-ink);padding:6px 12px;border-radius:99px;white-space:nowrap}
+.btn.dim{background:var(--wash2);color:var(--fg);opacity:.5}
+
+/* modal */
+.modal{background:var(--bg);border-radius:16px;padding:20px;max-width:360px;box-shadow:0 18px 50px rgba(0,0,0,.4);margin-top:12px}
+.modal .t{font-family:'Archivo Black',sans-serif;font-size:14px;margin-bottom:2px}
+.modal .m{font-size:11px;opacity:.6;margin-bottom:12px}
+.lbl{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;display:block;margin:10px 0 3px}
+.in{background:var(--wash);border-radius:10px;padding:9px 12px;font-size:14px;font-weight:700;font-family:'DM Mono',monospace}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mb{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* D — two fixed columns, text + one button */
+.two-col{display:inline-grid;grid-template-columns:120px 96px;gap:10px;align-items:center}
+.stw{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;text-align:right;white-space:nowrap}
+.stw small{display:block;font-family:'DM Mono',monospace;font-size:9px;font-weight:500;letter-spacing:0;text-transform:none;opacity:.55}
+.stw.done{color:var(--booked)}.stw.late{color:var(--hot)}.stw.part{color:var(--warm)}.stw.open{opacity:.5}
+</style>
+</head>
+<body>
+<span class="tg" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</span>
+<h1>Tenants — one status rail, same place on every row</h1>
+<p class="lede">Every row ends in the same 300px block whatever stage it's at, so the eye runs straight down one column. Green = done, dark = the next tap, red = late, amber = partial. The undo ↩ moves into the rail (tap a done step to un-do it, with a confirm). Late text leaves the row end and sits before the rail, where it can't jostle anything.</p>
+
+
+<!-- ═══ D ═══ -->
+<div class="opt">
+  <div class="oh">D · Two fixed columns: a word and a button<span class="rec">Simplest</span></div>
+  <div class="od">No rail, no dots, no bubbles. Every row ends in the same two columns: a one-word status (coloured text, date underneath) and one button. The button column is always there — greyed "Done ↩" when there's nothing left. That's the whole thing.</div>
+  <div class="page">
+    <div class="venue">Paramount</div>
+    <div class="row" style="grid-template-columns:96px 150px 110px 90px 1fr auto"><span class="room">Studio F</span><span class="who">Spencer Nezy</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$2,500</span><span></span>
+      <span class="two-col"><span class="stw done">In QB<small>paid Sep 1</small></span><span class="slot"><span class="btn dim">Done ↩</span></span></span></div>
+    <div class="row" style="grid-template-columns:96px 150px 110px 90px 1fr auto"><span class="room">Treehouse</span><span class="who">Dada</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$5,500</span><span></span>
+      <span class="two-col"><span class="stw late">Late<small>27 days · not sent</small></span><span class="slot"><span class="btn">Mark sent</span></span></span></div>
+    <div class="venue">Track</div>
+    <div class="row" style="grid-template-columns:96px 150px 110px 90px 1fr auto"><span class="room">PR3</span><span class="who">Sean Dorian</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$1,622.25</span><span></span>
+      <span class="two-col"><span class="stw part">Partial<small>$800 in · $822.25 open</small></span><span class="slot"><span class="btn">Mark paid</span></span></span></div>
+    <div class="row" style="grid-template-columns:96px 150px 110px 90px 1fr auto"><span class="room">North</span><span class="who">Camper</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$19,500</span><span></span>
+      <span class="two-col"><span class="stw done">Paid<small>Sep 1</small></span><span class="slot"><span class="btn">In QB</span></span></span></div>
+    <div class="row" style="grid-template-columns:96px 150px 110px 90px 1fr auto"><span class="room">South + PR1</span><span class="who">MBA</span><span class="per">Sep 16 – Oct 15<small>due Sep 16</small></span><span class="amt">$7,000</span><span></span>
+      <span class="two-col"><span class="stw open">Sent<small>Sep 10</small></span><span class="slot"><span class="btn">Mark paid</span></span></span></div>
+    <div class="row" style="grid-template-columns:96px 150px 110px 90px 1fr auto"><span class="room">PR2</span><span class="who">Bobby Raps</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$2,100</span><span></span>
+      <span class="two-col"><span class="stw open">Not sent<small>send by Aug 25</small></span><span class="slot"><span class="btn">Mark sent</span></span></span></div>
+  </div>
+  <div class="note">Undo lives on the greyed Done button and, for rows mid-way, as a long-press/hover ↩ on the status word — not a third element on the row.</div>
+</div>
+
+<!-- ═══ A ═══ -->
+<div class="opt">
+  <div class="oh">A · Three-step rail</div>
+  <div class="od">SENT → PAID → QB as one segmented control. Each done step shows its date underneath. The next step is the raised button — you tap the rail itself, no separate button. Same width on every row, always.</div>
+  <div class="page">
+    <div class="venue">Paramount</div>
+    <div class="row"><span class="room">Studio F</span><span class="who">Spencer Nezy</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$2,500</span><span class="flag ok">Done</span>
+      <span class="rail"><span class="step done">Sent<b>Aug 25</b></span><span class="step done">Paid<b>Sep 1</b></span><span class="step done">In QB<b>Sep 25</b></span></span></div>
+    <div class="row"><span class="room">Treehouse</span><span class="who">Dada</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$5,500</span><span class="flag late">Late · 27 days</span>
+      <span class="rail"><span class="step late">Not sent</span><span class="step next">Mark sent</span><span class="step">In QB</span></span></div>
+    <div class="venue">Track</div>
+    <div class="row"><span class="room">PR3</span><span class="who">Sean Dorian</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$1,622.25<small>paid $800</small></span><span class="flag part">Partial · $822.25 open</span>
+      <span class="rail"><span class="step done">Sent<b>Aug 25</b></span><span class="step part">Partial<b>$800</b></span><span class="step next">Mark paid</span></span></div>
+    <div class="row"><span class="room">North</span><span class="who">Camper</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$19,500</span><span class="flag ok"></span>
+      <span class="rail"><span class="step done">Sent<b>Aug 25</b></span><span class="step done">Paid<b>Sep 1</b></span><span class="step next">In QB</span></span></div>
+    <div class="row"><span class="room">South + PR1</span><span class="who">MBA</span><span class="per">Sep 16 – Oct 15<small>due Sep 16</small></span><span class="amt">$7,000</span><span class="flag ok"></span>
+      <span class="rail"><span class="step done">Sent<b>Sep 10</b></span><span class="step next">Mark paid</span><span class="step">In QB</span></span></div>
+  </div>
+  <div class="note">Hmm on Dada: the first step reads "Not sent" in red because it's late AND nothing's happened — the rail carries the alarm, the flag text says how late. Tapping a green step asks "undo — not actually paid?" and clears it.</div>
+</div>
+
+<!-- ═══ B ═══ -->
+<div class="opt">
+  <div class="oh">B · Three dots + one button slot</div>
+  <div class="od">Quieter. Three labelled dots (lit when done) and a fixed-width slot that always holds exactly one button — the next act — or a greyed "Done". Nothing shifts because the slot is always there.</div>
+  <div class="page">
+    <div class="venue">Paramount</div>
+    <div class="row"><span class="room">Studio F</span><span class="who">Spencer Nezy</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$2,500</span><span class="flag ok"></span>
+      <span class="dots"><span class="dot done"><i></i>Sent</span><span class="dot done"><i></i>Paid Sep 1</span><span class="dot done"><i></i>QB</span><span class="slot"><span class="btn dim">Done ↩</span></span></span></div>
+    <div class="row"><span class="room">Treehouse</span><span class="who">Dada</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$5,500</span><span class="flag late">Late · 27 days</span>
+      <span class="dots"><span class="dot late"><i></i>Sent</span><span class="dot"><i></i>Paid</span><span class="dot"><i></i>QB</span><span class="slot"><span class="btn">Mark sent</span></span></span></div>
+    <div class="venue">Track</div>
+    <div class="row"><span class="room">PR3</span><span class="who">Sean Dorian</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$1,622.25<small>paid $800</small></span><span class="flag part">Partial · $822.25 open</span>
+      <span class="dots"><span class="dot done"><i></i>Sent</span><span class="dot part"><i></i>$800</span><span class="dot"><i></i>QB</span><span class="slot"><span class="btn">Mark paid</span></span></span></div>
+    <div class="row"><span class="room">North</span><span class="who">Camper</span><span class="per">Sep 1 – 30<small>due Sep 1</small></span><span class="amt">$19,500</span><span class="flag ok"></span>
+      <span class="dots"><span class="dot done"><i></i>Sent</span><span class="dot done"><i></i>Paid Sep 1</span><span class="dot"><i></i>QB</span><span class="slot"><span class="btn">In QB</span></span></span></div>
+  </div>
+</div>
+
+<!-- ═══ C ═══ -->
+<div class="opt">
+  <div class="oh">C · Mark paid asks for the date (both options)</div>
+  <div class="od">Today's bug: the paid date defaults to now with no way to say otherwise. The pop-up gets a date next to the amount, defaulting to today. Same for Mark sent (date only) and In QB.</div>
+  <div class="modal">
+    <div class="t">Dada — paid</div>
+    <div class="m">Sep 1 – 30 · $5,500 due</div>
+    <div class="two">
+      <div><span class="lbl">Amount received</span><div class="in">5500.00</div></div>
+      <div><span class="lbl">Date received</span><div class="in">2026-09-03</div></div>
+    </div>
+    <div class="mb"><span class="btn dim">Cancel</span><span class="btn">Paid in full</span></div>
+  </div>
+</div>
+</body>
+</html>
