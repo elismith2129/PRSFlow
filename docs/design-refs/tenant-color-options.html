@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Tenant colour options</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+<!-- TENANT COLOUR (Eli, 2026-09-28): "bright blue, same lightness and
+     brightness as the green" → then "lighter". Candidates beside the palette
+     the calendar already uses, in both registers. -->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:400 13px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:22px 26px 50px;max-width:980px;margin:0 auto;background:#1b1a17;color:#d9d6cd}
+h1{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;margin-bottom:4px}
+.lede{font-size:12px;opacity:.6;margin-bottom:20px;max-width:700px}
+h2{font-family:'Archivo Black',sans-serif;font-size:12px;letter-spacing:.04em;text-transform:uppercase;opacity:.5;margin:22px 0 8px}
+.reg{border-radius:16px;padding:16px 18px;margin-bottom:14px}
+.dark{background:#242320}
+.light{background:#f5f3ee;color:#2a2722}
+.row{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center;margin-bottom:8px}
+.lab{font-size:11px;font-weight:700}
+.lab small{display:block;font-weight:400;opacity:.55;font-family:ui-monospace,monospace;font-size:10px}
+.bars{display:flex;gap:6px}
+.bar{flex:1;height:44px;border-radius:12px;padding:5px 9px;font-family:'Archivo Black',sans-serif;font-size:12px;color:#1c2626;position:relative;overflow:hidden}
+.bar small{display:block;font-family:Inter;font-size:9px;font-weight:700;opacity:.65;letter-spacing:.04em}
+.bar .cells{position:absolute;left:0;right:0;bottom:0;height:16px;display:flex}
+.bar .cells i{flex:1;border-right:1px solid rgba(0,0,0,.12)}
+.rec{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;background:#43dfae;color:#1c2626;padding:3px 9px;border-radius:99px;margin-left:8px;vertical-align:2px}
+.note{font-size:11px;opacity:.55;margin-top:10px;max-width:700px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>Tenant colour — pick one</h1>
+<p class="lede">Each row is a candidate blue, drawn as the calendar bar the way the app draws it (solid in light mode, alpha fill in dark). The first four rows are the colours already on the calendar, for comparison. These are full-saturation pure blues (hue 220–225) — a different animal from Tour's pale, greyish harbor, at any lightness.</p>
+
+<script>
+const existing=[
+  ['Confirmed / Lockout','#43dfae','rgba(67,223,174,.72)'],
+  ['Tour (harbor)','#7fb2e5','rgba(127,178,229,.68)'],
+  ['Tech (orchid)','#b5a3ef','rgba(181,163,239,.62)'],
+  ['Tentative (amber)','#ffa94d','rgba(255,169,77,.68)'],
+];
+const cands=[
+  ['A · royal','#1f5cf0','rgba(31,92,240,.78)','s 87 / l 53 — deepest'],
+  ['B · electric','#2979ff','rgba(41,121,255,.78)','s 100 / l 58 — the "bright blue"'],
+  ['C · electric, lighter','#3d86ff','rgba(61,134,255,.78)','s 100 / l 62'],
+  ['D · electric, lightest','#4f93ff','rgba(79,147,255,.78)','s 100 / l 65 — still far from Tour'],
+  ['— cobalt (was)','#4485df','rgba(68,133,223,.72)','for reference'],
+];
+function bar(hex,alpha,dark,label){
+  return `<div class="bar" style="background:${dark?alpha:hex}">${label}<small>MBA · TRK South · 30 days</small><div class="cells">${'<i></i>'.repeat(7)}</div></div>`;
+}
+function block(dark){
+  let h='';
+  for(const [n,hex,al] of existing){
+    h+=`<div class="row"><div class="lab">${n}<small>${hex}</small></div><div class="bars">${bar(hex,al,dark,'CAMPER')}</div></div>`;
+  }
+  h+=`<div style="height:1px;background:${dark?'rgba(217,214,205,.15)':'rgba(42,39,34,.15)'};margin:12px 0"></div>`;
+  for(const [n,hex,al,why] of cands){
+    h+=`<div class="row"><div class="lab">${n}<small>${hex} · ${why}</small></div><div class="bars">${bar(hex,al,dark,'MBA')}${bar('#43dfae','rgba(67,223,174,.72)',dark,'CONFIRMED')}${bar('#7fb2e5','rgba(127,178,229,.68)',dark,'TOUR')}</div></div>`;
+  }
+  return h;
+}
+document.write(`<h2>Dark mode</h2><div class="reg dark">${block(true)}</div><h2>Light mode</h2><div class="reg light">${block(false)}</div>`);
+</script>
+<p class="note">Each candidate row shows the tenant bar next to a Confirmed bar and a Tour bar — the two it has to be told apart from. None of these can be mistaken for Tour — saturation does that, not lightness. B is the classic "bright blue"; C if you want it a touch lighter on the dark calendar.</p>
+</body>
+</html>

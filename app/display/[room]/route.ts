@@ -120,7 +120,7 @@ const FILL: Record<string, string> = {
   dead: 'rgba(204,209,207,.5)',
   hot: 'rgba(255,90,77,.7)',
   cold: 'rgba(95,201,232,.68)',
-  tenant: 'rgba(240,154,192,.66)',
+  tenant: 'rgba(46,232,253,.72)',
 }
 
 // STATUS_ALIASES, components/carved/index.tsx — booking status -> carved slot.

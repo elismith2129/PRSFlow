@@ -53,7 +53,7 @@ const STATUS_ALIASES: Record<string, CarvedStatus> = {
   // as a booked room (2026-08-26): green like confirmed. The ops exclusion is
   // the status value itself, never the colour.
   lockout: 'booked',
-  // Unstaffed lease block (2026-09-28) — rose (--c-st-tenant), its own slot:
+  // Unstaffed lease block (2026-09-28) — aqua (--c-st-tenant), its own slot:
   // a tenant room should read differently from a booked session at a glance,
   // and orchid is already Tech on the same calendar.
   tenant: 'tenant',
