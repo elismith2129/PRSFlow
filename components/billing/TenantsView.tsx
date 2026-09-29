@@ -30,6 +30,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
+import { getLocalToday } from '@/lib/time'
 import {
   VENUES, SHARED_RUNNER,
   fetchLeases, createLease, updateLease, deleteLease,
@@ -135,14 +136,19 @@ export function TenantsView() {
     const p = periodFor(lease, month)
     const late = isRentLate(st, p)
     const partial = kind === 'rent' && isRentPartial(st)
+    // LATE IS A LINE, NOT A BUBBLE (Eli, 2026-09-28): the hub's red flag
+    // text, so the row end stays chip-free while it's the button's turn.
+    const daysLate = late ? Math.max(1, Math.round((Date.parse(getLocalToday() + 'T12:00:00') - Date.parse(p.start + 'T12:00:00')) / 86400000)) : 0
     const chip = st?.qbAt
       ? <span style={chipStyle('paid')} title={`Paid ${st.paidAt ? fmtStampDay(st.paidAt) : ''} · entered in QuickBooks`}>In QB · {fmtStampDay(st.qbAt)}</span>
       : st?.paidAt
         ? <span style={chipStyle('paid')}>Paid · {fmtStampDay(st.paidAt)}</span>
-        : partial
-          ? <span style={late ? chipStyle('late') : chipStyle('partial')} title={`${money(st!.paidAmount!)} of ${money(st!.amount ?? lease.amount)}`}>Partial{late ? ' · late' : ''}</span>
-          : late
-            ? <span style={chipStyle('late')} title={`Unpaid past ${fmtStampDay(p.lateFrom + 'T12:00:00')}`}>Open · late</span>
+        : late
+          ? <span className="c-bflag c-blate" title={`Unpaid since ${fmtStampDay(p.start + 'T12:00:00')} · overdue from ${fmtStampDay(p.lateFrom + 'T12:00:00')}`}>
+              {partial ? `Partial · ${money(st!.paidAmount!)} in` : 'Late'} · {daysLate} days
+            </span>
+          : partial
+            ? <span style={chipStyle('partial')} title={`${money(st!.paidAmount!)} of ${money(st!.amount ?? lease.amount)}`}>Partial</span>
             : st?.sentAt
               ? <span style={chipStyle('open')}>Open</span>
               : <span style={chipStyle('none')}>Not sent</span>
