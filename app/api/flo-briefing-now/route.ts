@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     .is('deleted_at', null)
     .limit(1)
   const role = profiles?.[0]?.role
-  if (!role || !['owner', 'manager', 'billing'].includes(role)) {
+  // tech added 2026-09-29 (Eli) — same button, same briefing.
+  if (!role || !['owner', 'manager', 'billing', 'tech'].includes(role)) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
   }
 

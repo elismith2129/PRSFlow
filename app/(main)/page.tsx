@@ -260,7 +260,9 @@ export default function DashboardPage() {
   const [briefSeatsOpen, setBriefSeatsOpen] = useState(false)
   const [briefBusy, setBriefBusy] = useState(false)
   const [briefErr, setBriefErr] = useState<string | null>(null)
-  const canBrief = isEli || ['owner', 'manager', 'billing'].includes(profile?.role ?? '')
+  // Tech joined both affordances (Eli, 2026-09-29: "tech needs this") — the
+  // morning pop-up already reached them; they just had no way back to it.
+  const canBrief = isEli || ['owner', 'manager', 'billing', 'tech'].includes(profile?.role ?? '')
   async function briefNow() {
     if (briefBusy) return
     setBriefBusy(true); setBriefErr(null)
@@ -718,7 +720,7 @@ export default function DashboardPage() {
             does; the statement above stays deterministic and authoritative for
             numbers. ("Ask Flo" chat is phase 2 — this repurposes its slot.) */}
         <div style={{ display: 'flex', gap: 18, alignItems: 'baseline' }}>
-          {briefing && !isTech && (
+          {briefing && (
             <div className="n-askflo" style={{ cursor: 'pointer' }} onClick={() => setBriefOpen(true)}>
               Full briefing →
             </div>
