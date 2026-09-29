@@ -10,7 +10,7 @@ Newest at the top of each group.*
 - [ ] **Hand Cris Martinez his PIN** (from `set-pins.mjs --only`). *(Sep 18)*
 
 - [ ] **Vercel: turn off Observability Plus** — Settings → Billing → Observability Plus → toggle off. It was on by default and is the $9.88 "Observability Events" line; the free tier covers everything we use. *(Sep 17)*
-- [ ] **Tenant cleanup SQL (v1.40.0):** flip Camper + MBA lockouts to `tenant`, Delete WO on both from the hub, zero Mustard's room rate — the SELECT/UPDATE is in the Sep 28 chat. Financials double-counts those rooms until done. *(Sep 28)*
+- [x] ~~Tenant cleanup SQL (v1.40.0)~~ — ran Sep 28: Camper's three lockouts are `tenant` blocks with no WO, Mustard's 61 rows at $0 room. MBA's calendar block is Eli's to add (status Tenant, Track South, from Sep 16). *(Sep 28)*
 - [ ] **Roomless holds:** WO-1161 / WO-1160 / WO-1132 — set the studio or Close; **WO-1131** is the Havelange duplicate — Delete WO from the billing hub ⋯ menu. *(Sep 16)*
 - [ ] **Send the runner update memo** (`docs/staff/runner-update-2026-09-15.html`) with the Email toggle on, now that memo email is live. *(Sep 15)*
 
@@ -35,6 +35,8 @@ Newest at the top of each group.*
 - [ ] **Push notifications for the notes room** — a mention, a task assigned to you, a memo. The second half of "you asked for Slack." *(Sep 15)*
 - [ ] **Office-side mention badge on the rail** — the office gets tagged from runner notes but has no "you were mentioned" signal outside the room. *(Sep 15)*
 - [ ] **Admin stock-list editor** — runners can't add items anymore (they file "Missing an item?" to the dev bin); the office edits stock lists in SQL until this exists. *(Sep 15)*
+
+- [ ] **Billing hub Mark paid takes a date** — same as the Tenants tab now does: a small pop-up, date received, defaults to today. Today it stamps "now". COD is fine (its payment rows carry their own date). *(Sep 28)*
 
 ## Small / maybe
 
