@@ -20,6 +20,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.40.2 — Lead notes are internal; lead card reordered — Sep 30, 2026
+
+**Why.** Eli: the CRM lead's Notes were landing in the work order's **Session notes**, which print on the client's PDF. They are the office's notes about the person and the deal.
+
+- `lib/createWorkOrder.ts` + the popup's booking-only fallback seed `booking_notes` (internal, never printed) from `booking.notes`; `session_notes` starts empty and is typed on purpose.
+- CRM lead card order: **Booking Notes (internal)** → Log Activity → Activity fold. Reverses the 2026-09-06 order.
+- Existing WOs whose session_notes came from a lead are not touched — eyeball with the SELECT in the Sep 30 chat before moving anything.
+
+**Migrations:** none. **Files:** `lib/createWorkOrder.ts`, `components/calendar/WorkOrderPopup.tsx`, `app/(main)/crm/page.tsx`.
+
+---
+
 ## v1.40.1 — SMS opt-in on the registration form + the Texting list — Sep 29, 2026
 
 **Why.** Eli asked whether the form's "Communication" paragraph was a clear enough opt-in for promotional texts. It wasn't: buried in the T&C behind one "I agree", never says "text", no frequency/rates/STOP, nothing stored. TCPA wants prior express written consent as its own unchecked box; 10DLC registration asks to see it. *(Not legal advice — the shape is the standard one carriers accept.)*

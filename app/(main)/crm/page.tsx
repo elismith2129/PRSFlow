@@ -2729,10 +2729,29 @@ const parsedLoc0 = parseLocation(lead.location || '')
       </div>
       </div>
 
+      {/* ─── Booking Notes (internal) — the standing notes about the person /
+          the deal. FIRST again (Eli, 2026-09-30, reversing 2026-09-06): these
+          are what the office reads before picking up the phone, and they
+          seed the work order's Booking notes (internal, never on the PDF —
+          lib/createWorkOrder). Log Activity sits below, the Activity fold
+          under that. */}
+      <div className="c-band">
+      <div className="c-band-head">Booking Notes <span style={{ fontSize: 8, fontFamily: 'Inter', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--c-st-warm)', textTransform: 'uppercase', marginLeft: 6 }}>Internal</span></div>
+      <textarea
+        className="c-area"
+        value={notesVal}
+        onChange={e => setNotesVal(e.target.value)}
+        onBlur={() => { if (notesDirty) save('notes', notesVal) }}
+        onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
+        ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
+        placeholder="Who they are, what they need, the deal — internal, carries to the work order…"
+        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6, minHeight: 0 }}
+      />
+      </div>
+
       {/* ─── Log Activity — typed entry into the activity log, stamped with
-          the author's initials + timestamp on save. ABOVE the static Notes
-          band (2026-09-06): logging is the frequent act and must be visible
-          without scrolling; standing notes are reference. */}
+          the author's initials + timestamp on save. Below Booking Notes
+          since 2026-09-30 (Eli); the Activity fold follows directly. */}
       <div className="c-band">
       <div className="c-band-head">Log Activity</div>
       <textarea
@@ -2751,22 +2770,6 @@ const parsedLoc0 = parseLocation(lead.location || '')
           </button>
         </div>
       )}
-      </div>
-
-      {/* ─── Session Notes — the standing booking notes (who the person is /
-          what they need). Below the composer since 2026-09-06. */}
-      <div className="c-band">
-      <div className="c-band-head">Notes</div>
-      <textarea
-        className="c-area"
-        value={notesVal}
-        onChange={e => setNotesVal(e.target.value)}
-        onBlur={() => { if (notesDirty) save('notes', notesVal) }}
-        onInput={e => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px' }}
-        ref={el => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' } }}
-        placeholder="Add notes…"
-        style={{ width: '100%', resize: 'none', overflow: 'hidden', lineHeight: 1.6, minHeight: 0 }}
-      />
       </div>
 
       {/* ─── Activity + Tags: STACKED full-width folds (Eli 2026-08-07 rev 2 —

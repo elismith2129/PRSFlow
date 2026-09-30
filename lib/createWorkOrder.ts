@@ -99,7 +99,14 @@ export async function createWorkOrderForBooking(
     po_number: booking.po ?? '',
     phone: booking.phone ?? '',
     email: booking.email ?? '',
-    session_notes: booking.notes ?? '',
+    // LEAD/BOOKING NOTES ARE INTERNAL (Eli, 2026-09-30). The CRM lead's Notes
+    // ride the booking as `notes` and used to land in session_notes — which
+    // PRINTS on the client's PDF. They are the office's notes about the
+    // person and the deal, so they seed booking_notes (internal, never
+    // printed). session_notes starts empty: it is the client-facing line and
+    // is typed on purpose.
+    booking_notes: booking.notes ?? '',
+    session_notes: '',
     status: 'open',
     // Session-level fields (added July 21, 2026) so a freshly-created WO opens
     // populated — status bar, session type, client link, SRS, COD, A&R.

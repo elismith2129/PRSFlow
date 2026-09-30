@@ -1413,7 +1413,8 @@ export function WorkOrderPopup({
         base.session_date = booking.start_date ?? ''
         base.from_time = booking.from_time ?? ''
         base.to_time = booking.to_time ?? ''
-        base.session_notes = (booking as any).notes ?? ''
+        // Internal, never printed — see createWorkOrder (2026-09-30).
+        base.booking_notes = (booking as any).notes ?? ''
         setWo(base)
         setLoading(false)
         return
