@@ -381,6 +381,84 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### September 28–30, 2026 — Tenants pay rent, not work orders; the text list; a 24-hour day (v1.40.0 – v1.40.3)
+
+#### Tenants: the model, found by asking what a work order is for
+
+Camper's and MBA's monthly lockouts had full work orders that nobody filled, approved or
+invoiced. Asked why they existed, the honest answer was: because Financials reads
+`studio_time_rows`, so a fake WO was the only way to get rent onto the chart. That is a
+workaround wearing a model's clothes.
+
+The enterprise shape (every lease system does this) is: **a lease is a recurring charge,
+not a job.** Tenant, room, amount, anchor day, start, end. Each period generates a bill;
+payments are recorded against it; revenue by day is straight-lined. Metered extras (Mustard's
+runner hours and OT) are a separate line on top.
+
+What forced the roster out of code: **MBA's cycle is anchored on the 16th** — "not
+prorated, a full month, due the middle of the month" — and a code roster can't carry a
+cycle or a start date. So `leases` became a table (migration `20260928120000`), the Sep 2
+"roster is code" ruling reversed by its own exception. `tenant_rent_months` gained
+`lease_id`, a FROZEN `amount` (a rent change never re-prices an old month — the June row
+says $5,000 because that was the rent then) and `paid_amount` (a short payment is a
+Partial, never a lie).
+
+**Staffed vs unstaffed, kept to one question: does the lease have a work order?** Camper and
+MBA: no — a calendar block, nothing else. Mustard: yes — runners fill day cards daily, the
+office approves daily, $165/hr OT past 12 included hours, and (ruled after a brief detour
+through $0) **his rent stays ON the WO** via the Monthly split, because the WO must reflect
+the deal. Financials therefore straight-lines only leases *without* a WO and reads Mustard
+from his rows as it always did. Nothing counted twice.
+
+**A new booking status, `tenant`.** An unstaffed lease block: in `NON_SESSION_STATUSES` (no
+WO, ever), its own colour. The colour took four rounds — green (too close to Confirmed),
+cobalt, a lighter cobalt, then Eli's own swatch, an electric aqua `#2ee8fd`. The lesson was
+that distance from Tour's harbor blue comes from saturation, not lightness. Eight statuses
+broke the one-line WO status housing exactly as the Sep 3 CSS note predicted; it wraps to
+two rows of four now.
+
+**The Tenants tab stays a tab** (Eli, reversing his Sep 18 note: "want it in billing hub as
+a tab as it is now"). Rows end in the same two fixed columns everywhere — a status word
+with its date and one 96px button — after two rounds of mock ("so busy") killed a rail and a
+dot strip. Mark paid asks for the amount AND the date received; the stamp used to be "now",
+which is not when money arrives. Tap a name for the ledger; ✎ edits the lease; + Tenant adds.
+
+**Cleanup:** Camper's three lockouts flipped to `tenant`, their WOs deleted (not via the
+hub's Delete WO — that cascades to the calendar card), MBA's block is Eli's to create.
+
+#### Client extended — the gap drift couldn't see
+
+An invoiced WO in the owner's approval queue; the client adds days. Drift only fires when
+the TOTAL changes, and new empty day cards don't change it. Rule added beside drift, same
+derived-never-written shape: an invoiced-but-unsent WO that is still running leaves the
+approval queue on its own and returns when the new nights are in and reviewed.
+
+#### SMS consent — the paragraph that wasn't consent
+
+The T&C's "Communication" line, behind one "I agree", is not consent to text anyone (TCPA
+wants a separate unchecked box; 10DLC asks to see it). Built: the box under the phone field
+with the standard wording (`SMS_CONSENT_TEXT`), consent stored on the client tied to the
+NUMBER it was given for, an append-only `sms_consent_log` with the exact words, IP and user
+agent, and a **Texting** tab in the CRM — the clients table filtered on `sms_opt_in`, with
+filters and CSV export, staff opt-in/out logged. Nothing sends texts yet. Terms tidied to one
+studio name.
+
+#### Small things that mattered
+
+- Lead Notes were seeding the WO's **Session notes** — the field that prints on the client's
+  PDF. They are the office's notes about the person. Now they seed Booking notes (internal);
+  Session notes starts empty. Lead card: Booking Notes first, then Log Activity.
+- A 4 PM – 4 PM day card read as zero hours, so no OT. `calcHours` wrapped the clock then threw
+  away exactly 24h with a `>= 24h → null` guard — the only input that could ever fire it.
+- Tech's dashboard got the morning pop-up but no way back to it; Full briefing and Re-brief
+  now include the tech seat.
+- Two commits landed on a stale `clients-rebuild` branch and never deployed — "still not
+  working" was the old bundle. Merged to main.
+
+**Open:** billing-hub Mark paid wants a date too; the sending side of texting (provider,
+10DLC, STOP webhook); drop `tenant_rent_months.room_id` later; the 25th/10th rent email as a
+cron off `leases.anchor_day`.
+
 ### September 14, 2026 (evening) — Both numbers at once, the alarm that was missing, and the blanket rate built (v1.28.0)
 
 Three items off the previous entry's "Open" list, taken in the order they were ranked.
