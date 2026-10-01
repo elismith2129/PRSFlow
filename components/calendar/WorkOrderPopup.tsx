@@ -22,6 +22,7 @@ import {
 } from '@/lib/woValidation'
 import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
+import { toast } from '@/components/ui/Toaster'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
@@ -4172,8 +4173,34 @@ export function WorkOrderPopup({
     anr_contact_id: 'anr_contact_id', anr_admin_contact_id: 'anr_admin_contact_id',
   }
 
+  // SRS SAVES ON THE TAP (Eli, 2026-10-01: ticked SRS on Concord WO-1156 after
+  // the fact and it "didn't populate"). As a dirty field it only reached the
+  // row on Save, and a close-with-discard or a blocked save lost it silently.
+  // It's a flag, not an edit to review — write it now, to the WO AND its
+  // bookings (initWO ORs booking.is_srs back in, so an un-tick that left the
+  // booking flagged never stuck). Not marked dirty: nothing left to save.
+  async function writeSrsNow(on: boolean): Promise<void> {
+    const woId = woIdRef.current
+    if (!woId) return
+    const [a, b] = await Promise.all([
+      supabase.from('work_orders').update({ is_srs: on }).eq('id', woId),
+      supabase.from('bookings').update({ is_srs: on }).eq('work_order_id', woId),
+    ])
+    if (dbResult('Saving SRS', a.error) && dbResult('Saving SRS on the session', b.error)) {
+      toast(on ? 'SRS on — it’s on the SRS list.' : 'SRS off.')
+    }
+  }
+
   function handleClientChange(patch: Partial<ClientPanelValue>) {
     if (patch.client_db_id) setClientStop(false)
+    if ('is_srs' in patch && woIdRef.current) {
+      const on = !!patch.is_srs
+      setWo(w => (w ? { ...w, is_srs: on } : w))
+      writeSrsNow(on)
+      const rest = { ...patch }; delete rest.is_srs
+      if (Object.keys(rest).length === 0) return
+      patch = rest
+    }
     setWo(w => {
       if (!w) return w
       const next: WO = { ...w }
