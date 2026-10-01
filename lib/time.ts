@@ -35,8 +35,11 @@ export function calcHours(from: string, to: string): number | null {
   const t = timeToMins(to)
   if (isNaN(f) || isNaN(t)) return null
   let diff = t - f
+  // Same clock in and out is a FULL DAY, not nothing (Eli, 2026-09-30: a
+  // 4 PM – 4 PM lockout read as no hours, so no OT). After the wrap, diff is
+  // always in (0, 24h]; the old `>= 24h → null` guard only ever fired on
+  // exactly 24h and threw the one honest value away.
   if (diff <= 0) diff += 24 * 60
-  if (diff >= 24 * 60) return null
   return parseFloat((diff / 60).toFixed(2))
 }
 

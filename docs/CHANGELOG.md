@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.40.3 — A 24-hour day is 24 hours — Sep 30, 2026
+
+**Why.** A 4 PM – 4 PM day card read as no hours, so no overtime (12h incl., $195/hr → should have been 12h OT). `calcHours` wrapped the clock then threw away exactly 24h with a `>= 24h → null` guard — the one case the guard could ever fire. Removed; same clock in and out is a full day. The engineer line was unaffected (18.5h, under the guard).
+
+**Watch-out:** rows saved before this keep their stored `ot_hours = 0`. Re-pick the End time on the card (or any edit that touches times) and OT recalculates.
+
+**Migrations:** none. **Files:** `lib/time.ts`.
+
+---
+
 ## v1.40.2 — Lead notes are internal; lead card reordered — Sep 30, 2026
 
 **Why.** Eli: the CRM lead's Notes were landing in the work order's **Session notes**, which print on the client's PDF. They are the office's notes about the person and the deal.
