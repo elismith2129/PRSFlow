@@ -7,7 +7,8 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
-- [ ] **Run the SRS migration** `20261001120000_srs_payouts.sql` before the v1.41.0 push. *(Oct 1)*
+- [ ] **Run the SRS migrations** `20261001120000_srs_payouts.sql`, `…130000_srs_backfill_wo_flag.sql`, `…140000_srs_history.sql`. *(Oct 1)*
+- [ ] **SRS on a lease** (AG Cook was 10% of a $5,000/mo lockout) isn't modelled — build a % on the lease if it ever comes back. *(Oct 1)*
 
 - [ ] **Hand Cris Martinez his PIN** (from `set-pins.mjs --only`). *(Sep 18)*
 

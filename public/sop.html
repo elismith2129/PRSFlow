@@ -688,6 +688,7 @@ const VERSIONS=[
       'The fee is worked out for you from the room charges (engineering is not included). Default is <b>20%</b>.',
       'Tap the <b>%</b> on a session to change it for that one session — 10% for a low rate or an extended booking.',
       'Mark paid asks the date it went out and locks that amount. Tap the green chip to undo a mistake.',
+      'The old SRS spreadsheet (Dec 2023 – Jun 2026) is on the list too, under Paid, marked <b>from the log</b>.',
     ],
     affects:'On the 1st, open Billing → SRS, pay what is in the Owed section, and mark each one paid.',
     dev:['New route <code>/srs</code>, <code>lib/srs.ts</code>. Reads <code>work_orders.is_srs</code>; <code>srs_payouts</code> holds the % override + paid stamp; <code>app_settings.srs_default_pct</code> = 20. Migration <code>20261001120000_srs_payouts.sql</code>.'],

@@ -144,3 +144,44 @@ export async function undoSrsPaid(workOrderId: string): Promise<boolean> {
     .eq('work_order_id', workOrderId)
   return dbResult('Undoing SRS paid', error)
 }
+
+// ── History (Eli's spreadsheet log, Dec 2023 → Jun 2026) ─────────────────────
+// Sessions from before PRSFlo, entered as recorded (migration
+// 20261001140000_srs_history). No work order, nothing to derive — amount, %
+// and paid are the log's own. Read-only on the page.
+
+export type SrsHistoryRow = {
+  id: string
+  date: string
+  dateLabel: string | null
+  client: string
+  invoiceNumber: string | null
+  roomCharges: number | null
+  pct: number | null
+  fee: number
+  paid: boolean
+  paidOn: string | null
+  note: string | null
+}
+
+export async function fetchSrsHistory(): Promise<SrsHistoryRow[]> {
+  const { data, error } = await supabase
+    .from('srs_history')
+    .select('id, session_date, date_label, client, invoice_number, room_charges, pct, fee, paid, paid_on, note')
+    .order('session_date', { ascending: false })
+  // Before the migration runs the table doesn't exist — the page still works.
+  if (error) { if (!/srs_history/.test(error.message || '')) dbResult('Loading SRS history', error); return [] }
+  return (data ?? []).map(r => ({
+    id: r.id as string,
+    date: r.session_date as string,
+    dateLabel: (r.date_label as string | null) ?? null,
+    client: r.client as string,
+    invoiceNumber: (r.invoice_number as string | null) ?? null,
+    roomCharges: n(r.room_charges),
+    pct: n(r.pct),
+    fee: n(r.fee) ?? 0,
+    paid: !!r.paid,
+    paidOn: (r.paid_on as string | null) ?? null,
+    note: (r.note as string | null) ?? null,
+  }))
+}

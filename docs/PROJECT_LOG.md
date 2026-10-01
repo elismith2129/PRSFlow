@@ -410,6 +410,16 @@ SRS is a billing job.
 (`bookings.is_srs`, plus `srs_log`) but not on the WO; the WO screen ORs the two, the list
 didn't. Backfilled the WO flag (`20261001130000`) rather than ORing in the list — one truth.
 
+**The real history was a spreadsheet.** The backfill found nothing: in the database only
+Stuart Price (Aug 31) was ever SRS. The WordPress export had SRS in a `paycode_alert` field
+the calendar import skipped — 30 entries, 2023–2026, but only one (Jesse Haugen) in 2026, the
+only year imported. Then Eli sent his own log ("Paramount SRS Log.xlsx", 34 rows, amounts,
+%, paid). That is the record. Entered as-is into `srs_history` (19 rows) rather than
+recomputed or faked as work orders. Skipped on his ruling: Concord 2024 (cancelled) and AG
+Cook — whose $500/mo was SRS on a monthly lockout, a shape the page doesn't model ("AG isnt
+here anymore"). Ted Perlman / TBA skipped for having no amount. The log's Concord Jan 2026
+fee ($1,334 on $13,370 at 10%) is kept as recorded, not corrected to $1,337.
+
 **Open:** delete Admin's dead SRS section; whether a WO discount should reduce the fee.
 
 ### September 28–30, 2026 — Tenants pay rent, not work orders; the text list; a 24-hour day (v1.40.0 – v1.40.3)
