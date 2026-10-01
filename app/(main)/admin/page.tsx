@@ -167,7 +167,8 @@ type AdminSection = 'engineers' | 'srs_log' | 'daily_ops_log' | 'flags_log' | 'm
 
 const ADMIN_NAV: { key: AdminSection; label: string }[] = [
   { key: 'engineers', label: 'Engineers' },
-  { key: 'srs_log', label: 'SRS Log' },
+  // SRS Log moved to its own route, /srs (2026-10-01). The section code below
+  // is dead (unreachable) and reads the retired srs_log — delete when convenient.
   { key: 'daily_ops_log', label: 'Ops Log' },
   { key: 'flags_log', label: 'Flags' },
   { key: 'mic_inventory', label: 'Mic Inventory' },

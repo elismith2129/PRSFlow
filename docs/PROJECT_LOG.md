@@ -381,6 +381,33 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 1, 2026 — SRS, found and fixed (v1.41.0)
+
+Eli couldn't find the SRS list "since some rail work." Nothing was deleted: it was a tab
+on `/admin`, and when every other Admin tab got its own route the rail stopped linking
+`/admin` at all. Looking closer, the list was also wrong in two ways nobody would notice
+on a screen that wasn't opened: rows only existed for sessions ticked SRS at booking
+creation on the calendar (ticking it on the WO wrote nothing), and the fee had never been
+computed (`srs_fee_amount: null` with a TODO from before digital WOs).
+
+**The fix is the same shape as tenants: derive, don't log.** The list reads
+`work_orders.is_srs`; `srs_payouts` only holds what a person decided — a % override and
+the paid stamp. Fee comes from `computeWoTotals().studio` so it can't disagree with the WO.
+
+**Percent (Eli):** "typically 20% on one offs and we go down to 10% if its a low rate or
+extended booking" — ruled "both": a studio default (20) plus a per-session override. Paid
+freezes the % and dollars.
+
+**Mock:** two options — A one list owed-on-top, B grouped by month with Mark month paid.
+Eli picked A ("its only a couple a month"). B rejected as more structure than two rows a
+month need.
+
+**Rejected:** keeping `srs_log` and backfilling it from WOs — a log keyed on bookings would
+keep drifting from the WO flag. Fixing the Admin tab in place — Admin isn't in the rail and
+SRS is a billing job.
+
+**Open:** delete Admin's dead SRS section; whether a WO discount should reduce the fee.
+
 ### September 28–30, 2026 — Tenants pay rent, not work orders; the text list; a 24-hour day (v1.40.0 – v1.40.3)
 
 #### Tenants: the model, found by asking what a work order is for

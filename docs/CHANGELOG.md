@@ -30,6 +30,26 @@ The client list no longer scrolls inside its panel. It measures the height the g
 
 ---
 
+## v1.41.0 — SRS gets its own page, and the fee % is adjustable — Oct 1, 2026
+
+**Why.** Eli couldn't find the SRS list. It was the "SRS Log" tab on `/admin`; the rail rebuild gave the other Admin tabs their own routes and dropped `/admin`, so it was only reachable by URL. Underneath, two bugs: a row was only written to `srs_log` when SRS was ticked **at booking creation on the calendar** (ticking it on the WO — the normal path — wrote nothing, so sessions fell off), and `srs_fee_amount` was hard-coded `null`, so the fee column was always "—". Plus the % was a flat 10%; Eli: *"typically 20% on one offs and we go down to 10% if its a low rate or extended booking."*
+
+- **`/srs`, under Billing in the rail** (owner/manager/billing). One ongoing list, owed on top (orange Mark paid), paid below (greyed, green "Paid · date", tap to undo). Mock `docs/design-refs/srs-options.html`, option A.
+- **The list is the WOs:** `work_orders.is_srs = true`. Nothing has to be written for a session to appear. Closed (written-off) WOs and $0 fees are hidden unless already paid.
+- **Fee = pct × `computeWoTotals().studio`** (charge + OT, cancelled days excluded, engineering excluded, before any WO discount).
+- **Percent:** studio default `app_settings.srs_default_pct` (20; owner/manager edit via ✎) + per-WO override `srs_payouts.fee_pct` (anyone with access, tap the % chip; quick 20/15/10).
+- **Paid freezes it:** Mark paid asks the date, writes `paid_pct` + `paid_amount`. Changing the default never re-prices a paid row.
+- Admin's SRS Log tab removed from its nav; its section code is dead and reads the retired `srs_log`.
+- Rail: group children now go through `filterItems` too (they didn't — a role filter on a child was silently ignored).
+
+**Migrations:** `20261001120000_srs_payouts.sql` — `app_settings` (new, generic key/value), `srs_payouts` (one row per WO, created on first touch), carries over `srs_log` rows already marked paid (at 10%, dollars computed). Ends with a `select` of counts.
+
+**Watch-outs:** `srs_log` is still written by the calendar's booking-create path; nothing reads it. Legacy paid rows have `paid_amount` null and display at 10% of today's room charges — if a WO's rooms changed after payment, that number moved. A discount on the WO does **not** reduce the SRS fee — raise with Eli if a kill-fee session is ever SRS.
+
+**Files:** `app/(main)/srs/page.tsx` (new), `lib/srs.ts` (new), `components/layout/Rail.tsx`, `app/(main)/admin/page.tsx`, `public/sop.html`.
+
+---
+
 ## v1.40.4 — Export the work order early, for COD — Oct 1, 2026
 
 **Why.** Eli: COD clients' business management sometimes need the WO in hand before they'll pay the balance, and the only export sat behind approval.

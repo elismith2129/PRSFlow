@@ -679,6 +679,20 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.41', date:'Oct 1, 2026',
+    headline:'SRS has its own page again — Billing → SRS.',
+    desc:'The SRS list went missing from the menu. It is back under Billing, it now catches every SRS session, and it shows the actual fee.',
+    changes:[
+      'Every session with <b>SRS</b> ticked on its work order shows up on the list by itself.',
+      '<b>Owed</b> sessions sit at the top with an orange <b>Mark paid</b>. Paid ones drop below with a green <b>Paid · date</b> chip.',
+      'The fee is worked out for you from the room charges (engineering is not included). Default is <b>20%</b>.',
+      'Tap the <b>%</b> on a session to change it for that one session — 10% for a low rate or an extended booking.',
+      'Mark paid asks the date it went out and locks that amount. Tap the green chip to undo a mistake.',
+    ],
+    affects:'On the 1st, open Billing → SRS, pay what is in the Owed section, and mark each one paid.',
+    dev:['New route <code>/srs</code>, <code>lib/srs.ts</code>. Reads <code>work_orders.is_srs</code>; <code>srs_payouts</code> holds the % override + paid stamp; <code>app_settings.srs_default_pct</code> = 20. Migration <code>20261001120000_srs_payouts.sql</code>.'],
+  },
+  {
     ver:'v1.39', date:'Sep 23, 2026',
     headline:'Petty cash now works like a real cash box.',
     desc:'The opening balance used to be the same number every day — it was the figure from when the log first started, not last night\'s close. It now carries forward properly, and the page only shows tonight.',

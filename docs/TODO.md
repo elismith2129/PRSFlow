@@ -7,6 +7,8 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
+- [ ] **Run the SRS migration** `20261001120000_srs_payouts.sql` before the v1.41.0 push. *(Oct 1)*
+
 - [ ] **Hand Cris Martinez his PIN** (from `set-pins.mjs --only`). *(Sep 18)*
 
 - [ ] **Vercel: turn off Observability Plus** — Settings → Billing → Observability Plus → toggle off. It was on by default and is the $9.88 "Observability Events" line; the free tier covers everything we use. *(Sep 17)*
@@ -41,6 +43,8 @@ Newest at the top of each group.*
 - [ ] **Texting: the sending side** — provider (Twilio/etc.), 10DLC brand + campaign registration (needs a public privacy-policy URL on the website), STOP/HELP webhook → `sms_consent_log` source `sms`, quiet hours 8am–9pm. The list and consent record exist (v1.40.1). *(Sep 29)*
 
 ## Small / maybe
+
+- [ ] Delete Admin's dead SRS Log section (`app/(main)/admin/page.tsx`) and, once nothing writes it, `srs_log`. Ask Eli whether a WO discount should reduce the SRS fee (today it doesn't). *(Oct 1)*
 
 - [ ] **Phone day card / synopsis for per-day status:** the phone grid keeps separate chips per status (no spine); the tap synopsis could list the days with their status. *(Sep 19)*
 

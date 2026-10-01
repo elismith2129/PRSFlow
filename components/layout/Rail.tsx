@@ -54,6 +54,9 @@ const BUSINESS: RailItem[] = [
     children: [
       { href: '/billing', label: 'Billing Hub', ic: '·' },
       { href: '/petty-cash', label: 'Petty Cash', ic: '·' },
+      // SRS payouts (2026-10-01) — was a tab on /admin, which fell out of the
+      // rail. Owner/manager/billing only (filtered below; RLS says the same).
+      { href: '/srs', label: 'SRS', ic: '·' },
       { href: '/ap-protocols', label: 'Client AP Protocols', ic: '·' },
     ],
   },
@@ -140,6 +143,10 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     if (item.href === '/positions'
       && profile?.role !== 'owner'
       && profile?.role !== 'manager') return false
+    if (item.href === '/srs'
+      && profile?.role !== 'owner'
+      && profile?.role !== 'manager'
+      && profile?.role !== 'billing') return false
     if (item.href === '/rates'
       && profile?.role !== 'owner'
       && profile?.role !== 'manager'
@@ -283,7 +290,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
         </button>
         {open && (
           <div style={{ marginLeft: 18 }}>
-            {item.children.map(child => (
+            {filterItems(item.children).map(child => (
               <Link
                 key={child.href}
                 href={child.href}
