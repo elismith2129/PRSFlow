@@ -680,17 +680,32 @@ export function ClientPanel({
         </div>
       </div>
 
-      {/* SRS referral modal */}
+      {/* SRS referral modal. Was a translucent var(--c-wash) card with no
+          frame, so the WO bled through it (Eli, 2026-10-01). Now the standard
+          c-modal, closes on backdrop, and only offers "Apply to profile" when
+          a client is on file — before, that button silently did nothing. */}
       {showSrsModal && (
-        <div className="c-modal-backdrop" style={{ zIndex: 200 }}>
-          <div style={{ background: 'var(--c-wash)', borderRadius: 10, padding: '28px 32px', width: 380, maxWidth: '90vw', boxShadow: '0 16px 48px rgba(0,0,0,0.5)' }}>
-            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 15, color: 'var(--c-fg)', marginBottom: 10 }}>SRS Referral</div>
-            <div style={{ fontFamily: 'Inter', fontSize: 12, color: 'var(--c-fg-2)', lineHeight: 1.6, marginBottom: 24 }}>
-              Apply this to the client&apos;s profile so all future bookings are automatically flagged as SRS?
+        <div className="c-modal-backdrop" style={{ zIndex: 200 }} onClick={() => setShowSrsModal(false)}>
+          <div className="c-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="c-arch" style={{ fontSize: 15, marginBottom: 6 }}>SRS referral</div>
+            <div style={{ fontSize: 12.5, opacity: 0.7, lineHeight: 1.55, marginBottom: 18 }}>
+              {value.client_db_id
+                ? 'Flag just this session, or the client’s profile too so every future booking is SRS automatically?'
+                : 'Flag this session as SRS. (Put the client on file to flag all their future bookings.)'}
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { set('is_srs', true); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, background: 'transparent', color: 'var(--c-fg-2)' }}>Just this session</button>
-              <button type="button" onClick={async () => { set('is_srs', true); if (value.client_db_id) await supabase.from('clients').update({ srs_client: true }).eq('id', value.client_db_id); setShowSrsModal(false) }} style={{ padding: '8px 18px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Inter', fontSize: 11, fontWeight: 700, background: 'var(--c-fg)', color: 'var(--c-bg)' }}>Apply to profile</button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="c-bact" onClick={() => setShowSrsModal(false)} style={{ marginRight: 'auto' }}>Cancel</button>
+              <button type="button" className="c-bact" onClick={() => { set('is_srs', true); setShowSrsModal(false) }}>Just this session</button>
+              {value.client_db_id && (
+                <button type="button" className="c-bact"
+                  style={{ background: 'var(--c-st-hot)', color: '#fff', border: 'none' }}
+                  onClick={async () => {
+                    set('is_srs', true)
+                    const { error } = await supabase.from('clients').update({ srs_client: true }).eq('id', value.client_db_id!)
+                    dbResult('Flagging the client as SRS', error)
+                    setShowSrsModal(false)
+                  }}>Every session for this client</button>
+              )}
             </div>
           </div>
         </div>
