@@ -642,11 +642,19 @@ export default function CRMPage() {
         onNavigate={(clientId) => { setTab('clients'); setInitialClientId(clientId) }}
       />
 
-      {/* LEADS / CLIENTS / REGISTRATIONS / CAMPAIGNS toggle */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexShrink: 0, flexWrap: 'wrap' }}>
+      {/* CRM TABS = THE BILLING HUB'S TITLE WORDS (Eli, 2026-09-30: "the tabs at
+          the top of the CRM are small, need to be closer to the billing hub" —
+          docs/design-refs/crm-tabs.html). Same .c-btitle recipe as Billing /
+          COD / Tenants: big Archivo words, the open one full strength, the rest
+          dimmed. Leads carries the Needs Action count and goes hot when it's
+          above zero — the COD rule: a number that needs you is never quiet. */}
+      <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26, gap: isMobile ? 14 : 22, padding: '2px 4px 14px', flexShrink: 0 }}>
         {(['leads', 'clients', 'registrations', 'texting', ...(profile?.role === 'owner' && (profile?.email === 'eli@paramountrecording.com') ? ['campaigns'] : [])] as const).map((t: 'leads' | 'clients' | 'registrations' | 'texting' | 'campaigns') => (
-          <button key={t} onClick={() => setTab(t)} className={`c-soft c-control c-raised${tab === t ? ' c-on' : ''}`} style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em' }}>
+          <button key={t} onClick={() => setTab(t)} className={`c-arch${tab === t ? ' c-on' : ''}`} aria-current={tab === t ? 'page' : undefined}>
             {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : t === 'registrations' ? 'Registrations' : t === 'texting' ? 'Texting' : 'Campaigns'}
+            {t === 'leads' && needsActionCount > 0 && (
+              <span className="c-btitlen c-hot">{needsActionCount > 99 ? '99+' : needsActionCount}</span>
+            )}
           </button>
         ))}
       </div>
@@ -659,15 +667,14 @@ export default function CRMPage() {
               {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
                 const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
+                // The billing hub's pill tabs (.c-btab) under the title words.
                 return (
-                  <button key={v} onClick={() => setView(v)} className={`c-soft c-control c-raised${active ? ' c-on' : ''}`} style={{ position: 'relative', flexShrink: 0 }}>
+                  <span key={v} onClick={() => setView(v)} className={`c-btab${active ? ' c-on' : ''}`} style={{ flexShrink: 0 }}>
                     {labels[v]}
                     {v === 'needs-action' && needsActionCount > 0 && (
-                      <span className="c-count" style={{ marginLeft: 6 }}>
-                        {needsActionCount > 99 ? '99+' : needsActionCount}
-                      </span>
+                      <span className="c-bn">{needsActionCount > 99 ? '99+' : needsActionCount}</span>
                     )}
-                  </button>
+                  </span>
                 )
               })}
             </div>

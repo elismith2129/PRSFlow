@@ -1,18 +1,49 @@
 'use client'
-import React, { useEffect, useState, useCallback } from 'react'
+// ─── CLIENT PROFILE — one Edit, one Save (rebuild 2026-09-30) ────────────────
+// Mock: docs/design-refs/crm-clients-v3.html (Eli approved 2026-09-30).
+//
+// WHY A REBUILD, NOT A PATCH. Eli: "we cannot edit names and client accounts
+// properly — things are not saving." Three separate causes, all structural:
+//
+//  1. TYPING GOT WIPED. Every A&R/Admin card kept a draft and reset it from
+//     props on any refetch (`useEffect(() => setDraft({...contact}), [contact])`).
+//     The list refetches on EVERY clients/client_contacts change by anyone, and
+//     each refetch makes new objects — so a reload mid-edit silently replaced
+//     what you'd typed before you reached the card's own Save.
+//  2. A LABEL'S PRIMARY REP HAD NO CONTROL. clients.fname/lname on a label is
+//     its primary rep, copied onto leads/sessions/WOs — but the profile only
+//     edited the company name. 10 Summers had Dijon McFarlane (Mustard himself)
+//     there and nobody could fix it from the app.
+//  3. FIXES REVERTED. Any name save on a label re-stamped that hidden rep onto
+//     every linked record. Now a rep change replaces the old spelling only
+//     (lib/propagateClientRename.ts + lib/clientEdits.ts).
+//
+// THE MODEL NOW: view mode is read-only (links, tags and the reg link still
+// work in place). Edit takes a private copy of the client + its contacts that
+// NOTHING outside this component can overwrite; Save diffs that copy against
+// what was loaded and writes only what changed. Fields you changed outline
+// amber so you can see what Save is about to do.
+//
+// Rejected: keeping inline per-field autosave. It's what made a label edit
+// half-saved (name saved on blur, contact card waiting on its own Save), and
+// it's why the rep could never be offered — a rep change touches the client
+// row and the contact list at once.
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
-import { addArtistToLabel } from '@/lib/roster'
 import { RegViewModal } from '@/components/shared/RegViewModal'
 import { STARTER_TAGS } from '@/lib/tags'
 import { dbResult } from '@/lib/db'
+import { toast } from '@/components/ui/Toaster'
 import { propagateClientRename, propagateContactRename } from '@/lib/propagateClientRename'
+import { fullName, moveContactToArtists, removeContact } from '@/lib/clientEdits'
 import { ApCard, type ApProfile } from '@/components/billing/ApCard'
 
 interface BookingLead {
   id: number
   fname: string
   lname: string
+  artist_name: string | null
   session_date: string
   booking: string
   created_at: string
@@ -29,629 +60,430 @@ interface Props {
   onDelete?: () => void
 }
 
-// ─── Shared button styles ─────────────────────────────────────────────────────
+// ─── Draft shapes ────────────────────────────────────────────────────────────
 
-// Primary-ish action inside a carved panel. Depth comes from the scoped
-// `.c-panel button` rule; this only carries type and spacing. Formerly
-// `primaryBtn` — there is no accent colour in this system (Law 3).
-const primaryBtn: React.CSSProperties = {
-  color: 'var(--c-fg)', borderRadius: 99,
-  padding: '7px 14px', fontSize: 10.5, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400,
-  letterSpacing: '0.08em', cursor: 'pointer',
+const CLIENT_KEYS = [
+  'name', 'fname', 'lname', 'email', 'phone', 'instagram', 'how_heard', 'artist_name',
+  'address_street', 'address_street2', 'address_city', 'address_state', 'address_zip',
+  'notes', 'ap_profile_id', 'ap_notes',
+] as const
+type ClientKey = typeof CLIENT_KEYS[number]
+type ClientDraft = Record<ClientKey, string> & { artists: string[] }
+
+interface ContactDraft {
+  key: string                // contact id, or tmp-… for a new card
+  orig: ClientContact | null // null = new
+  fname: string
+  lname: string
+  email: string
+  phone: string
+  role: string
+  contact_type: 'anr' | 'admin'
+  artists: string[]
+  removed: boolean
+  toArtist: boolean
 }
-const ghostBtn: React.CSSProperties = {
-  background: 'transparent', color: 'var(--c-fg-3)', borderRadius: 4, padding: '5px 12px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
+
+const s = (v: string | null | undefined) => (v ?? '')
+const norm = (v: string) => v.trim()
+const same = (a: string | null | undefined, b: string | null | undefined) => norm(s(a)) === norm(s(b))
+const nameKey = (f: string | null | undefined, l: string | null | undefined) => fullName(f, l).toLowerCase()
+
+function clientDraftOf(c: Client): ClientDraft {
+  const d = { artists: [...(c.artists || [])] } as ClientDraft
+  for (const k of CLIENT_KEYS) d[k] = s(c[k] as string | null | undefined)
+  // Older individuals have `name` but no first/last — split so the boxes aren't empty.
+  if (c.type !== 'label' && !c.fname && !c.lname) {
+    const parts = s(c.name).trim().split(/\s+/).filter(Boolean)
+    d.fname = parts[0] || ''
+    d.lname = parts.slice(1).join(' ')
+  }
+  return d
 }
-const dangerBtn: React.CSSProperties = {
-  background: 'rgba(239,68,68,0.15)', color: 'var(--c-st-hot)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer',
+
+function contactDraftOf(ct: ClientContact): ContactDraft {
+  return {
+    key: ct.id, orig: ct,
+    fname: s(ct.fname), lname: s(ct.lname), email: s(ct.email), phone: s(ct.phone), role: s(ct.role),
+    contact_type: ct.contact_type === 'admin' ? 'admin' : 'anr',
+    artists: [...(ct.artists || [])],
+    removed: false, toArtist: false,
+  }
 }
 
-const aBtn = (color: string): React.CSSProperties => ({
-  padding: '2px 7px', borderRadius: 3, background: 'var(--c-bg)', color, fontFamily: 'Inter', fontSize: 9,
-  textDecoration: 'none', cursor: 'pointer', whiteSpace: 'nowrap' as const,
-})
+/** The contact whose name matches the label's own fname/lname — its primary rep. */
+function repContactOf(client: Client, contacts: ClientContact[]): ClientContact | null {
+  const k = nameKey(client.fname, client.lname)
+  if (!k) return null
+  return contacts.find(c => nameKey(c.fname, c.lname) === k) ?? null
+}
 
-// ─── Section header ───────────────────────────────────────────────────────────
+// ─── Small pieces ────────────────────────────────────────────────────────────
 
-function SectionHeader({ label, action, mt = 16 }: { label: string; action?: React.ReactNode; mt?: number }) {
+const AMBER = 'inset 0 0 0 1px rgba(255,169,77,.65)'
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <div className="c-label" style={{ fontSize: 10, marginBottom: 4 }}>{children}</div>
+}
+
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: mt }}>
-      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
-        {label}
+    <div style={{ padding: '14px 20px', borderTop: '1px solid var(--c-wash)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <span className="c-label" style={{ flex: 1 }}>{title}</span>
+        {action}
       </div>
-      {action}
+      {children}
     </div>
   )
 }
 
-// ─── Inline field ─────────────────────────────────────────────────────────────
-
-function InlineField({ label, value, onSave, multiline = false, placeholder = '—' }: {
-  label: string; value: string | null; onSave: (v: string) => void; multiline?: boolean; placeholder?: string
-}) {
-  const [local, setLocal] = useState(value ?? '')
-  useEffect(() => { setLocal(value ?? '') }, [value])
-
-  const sharedStyle: React.CSSProperties = {
-    width: '100%', background: 'transparent', outline: 'none',
-    color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11,
-    padding: '2px 0', lineHeight: 1.5, resize: 'none' as const,
-    transition: 'border-color 0.15s',
-  }
-  const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.currentTarget.style.borderBottomColor = 'var(--c-wash2)'
-  }
-  const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.currentTarget.style.borderBottomColor = 'transparent'
-    if (local !== (value ?? '')) onSave(local)
-  }
-
+function Field({ label, value, dim }: { label: string; value: React.ReactNode; dim?: boolean }) {
   return (
-    <div>
-      {label && (
-        <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>
-          {label}
-        </div>
-      )}
+    <div style={{ minWidth: 0 }}>
+      <Label>{label}</Label>
+      <div style={{ fontSize: 13.5, opacity: dim ? 0.35 : 1, overflowWrap: 'anywhere' }}>{value}</div>
+    </div>
+  )
+}
+
+function TextBox({ label, value, orig, onChange, placeholder, multiline }: {
+  label?: string; value: string; orig: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean
+}) {
+  const changed = !same(value, orig)
+  const style: React.CSSProperties = { boxShadow: changed ? AMBER : undefined }
+  return (
+    <div style={{ minWidth: 0 }}>
+      {label && <Label>{label}</Label>}
       {multiline ? (
-        <textarea rows={3} value={local} placeholder={placeholder}
-          onChange={e => setLocal(e.target.value)}
-          onFocus={onFocus as React.FocusEventHandler<HTMLTextAreaElement>}
-          onBlur={onBlur as React.FocusEventHandler<HTMLTextAreaElement>}
-          style={{ ...sharedStyle, display: 'block' }} />
+        <textarea className="c-textarea" rows={3} value={value} placeholder={placeholder}
+          onChange={e => onChange(e.target.value)} style={{ ...style, width: '100%', resize: 'vertical' }} />
       ) : (
-        <input type="text" value={local} placeholder={placeholder}
-          onChange={e => setLocal(e.target.value)}
-          onFocus={onFocus as React.FocusEventHandler<HTMLInputElement>}
-          onBlur={onBlur as React.FocusEventHandler<HTMLInputElement>}
-          style={sharedStyle} />
+        <input className="c-input" value={value} placeholder={placeholder}
+          onChange={e => onChange(e.target.value)} style={style} />
       )}
     </div>
   )
 }
 
-function PhoneInlineField({ value, onSave }: { value: string | null; onSave: (v: string) => void }) {
-  const [local, setLocal] = useState(value ?? '')
-  useEffect(() => { setLocal(value ?? '') }, [value])
+function PhoneBox({ label, value, orig, onChange }: { label?: string; value: string; orig: string; onChange: (v: string) => void }) {
+  const changed = !same(value.replace(/\D/g, ''), orig.replace(/\D/g, ''))
   return (
-    <div>
-      <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
-      <PhoneInput
-        value={local}
-        onChange={v => setLocal(v)}
-        onBlur={() => { if (local !== (value ?? '')) onSave(local) }}
-        variant="inline"
-        placeholder="—"
-      />
+    <div style={{ minWidth: 0 }}>
+      {label && <Label>{label}</Label>}
+      <div className="c-input" style={{ display: 'flex', alignItems: 'center', boxShadow: changed ? AMBER : undefined }}>
+        <PhoneInput value={value} onChange={onChange} variant="inline" placeholder="Phone" style={{ width: '100%' }} />
+      </div>
     </div>
   )
 }
 
-// ─── Contact row ──────────────────────────────────────────────────────────────
-
-function ContactRow({ contact, onSave, onDelete }: {
-  contact: ClientContact
-  onSave: (id: string, data: Partial<ClientContact>) => void
-  onDelete: (id: string) => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const [draft, setDraft] = useState({ ...contact })
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [localArtists, setLocalArtists] = useState<string[]>(contact.artists || [])
-  const [newArtistInput, setNewArtistInput] = useState('')
-  useEffect(() => { setDraft({ ...contact }); setLocalArtists(contact.artists || []) }, [contact])
-  // ARTISTS SAVE THE MOMENT THEY CHANGE (2026-09-14, BMG / Lainey Wilson).
-  // They used to wait for the row's own Save button — which sits inside the
-  // expanded card, under the profile's big Save, and is easy to miss; and
-  // any refetch in between (the contacts channel, the shared clients
-  // channel) reset the chips to what the database had, silently losing the
-  // artist just added. Tags already save on tap; artists now do the same.
-  // Name/email/phone still go through Save — they are typed, not tapped.
-  const commitArtists = (next: string[]) => {
-    setLocalArtists(next)
-    onSave(contact.id, { artists: next })
-  }
-  const addArtist = () => {
-    const n = newArtistInput.trim()
-    if (!n || localArtists.some(a => a.toLowerCase() === n.toLowerCase())) { setNewArtistInput(''); return }
-    commitArtists([...localArtists, n])
-    setNewArtistInput('')
-  }
-
+function Chip({ children, onRemove, tone }: { children: React.ReactNode; onRemove?: () => void; tone?: 'new' }) {
   return (
-    <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
-      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--c-wash)', cursor: 'pointer' }}>
-        <div>
-          <span style={{ fontSize: 11, fontWeight: 500 }}>
-            {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed contact'}
-          </span>
-          {contact.email && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Email</a>
-            </div>
-          )}
-          {contact.phone && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{contact.phone}</span>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Text</a>
-            </div>
-          )}
-          {localArtists.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 4 }}>
-              {localArtists.map((a, i) => (
-                <span key={i} style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'var(--c-bg)', padding: '1px 5px', borderRadius: 3, lineHeight: 1.6 }}>
-                  {a}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <span style={{ fontSize: 9, color: 'var(--c-fg-3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: '10px 10px 8px', background: 'var(--c-bg)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
-            {(['fname', 'lname'] as const).map(f => (
-              <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>
-                  {f === 'fname' ? 'First' : 'Last'}
-                </div>
-                <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
-              </div>
-            ))}
-            <div>
-              <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Email</div>
-              <input type="text" value={draft.email ?? ''} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))}
-                style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
-            </div>
-            <div>
-              <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
-              <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
-            </div>
-          </div>
-          {/* Artists */}
-          <div style={{ marginTop: 4, paddingTop: 8, marginBottom: 8 }}>
-            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 6 }}>Artists</div>
-            {localArtists.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4, marginBottom: 6 }}>
-                {localArtists.map((a, i) => (
-                  <ArtistChip key={i} name={a} onRemove={() => commitArtists(localArtists.filter((_, j) => j !== i))} />
-                ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input
-                type="text" placeholder="Artist name" value={newArtistInput}
-                onChange={e => setNewArtistInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addArtist() } }}
-                style={{ flex: 1, background: 'var(--c-wash)', borderRadius: 4, padding: '4px 8px', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 10, outline: 'none' }}
-              />
-              <button type="button" onClick={addArtist} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>+ Add</button>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
-            {confirmDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--c-st-hot)', fontFamily: 'Inter' }}>
-                Remove?
-                <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
-                <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
-            )}
-            {/* An artist typed but never "+ Add"ed still counts when Save is
-                pressed — the text in the box is the intent. */}
-            <button type="button" onClick={() => { const n = newArtistInput.trim(); const arts = n && !localArtists.some(a => a.toLowerCase() === n.toLowerCase()) ? [...localArtists, n] : localArtists; onSave(contact.id, { ...draft, artists: arts }); setNewArtistInput(''); setExpanded(false) }} style={primaryBtn}>Save</button>
-          </div>
-        </div>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 7, padding: '4px 11px', borderRadius: 99,
+      background: tone === 'new' ? 'rgba(255,169,77,.15)' : 'var(--c-wash2)',
+      color: tone === 'new' ? 'var(--c-st-warm)' : undefined, fontSize: 12, fontWeight: 600,
+    }}>
+      {children}
+      {onRemove && (
+        <button type="button" onClick={onRemove} title="Remove" style={{ background: 'none', padding: 0, opacity: 0.5, fontSize: 11, lineHeight: 1, cursor: 'pointer', color: 'inherit' }}>✕</button>
       )}
-    </div>
-  )
-}
-
-// ─── Add contact form ─────────────────────────────────────────────────────────
-
-function AddContactForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact>) => void; onCancel: () => void }) {
-  const [draft, setDraft] = useState({ fname: '', lname: '', email: '', phone: '' })
-  const fields: [keyof typeof draft, string][] = [
-    ['fname', 'First'], ['lname', 'Last'], ['email', 'Email'],
-  ]
-  return (
-    <div style={{ borderRadius: 6, padding: '10px 10px 8px', background: 'var(--c-wash)', marginTop: 5 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
-        {fields.map(([f, lbl]) => (
-          <div key={f}>
-            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{lbl}</div>
-            <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-              style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
-          </div>
-        ))}
-        <div>
-          <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
-          <PhoneInput value={draft.phone} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button onClick={onCancel} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={primaryBtn}>Add</button>
-      </div>
-    </div>
-  )
-}
-
-// ─── Admin row ────────────────────────────────────────────────────────────────
-
-function AdminRow({ contact, onSave, onDelete }: {
-  contact: ClientContact
-  onSave: (id: string, data: Partial<ClientContact>) => void
-  onDelete: (id: string) => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const [draft, setDraft] = useState({ ...contact })
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  useEffect(() => { setDraft({ ...contact }) }, [contact])
-
-  return (
-    <div style={{ borderRadius: 6, overflow: 'hidden', marginBottom: 5 }}>
-      <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', background: 'var(--c-wash)', cursor: 'pointer' }}>
-        <div>
-          <span style={{ fontSize: 11, fontWeight: 500 }}>
-            {[contact.fname, contact.lname].filter(Boolean).join(' ') || 'Unnamed admin'}
-          </span>
-          {contact.role && (
-            <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginLeft: 7 }}>
-              {contact.role}
-            </span>
-          )}
-          {contact.email && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-              <span style={{ fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>{contact.email}</span>
-              <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Email</a>
-            </div>
-          )}
-          {contact.phone && (
-            <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-              <a href={`tel:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Call</a>
-              <a href={`sms:${contact.phone.replace(/\D/g, '')}`} onClick={e => e.stopPropagation()} style={aBtn('var(--c-fg-2)')}>Text</a>
-            </div>
-          )}
-        </div>
-        <span style={{ fontSize: 9, color: 'var(--c-fg-3)', flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: '10px 10px 8px', background: 'var(--c-bg)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
-            {(['fname', 'lname'] as const).map(f => (
-              <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>
-                  {f === 'fname' ? 'First' : 'Last'}
-                </div>
-                <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
-              </div>
-            ))}
-            {(['role', 'email'] as const).map(f => (
-              <div key={f}>
-                <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{f}</div>
-                <input type="text" value={draft[f] ?? ''} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-                  style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
-              </div>
-            ))}
-            <div>
-              <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
-              <PhoneInput value={draft.phone ?? ''} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', alignItems: 'center' }}>
-            {confirmDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--c-st-hot)', fontFamily: 'Inter' }}>
-                Remove?
-                <button onClick={() => onDelete(contact.id)} style={dangerBtn}>Yes</button>
-                <button onClick={() => setConfirmDelete(false)} style={ghostBtn}>Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)} style={{ ...ghostBtn, color: 'var(--c-st-hot)', fontSize: 10 }}>Remove</button>
-            )}
-            <button onClick={() => { onSave(contact.id, draft); setExpanded(false) }} style={primaryBtn}>Save</button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Add admin form ───────────────────────────────────────────────────────────
-
-function AddAdminForm({ onAdd, onCancel }: { onAdd: (data: Partial<ClientContact>) => void; onCancel: () => void }) {
-  const [draft, setDraft] = useState({ fname: '', lname: '', role: '', email: '', phone: '' })
-  const fields: [keyof typeof draft, string][] = [
-    ['fname', 'First'], ['lname', 'Last'], ['role', 'Role'], ['email', 'Email'],
-  ]
-  return (
-    <div style={{ borderRadius: 6, padding: '10px 10px 8px', background: 'var(--c-wash)', marginTop: 5 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px', marginBottom: 8 }}>
-        {fields.map(([f, lbl]) => (
-          <div key={f}>
-            <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>{lbl}</div>
-            <input type="text" value={draft[f]} onChange={e => setDraft(d => ({ ...d, [f]: e.target.value }))}
-              style={{ width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, padding: '2px 0' }} />
-          </div>
-        ))}
-        <div>
-          <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)', marginBottom: 2 }}>Phone</div>
-          <PhoneInput value={draft.phone} onChange={v => setDraft(d => ({ ...d, phone: v }))} variant="inline" placeholder="—" />
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button onClick={onCancel} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { if (draft.fname || draft.lname || draft.email) onAdd(draft) }} style={primaryBtn}>Add</button>
-      </div>
-    </div>
-  )
-}
-
-// ─── Artist chip with inline confirm ─────────────────────────────────────────
-
-function ArtistChip({ name, onRemove }: { name: string; onRemove: () => void }) {
-  const [confirming, setConfirming] = useState(false)
-  if (confirming) {
-    return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-hot)', background: 'rgba(239,68,68,0.08)', padding: '2px 7px', borderRadius: 4 }}>
-        Remove {name}?
-        <button onClick={onRemove} style={{ background: 'none', color: 'var(--c-st-hot)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter', fontWeight: 700 }}>Yes</button>
-        <button onClick={() => setConfirming(false)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'Inter' }}>Cancel</button>
-      </span>
-    )
-  }
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'var(--c-wash)', padding: '2px 7px', borderRadius: 4 }}>
-      {name}
-      <button onClick={() => setConfirming(true)} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', padding: 0, fontSize: 11, lineHeight: 1 }} title="Remove">×</button>
     </span>
   )
 }
 
-// ─── Booking history ──────────────────────────────────────────────────────────
-
-function BookingHistory({ leads }: { leads: BookingLead[] }) {
-  if (leads.length === 0) {
-    return (
-      <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6 }}>
-        <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No bookings linked yet.</span>
-      </div>
-    )
-  }
+function Tag({ children, tone }: { children: React.ReactNode; tone?: 'ok' | 'warn' }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {leads.map(l => {
-        const dateStr = l.session_date || new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        const name = [l.fname, l.lname].filter(Boolean).join(' ') || '—'
-        return (
-          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--c-wash)', borderRadius: 5 }}>
-            <div style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', minWidth: 72, flexShrink: 0 }}>{dateStr}</div>
-            <div style={{ fontSize: 10, color: 'var(--c-fg)', flex: 1 }}>{name}</div>
-            {l.booking && (
-              <span style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)', background: 'var(--c-bg)', padding: '2px 5px', borderRadius: 3, flexShrink: 0 }}>
-                {l.booking}
-              </span>
-            )}
-          </div>
-        )
-      })}
-    </div>
+    <span style={{
+      fontSize: 9, fontWeight: 800, letterSpacing: '.06em', padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap',
+      background: tone === 'ok' ? 'color-mix(in srgb, var(--c-st-booked) 15%, transparent)'
+        : tone === 'warn' ? 'color-mix(in srgb, var(--c-st-warm) 15%, transparent)' : 'var(--c-wash2)',
+      color: tone === 'ok' ? 'var(--c-st-booked)' : tone === 'warn' ? 'var(--c-st-warm)' : undefined,
+      opacity: tone ? 1 : 0.8,
+    }}>{children}</span>
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+const linkBtn: React.CSSProperties = {
+  fontSize: 10.5, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase',
+  background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg)', opacity: 0.6,
+}
+const actA: React.CSSProperties = {
+  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'var(--c-wash2)',
+  color: 'var(--c-fg-2)', textDecoration: 'none', whiteSpace: 'nowrap',
+}
+
+function ArtistAdder({ onAdd, placeholder = '+ Add artist' }: { onAdd: (name: string) => void; placeholder?: string }) {
+  const [v, setV] = useState('')
+  const commit = () => { const n = v.trim(); if (n) onAdd(n); setV('') }
+  return (
+    <input
+      value={v} placeholder={placeholder}
+      onChange={e => setV(e.target.value)}
+      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit() } }}
+      onBlur={commit}
+      className="c-input"
+      style={{ width: 150, height: 28, borderRadius: 99, fontSize: 12, display: 'inline-block' }}
+    />
+  )
+}
+
+const addUnique = (list: string[], name: string) =>
+  list.some(a => a.toLowerCase() === name.trim().toLowerCase()) ? list : [...list, name.trim()]
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export function ClientProfile({ client, contacts, bookingCount, loading, isMobile, onRefresh, onBack, onDelete }: Props) {
   const [bookings, setBookings] = useState<BookingLead[]>([])
-  const [showAddContact, setShowAddContact] = useState(false)
-  const [showAddAdmin, setShowAddAdmin] = useState(false)
-  const [showAddress, setShowAddress] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [draft, setDraft] = useState<ClientDraft | null>(null)
+  const [cDrafts, setCDrafts] = useState<ContactDraft[]>([])
+  const [repKey, setRepKey] = useState<string | null>(null)
+  const [origRepKey, setOrigRepKey] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
-  const [nameVal, setNameVal] = useState(client?.name || '')
-  // Individual clients edit a real First + Last pair (labels keep one company
-  // name field). Storing the two halves separately is what lets a rename flow
-  // out to leads, which have their own first/last columns — see
-  // lib/propagateClientRename.ts.
-  const [fnameVal, setFnameVal] = useState('')
-  const [lnameVal, setLnameVal] = useState('')
-  const [editingName, setEditingName] = useState(false)
-  const isLabelClient = client?.type === 'label'
+  const [clientTags, setClientTags] = useState<string[]>(client?.tags || [])
+  const [clientTagInput, setClientTagInput] = useState('')
 
-  // ── AP submission procedure (2026-09-08) ──────────────────────────────────
-  // The picker here is how a label client gets linked to its procedure, and the
-  // only place that link is made. Deliberately NOT auto-matched by name: the
-  // source sheet's own notes ("10kProjects (TenThousandProjects in QB)",
-  // "Guitar Center — 'The Guitar Center Company' in QB") say the spreadsheet
-  // names and the QuickBooks names disagree, so guessing would silently attach
-  // the wrong AP instructions to a real invoice.
+  // ── AP submission procedure (2026-09-08) — linked by hand, never matched by
+  // name: the AP sheet's names and QuickBooks' names disagree, so a guess would
+  // attach the wrong instructions to a real invoice.
   const [apProfiles, setApProfiles] = useState<ApProfile[]>([])
   const [apOpen, setApOpen] = useState(false)
   useEffect(() => {
     let alive = true
     ;(async () => {
-      const { data } = await supabase
-        .from('ap_profiles').select('*').eq('is_global', false).order('family').order('name')
+      const { data } = await supabase.from('ap_profiles').select('*').eq('is_global', false).order('family').order('name')
       if (alive) setApProfiles((data ?? []) as ApProfile[])
     })()
     return () => { alive = false }
   }, [])
   const apProfile = apProfiles.find(p => p.id === client?.ap_profile_id) ?? null
-  const [clientTags, setClientTags] = useState<string[]>(client?.tags || [])
-  const [clientTagInput, setClientTagInput] = useState('')
-  const [clientTagDDOpen, setClientTagDDOpen] = useState(false)
 
-  // Load bookings for selected client
   useEffect(() => {
     if (!client) { setBookings([]); return }
     supabase
       .from('leads')
-      .select('id, fname, lname, session_date, booking, created_at')
+      .select('id, fname, lname, artist_name, session_date, booking, created_at')
       .eq('client_id', client.id)
       .eq('status', 'booked')
       .order('created_at', { ascending: false })
       .then(({ data }) => setBookings((data || []) as BookingLead[]))
   }, [client?.id])
 
-  // Auto-expand address if data exists
+  // Switching client always leaves edit mode — a draft belongs to one client.
   useEffect(() => {
-    if (client?.address_street || client?.address_city || client?.address_zip) setShowAddress(true)
-    else setShowAddress(false)
-  }, [client?.id])
-
-  // Reset panel state on client change
-  useEffect(() => {
-    setShowAddContact(false)
+    setEditing(false)
+    setDraft(null)
+    setCDrafts([])
     setRegLinkUrl(null)
     setRegLinkCopied(false)
     setRegLinkGenerating(false)
-    setNameVal(client?.name || '')
-    // Pre-fill first/last from the stored columns. Older individual clients (and
-    // any created by the public registration form) have `name` filled in but
-    // first/last empty — fall back to splitting the display name so the fields
-    // aren't blank on a client who obviously has a name.
-    {
-      const parts = (client?.name || '').trim().split(/\s+/).filter(Boolean)
-      const hasSplit = !!(client?.fname || client?.lname)
-      setFnameVal(hasSplit ? (client?.fname || '') : (parts[0] || ''))
-      setLnameVal(hasSplit ? (client?.lname || '') : (parts.slice(1).join(' ') || ''))
-    }
-    setEditingName(false)
     setClientTags(client?.tags || [])
     setClientTagInput('')
-    setClientTagDDOpen(false)
   }, [client?.id])
+  // Tags are tap-to-save and live outside edit mode; follow the server when idle.
+  useEffect(() => { setClientTags(client?.tags || []) }, [client?.tags])
 
-  const saveClient = useCallback(async (fields: Partial<Client>) => {
+  const isLabel = client?.type === 'label'
+  const rep = useMemo(() => (client && isLabel ? repContactOf(client, contacts) : null), [client, contacts, isLabel])
+
+  // ── Edit mode ──────────────────────────────────────────────────────────────
+  const startEdit = useCallback(() => {
     if (!client) return
-    const { error } = await supabase.from('clients').update(fields).eq('id', client.id)
-    if (!dbResult('Saving client', error)) return
-    // A rename here is the authoritative spelling — push it onto every booking
-    // and lead that stored a copy, so a fix doesn't have to be repeated by hand
-    // across the calendar and the CRM. No-ops unless a name field changed.
-    await propagateClientRename({ ...client, ...fields } as Client, fields)
-    onRefresh()
-  }, [client, onRefresh])
+    setDraft(clientDraftOf(client))
+    setCDrafts(contacts.map(contactDraftOf))
+    const rk = rep?.id ?? null
+    setRepKey(rk)
+    setOrigRepKey(rk)
+    setEditing(true)
+  }, [client, contacts, rep])
 
-  // Commit an individual's name as three fields at once: the two halves that
-  // leads need, plus the combined display name that the client list, search and
-  // bookings all read. One write, so they can never drift apart.
-  const saveIndividualName = useCallback(() => {
-    if (!client) return
-    const f = fnameVal.trim()
-    const l = lnameVal.trim()
-    const full = [f, l].filter(Boolean).join(' ')
-    setEditingName(false)
-    if (!full) { setFnameVal(client.fname || ''); setLnameVal(client.lname || ''); return }
-    if (f === (client.fname || '') && l === (client.lname || '') && full === client.name) return
-    saveClient({ fname: f || null, lname: l || null, name: full })
-  }, [client, fnameVal, lnameVal, saveClient])
+  const cancelEdit = useCallback(() => { setEditing(false); setDraft(null); setCDrafts([]) }, [])
 
-  const addClientTag = useCallback(async (tag: string) => {
-    if (!client) return
-    const trimmed = tag.trim()
-    if (!trimmed || clientTags.includes(trimmed)) return
-    const newTags = [...clientTags, trimmed]
-    setClientTags(newTags)
-    await supabase.from('clients').update({ tags: newTags }).eq('id', client.id)
-  }, [client, clientTags])
+  const setD = (k: ClientKey, v: string) => setDraft(d => (d ? { ...d, [k]: v } : d))
+  const setC = (key: string, patch: Partial<ContactDraft>) =>
+    setCDrafts(list => list.map(c => (c.key === key ? { ...c, ...patch } : c)))
 
-  const removeClientTag = useCallback(async (tag: string) => {
-    if (!client) return
-    const newTags = clientTags.filter(t => t !== tag)
-    setClientTags(newTags)
-    await supabase.from('clients').update({ tags: newTags }).eq('id', client.id)
-  }, [client, clientTags])
+  const addContactDraft = (type: 'anr' | 'admin') => {
+    const key = `tmp-${Math.random().toString(36).slice(2)}`
+    setCDrafts(list => [...list, {
+      key, orig: null, fname: '', lname: '', email: '', phone: '', role: '', contact_type: type,
+      artists: [], removed: false, toArtist: false,
+    }])
+  }
 
-  const saveContact = useCallback(async (contactId: string, data: Partial<ClientContact>) => {
+  const contactChanged = (c: ContactDraft): boolean => {
+    if (!c.orig) return !!(c.fname.trim() || c.lname.trim() || c.email.trim())
+    const o = c.orig
+    return !same(c.fname, o.fname) || !same(c.lname, o.lname) || !same(c.email, o.email)
+      || !same(c.phone.replace(/\D/g, ''), s(o.phone).replace(/\D/g, '')) || !same(c.role, o.role)
+      || c.contact_type !== (o.contact_type === 'admin' ? 'admin' : 'anr')
+      || JSON.stringify(c.artists) !== JSON.stringify(o.artists || [])
+  }
+
+  // Count of pending changes, for the save bar.
+  const pending = useMemo(() => {
+    if (!editing || !draft || !client) return 0
+    const o = clientDraftOf(client)
+    let n = CLIENT_KEYS.filter(k => !same(draft[k], o[k])).length
+    if (JSON.stringify(draft.artists) !== JSON.stringify(o.artists)) n++
+    if (repKey !== origRepKey) n++
+    n += cDrafts.filter(c => c.removed || c.toArtist || contactChanged(c)).length
+    return n
+  }, [editing, draft, client, cDrafts, repKey, origRepKey])
+
+  const save = useCallback(async () => {
+    if (!client || !draft || saving) return
+    setSaving(true)
+    let touched = 0
     try {
-      const { id: _id, client_id: _cid, ...updateData } = data
-      const { error } = await supabase.from('client_contacts').update(updateData).eq('id', contactId)
-      if (!dbResult('Saving contact', error)) return
-      // Same reconciliation as saveClient: an A&R rename rewrites the copies on
-      // every booking/lead that points at this contact. No-ops unless a name
-      // field changed.
-      const existing = contacts.find(c => c.id === contactId)
-      if (existing) {
-        await propagateContactRename({ ...existing, ...updateData, id: contactId } as ClientContact, updateData)
+      const live = cDrafts.filter(c => !c.removed && !c.toArtist)
+      // 1. New contact cards → real rows (we need ids before a new card can be the rep).
+      const idOf: Record<string, string> = {}
+      for (const c of live.filter(c => !c.orig)) {
+        if (!c.fname.trim() && !c.lname.trim() && !c.email.trim()) continue
+        const { data, error } = await supabase.from('client_contacts').insert({
+          client_id: client.id, fname: c.fname.trim() || null, lname: c.lname.trim() || null,
+          email: c.email.trim() || null, phone: c.phone || null, role: c.role.trim() || null,
+          contact_type: c.contact_type, artists: c.artists,
+        }).select('id').limit(1)
+        if (!dbResult('Adding contact', error) || !data?.[0]) return
+        idOf[c.key] = data[0].id as string
       }
-    } catch (e) { console.error('[ClientProfile] saveContact exception:', e) }
-    // Sync any new artists to clients.artists[] (the label-level roster)
-    if (client && data.artists && data.artists.length > 0) {
-      const current = (client.artists as string[]) || []
-      const toAdd = data.artists.filter(a => !current.some(x => x.toLowerCase() === a.toLowerCase()))
-      for (const name of toAdd) await addArtistToLabel(client.id, name, current)
+      // 2. Changed existing cards. A name change carries to the records that LINK
+      //    this contact (propagateContactRename — by id, never by guessing).
+      for (const c of live.filter(c => c.orig && contactChanged(c))) {
+        const o = c.orig as ClientContact
+        const patch: Partial<ClientContact> = {}
+        if (!same(c.fname, o.fname)) patch.fname = c.fname.trim() || null
+        if (!same(c.lname, o.lname)) patch.lname = c.lname.trim() || null
+        if (!same(c.email, o.email)) patch.email = c.email.trim() || null
+        if (!same(c.phone.replace(/\D/g, ''), s(o.phone).replace(/\D/g, ''))) patch.phone = c.phone || null
+        if (!same(c.role, o.role)) patch.role = c.role.trim() || null
+        if (c.contact_type !== (o.contact_type === 'admin' ? 'admin' : 'anr')) patch.contact_type = c.contact_type
+        if (JSON.stringify(c.artists) !== JSON.stringify(o.artists || [])) patch.artists = c.artists
+        const { error } = await supabase.from('client_contacts').update(patch).eq('id', o.id)
+        if (!dbResult('Saving contact', error)) return
+        await propagateContactRename({ ...o, ...patch } as ClientContact, patch)
+      }
+
+      // 3. The client row — only what changed.
+      const o = clientDraftOf(client)
+      const patch: Partial<Client> = {}
+      for (const k of CLIENT_KEYS) {
+        if (k === 'fname' || k === 'lname' || k === 'name') continue
+        if (!same(draft[k], o[k])) (patch as Record<string, string | null>)[k] = draft[k].trim() || null
+      }
+      if (isLabel) {
+        if (!same(draft.name, client.name) && draft.name.trim()) patch.name = draft.name.trim()
+        // Primary rep = the starred card's name (as typed this save).
+        const repCard = repKey ? cDrafts.find(c => c.key === repKey && !c.removed && !c.toArtist) : null
+        const nf = repCard ? repCard.fname.trim() || null : (repKey === null && origRepKey !== null ? null : client.fname)
+        const nl = repCard ? repCard.lname.trim() || null : (repKey === null && origRepKey !== null ? null : client.lname)
+        if (!same(nf, client.fname)) patch.fname = nf
+        if (!same(nl, client.lname)) patch.lname = nl
+      } else {
+        const f = draft.fname.trim(), l = draft.lname.trim()
+        const full = fullName(f, l)
+        if (full) {
+          if (!same(f, client.fname)) patch.fname = f || null
+          if (!same(l, client.lname)) patch.lname = l || null
+          if (full !== client.name) patch.name = full
+        }
+      }
+      // Roster: the edited list + anyone moved to artists + new per-A&R artists.
+      let roster = [...draft.artists]
+      for (const c of cDrafts.filter(c => c.toArtist)) roster = addUnique(roster, fullName(c.fname, c.lname))
+      for (const c of live) {
+        const before = c.orig?.artists || []
+        for (const a of c.artists) if (!before.some(b => b.toLowerCase() === a.toLowerCase())) roster = addUnique(roster, a)
+      }
+      if (JSON.stringify(roster) !== JSON.stringify(client.artists || [])) patch.artists = roster
+
+      if (Object.keys(patch).length > 0) {
+        const { error } = await supabase.from('clients').update(patch).eq('id', client.id)
+        if (!dbResult('Saving client', error)) return
+        await propagateClientRename({ ...client, ...patch } as Client, patch, client)
+      }
+
+      // 4. Moved to artists: links + name go to the primary rep, card is removed.
+      const repCardFinal = repKey ? cDrafts.find(c => c.key === repKey && !c.removed && !c.toArtist) : null
+      const repRow: ClientContact | null = repCardFinal
+        ? { ...(repCardFinal.orig || ({} as ClientContact)), id: repCardFinal.orig?.id || idOf[repCardFinal.key],
+            fname: repCardFinal.fname.trim() || null, lname: repCardFinal.lname.trim() || null } as ClientContact
+        : null
+      for (const c of cDrafts.filter(c => c.toArtist && c.orig)) {
+        const n = await moveContactToArtists(client.id, c.orig as ClientContact, repRow?.id ? repRow : null)
+        if (n < 0) return
+        touched += n
+      }
+      // 5. Removed cards: unlinked everywhere, then deleted. Names on old records stay.
+      for (const c of cDrafts.filter(c => c.removed && c.orig && !c.toArtist)) {
+        if (!(await removeContact((c.orig as ClientContact).id))) return
+      }
+
+      toast(touched > 0 ? `Saved · ${touched} linked record${touched === 1 ? '' : 's'} switched to the rep` : 'Saved', 'success')
+      setEditing(false)
+      setDraft(null)
+      setCDrafts([])
+    } finally {
+      setSaving(false)
+      onRefresh()
     }
-    onRefresh()
-  }, [client, contacts, onRefresh])
+  }, [client, draft, cDrafts, repKey, origRepKey, isLabel, saving, onRefresh])
 
-  const deleteContact = useCallback(async (contactId: string) => {
-    await supabase.from('client_contacts').delete().eq('id', contactId)
-    onRefresh()
-  }, [onRefresh])
-
-  const addContact = useCallback(async (data: Partial<ClientContact>) => {
+  // ── Tags (tap-to-save, outside edit mode) ──────────────────────────────────
+  const writeTags = useCallback(async (next: string[]) => {
     if (!client) return
-    await supabase.from('client_contacts').insert({ ...data, client_id: client.id })
-    setShowAddContact(false)
-    onRefresh()
-  }, [client, onRefresh])
+    setClientTags(next)
+    const { error } = await supabase.from('clients').update({ tags: next }).eq('id', client.id)
+    dbResult('Saving tags', error)
+  }, [client])
 
-  const addAdmin = useCallback(async (data: Partial<ClientContact>) => {
-    if (!client) return
-    await supabase.from('client_contacts').insert({ ...data, contact_type: 'admin', client_id: client.id })
-    setShowAddAdmin(false)
-    onRefresh()
-  }, [client, onRefresh])
-
+  // ── Delete ─────────────────────────────────────────────────────────────────
   const deleteClient = useCallback(async () => {
     if (!client) return
     setDeleting(true)
-    // Fetch contact IDs so we can nullify FK references on leads before deleting contacts
-    const { data: contactRows } = await supabase.from('client_contacts').select('id').eq('client_id', client.id)
-    const contactIds = (contactRows ?? []).map((c: { id: string }) => c.id)
-    if (contactIds.length > 0) {
-      await supabase.from('leads').update({ anr_contact_id: null }).in('anr_contact_id', contactIds)
-      await supabase.from('leads').update({ anr_admin_contact_id: null }).in('anr_admin_contact_id', contactIds)
+    try {
+      // Unlink every contact first (leads/sessions/WOs keep their names).
+      // (The old version also cleared a `leads.anr_admin_contact_id` column that
+      // does not exist, and never checked a single write.)
+      for (const ct of contacts) {
+        if (!(await removeContact(ct.id))) return
+      }
+      for (const table of ['leads', 'work_orders'] as const) {
+        const { error } = await supabase.from(table).update({ client_id: null }).eq('client_id', client.id)
+        if (!dbResult(`Unlinking ${table}`, error)) return
+      }
+      const { error } = await supabase.from('clients').delete().eq('id', client.id)
+      if (!dbResult('Deleting client', error)) return
+      setShowDeleteConfirm(false)
+      onDelete?.()
+    } finally {
+      setDeleting(false)
     }
-    await supabase.from('leads').update({ client_id: null }).eq('client_id', client.id)
-    await supabase.from('work_orders').update({ client_id: null }).eq('client_id', client.id)
-    await supabase.from('client_contacts').delete().eq('client_id', client.id)
-    const { error } = await supabase.from('clients').delete().eq('id', client.id)
-    setDeleting(false)
-    if (error) { console.error('Delete client failed:', error.message); return }
-    setShowDeleteConfirm(false)
-    onDelete?.()
-  }, [client, onDelete])
+  }, [client, contacts, onDelete])
 
+  // ── Registration link (individuals) ────────────────────────────────────────
   const generateRegLink = useCallback(async () => {
     if (!client) return
     setRegLinkGenerating(true)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    await supabase.from('registration_tokens').insert({
-      token,
-      client_id: client.id,
-      lead_id: null,
-      prefill_email: client.email || null,
-      prefill_name: client.name || null,
-      expires_at: expiresAt,
+    const { error } = await supabase.from('registration_tokens').insert({
+      token, client_id: client.id, lead_id: null,
+      prefill_email: client.email || null, prefill_name: client.name || null, expires_at: expiresAt,
     })
-    setRegLinkUrl(`${window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
+    if (!dbResult('Creating registration link', error)) return
+    setRegLinkUrl(`${window.location.origin}/register/${token}`)
   }, [client])
 
   const copyRegLink = useCallback(async () => {
@@ -670,426 +502,448 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     window.location.href = `mailto:${client.email || ''}?subject=${subject}&body=${body}`
   }, [regLinkUrl, client])
 
-  // ── Loading skeleton ───────────────────────────────────────────────────────
+  // ── Shells ─────────────────────────────────────────────────────────────────
+  const shell: React.CSSProperties = {
+    display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden',
+    background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 16,
+  }
+
   if (loading && !client) {
     return (
-      <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
-        <div style={{ padding: '14px 18px 12px' }}>
-          <div style={{ height: 18, borderRadius: 4, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: '52%', marginBottom: 10 }} />
-          <div style={{ height: 12, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: '28%' }} />
-        </div>
-        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {[80, 55, 70, 45].map((w, i) => (
-            <div key={i}>
-              <div style={{ height: 8, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: '22%', marginBottom: 6 }} />
-              <div style={{ height: 11, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${w}%` }} />
-            </div>
-          ))}
+      <div style={shell}>
+        <div style={{ padding: '20px' }}>
+          <div style={{ height: 22, borderRadius: 6, background: 'var(--c-wash)', width: '52%', marginBottom: 12 }} />
+          <div style={{ height: 12, borderRadius: 4, background: 'var(--c-wash)', width: '28%' }} />
         </div>
       </div>
     )
   }
-
-  // ── Empty state ────────────────────────────────────────────────────────────
   if (!client) {
     return (
-      <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--c-fg-3)', fontSize: 11, fontFamily: 'Inter' }}>
+      <div style={{ ...shell, alignItems: 'center', justifyContent: 'center', fontSize: 12, opacity: 0.5 }}>
         Select a client to view their profile
       </div>
     )
   }
 
-  const isLabel = client.type === 'label'
-  const typeLabel = CLIENT_TYPE_LABELS[client.type].toUpperCase()
-  const typeBadgeStyle: React.CSSProperties = {
-    fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.12em',
-    padding: '3px 7px', borderRadius: 3,
-    background: 'rgba(139,144,168,0.12)',
-    color: 'var(--c-fg-2)',
-    }
+  const od = clientDraftOf(client)
+  const grid: React.CSSProperties = {
+    display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px 16px',
+  }
+  const visibleContacts = editing ? cDrafts.filter(c => !c.removed && !c.toArtist) : contacts.map(contactDraftOf)
+  const staleRep = isLabel && !rep && fullName(client.fname, client.lname)
+  const artistsShown = editing && draft ? draft.artists : (client.artists || [])
+  const movedNames = editing ? cDrafts.filter(c => c.toArtist).map(c => fullName(c.fname, c.lname)) : []
 
   return (
-    <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+    <div style={shell}>
+      <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
 
-      {/* Header */}
-      <div style={{ padding: '14px 18px 12px', flexShrink: 0 }}>
-        {onBack && (
-          <button onClick={onBack} style={{ background: 'none', color: 'var(--c-fg-3)', fontFamily: 'Inter', fontSize: 10, cursor: 'pointer', padding: 0, marginBottom: 8, display: 'block' }}>
-            ← Back
-          </button>
-        )}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
-          {editingName && !isLabelClient ? (
-            // Individual — two fields. Tab moves between them; Enter or clicking
-            // away commits both at once.
-            <div style={{ display: 'flex', gap: 8, width: '100%' }} onBlur={e => {
-              // Only commit when focus leaves the pair entirely, not when it
-              // moves from First to Last.
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) saveIndividualName()
-            }}>
-              {([['first', fnameVal, setFnameVal], ['last', lnameVal, setLnameVal]] as const).map(([key, val, setVal]) => (
-                <input
-                  key={key}
-                  autoFocus={key === 'first'}
-                  value={val}
-                  placeholder={key === 'first' ? 'First' : 'Last'}
-                  onChange={e => setVal(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') saveIndividualName()
-                    if (e.key === 'Escape') {
-                      setFnameVal(client.fname || '')
-                      setLnameVal(client.lname || '')
-                      setEditingName(false)
-                    }
-                  }}
-                  style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, lineHeight: 1.2, background: 'transparent', outline: 'none', color: 'var(--c-fg)', padding: '0 2px', width: '100%', minWidth: 0 }}
-                />
-              ))}
-            </div>
-          ) : editingName ? (
-            // Label — one company-name field.
-            <input
-              autoFocus
-              value={nameVal}
-              onChange={e => setNameVal(e.target.value)}
-              onBlur={() => { saveClient({ name: nameVal.trim() || client.name || '' }); setEditingName(false) }}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { saveClient({ name: nameVal.trim() || client.name || '' }); setEditingName(false) }
-                if (e.key === 'Escape') { setNameVal(client.name || ''); setEditingName(false) }
-              }}
-              style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, lineHeight: 1.2, background: 'transparent', outline: 'none', color: 'var(--c-fg)', padding: '0 2px', width: '100%' }}
-            />
-          ) : (
-            <div
-              onClick={() => setEditingName(true)}
-              title="Click to edit name"
-              style={{ fontFamily: "'Archivo Black', sans-serif", fontSize: 20, lineHeight: 1.2, cursor: 'text', padding: '0 2px', color: 'var(--c-fg)' }}
-            >
-              {client.name}
-            </div>
+        {/* ── Header ── */}
+        <div style={{ padding: '18px 20px 14px' }}>
+          {onBack && (
+            <button onClick={onBack} style={{ ...linkBtn, marginBottom: 10, display: 'block' }}>← Back</button>
           )}
-          {/* START BOOKING REMOVED HERE (Eli, 2026-09-10: "remove from client
-              profile for sure").
-
-              It pushed `/calendar?newBooking=1&clientId=…` with NO leadId. The
-              calendar's Start Booking effect only fills the room from the LEAD
-              (`if (l.location)`), so with no lead there was nothing to fill it
-              from — and `createBookingAndOpenWO` creates the session AND its
-              work order immediately, no form in between. So this button made a
-              ROOMLESS booking every single time it was pressed, not just in an
-              edge case.
-
-              A booking with no studio matches no calendar column, so those
-              sessions rendered nowhere. Four of them (WO-1156..1159, Concord)
-              were made this way on 2026-09-10 and were only found because the
-              work orders turned up in a billing query.
-
-              Booking starts from a LEAD, which is where a room and a date live.
-              The CRM's Start Booking stays; it is gated on both. */}
-        </div>
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, alignItems: 'center' }}>
-          <span style={typeBadgeStyle}>{typeLabel}</span>
-          {bookingCount > 0 && (
-            <span style={{ fontSize: 8, fontFamily: 'Inter', color: 'var(--c-fg-3)', background: 'var(--c-wash)', padding: '3px 7px', borderRadius: 3 }}>
-              {bookingCount} booking{bookingCount !== 1 ? 's' : ''}
-            </span>
-          )}
-          {client.registered_at && (
-            <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.08em', padding: '3px 7px', borderRadius: 3, background: 'rgba(20,184,166,0.12)', color: 'var(--c-st-booked)', cursor: 'pointer' }}>
-              ✓ REGISTERED
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* The "Start Booking toast" that stood here is gone with the button.
-          It said "Booking flow coming in Chunk 6." — Chunk 6 shipped in June,
-          and `bookingToast` was never set true by anything, so the block had
-          been unreachable for three months. */}
-
-      {/* Scrollable body */}
-      <div style={{ overflowY: 'auto', flex: 1, padding: '14px 18px 18px' }}>
-
-        {/* ── LABEL SECTIONS ── */}
-        {isLabel && (() => {
-          const anrContacts = contacts.filter(c => c.contact_type !== 'admin')
-          const adminContacts = contacts.filter(c => c.contact_type === 'admin')
-          return (
-            <>
-              <SectionHeader
-                label="Contacts (A&Rs)"
-                mt={0}
-                action={
-                  <button onClick={() => setShowAddContact(v => !v)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>
-                    {showAddContact ? 'Cancel' : '+ Add'}
-                  </button>
-                }
-              />
-              {anrContacts.map(ct => (
-                <ContactRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
-              ))}
-              {anrContacts.length === 0 && !showAddContact && (
-                <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No A&Rs or reps on file yet.</span>
-                  <button onClick={() => setShowAddContact(true)} style={{ ...primaryBtn, fontSize: 9, padding: '3px 10px' }}>Add Contact</button>
-                </div>
-              )}
-              {showAddContact && <AddContactForm onAdd={addContact} onCancel={() => setShowAddContact(false)} />}
-
-              {/* Admins section — rendered inline to share anrContacts/adminContacts scope */}
-              <SectionHeader
-                label="Admins"
-                mt={16}
-                action={
-                  <button onClick={() => setShowAddAdmin(v => !v)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>
-                    {showAddAdmin ? 'Cancel' : '+ Add'}
-                  </button>
-                }
-              />
-              {adminContacts.map(ct => (
-                <AdminRow key={ct.id} contact={ct} onSave={saveContact} onDelete={deleteContact} />
-              ))}
-              {adminContacts.length === 0 && !showAddAdmin && (
-                <div style={{ padding: '10px 12px', background: 'var(--c-wash)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>No admins on file yet.</span>
-                  <button onClick={() => setShowAddAdmin(true)} style={{ ...primaryBtn, fontSize: 9, padding: '3px 10px' }}>Add Admin</button>
-                </div>
-              )}
-              {showAddAdmin && <AddAdminForm onAdd={addAdmin} onCancel={() => setShowAddAdmin(false)} />}
-            </>
-          )
-        })()}
-
-        {/* ── COD SECTIONS ── */}
-        {!isLabel && (
-          <>
-            <SectionHeader label="Contact" mt={0} />
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
-              <div>
-                <InlineField label="Email" value={client.email} onSave={v => saveClient({ email: v })} />
-                {client.email && (
-                  <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`mailto:${client.email}`} style={aBtn('var(--c-fg-2)')}>Email</a>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span className="c-label">{isLabel ? 'Label' : `Individual · ${CLIENT_TYPE_LABELS.individual}`}</span>
+              {editing && draft ? (
+                isLabel ? (
+                  <input className="c-input c-arch" value={draft.name} onChange={e => setD('name', e.target.value)}
+                    placeholder="Label / company name"
+                    style={{ fontSize: 22, height: 44, marginTop: 3, boxShadow: same(draft.name, od.name) ? undefined : AMBER }} />
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 3 }}>
+                    {(['fname', 'lname'] as const).map(k => (
+                      <input key={k} className="c-input c-arch" value={draft[k]} placeholder={k === 'fname' ? 'First' : 'Last'}
+                        onChange={e => setD(k, e.target.value)}
+                        style={{ fontSize: 20, height: 42, boxShadow: same(draft[k], od[k]) ? undefined : AMBER }} />
+                    ))}
                   </div>
+                )
+              ) : (
+                <h2 className="c-arch" style={{ fontWeight: 400, fontSize: isMobile ? 22 : 28, letterSpacing: '-0.03em', lineHeight: 1.05, marginTop: 2, overflowWrap: 'anywhere' }}>
+                  {client.name}
+                </h2>
+              )}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9, alignItems: 'center' }}>
+                {bookingCount > 0 && <Tag>{bookingCount} BOOKING{bookingCount === 1 ? '' : 'S'}</Tag>}
+                {client.registered_at && (
+                  <button onClick={() => setRegViewOpen(true)} style={{ background: 'none', padding: 0, cursor: 'pointer' }}>
+                    <Tag tone="ok">✓ REGISTERED</Tag>
+                  </button>
                 )}
-              </div>
-              <div>
-                <PhoneInlineField value={client.phone} onSave={v => saveClient({ phone: v })} />
-                {client.phone && (
-                  <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                    <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--c-fg-2)')}>Call</a>
-                    <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={aBtn('var(--c-fg-2)')}>Text</a>
-                  </div>
-                )}
-              </div>
-              <InlineField label="Instagram" value={client.instagram} onSave={v => saveClient({ instagram: v })} />
-              <InlineField label="How heard" value={client.how_heard} onSave={v => saveClient({ how_heard: v })} />
-              <div style={{ gridColumn: '1 / -1' }}>
-                <InlineField label="Artist name" value={client.artist_name ?? null} onSave={v => saveClient({ artist_name: v })} placeholder="—" />
+                {isLabel && apProfile && <Tag>AP: {apProfile.name.toUpperCase()}</Tag>}
+                {client.sms_opt_in && <Tag>SMS OPT-IN</Tag>}
               </div>
             </div>
+            {!editing && (
+              <button className="c-btn" onClick={startEdit} style={{ flexShrink: 0 }}>Edit</button>
+            )}
+          </div>
+        </div>
 
-            <SectionHeader
-              label="Billing Address"
-              action={
-                <button onClick={() => setShowAddress(v => !v)} style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px' }}>
-                  {showAddress ? 'Collapse' : 'Expand'}
-                </button>
-              }
-            />
-            {showAddress ? (
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '8px 16px', marginBottom: 4 }}>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <InlineField label="Street" value={client.address_street} onSave={v => saveClient({ address_street: v })} />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <InlineField label="Street 2" value={client.address_street2} onSave={v => saveClient({ address_street2: v })} />
-                </div>
-                <InlineField label="City" value={client.address_city} onSave={v => saveClient({ address_city: v })} />
-                <InlineField label="State" value={client.address_state} onSave={v => saveClient({ address_state: v })} />
-                <InlineField label="Zip" value={client.address_zip} onSave={v => saveClient({ address_zip: v })} />
+        {/* ── LABEL: contacts ── */}
+        {isLabel && (
+          <Section
+            title="Contacts"
+            action={editing ? (
+              <div style={{ display: 'flex', gap: 14 }}>
+                <button style={linkBtn} onClick={() => addContactDraft('anr')}>+ A&amp;R</button>
+                <button style={linkBtn} onClick={() => addContactDraft('admin')}>+ Admin</button>
               </div>
-            ) : (
-              <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', marginBottom: 4 }}>
-                {client.address_street
-                  ? `${client.address_street}${client.address_city ? ', ' + client.address_city : ''}`
-                  : 'No address on file.'}
+            ) : undefined}
+          >
+            {staleRep && (!editing || repKey === null) && (
+              <div style={{ fontSize: 12, color: 'var(--c-st-warm)', marginBottom: 8 }}>
+                Rep on file is &ldquo;{fullName(client.fname, client.lname)}&rdquo; — not one of these contacts.
+                {editing ? ' Star the right one.' : ' Edit to pick the right one.'}
               </div>
             )}
+            {visibleContacts.length === 0 && (
+              <div style={{ fontSize: 12, opacity: 0.5 }}>No contacts on file yet.{!editing && ' Edit to add one.'}</div>
+            )}
+            {visibleContacts.map(c => {
+              const isRep = editing ? repKey === c.key : rep?.id === c.key
+              const nm = fullName(c.fname, c.lname) || (c.orig ? 'Unnamed contact' : 'New contact')
+              const o = c.orig
+              return (
+                <div key={c.key} style={{ background: 'var(--c-wash)', borderRadius: 14, padding: '11px 12px', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5 }}>{nm}{c.role && !editing ? <span style={{ fontWeight: 500, opacity: 0.5 }}> · {c.role}</span> : null}</div>
+                      {!editing && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 3, fontSize: 11.5 }}>
+                          {c.email && <><span style={{ opacity: 0.6 }}>{c.email}</span><a href={`mailto:${c.email}`} style={actA}>Email</a></>}
+                          {c.phone && <>
+                            <span style={{ opacity: 0.6 }}>{c.phone}</span>
+                            <a href={`tel:${c.phone.replace(/\D/g, '')}`} style={actA}>Call</a>
+                            <a href={`sms:${c.phone.replace(/\D/g, '')}`} style={actA}>Text</a>
+                          </>}
+                        </div>
+                      )}
+                    </div>
+                    {editing ? (
+                      <button
+                        onClick={() => setRepKey(isRep ? null : c.key)}
+                        title={isRep ? 'Primary rep — tap to clear' : 'Make this the primary rep'}
+                        style={{ background: 'none', padding: 0, cursor: 'pointer' }}
+                      >
+                        <Tag tone={isRep ? 'ok' : undefined}>{isRep ? '★ PRIMARY REP' : '☆ MAKE REP'}</Tag>
+                      </button>
+                    ) : isRep ? <Tag tone="ok">★ PRIMARY REP</Tag> : null}
+                    {editing ? (
+                      <span className="c-seg" style={{ padding: 2 }}>
+                        {(['anr', 'admin'] as const).map(t => (
+                          <button key={t} type="button" className={c.contact_type === t ? 'c-on' : ''}
+                            onClick={() => setC(c.key, { contact_type: t })}
+                            style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 10px' }}>
+                            {t === 'anr' ? 'A&R' : 'Admin'}
+                          </button>
+                        ))}
+                      </span>
+                    ) : <Tag>{c.contact_type === 'admin' ? 'ADMIN' : 'A&R'}</Tag>}
+                  </div>
 
-            <SectionHeader label="Verification" />
+                  {editing && (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginTop: 10 }}>
+                        <TextBox value={c.fname} orig={s(o?.fname)} onChange={v => setC(c.key, { fname: v })} placeholder="First" />
+                        <TextBox value={c.lname} orig={s(o?.lname)} onChange={v => setC(c.key, { lname: v })} placeholder="Last" />
+                        <TextBox value={c.email} orig={s(o?.email)} onChange={v => setC(c.key, { email: v })} placeholder="Email" />
+                        <PhoneBox value={c.phone} orig={s(o?.phone)} onChange={v => setC(c.key, { phone: v })} />
+                        {c.contact_type === 'admin' && (
+                          <TextBox value={c.role} orig={s(o?.role)} onChange={v => setC(c.key, { role: v })} placeholder="Role (AP, coordinator…)" />
+                        )}
+                      </div>
+                      {c.contact_type === 'anr' && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 9 }}>
+                          <span className="c-label" style={{ fontSize: 9.5 }}>Their artists</span>
+                          {c.artists.map(a => (
+                            <Chip key={a} onRemove={() => setC(c.key, { artists: c.artists.filter(x => x !== a) })}>{a}</Chip>
+                          ))}
+                          <ArtistAdder onAdd={n => setC(c.key, { artists: addUnique(c.artists, n) })} />
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: 16, justifyContent: 'flex-end', marginTop: 9 }}>
+                        {c.orig && (
+                          <button
+                            style={{ ...linkBtn, opacity: isRep ? 0.25 : 0.6, cursor: isRep ? 'default' : 'pointer' }}
+                            disabled={isRep}
+                            title={isRep ? 'This is the primary rep — star someone else first' : 'This person is the artist, not a rep'}
+                            onClick={() => setC(c.key, { toArtist: true })}
+                          >Move to artists →</button>
+                        )}
+                        <button style={{ ...linkBtn, color: 'var(--c-st-hot)', opacity: 0.85 }}
+                          onClick={() => {
+                            if (isRep) setRepKey(null)
+                            if (c.orig) setC(c.key, { removed: true })
+                            else setCDrafts(list => list.filter(x => x.key !== c.key))
+                          }}>Remove</button>
+                      </div>
+                    </>
+                  )}
+                  {!editing && c.artists.length > 0 && (
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
+                      {c.artists.map(a => <Chip key={a}>{a}</Chip>)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            {editing && cDrafts.some(c => c.toArtist || c.removed) && (
+              <div style={{ fontSize: 11.5, opacity: 0.65, marginTop: 2 }}>
+                {cDrafts.filter(c => c.toArtist).map(c => (
+                  <div key={c.key}>
+                    {fullName(c.fname, c.lname)} → artists.{' '}
+                    {repKey ? 'Their leads, sessions and work orders switch to the primary rep.' : <span style={{ color: 'var(--c-st-warm)' }}>Star a primary rep so their sessions switch to them.</span>}{' '}
+                    <button style={linkBtn} onClick={() => setC(c.key, { toArtist: false })}>Undo</button>
+                  </div>
+                ))}
+                {cDrafts.filter(c => c.removed && !c.toArtist).map(c => (
+                  <div key={c.key}>
+                    {fullName(c.fname, c.lname) || 'Contact'} will be removed.{' '}
+                    <button style={linkBtn} onClick={() => setC(c.key, { removed: false })}>Undo</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* ── LABEL: artist roster ── */}
+        {isLabel && (
+          <Section title="Artists">
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {artistsShown.length === 0 && movedNames.length === 0 && !editing && <span style={{ fontSize: 12, opacity: 0.5 }}>None on file.</span>}
+              {artistsShown.map(a => (
+                <Chip key={a} tone={editing && !(client.artists || []).includes(a) ? 'new' : undefined}
+                  onRemove={editing ? () => setDraft(d => (d ? { ...d, artists: d.artists.filter(x => x !== a) } : d)) : undefined}>
+                  {a}
+                </Chip>
+              ))}
+              {movedNames.map(a => <Chip key={`m-${a}`} tone="new">{a}</Chip>)}
+              {editing && <ArtistAdder onAdd={n => setDraft(d => (d ? { ...d, artists: addUnique(d.artists, n) } : d))} />}
+            </div>
+          </Section>
+        )}
+
+        {/* ── INDIVIDUAL: contact details ── */}
+        {!isLabel && (
+          <Section title="Contact">
+            {editing && draft ? (
+              <div style={grid}>
+                <TextBox label="Email" value={draft.email} orig={od.email} onChange={v => setD('email', v)} />
+                <PhoneBox label="Phone" value={draft.phone} orig={od.phone} onChange={v => setD('phone', v)} />
+                <TextBox label="Artist name" value={draft.artist_name} orig={od.artist_name} onChange={v => setD('artist_name', v)} />
+                <TextBox label="Instagram" value={draft.instagram} orig={od.instagram} onChange={v => setD('instagram', v)} />
+                <TextBox label="How heard" value={draft.how_heard} orig={od.how_heard} onChange={v => setD('how_heard', v)} />
+              </div>
+            ) : (
+              <div style={grid}>
+                <Field label="Email" dim={!client.email} value={client.email
+                  ? <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{client.email}<a href={`mailto:${client.email}`} style={actA}>Email</a></span>
+                  : '—'} />
+                <Field label="Phone" dim={!client.phone} value={client.phone
+                  ? <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{client.phone}
+                      <a href={`tel:${client.phone.replace(/\D/g, '')}`} style={actA}>Call</a>
+                      <a href={`sms:${client.phone.replace(/\D/g, '')}`} style={actA}>Text</a></span>
+                  : '—'} />
+                <Field label="Artist name" dim={!client.artist_name} value={client.artist_name || '—'} />
+                <Field label="Instagram" dim={!client.instagram} value={client.instagram || '—'} />
+                <Field label="How heard" dim={!client.how_heard} value={client.how_heard || '—'} />
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* ── Billing (both) ── */}
+        <Section title={isLabel ? 'Billing' : 'Billing address'}>
+          {editing && draft ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {isLabel && (
+                <div style={grid}>
+                  <div style={{ minWidth: 0 }}>
+                    <Label>AP procedure</Label>
+                    <select className="c-input" value={draft.ap_profile_id} onChange={e => setD('ap_profile_id', e.target.value)}
+                      style={{ boxShadow: same(draft.ap_profile_id, od.ap_profile_id) ? undefined : AMBER, cursor: 'pointer' }}>
+                      <option value="">Not set — no AP card on invoices</option>
+                      {apProfiles.map(p => <option key={p.id} value={p.id}>{p.family} · {p.name}</option>)}
+                    </select>
+                  </div>
+                  <TextBox label="Billing email" value={draft.email} orig={od.email} onChange={v => setD('email', v)} />
+                  <PhoneBox label="Billing phone" value={draft.phone} orig={od.phone} onChange={v => setD('phone', v)} />
+                </div>
+              )}
+              <div style={grid}>
+                <TextBox label="Street" value={draft.address_street} orig={od.address_street} onChange={v => setD('address_street', v)} />
+                <TextBox label="Street 2" value={draft.address_street2} orig={od.address_street2} onChange={v => setD('address_street2', v)} />
+                <TextBox label="City" value={draft.address_city} orig={od.address_city} onChange={v => setD('address_city', v)} />
+                <TextBox label="State" value={draft.address_state} orig={od.address_state} onChange={v => setD('address_state', v)} />
+                <TextBox label="Zip" value={draft.address_zip} orig={od.address_zip} onChange={v => setD('address_zip', v)} />
+              </div>
+              {isLabel && (
+                <TextBox label="AP notes for this client" multiline value={draft.ap_notes} orig={od.ap_notes} onChange={v => setD('ap_notes', v)}
+                  placeholder="Anything specific to this client (e.g. Interscope: over $5,000 the invoice must be dated after the PO)…" />
+              )}
+            </div>
+          ) : (
+            <div style={grid}>
+              {isLabel && (
+                <Field label="AP procedure" dim={!apProfile} value={apProfile
+                  ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{apProfile.family} · {apProfile.name}
+                      <button onClick={() => setApOpen(true)} style={linkBtn}>How to send →</button></span>
+                  : 'Not set'} />
+              )}
+              {isLabel && <Field label="Billing email" dim={!client.email} value={client.email || '—'} />}
+              {isLabel && client.phone && <Field label="Billing phone" value={client.phone} />}
+              <Field label="Address" dim={!client.address_street && !client.address_city}
+                value={[client.address_street, client.address_street2, [client.address_city, client.address_state].filter(Boolean).join(', '), client.address_zip].filter(Boolean).join(' · ') || 'Not on file'} />
+              {isLabel && client.ap_notes && <div style={{ gridColumn: '1 / -1' }}><Field label="AP notes" value={client.ap_notes} /></div>}
+            </div>
+          )}
+        </Section>
+
+        {/* ── Registration (individuals) ── */}
+        {!isLabel && !editing && (
+          <Section title="Registration">
             {client.registered_at ? (
-              <button onClick={() => setRegViewOpen(true)} style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-booked)', lineHeight: 1.8, marginBottom: 4, background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' as const }}>
+              <button onClick={() => setRegViewOpen(true)} style={{ background: 'none', padding: 0, cursor: 'pointer', fontSize: 12.5, color: 'var(--c-st-booked)', textAlign: 'left' }}>
                 ✓ Registered {new Date(client.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                {client.terms_accepted && <span> · Terms accepted</span>}
-                {client.id_file_url && <span> · ID on file</span>}
-                <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--c-fg-3)' }}>View →</span>
+                {client.terms_accepted && ' · Terms accepted'}
+                {client.id_file_url && ' · ID on file'}
+                <span style={{ opacity: 0.6, marginLeft: 6 }}>View →</span>
               </button>
             ) : (
-              <div style={{ marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: regLinkUrl ? 6 : 0 }}>
-                  <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>Not yet registered</span>
-                  <button
-                    onClick={generateRegLink}
-                    disabled={regLinkGenerating || !!regLinkUrl}
-                    style={{ ...ghostBtn, fontSize: 9, padding: '3px 8px', opacity: regLinkGenerating ? 0.6 : 1, cursor: (regLinkGenerating || !!regLinkUrl) ? 'default' : 'pointer' }}
-                  >
-                    {regLinkGenerating ? 'Generating…' : regLinkUrl ? '✓ Link created' : 'Send registration link'}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 12.5, opacity: 0.55 }}>Not registered yet</span>
+                  <button className="c-btn" onClick={generateRegLink} disabled={regLinkGenerating || !!regLinkUrl}
+                    style={{ opacity: regLinkGenerating ? 0.6 : 1 }}>
+                    {regLinkGenerating ? 'Creating…' : regLinkUrl ? '✓ Link created' : 'Send registration link'}
                   </button>
                 </div>
                 {regLinkUrl && (
-                  <div style={{ background: 'var(--c-wash)', borderRadius: 5, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                      {regLinkUrl}
-                    </span>
-                    <button onClick={copyRegLink} style={{ ...primaryBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
-                      {regLinkCopied ? 'Copied!' : 'Copy'}
-                    </button>
-                    <button onClick={emailRegLink} style={{ ...ghostBtn, fontSize: 8, padding: '2px 8px', flexShrink: 0 }}>
-                      Email
-                    </button>
+                  <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                    <span style={{ fontSize: 11, opacity: 0.7, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{regLinkUrl}</span>
+                    <button style={linkBtn} onClick={copyRegLink}>{regLinkCopied ? 'Copied' : 'Copy'}</button>
+                    <button style={linkBtn} onClick={emailRegLink}>Email</button>
                   </div>
                 )}
               </div>
             )}
-          </>
+          </Section>
         )}
 
-        {/* ── SHARED SECTIONS ── */}
-
-        {/* ── AP SUBMISSION ─────────────────────────────────────────────────
-            Billing clients only: a COD client pays at the desk and has no AP
-            department to submit to. */}
-        {isLabel && (
-          <>
-            <SectionHeader
-              label="AP submission"
-              action={apProfile ? (
-                <button
-                  onClick={() => setApOpen(true)}
-                  style={{ background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg-2)', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.04em' }}
-                >How to send →</button>
-              ) : undefined}
-            />
-            <div className="c-well" style={{ marginBottom: 6 }}>
-              <span className="c-pfx">Procedure</span>
-              <select
-                value={client.ap_profile_id ?? ''}
-                onChange={e => saveClient({ ap_profile_id: e.target.value || null })}
-                style={{ cursor: 'pointer', appearance: 'none' }}
-              >
-                <option value="">Not set — no AP card on this client's invoices</option>
-                {apProfiles.map(p => (
-                  <option key={p.id} value={p.id}>{p.family} · {p.name}</option>
+        {/* ── Booking history ── */}
+        {!editing && (
+          <Section title={`Booked sessions${bookings.length ? ` · ${bookings.length}` : ''}`}>
+            {bookings.length === 0 ? (
+              <div style={{ fontSize: 12, opacity: 0.5 }}>No booked sessions linked yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {bookings.slice(0, 12).map(l => (
+                  <div key={l.id} style={{ display: 'flex', gap: 10, alignItems: 'baseline', fontSize: 12.5 }}>
+                    <span className="c-mono" style={{ fontSize: 11, opacity: 0.55, minWidth: 82 }}>
+                      {l.session_date || new Date(l.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[l.artist_name, fullName(l.fname, l.lname)].filter(Boolean).join(' · ') || '—'}
+                    </span>
+                    {l.booking && <span style={{ fontSize: 10.5, opacity: 0.5 }}>{l.booking}</span>}
+                  </div>
                 ))}
-              </select>
-              <span className="c-ico" aria-hidden>▾</span>
-            </div>
-            {/* The per-client addendum: one detail that differs from the shared
-                procedure, without cloning a whole profile for it. */}
-            <InlineField
-              label=""
-              value={client.ap_notes}
-              onSave={v => saveClient({ ap_notes: v })}
-              multiline
-              placeholder="Anything specific to this client (e.g. Interscope: over $5,000 the invoice must be dated after the PO)…"
-            />
-          </>
-        )}
-
-        <SectionHeader label="Booking History" />
-        <BookingHistory leads={bookings} />
-
-        <SectionHeader label="Notes" />
-        <InlineField label="" value={client.notes} onSave={v => saveClient({ notes: v })} multiline placeholder="Add notes…" />
-
-        {/* ─── Tags ─────────────────────────────── */}
-        <div style={{ marginTop: 8 }}>
-          <SectionHeader label="Tags" />
-          {clientTags.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-              {clientTags.map(tag => (
-                <span key={tag} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--c-wash)', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter' }}>
-                  {tag}
-                  <button onClick={() => removeClientTag(tag)} style={{ background: 'none', padding: 0, cursor: 'pointer', color: 'var(--c-fg-3)', lineHeight: 1, fontSize: 11 }}>×</button>
-                </span>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-            {STARTER_TAGS.filter(t => !clientTags.includes(t)).map(tag => (
-              <button key={tag} onClick={() => addClientTag(tag)} style={{ background: 'transparent', borderRadius: 20, padding: '2px 8px', fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter', cursor: 'pointer' }}>
-                + {tag}
-              </button>
-            ))}
-          </div>
-          <div style={{ position: 'relative' }}>
-            <input
-              value={clientTagInput}
-              onChange={e => { setClientTagInput(e.target.value); setClientTagDDOpen(e.target.value.trim().length > 0) }}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && clientTagInput.trim()) { addClientTag(clientTagInput); setClientTagInput(''); setClientTagDDOpen(false) }
-                if (e.key === 'Escape') { setClientTagInput(''); setClientTagDDOpen(false) }
-              }}
-              onBlur={() => setTimeout(() => setClientTagDDOpen(false), 150)}
-              placeholder="Add custom tag…"
-              style={{ width: '100%', background: 'var(--c-wash)', borderRadius: 4, padding: '5px 8px', fontSize: 10, color: 'var(--c-fg)', fontFamily: 'Inter', outline: 'none', boxSizing: 'border-box' }}
-            />
-            {clientTagDDOpen && clientTagInput.trim() && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--c-bg)', borderRadius: 4, zIndex: 100, marginTop: 2 }}>
-                <button
-                  onMouseDown={() => { addClientTag(clientTagInput); setClientTagInput(''); setClientTagDDOpen(false) }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', padding: '6px 10px', fontSize: 10, color: 'var(--c-fg-2)', fontFamily: 'Inter', cursor: 'pointer' }}
-                >
-                  Add &ldquo;{clientTagInput.trim()}&rdquo;
-                </button>
+                {bookings.length > 12 && <div style={{ fontSize: 11, opacity: 0.45 }}>+{bookings.length - 12} more</div>}
               </div>
             )}
-          </div>
-        </div>
+          </Section>
+        )}
 
-        {/* Footer */}
-        <div style={{ marginTop: 16, paddingTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 9, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
-            {!client.registered_at ? 'Migrated · ' : ''}
-            Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+        {/* ── Notes ── */}
+        <Section title="Notes">
+          {editing && draft ? (
+            <TextBox multiline value={draft.notes} orig={od.notes} onChange={v => setD('notes', v)} placeholder="Add notes…" />
+          ) : (
+            <div style={{ fontSize: 13, opacity: client.notes ? 0.8 : 0.35, whiteSpace: 'pre-wrap' }}>{client.notes || 'No notes.'}</div>
+          )}
+        </Section>
+
+        {/* ── Tags (tap to save, any time) ── */}
+        {!editing && (
+          <Section title="Tags">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {clientTags.map(t => <Chip key={t} onRemove={() => writeTags(clientTags.filter(x => x !== t))}>{t}</Chip>)}
+              {STARTER_TAGS.filter(t => !clientTags.includes(t)).map(t => (
+                <button key={t} onClick={() => writeTags([...clientTags, t])}
+                  style={{ background: 'none', padding: '4px 8px', fontSize: 11.5, opacity: 0.45, cursor: 'pointer', color: 'var(--c-fg)' }}>+ {t}</button>
+              ))}
+              <input
+                value={clientTagInput}
+                onChange={e => setClientTagInput(e.target.value)}
+                onKeyDown={e => {
+                  const t = clientTagInput.trim()
+                  if (e.key === 'Enter' && t && !clientTags.includes(t)) { writeTags([...clientTags, t]); setClientTagInput('') }
+                  if (e.key === 'Escape') setClientTagInput('')
+                }}
+                placeholder="+ Custom tag"
+                className="c-input"
+                style={{ width: 130, height: 28, borderRadius: 99, fontSize: 12, display: 'inline-block' }}
+              />
+            </div>
+          </Section>
+        )}
+
+        {/* ── Footer ── */}
+        {!editing && (
+          <div style={{ padding: '12px 20px 18px', borderTop: '1px solid var(--c-wash)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <span style={{ fontSize: 11, opacity: 0.4 }}>
+              Added {client.created_at ? new Date(client.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
+            </span>
+            <button onClick={() => setShowDeleteConfirm(true)} style={{ ...linkBtn, color: 'var(--c-st-hot)' }}>Delete client</button>
           </div>
-          <button onClick={() => setShowDeleteConfirm(true)} style={{ ...dangerBtn, fontSize: 9, padding: '3px 8px' }}>
-            Delete Client
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* Delete confirm modal */}
+      {/* ── Save bar ── */}
+      {editing && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderTop: '1px solid var(--c-wash2)', background: 'var(--c-wash)', flexShrink: 0, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 180, fontSize: 12, opacity: 0.8 }}>
+            {pending === 0 ? 'No changes yet.' : (
+              <>
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 99, background: 'var(--c-st-warm)', marginRight: 7 }} />
+                <b style={{ color: 'var(--c-st-warm)' }}>{pending} change{pending === 1 ? '' : 's'}</b>
+                {' '}— name changes also update this client&apos;s linked leads, sessions and work orders.
+              </>
+            )}
+          </div>
+          <button onClick={cancelEdit} disabled={saving} style={{ ...linkBtn, opacity: 0.7 }}>Cancel</button>
+          <button className="c-btn" onClick={save} disabled={saving || pending === 0}
+            style={{ background: pending ? 'var(--c-st-booked)' : undefined, color: pending ? 'var(--c-chip-ink)' : undefined, opacity: saving ? 0.6 : 1 }}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+      )}
+
       {showDeleteConfirm && (
         <div onClick={() => setShowDeleteConfirm(false)} className="c-modal-backdrop" style={{ zIndex: 2000 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--c-bg)', borderRadius: 12, padding: '20px 24px', maxWidth: 400, width: '100%' }}>
-            <div style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 14, marginBottom: 8 }}>Delete {client.name}?</div>
-            <div style={{ fontSize: 11, color: 'var(--c-fg-2)', fontFamily: 'Inter', lineHeight: 1.7, marginBottom: 20 }}>
-              This will permanently delete this client and all associated contacts. Any linked leads will be unlinked but not deleted. This action cannot be undone.
+          <div onClick={e => e.stopPropagation()} className="c-sheet" style={{ padding: '20px 24px', maxWidth: 400, width: '100%' }}>
+            <div className="c-arch" style={{ fontSize: 15, marginBottom: 8 }}>Delete {client.name}?</div>
+            <div style={{ fontSize: 12.5, opacity: 0.7, lineHeight: 1.6, marginBottom: 18 }}>
+              This permanently deletes the client and its contacts. Linked leads, sessions and work orders are unlinked, not deleted. This can&apos;t be undone.
             </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowDeleteConfirm(false)} style={ghostBtn}>Cancel</button>
-              <button onClick={deleteClient} disabled={deleting} style={{ ...dangerBtn, padding: '6px 16px', fontSize: 10, opacity: deleting ? 0.7 : 1, cursor: deleting ? 'default' : 'pointer' }}>
-                {deleting ? 'Deleting…' : 'Delete Permanently'}
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-end', alignItems: 'center' }}>
+              <button onClick={() => setShowDeleteConfirm(false)} style={linkBtn}>Cancel</button>
+              <button className="c-btn" onClick={deleteClient} disabled={deleting}
+                style={{ background: 'var(--c-st-hot)', color: '#fff', opacity: deleting ? 0.6 : 1 }}>
+                {deleting ? 'Deleting…' : 'Delete permanently'}
               </button>
             </div>
           </div>
         </div>
       )}
-      {regViewOpen && client && (
-        <RegViewModal clientId={client.id} onClose={() => setRegViewOpen(false)} />
-      )}
-      {/* The same panel the Billing Hub opens. No workOrderId here — with no
-          invoice in hand there is nothing to tick, so the checklist renders as
-          plain reference. */}
-      {apOpen && apProfile && client && (
-        <ApCard
-          profile={apProfile}
-          clientName={client.name}
-          clientNotes={client.ap_notes}
-          onClose={() => setApOpen(false)}
-        />
+      {regViewOpen && <RegViewModal clientId={client.id} onClose={() => setRegViewOpen(false)} />}
+      {apOpen && apProfile && (
+        <ApCard profile={apProfile} clientName={client.name} clientNotes={client.ap_notes} onClose={() => setApOpen(false)} />
       )}
     </div>
   )

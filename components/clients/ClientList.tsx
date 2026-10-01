@@ -1,8 +1,16 @@
 'use client'
+// ─── CLIENT LIST (rebuild 2026-09-30, mock docs/design-refs/crm-clients-v3.html)
+// The billing hub's anatomy: search bar on top (it outranks the filters), pill
+// filters with counts, then one carved list panel with a lozenge header.
+//
+// "Needs fixing" is the clean-up queue for the database: a label with no
+// contacts or whose rep on file isn't one of its contacts (the 10 Summers /
+// Dijon shape), or a COD client with no way to reach them.
 import React, { useState, useEffect } from 'react'
-import { Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
+import { Client, ClientContact } from '@/lib/supabase'
+import { fullName } from '@/lib/clientEdits'
 
-type TypeFilter = 'all' | 'label' | 'individual'
+type Filter = 'all' | 'label' | 'individual' | 'registered' | 'fix'
 type SortOption = 'alpha' | 'recent' | 'bookings'
 
 export type BookingCountMap = Record<string, number>
@@ -17,185 +25,190 @@ interface Props {
   selectedId: string | null
   loading: boolean
   onSelect: (id: string) => void
+  /** Rendered beside the search bar (the page's + New client). */
+  searchAction?: React.ReactNode
 }
 
-export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, loading, onSelect }: Props) {
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+/** Why a client is in "Needs fixing" — null when it isn't. */
+export function fixReason(c: Client, contacts: ClientContact[]): string | null {
+  if (c.type === 'label') {
+    if (contacts.length === 0) return 'NO CONTACTS'
+    const rep = fullName(c.fname, c.lname).toLowerCase()
+    if (!rep) return 'NO REP'
+    if (!contacts.some(ct => fullName(ct.fname, ct.lname).toLowerCase() === rep)) return 'REP NOT A CONTACT'
+    return null
+  }
+  if (!c.email && !c.phone) return 'NO EMAIL / PHONE'
+  return null
+}
+
+function initials(name: string): string {
+  const w = name.trim().split(/\s+/).filter(Boolean)
+  if (w.length === 0) return '—'
+  if (w.length === 1) return w[0].slice(0, 2).toUpperCase()
+  return (w[0][0] + w[1][0]).toUpperCase()
+}
+
+export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, loading, onSelect, searchAction }: Props) {
+  const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<SortOption>('alpha')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
-  useEffect(() => { setPage(1) }, [typeFilter, sort, search])
-
-  const labelCount = clients.filter(c => c.type === 'label').length
-  const indCount = clients.filter(c => c.type === 'individual').length
+  useEffect(() => { setPage(1) }, [filter, sort, search])
 
   const q = search.trim().toLowerCase()
-  let filtered: Client[] = clients
+  const searching = q.length > 0
 
-  if (typeFilter !== 'all') filtered = filtered.filter(c => c.type === typeFilter)
+  const matchesFilter = (c: Client, f: Filter) => {
+    if (f === 'all') return true
+    if (f === 'label') return c.type === 'label'
+    if (f === 'individual') return c.type !== 'label'
+    if (f === 'registered') return !!c.registered_at
+    return !!fixReason(c, contactsMap[c.id] || [])
+  }
 
-  if (q) {
+  const filterDefs: { key: Filter; label: string; warn?: boolean }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'label', label: 'Labels' },
+    { key: 'individual', label: 'COD' },
+    { key: 'registered', label: 'Registered' },
+    { key: 'fix', label: 'Needs fixing', warn: true },
+  ]
+  const counts: Record<Filter, number> = { all: 0, label: 0, individual: 0, registered: 0, fix: 0 }
+  for (const c of clients) for (const f of filterDefs) if (matchesFilter(c, f.key)) counts[f.key]++
+
+  // Search ignores the pill (like the billing hub): you look for a client, not
+  // a client-in-a-filter.
+  let filtered: Client[] = searching ? clients : clients.filter(c => matchesFilter(c, filter))
+  if (searching) {
     filtered = filtered.filter(c => {
       if (c.name.toLowerCase().includes(q)) return true
+      if (fullName(c.fname, c.lname).toLowerCase().includes(q)) return true
       if ((c.email || '').toLowerCase().includes(q)) return true
-      if ((c.phone || '').toLowerCase().includes(q)) return true
+      if ((c.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000')) return true
+      if ((c.artist_name || '').toLowerCase().includes(q)) return true
+      if ((c.artists || []).some(a => a.toLowerCase().includes(q))) return true
       return (contactsMap[c.id] || []).some(ct =>
-        `${ct.fname || ''} ${ct.lname || ''}`.toLowerCase().includes(q) ||
-        (ct.email || '').toLowerCase().includes(q)
+        fullName(ct.fname, ct.lname).toLowerCase().includes(q) ||
+        (ct.email || '').toLowerCase().includes(q) ||
+        (ct.artists || []).some(a => a.toLowerCase().includes(q))
       )
     })
   }
 
   if (sort === 'alpha') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
   else if (sort === 'recent') filtered = [...filtered].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  else if (sort === 'bookings') filtered = [...filtered].sort((a, b) => (bookingCountMap[b.id] || 0) - (bookingCountMap[a.id] || 0))
+  else filtered = [...filtered].sort((a, b) => (bookingCountMap[b.id] || 0) - (bookingCountMap[a.id] || 0))
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const startIdx = (safePage - 1) * PAGE_SIZE
   const paginated = filtered.slice(startIdx, startIdx + PAGE_SIZE)
 
-  const filterDefs: { key: TypeFilter; label: string; count: number }[] = [
-    { key: 'all', label: 'All', count: clients.length },
-    { key: 'label', label: 'Labels', count: labelCount },
-    { key: 'individual', label: CLIENT_TYPE_LABELS.individual, count: indCount },
-  ]
+  const lozengeTitle = searching ? 'Search results' : filterDefs.find(f => f.key === filter)?.label ?? 'All'
 
   return (
-    <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', background: 'var(--c-bg)', borderRadius: 10, overflow: 'hidden', flex: 1, minHeight: 0 }}>
-      <div style={{ padding: '10px 16px 0', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8, flexWrap: 'wrap' as const }}>
-          {filterDefs.map(f => {
-            const active = typeFilter === f.key
-            return (
-              <button
-                key={f.key}
-                onClick={() => setTypeFilter(f.key)}
-                className={`c-soft c-soft-sm c-control ${active ? 'c-on c-pressed' : 'c-raised'}`}
-              >
-                {f.label} ({f.count})
-              </button>
-            )
-          })}
-          <div style={{ flex: 1 }} />
-          <select
-            value={sort}
-            onChange={e => setSort(e.target.value as SortOption)}
-            style={{
-              background: 'var(--c-wash)', color: 'var(--c-fg-2)', padding: '3px 8px', borderRadius: 5,
-              fontFamily: 'Inter', fontSize: 10, outline: 'none', cursor: 'pointer',
-            }}
-          >
-            <option value="alpha">A–Z</option>
-            <option value="recent">Recently Added</option>
-            <option value="bookings">Most Bookings</option>
-          </select>
-        </div>
-        <div style={{ paddingBottom: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexShrink: 0 }}>
+        <div className="c-bsearch" style={{ flex: 1 }}>
+          <span style={{ opacity: 0.4, fontSize: 12 }}>⌕</span>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${clients.length} clients by name, email, or contact…`}
-            style={{
-              width: '100%', background: 'var(--c-wash)', color: 'var(--c-fg)', padding: '5px 10px', borderRadius: 5,
-              fontFamily: 'Inter', fontSize: 11, outline: 'none',
-            }}
+            placeholder="Search clients — name, label, A&R, artist, email, phone…"
           />
+          {searching && <span className="c-bclr" onClick={() => setSearch('')}>clear ✕</span>}
         </div>
+        {searchAction}
       </div>
 
-      <div style={{ overflowY: 'auto', flex: 1 }}>
-        {loading ? (
-          <>
-            {[62, 48, 72, 55, 65, 50, 75, 58].map((w, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ height: 11, borderRadius: 3, marginBottom: 5, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${w}%` }} />
-                  <div style={{ height: 9, borderRadius: 3, background: 'var(--c-wash)', animation: 'shimmer 1.4s ease-in-out infinite', width: `${[38, 45, 30, 52, 36, 42, 34, 48][i]}%`, opacity: 0.7 }} />
-                </div>
-              </div>
-            ))}
-          </>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--c-fg-3)', fontSize: 11 }}>
-            {q ? 'No clients match.' : 'No clients.'}
-          </div>
-        ) : paginated.map(c => {
-          const contacts = contactsMap[c.id] || []
-          const bookings = bookingCountMap[c.id] || 0
-          const isLabel = c.type === 'label'
-          return (
-            <div
-              key={c.id}
-              onClick={() => onSelect(c.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '11px 16px', cursor: 'pointer',
-                background: selectedId === c.id ? 'var(--c-wash2)' : 'transparent',
-                transition: 'background 0.15s',
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                  <span style={{
-                    fontSize: 13, fontWeight: 500,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    color: 'var(--c-fg)',
-                  }}>
-                    {c.name}
-                  </span>
-                  <span style={{
-                    fontSize: 8, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em',
-                    padding: '2px 5px', borderRadius: 3, flexShrink: 0,
-                    background: 'rgba(139,144,168,0.12)',
-                    color: 'var(--c-fg-2)',
-                    }}>
-                    {CLIENT_TYPE_LABELS[c.type].toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
-                  {isLabel
-                    ? `${contacts.length} contact${contacts.length !== 1 ? 's' : ''} · ${(c.artists || []).length} artist${(c.artists || []).length !== 1 ? 's' : ''}`
-                    : c.email || c.phone || '—'
-                  }
-                </div>
-              </div>
-              {bookings > 0 && (
-                <span style={{
-                  fontSize: 9, fontFamily: 'Inter', color: 'var(--c-fg-3)',
-                  background: 'var(--c-wash)', padding: '2px 7px', borderRadius: 3,
-                  flexShrink: 0, whiteSpace: 'nowrap',
-                }}>
-                  {bookings} booking{bookings !== 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {filtered.length > PAGE_SIZE && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', flexShrink: 0 }}>
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={safePage <= 1}
-            style={{ background: 'none', cursor: safePage <= 1 ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage <= 1 ? 'var(--c-fg-3)' : 'var(--c-fg-2)', padding: '2px 4px' }}
-          >
-            ← Prev
-          </button>
-          <span style={{ fontSize: 10, color: 'var(--c-fg-3)', fontFamily: 'Inter' }}>
-            {startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}
+      <div className={`c-btabs${searching ? ' c-dim' : ''}`} style={{ flexShrink: 0 }}>
+        {filterDefs.map(f => (
+          <span key={f.key} className={`c-btab${filter === f.key ? ' c-on' : ''}`} onClick={() => setFilter(f.key)}>
+            {f.label}{' '}
+            <span className="c-bn" style={f.warn && counts[f.key] > 0 ? { color: 'var(--c-st-warm)', opacity: 1 } : undefined}>
+              {counts[f.key]}
+            </span>
           </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={safePage >= totalPages}
-            style={{ background: 'none', cursor: safePage >= totalPages ? 'default' : 'pointer', fontFamily: 'Inter', fontSize: 10, color: safePage >= totalPages ? 'var(--c-fg-3)' : 'var(--c-fg-2)', padding: '2px 4px' }}
+        ))}
+      </div>
+
+      <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <div className="c-lozenge" style={{ alignItems: 'center', flexShrink: 0 }}>
+          <b>{lozengeTitle} <span className="c-ct" style={{ marginLeft: 6 }}>{filtered.length}</span></b>
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value as SortOption)}
+            style={{ background: 'none', border: 'none', color: 'var(--c-fg)', fontSize: 10, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', outline: 'none', boxShadow: 'none', padding: 0, height: 'auto', width: 'auto' }}
           >
-            Next →
-          </button>
+            <option value="alpha">A–Z</option>
+            <option value="recent">Recently added</option>
+            <option value="bookings">Most bookings</option>
+          </select>
         </div>
-      )}
+
+        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          {loading ? (
+            <div className="c-bempty" style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>{searching ? 'Nothing matches that.' : 'Nothing here.'}</div>
+          ) : paginated.map(c => {
+            const contacts = contactsMap[c.id] || []
+            const isLabel = c.type === 'label'
+            const fix = fixReason(c, contacts)
+            const rep = fullName(c.fname, c.lname)
+            const artists = isLabel ? (c.artists || []) : (c.artist_name ? [c.artist_name] : [])
+            const sub = isLabel
+              ? [rep || null, artists.length ? `${artists.slice(0, 2).join(', ')}${artists.length > 2 ? ` +${artists.length - 2}` : ''}` : null].filter(Boolean).join(' · ') || `${contacts.length} contact${contacts.length === 1 ? '' : 's'}`
+              : [artists[0], c.email || c.phone].filter(Boolean).join(' · ') || '—'
+            const sel = selectedId === c.id
+            const bookings = bookingCountMap[c.id] || 0
+            return (
+              <div
+                key={c.id}
+                onClick={() => onSelect(c.id)}
+                style={{
+                  display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr) auto', gap: 11, alignItems: 'center',
+                  padding: '9px 10px', borderRadius: 12, cursor: 'pointer', marginBottom: 3,
+                  background: sel ? 'var(--c-srf, var(--c-wash2))' : undefined,
+                  boxShadow: sel ? 'var(--c-softsh)' : undefined,
+                }}
+                onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'var(--c-wash)' }}
+                onMouseLeave={e => { if (!sel) e.currentTarget.style.background = '' }}
+              >
+                <div className="c-mono" style={{ width: 34, height: 34, borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, boxShadow: 'inset 0 0 0 1.5px var(--c-wash2)', opacity: 0.85 }}>
+                  {initials(c.name)}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                  <div style={{ fontSize: 11, opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {sub}{bookings > 0 ? ` · ${bookings} booked` : ''}
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 9, fontWeight: 800, letterSpacing: '.06em', padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap',
+                  background: fix ? 'color-mix(in srgb, var(--c-st-warm) 15%, transparent)'
+                    : (!isLabel && c.registered_at) ? 'color-mix(in srgb, var(--c-st-booked) 15%, transparent)' : 'var(--c-wash2)',
+                  color: fix ? 'var(--c-st-warm)' : (!isLabel && c.registered_at) ? 'var(--c-st-booked)' : undefined,
+                }}>
+                  {fix ?? (isLabel ? 'LABEL' : c.registered_at ? '✓ REG' : 'COD')}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        {filtered.length > PAGE_SIZE && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 6px 0', flexShrink: 0, fontSize: 11 }}>
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
+              style={{ background: 'none', padding: '2px 4px', cursor: safePage <= 1 ? 'default' : 'pointer', opacity: safePage <= 1 ? 0.3 : 0.7, color: 'var(--c-fg)', boxShadow: 'none' }}>← Prev</button>
+            <span className="c-mono" style={{ fontSize: 10.5, opacity: 0.5 }}>{startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
+              style={{ background: 'none', padding: '2px 4px', cursor: safePage >= totalPages ? 'default' : 'pointer', opacity: safePage >= totalPages ? 0.3 : 0.7, color: 'var(--c-fg)', boxShadow: 'none' }}>Next →</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

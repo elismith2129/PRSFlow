@@ -117,25 +117,19 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
   return (
     <div style={{ display: 'flex', flexDirection: 'column', ...(embedded ? { flex: 1, minHeight: 0 } : { height: 'calc(100vh - 52px - 24px)' }) }}>
 
-      {/* Carved to match the leads tab (Eli 2026-08-24 — "update the client
-          page to match the UI of the lead tracker"). Same header anatomy and
-          the same primary button as + New Lead. */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--c-fg-3)' }}>
-          Clients
-        </div>
-        <button
-          onClick={() => setNewClientOpen(true)}
-          className="c-btn c-control c-raised-primary"
-          style={{ flexShrink: 0 }}
-        >
-          + New Client
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
+      {/* Clients page rebuild (2026-09-30, docs/design-refs/crm-clients-v3.html):
+          no heading of its own — the CRM's Clients tab already names it. The
+          page starts at the search bar, with + New client beside it; list on
+          the left (40), profile on the right (60) — the profile is where the
+          editing happens, so it gets the room. */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 40fr) minmax(0, 60fr)', gap: 14, flex: 1, minHeight: 0 }}>
         {showList && (
           <ClientList
+            searchAction={
+              <button onClick={() => setNewClientOpen(true)} className="c-btn" style={{ flexShrink: 0, height: 32 }}>
+                + New client
+              </button>
+            }
             clients={clients}
             contactsMap={contactsMap}
             bookingCountMap={bookingCountMap}
@@ -145,6 +139,7 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
           />
         )}
         {showProfile && (
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <ClientProfile
             client={selected}
             contacts={selected ? (contactsMap[selected.id] || []) : []}
@@ -155,6 +150,7 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
             onBack={isMobile ? () => setSelectedId(null) : undefined}
             onDelete={() => { setSelectedId(null); load() }}
           />
+          </div>
         )}
       </div>
 

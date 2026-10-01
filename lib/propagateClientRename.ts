@@ -22,9 +22,7 @@
 import { supabase, Client, ClientContact } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
-
-const fullName = (fname: string | null | undefined, lname: string | null | undefined): string =>
-  [fname, lname].map(s => (s || '').trim()).filter(Boolean).join(' ')
+import { fullName, replacePersonOnRecords } from '@/lib/clientEdits'
 
 // True when a patch actually touches a name field. Callers pass their whole
 // update payload; there's no point querying for an email-only edit.
@@ -43,24 +41,32 @@ function touchesName(changed: Partial<Client> | Partial<ClientContact>): boolean
  *
  * `after` must be the client as it now exists (post-update), not the old row.
  */
-export async function propagateClientRename(after: Client, changed: Partial<Client>): Promise<void> {
+export async function propagateClientRename(after: Client, changed: Partial<Client>, before?: Client | null): Promise<void> {
   if (!after?.id || !touchesName(changed)) return
 
   const isLabel = after.type === 'label'
   const bookingPatch: Record<string, string> = {}
   const leadPatch: Record<string, string> = {}
+  let repTouched = 0
 
   if (isLabel) {
-    if (after.name) {
+    // Only the LABEL NAME goes onto every linked record — it is the same
+    // company on all of them. (2026-09-30: this used to fire whenever any
+    // name field was in the patch.)
+    if ('name' in changed && after.name) {
       bookingPatch.label = after.name
       leadPatch.label = after.name
     }
-    // The label's own fname/lname are its primary A&R contact.
-    const anr = fullName(after.fname, after.lname)
-    if (anr && ('fname' in changed || 'lname' in changed)) {
-      bookingPatch.client_name = anr
-      leadPatch.fname = (after.fname || '').trim()
-      leadPatch.lname = (after.lname || '').trim()
+    // The label's own fname/lname are its PRIMARY REP. A rep change replaces
+    // the OLD rep's spelling where it appears and nothing else (see
+    // lib/clientEdits.ts — the 10 Summers / Dijon case). It used to stamp the
+    // new rep over every lead and session of the label, which (a) rewrote
+    // leads run by the label's other A&Rs and (b) re-pushed a wrong rep every
+    // time anyone saved a name on the label. Without `before` there is no old
+    // spelling to look for, so nothing is rewritten.
+    if (before && ('fname' in changed || 'lname' in changed)) {
+      repTouched = await replacePersonOnRecords(after.id, before, after)
+      if (repTouched < 0) return
     }
   } else {
     const person = after.name || fullName(after.fname, after.lname)
@@ -88,7 +94,7 @@ export async function propagateClientRename(after: Client, changed: Partial<Clie
   if (bookingPatch.label) woPatch.label = bookingPatch.label
   if (bookingPatch.client_name) woPatch.client = bookingPatch.client_name
 
-  let updated = 0
+  let updated = repTouched
 
   if (Object.keys(woPatch).length > 0) {
     const { data, error } = await supabase

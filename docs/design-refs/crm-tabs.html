@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CRM tabs — billing hub style</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono&family=Inter:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0a09;--fg:#f2efe7;--wash:rgba(242,239,231,.06)}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--fg);font-family:Inter,sans-serif;padding:28px}
+.note{font-size:12.5px;opacity:.6;margin-bottom:22px;max-width:760px}.note b{opacity:1;color:var(--fg)}
+.cap{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45;margin:26px 0 8px}
+.frame{border-radius:16px;background:#0e0d0b;box-shadow:0 0 0 1px rgba(242,239,231,.06);padding:20px 22px}
+.old{display:flex;gap:8px}.old span{font-family:'Archivo Black';font-size:13px;letter-spacing:.05em;text-transform:uppercase;padding:8px 18px;border-radius:99px}.old span.on{background:#d5d0c2;color:#1b1a17}
+.btitle{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap;font-size:26px}
+.btitle button{font-family:'Archivo Black';font-size:inherit;letter-spacing:-.03em;line-height:1.05;background:none;border:none;color:var(--fg);opacity:.28;cursor:pointer;display:flex;align-items:baseline;gap:8px}
+.btitle button:hover{opacity:.6}.btitle button.on{opacity:1}
+.n{font-family:'DM Mono';font-size:12px;opacity:.5;letter-spacing:0}
+.hot{background:#ff5a4d;color:#fff;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;opacity:1}
+.sub{display:flex;gap:6px;margin-top:16px}.sub span{padding:7px 13px;border-radius:99px;background:var(--wash);font-size:12px;font-weight:700}.sub span.on{background:#d5d0c2;color:#1b1a17}
+@media(max-width:600px){.btitle{font-size:20px;gap:14px}}
+</style></head><body>
+<p class="note"><b>CRM top tabs → the billing hub's title words.</b> Same big Archivo words as Billing / COD / Tenants: the active one is full white, the others dim, and a count sits beside each. Needs Action goes red when leads are waiting, the same way COD does. The sub-tabs underneath (Needs Action / All Leads / Analytics) become the billing hub's pill tabs. Click the words.</p>
+<div class="cap">Today</div>
+<div class="frame"><div class="old"><span class="on">Leads</span><span>Clients</span><span>Registrations</span><span>Texting</span><span>Campaigns</span></div></div>
+<div class="cap">Proposed</div>
+<div class="frame">
+ <div class="btitle" id="t">
+  <button class="on">Leads <span class="n hot">21</span></button>
+  <button>Clients <span class="n">615</span></button>
+  <button>Registrations <span class="n">3</span></button>
+  <button>Texting <span class="n">48</span></button>
+  <button>Campaigns</button>
+ </div>
+ <div class="sub"><span>Needs Action 21</span><span class="on">All Leads</span><span>Analytics</span></div>
+</div>
+<script>document.querySelectorAll('#t button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#t button').forEach(x=>x.classList.remove('on'));b.classList.add('on')})</script>
+</body></html>
