@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.40.4 — Export the work order early, for COD — Oct 1, 2026
+
+**Why.** Eli: COD clients' business management sometimes need the WO in hand before they'll pay the balance, and the only export sat behind approval.
+
+The row's ⋯ menu on any COD row gains **Export the work order PDF — for the client, before approval**. It is the existing `wo=1` export (work order alone, no invoice stapled, internal fields excluded by `lib/woPdf`) with a button; the route never gated on approval. Hidden once the full package has been downloaded (that row shows "Download the package again" instead). **The WO-only export now carries the food expense table and receipt photos** whenever the WO has a food budget — the client asked to pay the food line sees what's behind it. Only the attached invoice remains full-package-only. (This also applies to the WO screen's own Export PDF.) COD only — approval protects the *invoice*, which this doesn't include; billing clients still go through the cycle.
+
+**Migrations:** none. **Files:** `app/(main)/billing/page.tsx`.
+
+---
+
 ## v1.40.3 — A 24-hour day is 24 hours — Sep 30, 2026
 
 **Why.** A 4 PM – 4 PM day card read as no hours, so no overtime (12h incl., $195/hr → should have been 12h OT). `calcHours` wrapped the clock then threw away exactly 24h with a `>= 24h → null` guard — the one case the guard could ever fire. Removed; same clock in and out is a full day. The engineer line was unaffected (18.5h, under the guard).

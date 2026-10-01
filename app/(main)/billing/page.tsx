@@ -927,6 +927,7 @@ export default function BillingPage() {
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
           onDelete={isEli ? () => { const r = moreFor; setMoreFor(null); setDeleteTyped(''); setDeleting(r) } : undefined}
           onRedownload={() => { downloadPackage(moreFor.workOrderId); setMoreFor(null) }}
+          onExportWo={() => { downloadPackage(moreFor.workOrderId, true); setMoreFor(null) }}
           onNoPo={() => {
             const r = moreFor
             setMoreFor(null)
@@ -1431,7 +1432,7 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onNoPo, onAddPo, onAp, onDelete }: {
+function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onExportWo, onNoPo, onAddPo, onAp, onDelete }: {
   row: InvoiceRow
   onCancel: () => void
   /** Eli only — absent for everyone else, so the button never renders. */
@@ -1441,6 +1442,7 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
   onClose: () => void
   onPullBack: () => void
   onRedownload: () => void
+  onExportWo: () => void
   onNoPo: () => void
   onAddPo: () => void
 }) {
@@ -1483,6 +1485,18 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
             next is confirming it went out. */}
         {row.step === 3 && row.downloadedAt && (
           <button className="c-bact c-bblock" onClick={onRedownload}>Download the package again</button>
+        )}
+        {/* THE WORK ORDER, EARLY (Eli, 2026-10-01): a COD client's business
+            management sometimes needs the WO in hand BEFORE they will pay the
+            balance — and the only export used to sit behind approval. The WO
+            alone (`wo=1`, no invoice stapled, internal fields excluded by
+            lib/woPdf) is a client-safe document at any step; what approval
+            protects is the INVOICE, which this does not include. COD only —
+            billing clients get theirs through the normal cycle. */}
+        {row.isCod && !(row.step === 3 && row.downloadedAt) && (
+          <button className="c-bact c-bblock" onClick={onExportWo}>
+            Export the work order PDF — for the client, before approval
+          </button>
         )}
         {/* PULL IT BACK — one control that means "this isn't right, start the
             end of the process again". It clears the sent stamp, the approval

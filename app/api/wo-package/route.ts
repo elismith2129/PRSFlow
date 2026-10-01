@@ -197,10 +197,13 @@ export async function GET(req: NextRequest) {
   // every receipt PHOTO as its own captioned page. This is what retired the
   // splay-the-receipts-on-the-scanner ritual — the runner photographs each
   // receipt at the desk and the package assembles itself here.
-  // Full package only (`wo=1` is the convenience export). A failed receipt
-  // download skips that photo rather than failing the file.
+  // ON BOTH EXPORTS since 2026-10-01 (Eli): the WO-only PDF now goes to COD
+  // clients' business management before approval, and a food line they are
+  // asked to pay needs the table and receipts behind it. Only the INVOICE
+  // stays full-package-only. A failed receipt download skips that photo
+  // rather than failing the file.
   let expenseReport: Uint8Array | null = null
-  if (!woOnly && wo.food_budget) {
+  if (wo.food_budget) {
     const expRows = expRowsAll
     if (expRows && expRows.length > 0) {
       const receipts: { bytes: Uint8Array; contentType: string; caption: string }[] = []
