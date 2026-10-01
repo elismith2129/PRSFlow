@@ -20,6 +20,22 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.41.0 — Labels have no "rep"; the client search fills the chain downward — Oct 1, 2026
+
+**Why.** Eli: "for labels really need just A&R and admin and then the artists roster… type Until Japan and it pre-fills Until Japan, Sesson and Interscope; type Interscope and it pre-fills nothing." The `NO REP` flag was enforcing a primary-rep concept (the label row's leftover `fname/lname`) that the business doesn't have — 10K Projects has a dozen A&Rs.
+
+**The chain** (`components/shared/ClientPanel.tsx`, `applyClientAutofill`): pick an **artist** → artist + its A&R + label (+ admin via the existing auto-pick); pick an **A&R** → A&R + label, and the artist too if that A&R has exactly one; pick a **label** → the label only, A&R left blank to type (a label with exactly one A&R still auto-fills, as before). Picking an A&R from search now links the card (`anr_contact_id`), not just the name. The label suggestion row no longer shows a rep subline.
+
+**The artist field narrows to the A&R**: once an A&R is on the record, the artist dropdown offers *their* artists (`client_contacts.artists`); the label's whole roster is the fallback.
+
+**Fix flags for labels** (`ClientList.fixReason`): `NO CONTACTS` or `NO A&R`. `NO REP` / `REP NOT A CONTACT` are gone.
+
+**Not yet:** the profile still shows the ★ primary-rep control from v1.39.x and still writes label `fname/lname`; harmless now that nothing reads it on pick, and it comes off in the profile pass (A&R cards carrying their artists, COD "contact is someone else").
+
+**Migrations:** none. **Files:** `components/shared/ClientPanel.tsx`, `components/clients/ClientList.tsx`.
+
+---
+
 ## v1.40.5 — Clients list: the page is the box — Oct 1, 2026
 
 **Why.** Eli: "paginate the left column at the same length as the right… no weird bottoms of boxes that differ."
@@ -42,7 +58,7 @@ The client list no longer scrolls inside its panel. It measures the height the g
 - Admin's SRS Log tab removed from its nav; its section code is dead and reads the retired `srs_log`.
 - Rail: group children now go through `filterItems` too (they didn't — a role filter on a child was silently ignored).
 
-**Migrations:** `20261001120000_srs_payouts.sql` — `app_settings` (new, generic key/value), `srs_payouts` (one row per WO, created on first touch), carries over `srs_log` rows already marked paid (at 10%, dollars computed). Ends with a `select` of counts.
+**Migrations:** `20261001130000_srs_backfill_wo_flag.sql` — sets `work_orders.is_srs` where the booking or `srs_log` said SRS (older sessions had the flag only on the booking, so the new list missed them; found after first run, Eli: "i dont see any of the past ones"). `20261001120000_srs_payouts.sql` — `app_settings` (new, generic key/value), `srs_payouts` (one row per WO, created on first touch), carries over `srs_log` rows already marked paid (at 10%, dollars computed). Ends with a `select` of counts.
 
 **Watch-outs:** `srs_log` is still written by the calendar's booking-create path; nothing reads it. Legacy paid rows have `paid_amount` null and display at 10% of today's room charges — if a WO's rooms changed after payment, that number moved. A discount on the WO does **not** reduce the SRS fee — raise with Eli if a kill-fee session is ever SRS.
 

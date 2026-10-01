@@ -153,6 +153,10 @@ export function ClientPanel({
 
   const [anrQuery, setAnrQuery] = useState(value.ordered_by || '')
   const [anrContact, setAnrContact] = useState<ClientContact | null>(null)
+  // THE ARTIST FIELD NARROWS TO THE A&R (Eli, 2026-10-01): once an A&R is on
+  // the record, the roster offered is THEIR artists; the label's whole roster
+  // is the fallback when the A&R has none filed (or no A&R is chosen).
+  const artistPool = (anrContact?.artists && anrContact.artists.length > 0) ? anrContact.artists : clientArtists
   const [anrEmail, setAnrEmail] = useState('')
   const [anrPhone, setAnrPhone] = useState('')
   const [showAnrDD, setShowAnrDD] = useState(false)
@@ -278,7 +282,7 @@ export function ClientPanel({
           .or(`name.ilike.%${q}%,fname.ilike.%${q}%,lname.ilike.%${q}%`)
           .limit(30),
         supabase.from('client_contacts')
-          .select('id,client_id,fname,lname,email,phone,clients(id,name,type,srs_client)')
+          .select('id,client_id,fname,lname,email,phone,artists,contact_type,clients(id,name,type,srs_client)')
           .or(`fname.ilike.%${q}%,lname.ilike.%${q}%`)
           .limit(20),
         supabase.from('client_contacts')
@@ -310,7 +314,7 @@ export function ClientPanel({
           id: ct.client_id, label: personName,
           sub: parentClient.type === 'label' ? parentClient.name : '',
           isLabel: parentClient.type === 'label',
-          record: { ...parentClient, _anrFname: ct.fname, _anrLname: ct.lname, _anrEmail: ct.email, _anrPhone: ct.phone },
+          record: { ...parentClient, _anrId: ct.id, _anrFname: ct.fname, _anrLname: ct.lname, _anrEmail: ct.email, _anrPhone: ct.phone, _anrArtists: Array.isArray(ct.artists) ? ct.artists : [], _anrIsAdmin: ct.contact_type === 'admin' },
         })
       }
 
@@ -319,15 +323,16 @@ export function ClientPanel({
         const key = `client-${c.id}`
         if (seen.has(key)) continue
         seen.add(key)
-        // A LABEL IS SHOWN AS THE LABEL (2026-09-14, BMG). A label client's
-        // fname/lname are its primary A&R, and this row used to lead with
-        // them — typing "BMG" listed "Julia Calvo-Junkin" with nothing saying
-        // it WAS BMG, beside a second "BMG" row. Label first, A&R underneath.
+        // A LABEL IS SHOWN AS THE LABEL (2026-09-14, BMG) — and ONLY the label
+        // (Eli, 2026-10-01): a label has A&Rs, admins and a roster, not a
+        // "rep". The old subline showed the label row's fname/lname as its
+        // A&R; that column is a leftover from the individuals schema and
+        // picking the label must not pre-fill anyone. Type the A&R next.
         const isLabel = c.type === 'label'
         results.push({
           id: c.id,
           label: isLabel ? (c.name || personName) : (personName || c.name || ''),
-          sub: isLabel && personName ? `A&R · ${personName}` : '',
+          sub: isLabel ? 'Label' : '',
           isLabel, record: c,
         })
       }
@@ -400,9 +405,18 @@ export function ClientPanel({
   async function applyClientAutofill(s: typeof clientSuggestions[0]) {
     const r = s.record
     const isAnrContact = !!r._anrFname
-    const anrName = isAnrContact ? `${r._anrFname || ''} ${r._anrLname || ''}`.trim() : `${r.fname || ''} ${r.lname || ''}`.trim()
+    // THE CHAIN FILLS DOWNWARD ONLY (Eli, 2026-10-01): pick the ARTIST and
+    // you get artist + A&R + label (+ the admin, below); pick the A&R and you
+    // get A&R + label, plus the artist if that A&R has exactly one; pick the
+    // LABEL and you get the label alone — the A&R is a decision about THIS
+    // session, never read off the label row. For an individual (COD) the
+    // row's own fname/lname IS the person.
+    const anrName = isAnrContact
+      ? `${r._anrFname || ''} ${r._anrLname || ''}`.trim()
+      : (r.type === 'label' ? '' : `${r.fname || ''} ${r.lname || ''}`.trim())
     const labelName = r.type === 'label' ? r.name : ''
     const clientName = anrName || (r.type !== 'label' ? r.name : '') || ''
+    const anrSoleArtist = isAnrContact && !r._anrIsAdmin && Array.isArray(r._anrArtists) && r._anrArtists.length === 1 ? String(r._anrArtists[0]) : ''
     const email = isAnrContact ? (r._anrEmail || '') : (r.email || '')
     const phone = isAnrContact ? (r._anrPhone || '') : (r.phone || '')
     onChange({
@@ -413,8 +427,9 @@ export function ClientPanel({
       phone: phone || value.phone,
       email: email || value.email,
       payment_type: labelName ? 'billing' : value.payment_type,
-      artist: r._artistMatch ? r._artistMatch : (labelName ? '' : ((r.artists && r.artists.length > 0 ? r.artists[0] : value.artist) || value.artist)),
+      artist: r._artistMatch ? r._artistMatch : anrSoleArtist || (labelName ? '' : ((r.artists && r.artists.length > 0 ? r.artists[0] : value.artist) || value.artist)),
       is_srs: r.srs_client === true ? true : value.is_srs,
+      ...(isAnrContact && !r._anrIsAdmin && r._anrId ? { anr_contact_id: r._anrId } : {}),
     })
     setAnrQuery(labelName ? clientName : '')
     setSearchQuery('')
@@ -931,13 +946,13 @@ export function ClientPanel({
                       ? { width: `${Math.min(26, Math.max(7, (value.artist || '').length + 2))}ch`, maxWidth: '100%', background: 'var(--c-wash2)', borderRadius: 8, outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 12, padding: '4px 9px', lineHeight: 1.4 }
                       : { width: '100%', background: 'transparent', outline: 'none', color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 13.5, padding: '2px 0', lineHeight: 1.5 }}
                   />
-                  {showArtistDD && !readOnly && (clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 || value.artist.trim().length >= 2) && (
+                  {showArtistDD && !readOnly && (artistPool.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).length > 0 || value.artist.trim().length >= 2) && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200, background: 'var(--c-bg)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden', marginTop: 2 }}>
-                      {clientArtists.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).map((a, i) => (
+                      {artistPool.filter(a => !value.artist || a.toLowerCase().includes(value.artist.toLowerCase())).map((a, i) => (
                         <div key={i} onMouseDown={e => { e.preventDefault(); set('artist', a); setShowArtistDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg)' }}
                           onMouseEnter={e => (e.currentTarget.style.background = 'var(--c-wash)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>{a}</div>
                       ))}
-                      {value.artist.trim().length >= 2 && !clientArtists.some(a => a.toLowerCase() === value.artist.trim().toLowerCase()) && value.client_db_id && (() => {
+                      {value.artist.trim().length >= 2 && !artistPool.some(a => a.toLowerCase() === value.artist.trim().toLowerCase()) && value.client_db_id && (() => {
                         const clientId = value.client_db_id
                         return (
                           <div onMouseDown={async e => { e.preventDefault(); const updated = await addArtistToLabel(clientId, value.artist.trim(), clientArtists); setClientArtists(updated); setShowArtistDD(false) }} style={{ padding: '7px 10px', cursor: 'pointer', color: 'var(--c-fg)', fontSize: 11, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6 }}>

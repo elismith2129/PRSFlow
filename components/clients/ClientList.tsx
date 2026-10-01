@@ -38,10 +38,14 @@ interface Props {
 /** Why a client is in "Needs fixing" — null when it isn't. */
 export function fixReason(c: Client, contacts: ClientContact[]): string | null {
   if (c.type === 'label') {
+    // A LABEL HAS NO "REP" (Eli, 2026-10-01: "for labels really need just
+    // A&R and admin and then the artists roster"). The label row's
+    // fname/lname is a leftover from the individuals schema; NO REP / REP
+    // NOT A CONTACT enforced a concept the business doesn't have (10K
+    // Projects has a dozen A&Rs and no primary one). The only honest flags
+    // are about the contacts themselves.
     if (contacts.length === 0) return 'NO CONTACTS'
-    const rep = fullName(c.fname, c.lname).toLowerCase()
-    if (!rep) return 'NO REP'
-    if (!contacts.some(ct => fullName(ct.fname, ct.lname).toLowerCase() === rep)) return 'REP NOT A CONTACT'
+    if (!contacts.some(ct => ct.contact_type !== 'admin')) return 'NO A&R'
     return null
   }
   if (!c.email && !c.phone) return 'NO EMAIL / PHONE'

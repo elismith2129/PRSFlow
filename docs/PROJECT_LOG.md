@@ -406,6 +406,10 @@ month need.
 keep drifting from the WO flag. Fixing the Admin tab in place — Admin isn't in the rail and
 SRS is a billing job.
 
+**After the first run only Stuart Price showed.** Older sessions had SRS on the booking
+(`bookings.is_srs`, plus `srs_log`) but not on the WO; the WO screen ORs the two, the list
+didn't. Backfilled the WO flag (`20261001130000`) rather than ORing in the list — one truth.
+
 **Open:** delete Admin's dead SRS section; whether a WO discount should reduce the fee.
 
 ### September 28–30, 2026 — Tenants pay rent, not work orders; the text list; a 24-hour day (v1.40.0 – v1.40.3)
