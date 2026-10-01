@@ -6,7 +6,7 @@
 // "Needs fixing" is the clean-up queue for the database: a label with no
 // contacts or whose rep on file isn't one of its contacts (the 10 Summers /
 // Dijon shape), or a COD client with no way to reach them.
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { Client, ClientContact } from '@/lib/supabase'
 import { fullName } from '@/lib/clientEdits'
 
@@ -16,7 +16,13 @@ type SortOption = 'alpha' | 'recent' | 'bookings'
 export type BookingCountMap = Record<string, number>
 export type ContactsMap = Record<string, ClientContact[]>
 
-const PAGE_SIZE = 50
+// THE PAGE IS THE BOX (Eli, 2026-10-01: "paginate the left column at the
+// same length as the right… no weird bottoms of boxes that differ"). The list
+// never scrolls inside its panel; it shows exactly as many rows as fit the
+// height the grid gives it and pages the rest. Row height is measured from
+// the first rendered row, so a font or padding change can't silently cut a
+// row in half. Fallback until measured: 55px (34 avatar + 2×9 pad + 3 gap).
+const ROW_H_FALLBACK = 55
 
 interface Props {
   clients: Client[]
@@ -54,8 +60,29 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
   const [sort, setSort] = useState<SortOption>('alpha')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [pageSize, setPageSize] = useState(12)
 
   useEffect(() => { setPage(1) }, [filter, sort, search])
+
+  // Fit rows to the panel body. ResizeObserver so a window resize, the CRM
+  // tab strip appearing, or the filter tabs wrapping all re-fit live.
+  useLayoutEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const fit = () => {
+      const first = el.firstElementChild as HTMLElement | null
+      const rowH = first && first.dataset.row === '1'
+        ? first.offsetHeight + parseFloat(getComputedStyle(first).marginBottom || '0')
+        : ROW_H_FALLBACK
+      const n = Math.max(1, Math.floor(el.clientHeight / Math.max(1, rowH)))
+      setPageSize(prev => (prev === n ? prev : n))
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [loading])
 
   const q = search.trim().toLowerCase()
   const searching = q.length > 0
@@ -101,10 +128,10 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
   else if (sort === 'recent') filtered = [...filtered].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   else filtered = [...filtered].sort((a, b) => (bookingCountMap[b.id] || 0) - (bookingCountMap[a.id] || 0))
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(page, totalPages)
-  const startIdx = (safePage - 1) * PAGE_SIZE
-  const paginated = filtered.slice(startIdx, startIdx + PAGE_SIZE)
+  const startIdx = (safePage - 1) * pageSize
+  const paginated = filtered.slice(startIdx, startIdx + pageSize)
 
   const lozengeTitle = searching ? 'Search results' : filterDefs.find(f => f.key === filter)?.label ?? 'All'
 
@@ -148,7 +175,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
           </select>
         </div>
 
-        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+        <div ref={bodyRef} style={{ overflow: 'hidden', flex: 1, minHeight: 0 }}>
           {loading ? (
             <div className="c-bempty" style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>Loading…</div>
           ) : filtered.length === 0 ? (
@@ -167,6 +194,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
             return (
               <div
                 key={c.id}
+                data-row="1"
                 onClick={() => onSelect(c.id)}
                 style={{
                   display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr) auto', gap: 11, alignItems: 'center',
@@ -199,11 +227,13 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
           })}
         </div>
 
-        {filtered.length > PAGE_SIZE && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 6px 0', flexShrink: 0, fontSize: 11 }}>
+        {/* Pager always present once there's more than a page, pinned to the
+            panel's foot so the box ends where the profile's does. */}
+        {filtered.length > pageSize && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 6px 0', flexShrink: 0, fontSize: 11, marginTop: 'auto' }}>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage <= 1}
               style={{ background: 'none', padding: '2px 4px', cursor: safePage <= 1 ? 'default' : 'pointer', opacity: safePage <= 1 ? 0.3 : 0.7, color: 'var(--c-fg)', boxShadow: 'none' }}>← Prev</button>
-            <span className="c-mono" style={{ fontSize: 10.5, opacity: 0.5 }}>{startIdx + 1}–{Math.min(startIdx + PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+            <span className="c-mono" style={{ fontSize: 10.5, opacity: 0.5 }}>{startIdx + 1}–{Math.min(startIdx + pageSize, filtered.length)} of {filtered.length}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages}
               style={{ background: 'none', padding: '2px 4px', cursor: safePage >= totalPages ? 'default' : 'pointer', opacity: safePage >= totalPages ? 0.3 : 0.7, color: 'var(--c-fg)', boxShadow: 'none' }}>Next →</button>
           </div>

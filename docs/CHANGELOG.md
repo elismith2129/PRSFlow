@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.40.5 — Clients list: the page is the box — Oct 1, 2026
+
+**Why.** Eli: "paginate the left column at the same length as the right… no weird bottoms of boxes that differ."
+
+The client list no longer scrolls inside its panel. It measures the height the grid gives it, measures the first rendered row, and shows exactly as many rows as fit; the pager (pinned to the panel's foot) pages the rest. A `ResizeObserver` re-fits on window resize or when the filter tabs wrap. The profile column scrolls on its own as before, and both panels end on the same line because both are `flex: 1` in the same grid row.
+
+**Migrations:** none. **Files:** `components/clients/ClientList.tsx`.
+
+---
+
 ## v1.40.4 — Export the work order early, for COD — Oct 1, 2026
 
 **Why.** Eli: COD clients' business management sometimes need the WO in hand before they'll pay the balance, and the only export sat behind approval.
