@@ -20,7 +20,9 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.41.0 — Labels have no "rep"; the client search fills the chain downward — Oct 1, 2026
+## v1.41.1 — Labels have no "rep"; the client search fills the chain downward — Oct 1, 2026
+
+*Landed inside commit `0844486` ("SRS: backfill the WO flag") — two chats, one working tree, the other's `git add -A` took these files along. Same version number was picked twice; renumbered here.*
 
 **Why.** Eli: "for labels really need just A&R and admin and then the artists roster… type Until Japan and it pre-fills Until Japan, Sesson and Interscope; type Interscope and it pre-fills nothing." The `NO REP` flag was enforcing a primary-rep concept (the label row's leftover `fname/lname`) that the business doesn't have — 10K Projects has a dozen A&Rs.
 
