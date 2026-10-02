@@ -20,6 +20,19 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.42.1 — Top clients: rolling window, counted from days worked; labels grouped by label — Oct 2, 2026
+
+**Why.** Eli: *"we have CODs who have definitely booked more than one session within the past month… for the labels, I really think it should just be grouped by the label… click on the label… see who's booking the most… maybe it's a rolling 30-day thing. You tell me."* Three bugs in v1.42.0: (1) the window was the calendar month by the WO's `session_date`, so on Oct 2 it showed only sessions that STARTED Oct 1–2 — and a lockout starting Oct 1 counted all its future days (Olivia 14, "10 Summers" 62); (2) the tenant exclusion matched lease names against `client`, and Mustard's WO is under "10 Summers"; (3) the label side split by A&R.
+
+- **Window = last 30 / 90 days / 12 months ending today** (switch in the strip; 30 default). Counted from `studio_time_rows.date` inside the window — days and dollars of those days only. A session = a WO with ≥1 in-window day. Paginated (12 months can pass 1,000 rows).
+- **Label/Billing grouped by label**; tap a label → artist · A&R breakdown, ranked the same way. COD unchanged (client account).
+- **Mustard excluded by his booking** (`SHARED_RUNNER` venue/room, status lockout|tenant → its `work_order_id`), not by name.
+- Top 5 each with "Show all N". Dollars = studio + engineering of in-window days; the WO discount is no longer applied (it belongs to the whole WO, not a slice).
+
+**Migrations:** none. **Files:** `lib/topClients.ts`, `components/clients/TopClients.tsx`.
+
+---
+
 ## v1.42.0 — Lakers tickets, Top clients, one Admin dropdown — Oct 1, 2026
 
 **Why.** Eli keeps the yearly Lakers giveaway in a spreadsheet (who got each game, who was offered and passed, two "claimed" checkboxes). And: *"who is booking the most each month, so i can get a glimpse of who our best clients are."*

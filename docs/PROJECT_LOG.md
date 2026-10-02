@@ -401,6 +401,12 @@ sessions and include the dollar amounts"). Tenants excluded on purpose — rent 
 Positions and Lakers in one click disclosure, same as Billing. Lakers is owners-only and
 deliberately not a top-level rail item.
 
+**Oct 2 — Top clients was wrong.** Calendar month by WO start date meant "this month" on
+the 2nd was two days of starts, with lockouts dragging in their future days; Mustard got
+through under "10 Summers". Rebuilt on a rolling window counted from day rows, labels
+grouped by label with a tap-to-open breakdown (Eli's call), Mustard excluded via his
+booking. Lesson: "who's booking" is a question about days worked, not WO start dates.
+
 **Rejected:** Lakers stat cards (round 1); artist-as-hero for labels (round 1); option B
 slim strip for top clients; keeping TV/Potential/Accepted columns.
 
