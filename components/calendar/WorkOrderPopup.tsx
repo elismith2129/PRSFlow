@@ -3883,12 +3883,23 @@ export function WorkOrderPopup({
     }
     if (allApproved) return <span style={{ ...pill, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)' }}>Approved</span>
     if (sub) {
-      const who = (sub.submitted_by_name || '').trim()
+      // FIRST NAME + LAST INITIAL, ONE PLACE (Eli, 2026-10-02): the full name
+      // made the tag a different width on every card, and a long one pushed
+      // it onto a second line so it sat somewhere else each time. Now
+      // "Terren L." and the tag is capped and ellipsised instead of wrapping;
+      // the full name and date live in the title.
+      const whoFull = (sub.submitted_by_name || '').trim()
+      const parts = whoFull.split(/\s+/).filter(Boolean)
+      const who = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : whoFull
       const when = sub.submitted_at
         ? new Date(sub.submitted_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
         : ''
+      const full = sub.submitted_at
+        ? new Date(sub.submitted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
+        : ''
       return (
-        <span style={{ ...pill, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)' }}>
+        <span title={`Submitted${whoFull ? ` by ${whoFull}` : ''}${full ? ` · ${full}` : ''}`}
+          style={{ ...pill, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', maxWidth: small ? 190 : 230, overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>
           Submitted{who ? ` · ${who}` : ''}{when ? ` · ${when}` : ''}
         </span>
       )
@@ -6860,7 +6871,10 @@ export function WorkOrderPopup({
                               pills wrapped and the staff line squeezed; the
                               notes column was hogging width it rarely uses. */}
                           <div style={{ flex: '0 0 340px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                            {/* nowrap (2026-10-02): the submitted tag shrinks and
+                                ellipsises rather than dropping to a second line,
+                                so it is in the same place on every card. */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', minWidth: 0 }}>
                               {studios.length > 0 && (
                                 <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
                                   {studios.join(' · ')}
