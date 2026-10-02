@@ -1,4 +1,5 @@
 'use client'
+import { TopClients } from '@/components/clients/TopClients'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -122,6 +123,9 @@ export function ClientsPageInner({ initialClientId, embedded }: { initialClientI
           page starts at the search bar, with + New client beside it; list on
           the left (40), profile on the right (60) — the profile is where the
           editing happens, so it gets the room. */}
+      {/* Top clients (Eli, 2026-10-01): who booked the most this month, COD and
+          Label/Billing. Hidden on a phone once a profile is open. */}
+      {showList && <TopClients />}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 40fr) minmax(0, 60fr)', gap: 14, flex: 1, minHeight: 0 }}>
         {showList && (
           <ClientList

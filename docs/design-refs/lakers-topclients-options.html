@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Lakers tickets + top clients</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- LAKERS TICKETS + TOP CLIENTS (Eli, 2026-10-01).
+     Lakers: "each year i pull all the home games... make a spreadsheet and detail who i give
+     the tickets to as well as who ive offered them too and theyve declined." Source: Lakers
+     Tickets Log.xlsx (23-24, 24-25, 25-26 tabs). Rows below are his real 25-26 season.
+     Top clients: "who is booking the most each month... COD straight up based on the client
+     account and for labels the artist/anr. so two separate boxes."
+     Round 2 (Eli): Lakers liked, "dont need the cards at the top" — stat cards removed.
+     Top clients lives at the top of the Clients tab; A, but the Label box's hero is the
+     LABEL + A&R, artists underneath, not the artist.
+     Rulings: pending. -->
+<style>
+:root{--bg:#f5f3ee;--fg:#2a2722;--wash:rgba(42,39,34,.05);--wash2:rgba(42,39,34,.095);--hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--uncon:#7fb2e5;--chip-ink:#1c2626;--srf:#fff;--lak:#a78bfa;--softsh:0 1px 3px rgba(42,39,34,.08),0 5px 16px rgba(42,39,34,.07)}
+[data-theme="dark"]{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.07);--wash2:rgba(217,214,205,.13);--srf:#242320;--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding:26px 16px 80px;max-width:1000px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em;margin-bottom:4px}
+.lede{opacity:.6;margin-bottom:26px;font-size:13px;max-width:720px}
+.tg{float:right;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--wash2);padding:5px 11px;border-radius:99px;cursor:pointer}
+.part{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.4;margin:34px 0 10px}
+.opt-h{display:flex;align-items:baseline;gap:10px;margin:18px 0 4px}
+.opt-h b{font-family:'Archivo Black',sans-serif;font-size:15px}
+.rec{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--booked);color:var(--chip-ink);padding:3px 9px;border-radius:99px}
+.why{font-size:12.5px;opacity:.6;margin-bottom:12px;max-width:760px}
+.frame{background:var(--wash);border-radius:18px;padding:18px}
+.ttl{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ttl h2{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.02em}
+.seg{display:inline-flex;background:var(--wash2);border-radius:99px;padding:3px}
+.seg span{font-size:10.5px;font-weight:800;padding:5px 12px;border-radius:99px;cursor:pointer;opacity:.6}
+.seg span.on{background:var(--srf);opacity:1;box-shadow:var(--softsh)}
+.btn{border:0;cursor:pointer;font:800 10px Inter;letter-spacing:.05em;text-transform:uppercase;padding:8px 12px;border-radius:8px;background:var(--wash2);color:var(--fg)}
+.btn.pri{background:var(--warm);color:var(--chip-ink)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--srf);box-shadow:var(--softsh);border-radius:12px;padding:10px 12px}
+.stat b{font-family:'Archivo Black',sans-serif;font-size:20px;display:block}
+.stat span{font-size:10px;opacity:.55}
+.mo{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin:14px 2px 4px}
+.g{background:var(--srf);box-shadow:var(--softsh);border-radius:11px;padding:9px 12px;margin-top:5px;display:grid;grid-template-columns:70px 150px 1fr auto;gap:12px;align-items:center;font-size:12.5px}
+.g .d{font-family:'DM Mono',monospace;font-size:11px;opacity:.65;line-height:1.3}
+.g .d small{display:block;opacity:.7}
+.g .o b{display:block;font-weight:700}
+.g .o span{font-size:10.5px;opacity:.5}
+.who b{font-weight:700}
+.who .co{font-size:11px;opacity:.55;margin-left:6px}
+.passed{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;align-items:center}
+.passed .k{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.4;margin-right:2px}
+.pc{font-size:10px;padding:2px 8px;border-radius:99px;background:var(--wash2);opacity:.8;text-decoration:line-through;text-decoration-color:rgba(255,90,77,.6)}
+.ticks{display:flex;gap:5px}
+.tk{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:5px 9px;border-radius:99px;background:var(--wash2);opacity:.6;white-space:nowrap;cursor:pointer}
+.tk.on{background:var(--booked);color:var(--chip-ink);opacity:1}
+.g.open{outline:1.5px dashed var(--warm);outline-offset:-1.5px}
+.g.open .who b{color:var(--warm)}
+.drawer{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:16px;margin-top:14px;max-width:460px}
+.drawer h3{font-family:'Archivo Black',sans-serif;font-size:14px;margin-bottom:2px}
+.lbl{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;display:block;margin:10px 0 3px}
+.inp{width:100%;background:var(--wash);border:1.5px solid var(--wash2);border-radius:8px;padding:8px 10px;color:var(--fg);font:600 13px Inter}
+.sugg{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.sugg span{font-size:10.5px;padding:3px 9px;border-radius:99px;background:var(--wash2);cursor:pointer}
+.sugg span i{font-style:normal;opacity:.5;margin-left:4px}
+.note{font-size:11.5px;opacity:.55;margin-top:10px;line-height:1.6;max-width:760px}
+/* top clients */
+.tc{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:14px}
+.box h4{display:flex;justify-content:space-between;align-items:baseline;font-family:'Archivo Black',sans-serif;font-size:13px;margin-bottom:8px}
+.box h4 span{font-family:Inter;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45}
+.cr{display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--wash2);font-size:12.5px}
+.cr:first-of-type{border-top:0}
+.cr .n{font-family:'Archivo Black',sans-serif;opacity:.3;font-size:12px}
+.cr .nm b{font-weight:700}
+.cr .nm span{display:block;font-size:10.5px;opacity:.5}
+.cr .bar{height:4px;border-radius:2px;background:var(--booked);margin-top:4px;opacity:.75}
+.cr .v{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.cr .v span{display:block;font-size:10px;font-weight:600;opacity:.5}
+.lk{font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;background:var(--lak);color:#1b1a17;margin-left:6px;vertical-align:1px}
+.strip{display:flex;gap:10px;flex-wrap:wrap}
+.strip .box{flex:1;min-width:280px;padding:10px 14px}
+.chipline{display:flex;gap:6px;flex-wrap:wrap}
+.cc{font-size:11.5px;background:var(--wash);border-radius:99px;padding:4px 10px}
+.cc b{font-weight:800;margin-left:4px;font-variant-numeric:tabular-nums}
+.ghost{opacity:.35;font-size:12px;padding:30px 0;text-align:center;border:1.5px dashed var(--wash2);border-radius:12px;margin-top:12px}
+@media (max-width:680px){.g{grid-template-columns:58px 1fr;}.g .who{grid-column:1/-1}.g .ticks{grid-column:1/-1}.tc{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<span class="tg" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</span>
+<h1>Lakers tickets + top clients</h1>
+<p class="lede">Two pieces. <b>Lakers</b> replaces the spreadsheet — the game list for the season, who got each pair, who passed. <b>Top clients</b> sits at the top of the Clients tab — who booked the most this month, COD and Label/Billing in separate boxes. The two talk to each other: a client who's had tickets this season gets a purple 🏀 tag.</p>
+
+<div class="part">1 · Lakers — its own page (rail → Lakers)</div>
+<div class="opt-h"><b>Season list</b><span class="rec">Recommended</span></div>
+<p class="why">Your spreadsheet, as a page — no summary cards, straight to the games. One row per home game, grouped by month. Tap a game to give it: name (searches clients and contacts, or type anyone), company, who passed. The two ticks are your two checkboxes — claimed on your account, claimed by them. Real 25-26 rows below.</p>
+<div class="frame">
+  <div class="ttl">
+    <h2>Lakers 25–26</h2>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="seg"><span>26–27</span><span class="on">25–26</span><span>24–25</span><span>23–24</span></div>
+      <button class="btn">+ Game</button><button class="btn">Paste schedule</button>
+    </div>
+  </div>
+  <div id="games"></div>
+  <div class="drawer" id="drawer">
+    <h3>Apr 10 · Phoenix Suns</h3>
+    <div style="font-size:11.5px;opacity:.55">7:30 PM · Crypto.com Arena</div>
+    <span class="lbl">Tickets go to</span>
+    <input class="inp" value="Dixson">
+    <div class="sugg"><span>Will Cramer <i>Atlantic · 2 this season</i></span><span>Naim Ali <i>Columbia · 3</i></span><span>Kyle Wassell <i>1</i></span></div>
+    <span class="lbl">Company</span>
+    <input class="inp" placeholder="Label / company">
+    <span class="lbl">Offered — passed</span>
+    <input class="inp" placeholder="Type a name, Enter to add">
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end"><button class="btn">Cancel</button><button class="btn pri">Save</button></div>
+  </div>
+  <p class="note">Suggestions under the name are your clients and contacts, with how many games they've had this season — so it's easy not to repeat someone. Anyone not on file can just be typed. "Paste schedule" takes the home-game list you copy off the web each year (date, time, opponent per line) and makes the rows.</p>
+</div>
+<p class="note"><b>Dropped from the sheet:</b> the <i>Arena</i> column (always Crypto.com at home; kept for the odd road game in 23–24), <i>TV</i>, and the <i>Potential / Accepted</i> columns, which are empty after 24–25. Say if you want any back.</p>
+
+<div class="part">2 · Top clients — top of the Clients tab</div>
+
+<div class="opt-h"><b>A — Two boxes, top 5 each</b><span class="rec">Recommended</span></div>
+<p class="why">COD ranks the client account. Label/Billing ranks the <b>label + A&amp;R</b> (the person who books), with their artists underneath. Dollars billed this month (studio + engineering, from the work orders), days underneath. The bar is relative to #1. Arrows step through months.</p>
+<div class="frame">
+  <div class="ttl"><h2 style="font-size:16px">Top clients</h2><div style="display:flex;gap:6px;align-items:center"><button class="btn">‹</button><b style="font-size:13px">September 2026</b><button class="btn">›</button></div></div>
+  <div class="tc">
+    <div class="box"><h4>COD <span>by client</span></h4>
+      <div class="cr"><span class="n">1</span><div class="nm"><b>Stuart Price</b><span>6 days · 2 sessions</span><div class="bar" style="width:100%"></div></div><div class="v">$9,840</div></div>
+      <div class="cr"><span class="n">2</span><div class="nm"><b>Havelange</b><span>4 days</span><div class="bar" style="width:62%"></div></div><div class="v">$6,120</div></div>
+      <div class="cr"><span class="n">3</span><div class="nm"><b>Jesse Haugen</b><span>3 days</span><div class="bar" style="width:39%"></div></div><div class="v">$3,850</div></div>
+      <div class="cr"><span class="n">4</span><div class="nm"><b>Christina Perri</b><span>2 days</span><div class="bar" style="width:20%"></div></div><div class="v">$1,980</div></div>
+      <div class="cr"><span class="n">5</span><div class="nm"><b>Lukas Graham</b><span>1 day</span><div class="bar" style="width:11%"></div></div><div class="v">$1,050</div></div>
+    </div>
+    <div class="box"><h4>Label / Billing <span>by label · A&amp;R</span></h4>
+      <div class="cr"><span class="n">1</span><div class="nm"><b>10K Projects · Jake Caramanno</b><span>Koad, Paygotti · 13 days<span class="lk">🏀 2</span></span><div class="bar" style="width:100%"></div></div><div class="v">$25,700</div></div>
+      <div class="cr"><span class="n">2</span><div class="nm"><b>Concord · Mayra</b><span>Writers camp · 5 days</span><div class="bar" style="width:52%"></div></div><div class="v">$13,340</div></div>
+      <div class="cr"><span class="n">3</span><div class="nm"><b>Warner Records · Miles Gersh</b><span>Liz Isik · 3 days<span class="lk">🏀 1</span></span><div class="bar" style="width:21%"></div></div><div class="v">$5,400</div></div>
+      <div class="cr"><span class="n">4</span><div class="nm"><b>Interscope · Ela Talu</b><span>Charlie Christie · 2 days<span class="lk">🏀 2</span></span><div class="bar" style="width:14%"></div></div><div class="v">$3,600</div></div>
+      <div class="cr"><span class="n">5</span><div class="nm"><b>Red Bull Records · no A&amp;R</b><span>Morgan Smith · 2 days</span><div class="bar" style="width:11%"></div></div><div class="v">$2,760</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="opt-h"><b>B — One slim strip, top 3 each</b></div>
+<p class="why">Same numbers, less room — a glance, not a report. Tap the strip to expand to A.</p>
+<div class="frame">
+  <div class="strip">
+    <div class="box"><h4>COD · Sept <span>top 3</span></h4><div class="chipline"><span class="cc">Stuart Price<b>$9.8k</b></span><span class="cc">Havelange<b>$6.1k</b></span><span class="cc">Jesse Haugen<b>$3.9k</b></span></div></div>
+    <div class="box"><h4>Label · Sept <span>top 3</span></h4><div class="chipline"><span class="cc">10K · Jake C.<b>$25.7k</b></span><span class="cc">Concord · Mayra<b>$13.3k</b></span><span class="cc">Warner · Miles G.<b>$5.4k</b></span></div></div>
+  </div>
+</div>
+<p class="note">Top-client names and numbers are placeholders. The Lakers rows are your real 25–26 sheet.</p>
+
+<script>
+const G = [{"ce": true, "cr": true, "d": "10/17/2025", "t": "7:30p", "opp": "Kings", "rec": "Fernando De Los Rios", "co": "Paramount Staff", "passed": ["Sesen"]}, {"ce": true, "cr": true, "d": "10/21/2025", "t": "7:00 PM", "opp": "Golden State Warriors", "rec": "Ela Talu", "co": "Interscope", "passed": ["Haiko (sixbill", "sosocamo)", "Gabi Kochlani", "Sesen"]}, {"ce": true, "cr": true, "d": "10/24/2025", "t": "7:00 PM", "opp": "Minnesota Timberwolves", "rec": "Morgan Smith", "co": "Redbull Recirds Artist", "passed": ["Tick"]}, {"ce": true, "cr": true, "d": "10/27/2025", "t": "7:30 PM", "opp": "Portland Trail Blazers", "rec": "Naim", "co": "Columbia", "passed": ["Naim", "Benecio Wallraff"]}, {"ce": true, "cr": true, "d": "11/2/2025", "t": "6:30 PM", "opp": "Miami Heat", "rec": "Se", "co": "", "passed": ["Brett Sweeney (empire)", "Benicio (10k)"]}, {"ce": true, "cr": true, "d": "11/5/2025", "t": "7:00 PM", "opp": "San Antonio Spurs", "rec": "Michael Armstrong", "co": "Team NZ", "passed": []}, {"ce": true, "cr": true, "d": "11/18/2025", "t": "7:30 PM", "opp": "Utah Jazz", "rec": "Marty Gonzalez", "co": "paygotti manager and 10k anr", "passed": ["Skane", "Amal", "Sesen", "benicio"]}, {"ce": true, "cr": true, "d": "11/25/2025", "t": "8:00 PM", "opp": "Los Angeles Clippers", "rec": "Rachel Ludeman", "co": "CRAS", "passed": ["Stephen Baynes", "Amal", "Darrale", "Will cramer", "Slimm", "Sesen"]}, {"ce": true, "cr": true, "d": "11/28/2025", "t": "7:00 PM", "opp": "Dallas Mavericks", "rec": "MG", "co": "PRS", "passed": ["slim", "sesen", "darrale", "Halsa"]}, {"ce": true, "cr": true, "d": "11/30/2025", "t": "6:30 PM", "opp": "New Orleans Pelicans", "rec": "Sesen", "co": "Interscope", "passed": ["skane", "sesen", "carrington"]}, {"ce": true, "cr": true, "d": "12/1/2025", "t": "7:00 PM", "opp": "Phoenix Suns", "rec": "", "co": "", "passed": []}, {"ce": true, "cr": true, "d": "12/25/2025", "t": "5:00 PM", "opp": "Houston Rockets", "rec": "Julia Morales", "co": "Epic", "passed": []}, {"ce": true, "cr": true, "d": "12/28/2025", "t": "6:30 PM", "opp": "Sacramento Kings", "rec": "Fluff", "co": "rance", "passed": []}, {"ce": true, "cr": true, "d": "12/30/2025", "t": "7:30 PM", "opp": "Detroit Pistons", "rec": "Marissa Wickliffe", "co": "int", "passed": []}, {"ce": true, "cr": true, "d": "1/2/2026", "t": "7:30 PM", "opp": "Memphis Grizzlies", "rec": "Junior Regisford", "co": "", "passed": []}, {"ce": true, "cr": true, "d": "1/4/2026", "t": "6:30 PM", "opp": "Memphis Grizzlies", "rec": "Rob and Adam P", "co": "DJ Camper", "passed": []}, {"ce": true, "cr": true, "d": "1/9/2026", "t": "7:30 PM", "opp": "Milwaukee Bucks", "rec": "Koad (10k artist)", "co": "10k", "passed": ["Mayra w/ concord", "Sliimm"]}, {"ce": true, "cr": true, "d": "1/13/2026", "t": "7:30 PM", "opp": "Atlanta Hawks", "rec": "Nick White", "co": "G Herbo", "passed": ["Kyle Wassell"]}, {"ce": true, "cr": true, "d": "1/15/2026", "t": "7:30 PM", "opp": "Charlotte Hornets", "rec": "Will Cramer", "co": "Atlantic", "passed": []}, {"ce": true, "cr": true, "d": "1/18/2026", "t": "6:30 PM", "opp": "Toronto Raptors", "rec": "Jake Caramanno", "co": "10k", "passed": []}, {"ce": true, "cr": true, "d": "2/5/2026", "t": "7:00 PM", "opp": "Philadelphia 76ers", "rec": "Miles Gersh", "co": "Warner Records", "passed": ["Miles Gersh", "Liz Isik"]}, {"ce": true, "cr": true, "d": "2/7/2026", "t": "5:30 PM", "opp": "Golden State Warriors", "rec": "TR", "co": "jaycen joshua", "passed": []}, {"ce": true, "cr": true, "d": "2/9/2026", "t": "7:00 PM", "opp": "OKC", "rec": "Will Cramer", "co": "", "passed": []}, {"ce": true, "cr": true, "d": "2/10/2026", "t": "7:30 PM", "opp": "Sacramento Spurs", "rec": "Jacob Gorggi", "co": "int", "passed": []}, {"ce": true, "cr": true, "d": "2/12/2026", "t": "7:00 PM", "opp": "Dallas Mavericks", "rec": "Sesen", "co": "int", "passed": ["Bella", "Cate", "Kyle Wassell"]}, {"ce": true, "cr": true, "d": "2/20/2026", "t": "7:00 PM", "opp": "Los Angeles Clippers", "rec": "Michele Gomez", "co": "", "passed": []}, {"ce": true, "cr": true, "d": "2/22/2026", "t": "3:30 PM", "opp": "Boston Celtics", "rec": "Kyle Wassell", "co": "", "passed": []}, {"ce": true, "cr": true, "d": "2/24/2026", "t": "7:30 PM", "opp": "Orlando Magic", "rec": "Julia Morales", "co": "", "passed": []}, {"ce": true, "cr": false, "d": "3/1/2026", "t": "6:30 PM", "opp": "Sacramento Kings", "rec": "Reyna Press", "co": "warner", "passed": []}, {"ce": true, "cr": false, "d": "3/3/2026", "t": "7:30 PM", "opp": "NO Pelicans", "rec": "Claire Neubert / Fetish Buvision", "co": "", "passed": []}, {"ce": true, "cr": false, "d": "3/6/2026", "t": "7:30 PM", "opp": "Indianapolis", "rec": "Fernando", "co": "PRS", "passed": []}, {"ce": true, "cr": false, "d": "3/8/2026", "t": "12:30 PM", "opp": "New York Knicks", "rec": "Liz Isik", "co": "", "passed": []}, {"ce": true, "cr": false, "d": "3/10/2026", "t": "8:00 PM", "opp": "Minnesota Timberwolves", "rec": "Ela Talu", "co": "Interscope", "passed": ["Kailen Tharpe (Epic)", "Ela", "Noah"]}, {"ce": true, "cr": false, "d": "3/12/2026", "t": "7:30 PM", "opp": "Chicago Bulls", "rec": "Naim Ali", "co": "Columbia", "passed": []}, {"ce": true, "cr": false, "d": "3/14/2026", "t": "5:30 PM", "opp": "Denver Nuggets", "rec": "Noah Ayele", "co": "10 Summers", "passed": []}, {"ce": true, "cr": false, "d": "3/27/2026", "t": "7:30 PM", "opp": "Brooklyn Nets", "rec": "Ian Holder", "co": "Capitol", "passed": []}, {"ce": true, "cr": false, "d": "3/30/2026", "t": "7:00 PM", "opp": "Washington", "rec": "Josh Karpel", "co": "Republic", "passed": []}, {"ce": true, "cr": false, "d": "3/31/2026", "t": "7:30 PM", "opp": "Cleveland", "rec": "Junior Regisford", "co": "", "passed": ["Cold Chris", "melisa", "miles gersh", "cate", "benicio", "Ellie Ibarra"]}, {"ce": true, "cr": false, "d": "4/7/2026", "t": "7:30 PM", "opp": "OKC", "rec": "Savannah", "co": "columbia", "passed": []}, {"ce": false, "cr": false, "d": "4/10/2026", "t": "7:30 PM", "opp": "Phoenix Suns", "rec": "Dixson", "co": "", "passed": []}, {"ce": true, "cr": false, "d": "4/12/2026", "t": "5:30 PM", "opp": "Utah Jazz", "rec": "MeLisa", "co": "TDE", "passed": []}, {"ce": false, "cr": false, "d": "4/18/2026", "t": "5:30 PM", "opp": "Houston", "rec": "Young Guru, then Fluff", "co": "", "passed": []}, {"ce": false, "cr": false, "d": "4/21/2026", "t": "7:30 PM", "opp": "Houston", "rec": "Naim Ali", "co": "Columbia", "passed": []}];
+const mon = d => { const [m,dd,y]=d.split('/'); return new Date(+y, +m-1, +dd) }
+let given=0, unclaimed=0, passedSet=new Set(), html='', last='';
+for (const g of G) {
+  const dt = mon(g.d); const mk = dt.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  if (mk!==last){ html+=`<div class="mo">${mk}</div>`; last=mk }
+  if (g.rec) given++; if (g.rec && !g.cr) unclaimed++;
+  g.passed.forEach(p=>{ if(p.toLowerCase()!==g.rec.toLowerCase()) passedSet.add(p.toLowerCase()) });
+  const passed = g.passed.filter(p=>p.toLowerCase()!==(g.rec||'').toLowerCase());
+  const open = g.d==='4/10/2026';
+  html += `<div class="g${open?' open':''}">
+    <div class="d">${dt.toLocaleDateString('en-US',{weekday:'short'})} ${dt.getDate()}<small>${g.t}</small></div>
+    <div class="o"><b>${g.opp}</b></div>
+    <div class="who">${g.rec?`<b>${g.rec}</b><span class="co">${g.co}</span>`:'<span style="opacity:.4">— not given yet</span>'}
+      ${passed.length?`<div class="passed"><span class="k">Passed</span>${passed.map(p=>`<span class="pc">${p}</span>`).join('')}</div>`:''}</div>
+    <div class="ticks"><span class="tk${g.ce?' on':''}" title="Claimed on Eli's account">Mine ✓</span><span class="tk${g.cr?' on':''}" title="Claimed by recipient">Theirs ${g.cr?'✓':'—'}</span></div>
+  </div>`;
+}
+document.getElementById('games').innerHTML = html;
+
+document.querySelectorAll('.seg span').forEach(s=>s.onclick=()=>{s.parentNode.querySelectorAll('span').forEach(x=>x.classList.remove('on'));s.classList.add('on')});
+</script>
+</body>
+</html>

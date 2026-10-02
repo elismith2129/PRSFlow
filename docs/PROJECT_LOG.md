@@ -381,6 +381,29 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 1, 2026 (evening) — Lakers tickets, Top clients, Admin dropdown (v1.42.0)
+
+**Lakers.** Eli sent the workbook (23–24, 24–25, 25–26 tabs). Read it before modelling:
+the per-game columns are recipient, company, "Offered" (who passed), and two ticks. The
+*Potential* column in the older tabs is the same list of names in the same order both
+seasons — a running wish-list, not per game — so it was dropped rather than mis-attributed.
+Mock round 1 had summary cards; Eli: "dont need the cards at the top." Kept: month groups,
+struck-through "passed" chips, the two ticks on the row. The name box suggests past
+recipients with counts — the point of the sheet is not repeating someone. Paste schedule
+exists because "each year i pull all the home games from the web"; the 26–27 schedule isn't
+out yet.
+
+**Top clients.** Round 1 ranked artists on the label side; Eli: the hero is "the label and
+A&R with the artist not the hero." Ranked by sessions with dollars alongside ("lets do
+sessions and include the dollar amounts"). Tenants excluded on purpose — rent isn't booking.
+
+**Rail.** "combine the two admin things to one admin thing… that drops down" — Rates,
+Positions and Lakers in one click disclosure, same as Billing. Lakers is owners-only and
+deliberately not a top-level rail item.
+
+**Rejected:** Lakers stat cards (round 1); artist-as-hero for labels (round 1); option B
+slim strip for top clients; keeping TV/Potential/Accepted columns.
+
 ### October 1, 2026 — SRS, found and fixed (v1.41.0)
 
 Eli couldn't find the SRS list "since some rail work." Nothing was deleted: it was a tab

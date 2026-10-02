@@ -20,6 +20,23 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.42.0 — Lakers tickets, Top clients, one Admin dropdown — Oct 1, 2026
+
+**Why.** Eli keeps the yearly Lakers giveaway in a spreadsheet (who got each game, who was offered and passed, two "claimed" checkboxes). And: *"who is booking the most each month, so i can get a glimpse of who our best clients are."*
+
+- **`/lakers`** (`app/(main)/lakers/page.tsx`, `lib/lakers.ts`) — season list, one row per game grouped by month, no summary cards (ruled out in round 2). Tap a game → recipient (suggests everyone who's had tickets with this-season / all-time counts), company, passed list, note, delete. **Mine / Theirs** ticks toggle on the row. **Paste schedule** parses the home-game list copied off the web (date in `10/21/2025`, `2025-10-21` or `Tue, Oct 21` form, optional time, rest = opponent; year inferred from the season; tested on mixed formats). Season switcher always includes the current season (26–27) so the new schedule has a home. Owners + Eli only.
+- **Seeded all three seasons** from the workbook: 134 games (23–24 45, 24–25 46, 25–26 43 incl. the two Houston playoff games from the CSV). Dropped: TV; *Potential* (a running wish-list, not per game); *Accepted*. "N/A" (23–24 road preseason) and "Postponed" → blank recipient + note.
+- **Top clients** (`components/clients/TopClients.tsx`, `lib/topClients.ts`) at the top of the CRM's Clients tab. Two boxes: **COD by client account**; **Label/Billing by label + A&R** (the hero, per round 2), artists underneath. Ranked by **sessions** (WOs starting in the month), dollars alongside (studio + engineering after discount — rentals/food are pass-through). Excludes cancelled/non-session statuses, closed WOs, and tenants (Mustard would top COD monthly). Month arrows. Anyone with Lakers tickets this season gets a 🏀 count (owners only — RLS).
+- **Rail:** Rates + Positions + Lakers are one **Admin** click-dropdown (Eli: "combine the two admin things to one 'admin' thing… that drops down"). A group whose children are all filtered out disappears.
+
+**Migrations:** `20261001150000_lakers_games.sql` — `lakers_games` (unique season+date+opponent; owner-only RLS) + the 134-row seed. Ends with a per-season count.
+
+**Watch-outs:** RLS is `get_my_role() = 'owner'` — the rail also lets Eli in by email, but if Eli's profile role isn't `owner` the page will load empty. Top clients' 🏀 match is on exact name (client name / A&R full name vs the recipient as typed). A multi-month WO counts in the month it starts.
+
+**Files:** `app/(main)/lakers/page.tsx`, `lib/lakers.ts`, `components/clients/TopClients.tsx`, `lib/topClients.ts`, `app/(main)/clients/page.tsx`, `components/layout/Rail.tsx`.
+
+---
+
 ## v1.41.1 — Labels have no "rep"; the client search fills the chain downward — Oct 1, 2026
 
 *Landed inside commit `0844486` ("SRS: backfill the WO flag") — two chats, one working tree, the other's `git add -A` took these files along. Same version number was picked twice; renumbered here.*

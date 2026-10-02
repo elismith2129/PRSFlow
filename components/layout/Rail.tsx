@@ -87,12 +87,21 @@ const HR: RailItem[] = [
 // group of their own instead of being wedged into Operations. The old /admin
 // page stays out of the nav; this is its rebuilt home, one page at a time.
 // Owner / manager / billing only (the pages here change what things cost).
+// ONE DROPDOWN (Eli, 2026-10-01: "combine the two admin things to one 'admin'
+// thing on the rail that drops down"), the same click disclosure as Billing.
+// Lakers joined it the same day — owners only, not a rail item of its own.
 const ADMIN: RailItem[] = [
-  { href: '/rates', label: 'Rates', ic: '$' },
-  // Job titles and what each carries (supervisory, vacation, JD) — read by
-  // Hiring (Eli, 2026-09-21: "we should be able to set things like that in
-  // the app").
-  { href: '/positions', label: 'Positions', ic: '◇' },
+  {
+    href: '#admin', label: 'Admin', ic: '⚙',
+    children: [
+      { href: '/rates', label: 'Rates', ic: '·' },
+      // Job titles and what each carries (supervisory, vacation, JD) — read by
+      // Hiring (Eli, 2026-09-21: "we should be able to set things like that in
+      // the app").
+      { href: '/positions', label: 'Positions', ic: '·' },
+      { href: '/lakers', label: 'Lakers', ic: '·' },
+    ],
+  },
 ]
 // Rarely-used items live behind the foot's Settings disclosure (Eli,
 // 2026-08-17): DEV, the theme toggle, Sign Out. Admin is OUT of the nav
@@ -147,6 +156,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
       && profile?.role !== 'owner'
       && profile?.role !== 'manager'
       && profile?.role !== 'billing') return false
+    if (item.href === '/lakers' && profile?.role !== 'owner' && !isEli) return false
+    // A group whose children are all filtered out disappears with them.
+    if (item.children && filterItems(item.children).length === 0) return false
     if (item.href === '/rates'
       && profile?.role !== 'owner'
       && profile?.role !== 'manager'
@@ -325,8 +337,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
           {filterItems(OPERATIONS).map(i => renderItem(i))}
           <div className="c-rail-grp">HR</div>
           {filterItems(HR).map(i => renderItem(i))}
-          {filterItems(ADMIN).length > 0 && <div className="c-rail-grp">Admin</div>}
-          {filterItems(ADMIN).map(i => renderItem(i))}
+          {filterItems(ADMIN).map(i => renderGroup(i))}
         </>
       )}
       <div className="c-rail-foot">

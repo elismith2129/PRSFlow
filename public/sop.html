@@ -679,6 +679,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.42', date:'Oct 1, 2026',
+    headline:'Top clients on the Clients tab; Admin is one dropdown.',
+    desc:'A quick look at who booked the most each month, and a tidier rail.',
+    changes:[
+      'The <b>Clients</b> tab now opens with <b>Top clients</b>: COD by client, Label/Billing by label and A&amp;R. Ranked by sessions, with dollars. Use ‹ › to look at other months.',
+      'Rates and Positions now live under one <b>Admin</b> dropdown on the rail.',
+    ],
+    affects:'Nothing to do — it is information only.',
+    dev:['<code>components/clients/TopClients.tsx</code>, <code>lib/topClients.ts</code>; owners also get <code>/lakers</code> under Admin. Migration <code>20261001150000_lakers_games.sql</code>.'],
+  },
+  {
     ver:'v1.41', date:'Oct 1, 2026',
     headline:'SRS has its own page again — Billing → SRS.',
     desc:'The SRS list went missing from the menu. It is back under Billing, it now catches every SRS session, and it shows the actual fee.',
