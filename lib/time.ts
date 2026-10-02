@@ -52,6 +52,17 @@ export function calcCharge(hours: number | null, rate: string): number | null {
   return parseFloat((hours * r).toFixed(2))
 }
 
+/** A rental line: qty × rate. Blank qty means ONE — a single mic rental
+ *  should not require typing "1" (Eli, 2026-10-02). Null when there is no
+ *  rate; the Charge cell then shows whatever was typed by hand. */
+export function calcRentalCharge(qty: string | number | null | undefined, rate: string | null | undefined): number | null {
+  const r = parseFloat(String(rate ?? '').replace(/[^0-9.]/g, ''))
+  if (isNaN(r) || r === 0) return null
+  const qn = parseFloat(String(qty ?? '').replace(/[^0-9.]/g, ''))
+  const q = isNaN(qn) || qn <= 0 ? 1 : qn
+  return parseFloat((q * r).toFixed(2))
+}
+
 // Inclusive ISO date list start..end (noon-anchored to dodge TZ drift).
 /** A session cannot plausibly run longer than this. The cap exists because the
  *  loop below was UNBOUNDED and its input comes from a native <input type="date">,

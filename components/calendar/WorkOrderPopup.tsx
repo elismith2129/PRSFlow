@@ -12,7 +12,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { SignedImage } from '@/components/shared/SignedImage'
 import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPanel'
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
-import { timeToMins, calcHours, calcCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
+import { timeToMins, calcHours, calcCharge, calcRentalCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate, oneLine } from '@/lib/format'
 import { computeWoTotals, engChargeForRow, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_PCT, foodFeePct, foodServiceFee } from '@/lib/woTotals'
 import {
@@ -7270,20 +7270,26 @@ export function WorkOrderPopup({
           <div style={isMobile ? { order: ORD.rentals, ...mCard } : { order: ORD.rentals, minWidth: 0 }}>
             <SectionHeader carved title="Rentals" />
             <div style={{ overflowX: isMobile ? 'auto' : 'hidden', overflowY: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', paddingBottom: 5, minWidth: isMobile ? 540 : undefined }}>
-                {([['Qty'], ['Item'], ['Supplier'], ["Date(s) Used"], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
+              {/* QTY SITS BESIDE RATE (Eli, 2026-10-02): the line reads as the
+                  invoice line it is — what · from whom · when · how many × how
+                  much = charge. Charge DERIVES from qty × rate (there was no
+                  rental math at all before this; Charge was a third typed
+                  field and a runner who filled qty + rate got $0). Typing
+                  into Charge still overrides until qty or rate changes. */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 110px 44px 65px 80px 24px', paddingBottom: 5, minWidth: isMobile ? 540 : undefined }}>
+                {([['Item'], ['Supplier'], ["Date(s) Used"], ['Qty', 'right'], ['Rate', 'right'], ['Charge', 'right'], ['']] as [string, string?][])
                   .map(([h, align], i) => <div key={i} style={align === 'right' ? thR : thS}>{h}</div>)}
               </div>
               {/* BIN 2. Capped and scrolling on its own on admin desktop; on
                   mobile the rows just run on as they always have. */}
               <div ref={rentBinRef} style={wide ? { maxHeight: 150, overflowY: 'auto', paddingRight: 4 } : undefined}>
               {rentRows.map((r, idx) => (
-                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 120px 110px 65px 80px 24px', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6, minWidth: isMobile ? 540 : undefined }}>
-                  <div style={cellIn}><input value={r.qty} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, qty: e.target.value } : x))} placeholder="—" className="c-tin c-tin-mono c-tin-show" /></div>
+                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '1fr 120px 110px 44px 65px 80px 24px', background: 'var(--c-wash)', borderRadius: 12, marginBottom: 6, minWidth: isMobile ? 540 : undefined }}>
                   <div style={cellIn}><input value={r.item} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, item: e.target.value } : x))} placeholder="Item" className="c-tin c-tin-show" /></div>
                   <div style={cellIn}><input value={r.supplier} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, supplier: e.target.value } : x))} placeholder="Supplier" className="c-tin c-tin-show" /></div>
                   <div style={cellIn}><input value={r.dates_used} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, dates_used: e.target.value } : x))} placeholder="Dates" className="c-tin c-tin-show" /></div>
-                  <div style={cellIn}><input value={r.rate} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, rate: e.target.value } : x))} placeholder="—" className="c-tin c-tin-mono c-tin-show" style={{ textAlign: 'right' }} /></div>
+                  <div style={cellIn}><input value={r.qty} onChange={e => { const qty = e.target.value; setRentRows(p => p.map(x => { if (x.id !== r.id) return x; const c = calcRentalCharge(qty, x.rate); return { ...x, qty, charge: c == null ? x.charge : c.toFixed(2) } })) }} placeholder="1" className="c-tin c-tin-mono c-tin-show" style={{ textAlign: 'right' }} /></div>
+                  <div style={cellIn}><input value={r.rate} onChange={e => { const rate = e.target.value; setRentRows(p => p.map(x => { if (x.id !== r.id) return x; const c = calcRentalCharge(x.qty, rate); return { ...x, rate, charge: c == null ? x.charge : c.toFixed(2) } })) }} placeholder="—" className="c-tin c-tin-mono c-tin-show" style={{ textAlign: 'right' }} /></div>
                   <div style={cellIn}><input value={r.charge} onChange={e => setRentRows(p => p.map(x => x.id === r.id ? { ...x, charge: e.target.value } : x))} placeholder="$0.00" className="c-tin c-tin-mono c-tin-show" style={{ textAlign: 'right' }} /></div>
                   <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center' }}>
                     {!readOnly && <button type="button" onClick={() => setRentRows(p => p.filter(x => x.id !== r.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}

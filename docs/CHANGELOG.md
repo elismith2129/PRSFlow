@@ -37,6 +37,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.42.1 — Rentals do the math; Qty sits beside Rate — Oct 2, 2026
+
+**Why.** Eli: "the rentals aren't doing the math properly." They weren't doing any: Qty, Rate and Charge were three independent typed fields and the total summed Charge. A runner who filled qty + rate and left Charge blank put $0 on the WO, the PDF and Financials.
+
+- **Charge derives from qty × rate** (`calcRentalCharge`, `lib/time.ts`) whenever either is typed; blank qty means 1. Typing into Charge still overrides until qty or rate changes — same rule as OT charge on a day row.
+- **Columns reordered** on the WO screen and the PDF: Item · Supplier · Date(s) used · **Qty · Rate · Charge**. The line reads as the invoice line it is.
+- Backfill of old rows with qty + rate but no charge: SELECT in the Oct 2 chat; decide after seeing the count.
+
+**Migrations:** none. **Files:** `lib/time.ts`, `components/calendar/WorkOrderPopup.tsx`, `lib/woPdf.ts`.
+
+---
+
 ## v1.41.1 — Labels have no "rep"; the client search fills the chain downward — Oct 1, 2026
 
 *Landed inside commit `0844486` ("SRS: backfill the WO flag") — two chats, one working tree, the other's `git add -A` took these files along. Same version number was picked twice; renumbered here.*

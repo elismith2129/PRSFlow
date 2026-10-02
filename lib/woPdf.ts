@@ -731,21 +731,23 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
   })
 
   // ── Rentals ───────────────────────────────────────────────────────────────
+  // Qty beside Rate (Eli, 2026-10-02) — the line reads what · who · when ·
+  // how many × how much = charge. Same order as the WO screen.
   const rentCols: Col[] = [
-    { head: 'Qty', w: 38 },
     { head: 'Item', w: 192 },
     { head: 'Supplier', w: 96 },
     { head: 'Date(s) used', w: 84 },
+    { head: 'Qty', w: 38, align: 'right' },
     { head: 'Rate', w: 52, align: 'right' },
     { head: 'Charge', w: 62, align: 'right' },
   ]
   const rentRows = blank
     ? Array.from({ length: 4 }, () => new Array(rentCols.length).fill(''))
     : rentalRows.map(r => [
-        r.qty ? String(r.qty) : '',
         r.item || r.description || '',
         r.supplier || '',
         r.dates_used || '',
+        r.qty ? String(r.qty) : '',
         r.rate ? String(r.rate) : '',
         cash(r.charge),
       ])
