@@ -27,6 +27,9 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 - **Window = last 30 / 90 days / 12 months ending today** (switch in the strip; 30 default). Counted from `studio_time_rows.date` inside the window — days and dollars of those days only. A session = a WO with ≥1 in-window day. Paginated (12 months can pass 1,000 rows).
 - **Label/Billing grouped by label**; tap a label → artist · A&R breakdown, ranked the same way. COD unchanged (client account).
 - **Mustard excluded by his booking** (`SHARED_RUNNER` venue/room, status lockout|tenant → its `work_order_id`), not by name.
+- **Ranked by dollars, then days** (same day: Eli — Epic's long run on one WO read as "a couple sessions" while spending the most). The right column is $ over days; WO count moves under the name; the bar is relative to #1's dollars.
+- **Days / $ switch** beside the window (Eli: "i want to be able to see it based on days booked"). Days is the default; sorting, the bar and the bold figure follow the switch, breakdowns too.
+- **A session = one room on one day** (Eli: "2 rooms one day is 2 sessions… really its not days, its number of sessions"): distinct date × studio on each WO's in-window rows. The switch reads **Sessions / $**; the work-order count sits under the name.
 - Top 5 each with "Show all N". Dollars = studio + engineering of in-window days; the WO discount is no longer applied (it belongs to the whole WO, not a slice).
 
 **Migrations:** none. **Files:** `lib/topClients.ts`, `components/clients/TopClients.tsx`.

@@ -12,7 +12,8 @@
 // 10-02: "grouped by the label, not necessarily the artist or the A&R"), and
 // each label opens to who under it is booking — artist · A&R.
 //
-// Ranked by sessions, then dollars. Dollars = studio + engineering of the
+// RANKED BY DOLLARS (Eli, 10-02: a long run of days on one WO — Epic — read as
+// "a couple sessions" while spending the most). Then days. Sessions shown, not ranked on. Dollars = studio + engineering of the
 // in-window days (no WO discount — it's for the whole WO, not a slice).
 // Excluded: cancelled days and non-session statuses, closed WOs, and the
 // tenant WO (Mustard's lockout — v1 matched tenants by client name and missed
@@ -39,7 +40,7 @@ async function allRows(from: string, to: string): Promise<any[] | null> {
   const out: any[] = []
   for (let off = 0; ; off += 1000) {
     const { data, error } = await supabase.from('studio_time_rows')
-      .select('work_order_id, date, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, day_status')
+      .select('work_order_id, date, studio, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, day_status')
       .gte('date', from).lte('date', to)
       .order('date').range(off, off + 999)
     if (!dbResult('Loading top clients', error)) return null
@@ -103,7 +104,9 @@ export async function fetchTopClients(today: string, windowDays: number, lakersS
   const fig = (woId: string) => {
     const rs = rowsBy.get(woId) ?? []
     const t = computeWoTotals({ studioRows: rs, rentalRows: [], paymentRows: [] })
-    return { days: new Set(rs.map(r => r.date)).size, dollars: t.studio + t.engineer }
+    // A SESSION IS ONE ROOM ON ONE DAY (Eli, 10-02: "2 rooms one day is 2
+    // sessions"). `days` carries that count — distinct date × room on the WO.
+    return { days: new Set(rs.map(r => `${r.date}|${r.studio ?? ''}`)).size, dollars: t.studio + t.engineer }
   }
 
   type Acc = TopLine & { kids: Map<string, TopLine> }
@@ -133,7 +136,7 @@ export async function fetchTopClients(today: string, windowDays: number, lakersS
     }
   }
 
-  const rank = (a: TopLine, b: TopLine) => b.sessions - a.sessions || b.dollars - a.dollars
+  const rank = (a: TopLine, b: TopLine) => b.dollars - a.dollars || b.days - a.days
   const done = (m: Map<string, Acc>): TopRow[] => Array.from(m.values()).map(({ kids, ...r }) => {
     const breakdown = Array.from(kids.values()).sort(rank)
     const lakersTotal = breakdown.reduce((s, k) => s + k.lakers, 0)
