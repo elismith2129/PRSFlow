@@ -1,29 +1,54 @@
 'use client'
 // ─────────────────────────────────────────────────────────────────────────────
-// /daily-ops — the studio manager's morning (spec §19, built 2026-08-14).
-// Mock: docs/design-refs/daily-ops-final.html.
+// /daily-ops — two tabs in the page title, the billing hub's way (spec §17):
 //
-// LEFT   the queue (exceptions; tap to clear; empty = "Yesterday is done"),
-//        PAGINATED at 10 (Eli, 2026-08-17) so the studio-tasks manager below
-//        never scrolls out of view on a bad morning.
-// RIGHT  the sweep — 2×2 studio cards, one night's full picture, each with
-//        the shift log (preview → popup). The DATE IS THE SWEEP'S HERO and
-//        pages by ‹ › or swipe (Eli, 2026-08-17) — browsing previous nights
-//        here is what replaced the retired daily-ops log.
+//   DAILY OPS   one night, four studio cards.
+//   FLAGS       components/flags/FlagsView — the old /flags page, moved here
+//               unchanged (Eli, 2026-10-05: "we keep adding things to the rail
+//               and things get more complicated and get hidden"). A tech sees
+//               this tab only.
 //
-// NOT here: work orders (Billing's review bucket), punches (HR), tonight's
-// live status (dashboard). One copy of everything — §19.
+// THE REWORK (Eli, 2026-10-05; mock docs/design-refs/daily-ops-cards-options.html).
+// The page used to be a long "Needs you" queue on the left and the four cards
+// on the right — and every row of the queue was a red dot on a card, said
+// twice. "This is a massive amount of info and some redundant." So:
+//
+//   · THE QUEUE IS GONE. The cards are the page. A red row on a card is the
+//     thing you tap once you have dealt with it — a plain check, no note
+//     ("just a simple check, not details"). The check is a daily_ops_reviews
+//     row, the same table the queue wrote, so nothing was migrated.
+//   · STUDIO TASKS LIVE IN THEIR STUDIO'S CARD ("tasks should be by studio and
+//     included in the card"), added from the + in that card.
+//   · A MISSED WORK ORDER IS A RED BADGE at the top of that card's lane:
+//     "WO not submitted", the room and client, the runner's initials, a check.
+//     No session missed → no badge → no space held for it ("I don't foresee
+//     this being a huge issue moving forward, just the transition").
+//   · EVERY CARD IS ONE FIXED SIZE (CLAUDE.md → Locked Design Conventions).
+//     The duties are six rows, always. The ONLY things that vary are the
+//     badges and the tasks, and those scroll inside the lane. An empty lane is
+//     the same size as a full one. Do not let anything grow a card.
+//
+// The date pages by ‹ › or swipe, and that paging IS the look-back: last
+// Tuesday's card still shows what was missed that night and who checked it.
+//
+// NOT here: punches (HR), tonight's live status (the dashboard).
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { supabase, Booking } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useIsMobile } from '@/hooks/useIsMobile'
+import { useFlagsVersion } from '@/hooks/useFlagsVersion'
 import { dbResult } from '@/lib/db'
-import { SectionHeader } from '@/components/ui/SectionHeader'
+import { profileInitials } from '@/lib/format'
+import { fetchOpenFlags } from '@/lib/flags'
+import { deleteSessionAndWO } from '@/lib/deleteSession'
+import { fetchNightMissedWorkOrders, type MissedWorkOrder } from '@/lib/unsubmitted'
 import { Hint } from '@/components/ui/Hint'
 import { RichNoteView, noteText } from '@/components/shared/RichNote'
+import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
+import { FlagsView } from '@/components/flags/FlagsView'
 import {
-  OPS_STUDIOS, isDormantStudio, QueueItem, StudioNight, loadNight, markReviewed,
+  isDormantStudio, DutyState, StudioNight, loadNight, markReviewed,
   opsDate, prettyDate, unmarkReviewed,
 } from '@/lib/dailyOps'
 
@@ -34,6 +59,10 @@ type StudioTask = {
   created_by_name: string | null
   created_at: string
   done_at: string | null
+  /** Initials of whoever checked it off — runner on the hub, or the office here. */
+  done_by: string | null
+  assigned_to_name: string | null
+  due_time: string | null
 }
 
 const DUTY_COLOR: Record<string, string> = {
@@ -47,120 +76,230 @@ const DUTY_COLOR: Record<string, string> = {
   dormant: 'var(--c-wash2, var(--c-wash))',
 }
 
-/** Queue page size — keeps the studio-tasks card in view under a long queue. */
-const QUEUE_PAGE = 10
+// ── THE CARD'S GEOMETRY — fixed, on purpose (see the header). ───────────────
+// The duties column is 2 × (20 label + 3 × 26 rows) + 8 between = 204, always.
+// Desktop: 16 top padding + head 28 + body (6 + 214 + 10) + foot 38 = 312 — the
+// lane sits beside the duties, takes the body's full 214 and scrolls.
+// Phone: the lane drops under the duties at its own fixed 176:
+// 16 + 28 + (6 + 204 + 12 + 176 + 10) + 38 = 490.
+// Change a number here and re-add the sum; nothing else sets a card's size.
+const ROW_H = 26
+const GROUP_H = 20
+const CARD_H = 312
+const LANE_H_MOBILE = 176
+const CARD_H_MOBILE = 490
+
+/** A name → what fits in a 28px chip. Typed initials pass through. */
+function shortName(name: string | null | undefined): string {
+  const n = (name ?? '').trim()
+  if (!n) return ''
+  if (n.length <= 3) return n.toUpperCase()
+  return /\s/.test(n) ? profileInitials(n) : n.slice(0, 2).toUpperCase()
+}
+
+const ellipsis: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+const groupLabel: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+  height: GROUP_H, fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--c-fg-3)',
+}
 
 export default function DailyOpsPage() {
-  const router = useRouter()
-  const { profile } = useUserProfile()
-  const [offset, setOffset] = useState(1)         // 1 = last night
-  const date = opsDate(offset)
+  const { profile, loading: profileLoading } = useUserProfile()
+  const isMobile = useIsMobile()
+  // A tech has the Flags tab and nothing else here: the cards are runner
+  // accountability, which is the office's business (Eli, 2026-10-05).
+  const isTech = profile?.role === 'tech'
 
-  const [queue, setQueue] = useState<QueueItem[]>([])
+  const [tab, setTab] = useState<'ops' | 'flags'>('ops')
+  // ?tab=flags on mount — the /flags stub, the dashboard's list and Flo's chip
+  // all arrive that way. window.location, not useSearchParams (the house
+  // pattern: no Suspense boundary to forget).
+  useEffect(() => {
+    try { if (new URLSearchParams(window.location.search).get('tab') === 'flags') setTab('flags') } catch {}
+  }, [])
+  const shown: 'ops' | 'flags' = isTech ? 'flags' : tab
+  function pickTab(t: 'ops' | 'flags') {
+    setTab(t)
+    try { window.history.replaceState(null, '', t === 'flags' ? '/daily-ops?tab=flags' : '/daily-ops') } catch {}
+  }
+
+  // The count beside "Flags" — a fact about the word, not a badge. RLS scopes
+  // it (a tech counts Tech flags); useFlagsVersion is the shared channel, so
+  // this opens no second subscription beside FlagsView's.
+  const flagsVersion = useFlagsVersion()
+  const [flagCount, setFlagCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!profile) return
+    let live = true
+    fetchOpenFlags().then(f => { if (live) setFlagCount(f.length) })
+    return () => { live = false }
+  }, [profile, flagsVersion])
+
+  if (profileLoading) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26, padding: '2px 4px 0' }}>
+        {!isTech && (
+          <button
+            className={`c-arch${shown === 'ops' ? ' c-on' : ''}`}
+            onClick={() => pickTab('ops')}
+            aria-current={shown === 'ops' ? 'page' : undefined}
+          >
+            Daily Ops
+          </button>
+        )}
+        <button
+          className={`c-arch${shown === 'flags' ? ' c-on' : ''}`}
+          onClick={() => pickTab('flags')}
+          aria-current={shown === 'flags' ? 'page' : undefined}
+        >
+          Flags
+          {flagCount ? <span className="c-btitlen">{flagCount}</span> : null}
+        </button>
+      </div>
+
+      {shown === 'flags'
+        ? <FlagsView />
+        : (
+          <OpsNight
+            me={profile?.display_name || profile?.initials || 'Office'}
+            myInitials={profile?.initials || profileInitials(profile?.display_name) || 'Office'}
+            isMobile={isMobile}
+          />
+        )}
+    </div>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// The Daily Ops tab — one night, four fixed cards.
+// ═════════════════════════════════════════════════════════════════════════════
+function OpsNight({ me, myInitials, isMobile }: { me: string; myInitials: string; isMobile: boolean }) {
+  const [offset, setOffset] = useState(1)         // 1 = yesterday
+  const date = opsDate(offset)
+  const isToday = offset === 0
+
   const [studios, setStudios] = useState<StudioNight[]>([])
   const [tasks, setTasks] = useState<StudioTask[]>([])
+  const [missed, setMissed] = useState<MissedWorkOrder[]>([])
+  /** daily_ops_reviews for this date: item_key → who. The 'wo:<booking>' keys are read here. */
+  const [reviews, setReviews] = useState<Record<string, string | null>>({})
   const [loading, setLoading] = useState(true)
   const [logOpen, setLogOpen] = useState<StudioNight | null>(null)
-  const [newTask, setNewTask] = useState('')
-  const [newTaskStudio, setNewTaskStudio] = useState<string>('paramount')
-  const [qPage, setQPage] = useState(0)
-  // Swipe start point for the sweep's day paging (touch only; buttons on desktop).
+  const [editBooking, setEditBooking] = useState<Booking | null>(null)
+  // The one open "add a task" line — a studio key, or null.
+  const [addingFor, setAddingFor] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  // Swipe start point for day paging (touch only; buttons on desktop).
   const [touchX, setTouchX] = useState<number | null>(null)
-  // The admin view of the runner notes channel (Eli, 2026-09-01).
-  const [notesStudio, setNotesStudio] = useState<string>('paramount')
-  const [notesV, setNotesV] = useState(0)
-
-  // A new night starts back at the queue's first page.
-  useEffect(() => { setQPage(0) }, [date])
 
   const load = useCallback(async () => {
-    const [night, { data: taskData }] = await Promise.all([
+    const [night, { data: taskData }, wos] = await Promise.all([
       loadNight(date),
       supabase.from('studio_tasks').select('*').is('deleted_at', null).order('created_at'),
+      // Today is a day in progress — a session still running is not a miss.
+      isToday ? Promise.resolve([] as MissedWorkOrder[]) : fetchNightMissedWorkOrders(date),
     ])
-    setQueue(night.queue)
     setStudios(night.studios)
-    const visible = ((taskData ?? []) as StudioTask[]).filter(
-      t => !t.done_at || t.done_at.slice(0, 10) >= date,
-    )
+    setReviews(night.reviews)
+    setMissed(wos)
+    // Open tasks, plus anything checked off since this day (the old rule).
+    const visible = ((taskData ?? []) as StudioTask[]).filter(t => !t.done_at || t.done_at.slice(0, 10) >= date)
     visible.sort((a, b) => Number(!!a.done_at) - Number(!!b.done_at))
     setTasks(visible)
     setLoading(false)
-  }, [date])
+  }, [date, isToday])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { setLoading(true); load() }, [load])
 
+  // Realtime — ONE channel for the page, debounced: a work order being edited
+  // somewhere else fires a burst of row events, and each load is a dozen reads.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
+    const soon = () => {
+      if (timer.current) clearTimeout(timer.current)
+      timer.current = setTimeout(() => { load() }, 350)
+    }
     const channel = supabase
       .channel('daily-ops-page')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_reviews' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'flags' }, () => load())
-      // The channel replaced shift_note_docs as the notes source (2026-09-01).
-      // ONE subscription for the whole page — the embedded RunnerNotesChannel
-      // below mounts with subscribe={false} and refreshes via notesV.
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_note_posts' }, () => { setNotesV(v => v + 1); load() })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_section_notes' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_reviews' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_ops_submissions' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_tasks' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_note_posts' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'runner_section_notes' }, soon)
+      // The badges: a late submit, a Complete WO or a new booking changes them.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'studio_time_rows' }, soon)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, soon)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+      supabase.removeChannel(channel)
+    }
   }, [load])
 
-  const me = profile?.display_name || profile?.initials || 'Manager'
-
-  async function clearItem(item: QueueItem) {
-    // A flag is cleared by ACKNOWLEDGING the flag — the flag system stays the
-    // record of it (§19). Everything else writes a review marker.
-    if (item.flagId) {
-      const { error } = await supabase.from('flags').update({
-        status: 'acknowledged',
-        acknowledged_by: me,
-        acknowledged_at: new Date().toISOString(),
-      }).eq('id', item.flagId)
-      if (!dbResult('Acknowledging flag', error)) return
-      load()
-      return
-    }
-    setQueue(prev => prev.map(q => q.key === item.key ? { ...q, reviewed: !q.reviewed } : q))
-    const { error } = item.reviewed
-      ? await unmarkReviewed(date, item.key)
-      : await markReviewed(date, item.key, me)
-    if (!dbResult('Saving review', error)) load()
+  // ── The checks. One row in daily_ops_reviews each; shared by every office seat.
+  async function toggleDuty(d: DutyState) {
+    if (!d.reviewKey) return
+    const key = d.reviewKey
+    const was = !!d.reviewed
+    setStudios(prev => prev.map(s => ({
+      ...s,
+      shifts: s.shifts.map(sh => ({
+        ...sh,
+        duties: sh.duties.map(x => x.reviewKey === key ? { ...x, reviewed: !was, reviewedBy: was ? null : me } : x),
+      })),
+    })))
+    const { error } = was ? await unmarkReviewed(date, key) : await markReviewed(date, key, me)
+    if (!dbResult('Saving check', error)) load()
   }
 
+  const woKey = (o: MissedWorkOrder) => `wo:${o.bookingId}`
+  async function toggleWo(o: MissedWorkOrder) {
+    const key = woKey(o)
+    const was = key in reviews
+    setReviews(prev => {
+      const next = { ...prev }
+      if (was) delete next[key]; else next[key] = me
+      return next
+    })
+    const { error } = was ? await unmarkReviewed(date, key) : await markReviewed(date, key, me)
+    if (!dbResult('Saving check', error)) load()
+  }
+  async function openWo(o: MissedWorkOrder) {
+    const { data, error } = await supabase.from('bookings').select('*').eq('id', o.bookingId).limit(1)
+    if (error) { dbResult('Opening work order', error); return }
+    const b = data?.[0] as Booking | undefined
+    if (b) setEditBooking(b)
+  }
+
+  // ── Tasks — by studio, in that studio's card.
   async function toggleTask(t: StudioTask) {
     const nextDone = t.done_at ? null : new Date().toISOString()
-    setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done_at: nextDone } : x))
-    const { error } = await supabase.from('studio_tasks').update({ done_at: nextDone }).eq('id', t.id)
+    const nextBy = nextDone ? myInitials : null
+    setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done_at: nextDone, done_by: nextBy } : x))
+    const { error } = await supabase.from('studio_tasks').update({ done_at: nextDone, done_by: nextBy }).eq('id', t.id)
     if (!dbResult('Saving task', error)) load()
   }
-
-  async function addTask() {
-    if (!newTask.trim()) return
-    const { error } = await supabase.from('studio_tasks').insert({
-      studio: newTaskStudio,
-      task: newTask.trim(),
-      created_by_name: me,
-    })
+  async function addTask(studio: string) {
+    const text = draft.trim()
+    if (!text) { setAddingFor(null); return }
+    const { error } = await supabase.from('studio_tasks').insert({ studio, task: text, created_by_name: me })
     if (!dbResult('Adding task', error)) return
-    setNewTask('')
+    setDraft('')
     load()
   }
 
-  const open = queue.filter(q => !q.reviewed)
-  // Queue pagination — derived, and self-clamping when items clear off the end.
-  const qPages = Math.max(1, Math.ceil(queue.length / QUEUE_PAGE))
-  const qPageSafe = Math.min(qPage, qPages - 1)
-  const queuePage = queue.slice(qPageSafe * QUEUE_PAGE, (qPageSafe + 1) * QUEUE_PAGE)
-
-  // Sweep day paging — buttons and swipe share these. Forward stops at TODAY
-  // (offset 0), not at yesterday: the page defaults to the finished day, but
-  // the office also wants to watch the current one come in (Eli, 2026-08-31).
+  // Forward stops at TODAY (offset 0): the page defaults to the finished day,
+  // but the office also wants to watch the current one come in (2026-08-31).
   const goEarlier = () => setOffset(o => o + 1)
   const goLater = () => setOffset(o => Math.max(0, o - 1))
+
   const card: React.CSSProperties = {
-    background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)',
-    borderRadius: 18, padding: '14px 16px',
+    background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 18,
+    padding: '16px 18px 0', boxSizing: 'border-box', minWidth: 0,
+    height: isMobile ? CARD_H_MOBILE : CARD_H,
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
   }
   const wash: React.CSSProperties = {
     background: 'var(--c-wash)', border: 'none', borderRadius: 10,
@@ -168,220 +307,179 @@ export default function DailyOpsPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 5fr) 7fr', gap: 16, alignItems: 'start' }}>
-
-        {/* ══ LEFT — queue, then tasks ══ */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={card}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-              <SectionHeader title="Needs you" count={open.length || undefined} countColor="orange" />
-              <Hint tip="The day's exceptions, worst first: flags, then anything that never came in, then missing mics, then notes. Tap an item's circle once you've dealt with it — clearing is shared with every manager. On today, a duty that simply hasn't come in yet is not listed — the day isn't over." />
-            </div>
-            {loading ? (
-              <div style={{ opacity: 0.5, fontSize: 13 }}>Loading…</div>
-            ) : queue.length === 0 || open.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '18px 10px' }}>
-                <div className="c-arch" style={{ fontSize: 17, color: 'var(--c-st-booked)', marginBottom: 3 }}>
-                  Yesterday is done.
-                </div>
-                <div style={{ fontSize: 12.5, opacity: 0.55 }}>
-                  {queue.length === 0 ? 'Nothing went wrong.' : 'Every exception handled — the sweep is your receipt.'}
-                </div>
-              </div>
-            ) : queuePage.map((q, i) => (
-              <div
-                key={q.key}
-                onClick={() => clearItem(q)}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 11, padding: '10px 2px',
-                  cursor: 'pointer', opacity: q.reviewed ? 0.35 : 1,
-                  boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
-                }}
-              >
-                <span style={{
-                  width: 9, height: 9, borderRadius: 99, marginTop: 5, flexShrink: 0,
-                  background: q.severity === 'hot' ? 'var(--c-st-hot)' : 'var(--c-st-warm)',
-                }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, textDecoration: q.reviewed ? 'line-through' : undefined }}>
-                    {q.title}
-                  </div>
-                  <div style={{ fontSize: 11.5, opacity: 0.55, marginTop: 1 }}>{q.sub}</div>
-                </div>
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.06em', opacity: 0.45, marginTop: 4, flexShrink: 0 }}>
-                  {q.abbr}
-                </span>
-                <span style={{
-                  width: 26, height: 26, borderRadius: 99, flexShrink: 0,
-                  background: q.reviewed ? 'var(--c-st-booked)' : 'var(--c-wash2)',
-                  color: q.reviewed ? 'var(--c-chip-ink)' : 'transparent',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
-                }}>✓</span>
-              </div>
-            ))}
-            {/* Pager — only when the queue overflows a page, so quiet mornings
-                look exactly as before. */}
-            {qPages > 1 && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                <button onClick={() => setQPage(p => Math.max(0, p - 1))} disabled={qPageSafe === 0}
-                  style={{ ...wash, cursor: qPageSafe === 0 ? 'default' : 'pointer', fontWeight: 700, opacity: qPageSafe === 0 ? 0.35 : 1, padding: '6px 12px' }}>‹</button>
-                <span style={{ fontSize: 11, opacity: 0.5 }}>Page {qPageSafe + 1} of {qPages}</span>
-                <button onClick={() => setQPage(p => Math.min(qPages - 1, p + 1))} disabled={qPageSafe === qPages - 1}
-                  style={{ ...wash, cursor: qPageSafe === qPages - 1 ? 'default' : 'pointer', fontWeight: 700, opacity: qPageSafe === qPages - 1 ? 0.35 : 1, padding: '6px 12px' }}>›</button>
-              </div>
-            )}
+    <>
+      <div
+        onTouchStart={e => setTouchX(e.touches[0].clientX)}
+        onTouchEnd={e => {
+          if (touchX === null) return
+          const dx = e.changedTouches[0].clientX - touchX
+          setTouchX(null)
+          // Swipe right → earlier day, swipe left → later (clamped at today).
+          if (dx > 50) goEarlier()
+          else if (dx < -50) goLater()
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 4px 12px' }}>
+          <div style={{ minWidth: 0 }}>
+            {/* "Yesterday", not "Last night" — the studios run 24/7
+                (terminology ruling, Eli 2026-08-17: day, never night). */}
+            <span style={{ fontSize: 16, fontWeight: 700 }}>
+              {isToday ? 'Today' : offset === 1 ? 'Yesterday' : prettyDate(date)}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--c-fg-3)', marginLeft: 10 }}>
+              {offset <= 1 ? prettyDate(date) : ''}{isToday ? ' · still coming in' : ''}
+            </span>
+            <Hint tip="One card per studio. Left: what the opener and closer owed — green came in, red never did. Right: that studio's tasks, and a red badge for any session whose work order the runner never submitted. Tap a red row or a badge's check once you've dealt with it. ‹ › pages back through earlier days." />
           </div>
-
-          <div style={card}>
-            <SectionHeader title="Studio tasks · what the opener sees" />
-            {tasks.length === 0 && <div style={{ fontSize: 12.5, opacity: 0.5, marginBottom: 8 }}>No tasks out.</div>}
-            {tasks.map((t, i) => (
-              <div key={t.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', fontSize: 12.5,
-                boxShadow: i > 0 ? '0 -1px 0 var(--c-wash)' : undefined,
-              }}>
-                <button
-                  onClick={() => toggleTask(t)}
-                  aria-label={t.done_at ? 'Mark not done' : 'Mark done'}
-                  style={{
-                    width: 20, height: 20, borderRadius: 99, flexShrink: 0, border: 'none', font: 'inherit',
-                    background: t.done_at ? 'var(--c-st-booked)' : 'var(--c-wash2)',
-                    color: t.done_at ? 'var(--c-chip-ink)' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, cursor: 'pointer',
-                  }}
-                >✓</button>
-                <span style={{
-                  flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  opacity: t.done_at ? 0.4 : 1, textDecoration: t.done_at ? 'line-through' : undefined,
-                }}>{t.task}</span>
-                <span style={{ fontSize: 10.5, opacity: 0.45, flexShrink: 0 }}>
-                  {OPS_STUDIOS.find(s => s.key === t.studio)?.abbr ?? t.studio}
-                  {t.done_at
-                    ? ` · done ${new Date(t.done_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                    : t.created_by_name ? ` · ${t.created_by_name}` : ''}
-                </span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-              <select value={newTaskStudio} onChange={e => setNewTaskStudio(e.target.value)} style={{ ...wash, fontWeight: 700, cursor: 'pointer' }}>
-                {OPS_STUDIOS.map(s => <option key={s.key} value={s.key}>{s.abbr}</option>)}
-              </select>
-              <input
-                value={newTask}
-                onChange={e => setNewTask(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addTask() }}
-                placeholder="Leave a task for whoever opens…"
-                style={{ ...wash, flex: 1 }}
-              />
-              <button onClick={addTask} style={{ ...wash, background: 'var(--c-wash2)', fontWeight: 700, cursor: 'pointer', padding: '9px 16px' }}>Add</button>
-            </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <button onClick={goEarlier} aria-label="Earlier day"
+              style={{ ...wash, cursor: 'pointer', fontWeight: 700, padding: '7px 14px' }}>‹</button>
+            <button onClick={goLater} disabled={isToday} aria-label="Later day"
+              style={{ ...wash, cursor: isToday ? 'default' : 'pointer', fontWeight: 700, opacity: isToday ? 0.4 : 1, padding: '7px 14px' }}>›</button>
           </div>
         </div>
 
-        {/* ══ RIGHT — the sweep. The date is the hero; ‹ ›  or a swipe pages
-            through previous nights (this browsing IS the old daily-ops log). ══ */}
-        <div
-          onTouchStart={e => setTouchX(e.touches[0].clientX)}
-          onTouchEnd={e => {
-            if (touchX === null) return
-            const dx = e.changedTouches[0].clientX - touchX
-            setTouchX(null)
-            // Swipe right → earlier night, swipe left → later (clamped at last night).
-            if (dx > 50) goEarlier()
-            else if (dx < -50) goLater()
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
-            <div>
-              <div className="c-label" style={{ marginBottom: 3 }}>The sweep · every studio<Hint tip="One card per studio: the five duties, who worked, and the day's shift log. Use ‹ › (or swipe) to browse previous days — this is also the ops history." /></div>
-              <span className="c-arch" style={{ fontSize: 24, letterSpacing: '-0.02em', lineHeight: 1.05 }}>
-                {/* "Yesterday", not "Last night" — the studios run 24/7
-                    (terminology ruling, Eli 2026-08-17: day, never night). */}
-                {offset === 0 ? 'Today' : offset === 1 ? 'Yesterday' : prettyDate(date)}
-              </span>
-              <span style={{ fontSize: 12, opacity: 0.5, marginLeft: 10 }}>
-                {prettyDate(date)}{offset === 0 ? ' · still coming in' : ''}
-              </span>
-            </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-              <button onClick={goEarlier} aria-label="Earlier day"
-                style={{ ...wash, cursor: 'pointer', fontWeight: 700, padding: '7px 14px' }}>‹</button>
-              <button onClick={goLater} disabled={offset === 0} aria-label="Later day"
-                style={{ ...wash, cursor: offset === 0 ? 'default' : 'pointer', fontWeight: 700, opacity: offset === 0 ? 0.4 : 1, padding: '7px 14px' }}>›</button>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
-            {studios.map(s => {
-              // A studio nobody is rostered to (Track — long-term lease, Eli
-              // 2026-08-31). The card stays, because the room still exists and
-              // anything submitted there still shows; it just recedes so four
-              // grey duty lines don't read as four problems. Nothing about the
-              // data is hidden — remove it from DORMANT_STUDIOS and it is a
-              // normal studio again.
-              const dormant = isDormantStudio(s.studio)
-              return (
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+          {studios.map(s => {
+            // A studio nobody is rostered to (Track — long-term lease, Eli
+            // 2026-08-31). The card stays at full size and recedes; anything
+            // submitted there still shows. Remove it from DORMANT_STUDIOS and
+            // it is a normal studio again.
+            const dormant = isDormantStudio(s.studio)
+            const sMissed = missed.filter(o => o.slug === s.studio)
+            const sTasks = tasks.filter(t => t.studio === s.studio)
+            const adding = addingFor === s.studio
+            const empty = sMissed.length === 0 && sTasks.length === 0
+            return (
               <div key={s.studio} style={dormant ? { ...card, opacity: 0.45 } : card}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-                  <span className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em' }}>{s.label}</span>
-                  <span style={{ fontSize: 10.5, opacity: 0.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {/* head — 28 */}
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, height: 28, flexShrink: 0 }}>
+                  <span className="c-arch" style={{ fontSize: 17, letterSpacing: '-0.02em' }}>{s.label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--c-fg-3)', minWidth: 0, ...ellipsis }}>
                     {dormant ? 'Long-term lease · not staffed' : s.who}
                   </span>
                 </div>
-                {/* OPENER / CLOSER split (Eli, 2026-09-01: "breaking it up
-                    allows us to distinguish who did it"). Same five duties,
-                    dealt to the shift that owes them — petty cash under both,
-                    since both shifts touch the box — with the shift's person
-                    on its header line, from that shift's own submissions. */}
-                {s.shifts.map(sh => (
-                  <div key={sh.key} style={{ marginTop: sh.key === 'closer' ? 7 : 0 }}>
-                    <div className="c-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 1, fontSize: 9 }}>
-                      <span>{sh.label}</span>
-                      <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 700, opacity: sh.who === '—' ? 0.45 : 0.85 }}>{sh.who}</span>
-                    </div>
-                    {sh.duties.map(d => (
-                      <div key={`${sh.key}:${d.key}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 12 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: DUTY_COLOR[d.state] ?? 'var(--c-wash2)' }} />
-                        {d.label}
-                        <span style={{ marginLeft: 'auto', fontSize: 10.5, opacity: 0.5, flexShrink: 0 }}>{d.detail}</span>
+
+                {/* body — duties | lane (stacked on a phone) */}
+                <div style={{
+                  flex: 1, minHeight: 0, padding: '6px 0 10px',
+                  display: isMobile ? 'flex' : 'grid', flexDirection: 'column',
+                  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: isMobile ? 12 : 22,
+                }}>
+                  {/* OPENER / CLOSER (Eli, 2026-09-01: "breaking it up allows
+                      us to distinguish who did it"). Six rows, always. */}
+                  <div style={{ flexShrink: 0, minWidth: 0 }}>
+                    {s.shifts.map(sh => (
+                      <div key={sh.key} style={{ marginTop: sh.key === 'closer' ? 8 : 0 }}>
+                        <div style={groupLabel}>
+                          <span>{sh.label}</span>
+                          <span style={{ letterSpacing: '0.04em', opacity: sh.who === '—' ? 0.6 : 1, minWidth: 0, ...ellipsis }}>{sh.who}</span>
+                        </div>
+                        {sh.duties.map(d => <DutyRow key={`${sh.key}:${d.key}`} d={d} onToggle={toggleDuty} />)}
                       </div>
                     ))}
                   </div>
-                ))}
-                {s.entries.length > 0 ? (
-                  <div
-                    onClick={() => setLogOpen(s)}
-                    style={{ marginTop: 8, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 11px', cursor: 'pointer' }}
-                  >
-                    <div className="c-label" style={{ marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Shift notes · {s.entries.length} {s.entries.length === 1 ? 'runner' : 'runners'}</span>
-                      <span style={{ opacity: 0.8, fontWeight: 800, textTransform: 'none', letterSpacing: 0 }}>View →</span>
+
+                  {/* THE LANE — the only part of a card that varies. It has a
+                      fixed box and scrolls inside it; nothing here can grow
+                      the card. */}
+                  <div style={{
+                    minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
+                    height: isMobile ? LANE_H_MOBILE : undefined, flexShrink: 0,
+                    boxShadow: isMobile ? '0 -1px 0 var(--c-wash)' : '-1px 0 0 var(--c-wash)',
+                    padding: isMobile ? '8px 0 0' : '0 0 0 20px',
+                  }}>
+                    <div style={{ ...groupLabel, flexShrink: 0 }}>
+                      {adding ? (
+                        <input
+                          autoFocus
+                          value={draft}
+                          onChange={e => setDraft(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') addTask(s.studio)
+                            if (e.key === 'Escape') { setDraft(''); setAddingFor(null) }
+                          }}
+                          onBlur={() => { if (!draft.trim()) setAddingFor(null) }}
+                          placeholder={`Task for ${s.label}… Enter to add`}
+                          style={{
+                            flex: 1, minWidth: 0, height: GROUP_H, boxSizing: 'border-box', background: 'var(--c-wash)', border: 'none',
+                            borderRadius: 6, padding: '0 8px', color: 'var(--c-fg)', font: 'inherit', fontSize: 11.5, fontWeight: 500,
+                            letterSpacing: 0, textTransform: 'none', outline: 'none',
+                          }}
+                        />
+                      ) : <span>Tasks</span>}
+                      {!dormant && (
+                        <button
+                          // mousedown, not click: the input's blur fires first and
+                          // would close the line before a click could toggle it.
+                          onMouseDown={e => { e.preventDefault(); setDraft(''); setAddingFor(adding ? null : s.studio) }}
+                          aria-label={adding ? 'Close' : `Add a task for ${s.label}`}
+                          title={adding ? 'Close' : `Leave a task for whoever opens ${s.label}`}
+                          style={{
+                            width: 18, height: 18, borderRadius: 99, flexShrink: 0, border: 'none', cursor: 'pointer', font: 'inherit',
+                            background: 'var(--c-wash2)', color: 'var(--c-fg-2)', fontSize: 13, lineHeight: '18px', padding: 0,
+                            letterSpacing: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >{adding ? '×' : '+'}</button>
+                      )}
                     </div>
                     <div style={{
-                      fontSize: 11.5, lineHeight: 1.5, opacity: 0.8,
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                      flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 14, marginTop: 2,
+                      scrollbarWidth: 'thin',
+                      // A soft bottom edge, so a list that runs on reads as "more below".
+                      WebkitMaskImage: 'linear-gradient(#000 calc(100% - 16px), transparent)',
+                      maskImage: 'linear-gradient(#000 calc(100% - 16px), transparent)',
                     }}>
-                      {s.entries[0].author_name}: {noteText(s.entries[0].text)}
+                      {sMissed.map(o => (
+                        <WoBadge
+                          key={`${o.bookingId}-${o.date}`}
+                          o={o}
+                          handledBy={woKey(o) in reviews ? (reviews[woKey(o)] ?? '') : null}
+                          onOpen={() => openWo(o)}
+                          onToggle={() => toggleWo(o)}
+                        />
+                      ))}
+                      {sTasks.map(t => <TaskRow key={t.id} t={t} onToggle={() => toggleTask(t)} />)}
+                      {empty && (
+                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, color: 'var(--c-fg-3)', opacity: 0.6 }}>
+                          {loading ? '' : dormant ? 'Not staffed' : 'No tasks'}
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div style={{ marginTop: 8, background: 'var(--c-wash)', borderRadius: 12, padding: '9px 11px', fontSize: 11.5, opacity: 0.45, fontStyle: 'italic' }}>
-                    No shift notes.
-                  </div>
-                )}
+                </div>
+
+                {/* foot — 38: the day's shift notes, one line */}
+                <div
+                  onClick={s.entries.length > 0 ? () => setLogOpen(s) : undefined}
+                  style={{
+                    height: 38, flexShrink: 0, margin: '0 -18px', padding: '0 18px',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    boxShadow: '0 -1px 0 var(--c-wash)', fontSize: 11.5, color: 'var(--c-fg-3)',
+                    cursor: s.entries.length > 0 ? 'pointer' : undefined,
+                  }}
+                >
+                  <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                    Notes{s.entries.length > 0 ? ` · ${s.entries.length}` : ''}
+                  </span>
+                  {s.entries.length > 0 ? (
+                    <>
+                      <span style={{ flex: 1, minWidth: 0, color: 'var(--c-fg-2)', ...ellipsis }}>
+                        {s.entries[0].author_name}: {noteText(s.entries[0].text)}
+                      </span>
+                      <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>View →</span>
+                    </>
+                  ) : (
+                    <span style={{ flex: 1, minWidth: 0, fontStyle: 'italic', opacity: 0.7 }}>No shift notes</span>
+                  )}
+                </div>
               </div>
-              )
-            })}
-          </div>
+            )
+          })}
         </div>
       </div>
 
-      {/* (The runner-notes channel MOVED to /shift-notes → Runner notes tab,
-          2026-09-06 — all the building's notes live on one page now. The sweep
-          card's per-night notes popup stays.) */}
-
-      {/* Shift-log popup — the full night */}
+      {/* Shift-notes popup — the full day */}
       {logOpen && (
         <div
           onClick={e => { if (e.target === e.currentTarget) setLogOpen(null) }}
@@ -413,6 +511,134 @@ export default function DailyOpsPage() {
           </div>
         </div>
       )}
+
+      {/* A badge opens its work order right here — the same popup the
+          dashboard and the calendar use. */}
+      {editBooking && (
+        <WorkOrderPopup
+          booking={editBooking}
+          onClose={() => { setEditBooking(null); load() }}
+          onSaved={() => { load() }}
+          onDelete={async () => { await deleteSessionAndWO(editBooking); setEditBooking(null); load() }}
+        />
+      )}
+    </>
+  )
+}
+
+// ── a duty: dot · label · detail. A MISSING one is the row you tap. ──────────
+function DutyRow({ d, onToggle }: { d: DutyState; onToggle: (d: DutyState) => void }) {
+  const missing = d.state === 'missing'
+  const handled = missing && !!d.reviewed
+  const tappable = missing && !!d.reviewKey
+  return (
+    <div
+      onClick={tappable ? () => onToggle(d) : undefined}
+      title={handled
+        ? `Handled${d.reviewedBy ? ` · ${d.reviewedBy}` : ''} — tap to undo`
+        : tappable ? 'Tap once you have dealt with it' : undefined}
+      style={{ display: 'flex', alignItems: 'center', gap: 9, height: ROW_H, fontSize: 12.5, cursor: tappable ? 'pointer' : undefined }}
+    >
+      {handled ? (
+        // Handled: the dot itself becomes the check — no extra control on the row.
+        <span style={{
+          width: 13, height: 13, margin: '0 -3px', borderRadius: 99, flexShrink: 0, boxSizing: 'border-box',
+          boxShadow: 'inset 0 0 0 1.5px var(--c-fg-3)', color: 'var(--c-fg-3)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800,
+        }}>✓</span>
+      ) : (
+        <span style={{ width: 7, height: 7, borderRadius: 99, flexShrink: 0, background: DUTY_COLOR[d.state] ?? 'var(--c-wash2)' }} />
+      )}
+      <span style={{ flexShrink: 0, fontWeight: missing && !handled ? 700 : 500, color: handled ? 'var(--c-fg-3)' : undefined }}>{d.label}</span>
+      <span style={{
+        flex: 1, minWidth: 0, textAlign: 'right', fontSize: 10.5, ...ellipsis,
+        color: missing && !handled ? 'var(--c-st-hot)' : 'var(--c-fg-3)',
+      }}>{d.detail}</span>
+    </div>
+  )
+}
+
+// ── "WO not submitted" — the wording is Eli's, 2026-10-05; don't shorten it. ─
+function WoBadge({ o, handledBy, onOpen, onToggle }: {
+  o: MissedWorkOrder
+  /** null = open; a string (possibly empty) = checked, by that name. */
+  handledBy: string | null
+  onOpen: () => void
+  onToggle: () => void
+}) {
+  const handled = handledBy !== null
+  const whoTip = o.whoSource === 'saved'
+    ? `${o.who} was the last runner to save this work order that day`
+    : o.whoSource === 'closer'
+      ? `${o.who} filed the closing checklist that day — no runner saved this work order`
+      : 'No runner opened this work order and nobody filed a closing checklist'
+  return (
+    <div
+      onClick={onOpen}
+      title={`${o.woNumber ? `${o.woNumber} · ` : ''}Tap to open the work order${o.covered ? ' · the office has since completed or reviewed it' : ''}`}
+      style={{
+        display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', columnGap: 8, alignItems: 'center',
+        height: 42, boxSizing: 'border-box', marginBottom: 5, borderRadius: 10, padding: '0 7px 0 11px', cursor: 'pointer',
+        background: handled ? 'var(--c-wash)' : 'var(--c-st-hot)',
+        color: handled ? 'var(--c-fg-3)' : 'var(--c-hot-text)',
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 800, lineHeight: 1.25, ...ellipsis }}>WO not submitted</div>
+        <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.25, opacity: 0.85, ...ellipsis }}>{o.room} · {o.client}</div>
+      </div>
+      <span
+        className="c-mono"
+        title={whoTip}
+        style={{
+          minWidth: 28, height: 22, boxSizing: 'border-box', padding: '0 7px', borderRadius: 99, fontSize: 10.5, fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: handled ? 'var(--c-wash2)' : 'rgba(0,0,0,0.2)',
+        }}
+      >{shortName(o.who) || '?'}</span>
+      <button
+        onClick={e => { e.stopPropagation(); onToggle() }}
+        aria-label={handled ? 'Mark not handled' : 'Mark handled'}
+        title={handled ? `Handled${handledBy ? ` · ${handledBy}` : ''} — tap to undo` : 'Tap once you have dealt with it'}
+        style={{
+          width: 22, height: 22, borderRadius: 99, border: 'none', cursor: 'pointer', font: 'inherit', padding: 0,
+          fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: handled ? 'var(--c-st-booked)' : 'rgba(0,0,0,0.2)',
+          color: handled ? 'var(--c-chip-ink)' : 'transparent',
+        }}
+      >✓</button>
+    </div>
+  )
+}
+
+// ── a studio task: the runner checks it on the hub, the office can here. ─────
+function TaskRow({ t, onToggle }: { t: StudioTask; onToggle: () => void }) {
+  const done = !!t.done_at
+  const meta = [t.created_by_name ? `from ${t.created_by_name}` : null, t.assigned_to_name ? `for ${t.assigned_to_name}` : null].filter(Boolean).join(' · ')
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, height: ROW_H, fontSize: 12.5 }}>
+      <button
+        onClick={onToggle}
+        aria-label={done ? 'Mark not done' : 'Mark done'}
+        style={{
+          width: 17, height: 17, borderRadius: 99, flexShrink: 0, border: 'none', cursor: 'pointer', font: 'inherit', padding: 0,
+          fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: done ? 'var(--c-st-booked)' : 'transparent',
+          boxShadow: done ? undefined : 'inset 0 0 0 1.5px var(--c-fg-3)',
+          color: done ? 'var(--c-chip-ink)' : 'transparent',
+        }}
+      >✓</button>
+      <span
+        title={meta ? `${t.task} — ${meta}` : t.task}
+        style={{ flex: 1, minWidth: 0, ...ellipsis, opacity: done ? 0.45 : 1, textDecoration: done ? 'line-through' : undefined }}
+      >{t.task}</span>
+      {done ? (
+        <span className="c-mono" style={{ fontSize: 9.5, color: 'var(--c-fg-3)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+          {[t.done_by, new Date(t.done_at!).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })].filter(Boolean).join(' ')}
+        </span>
+      ) : t.due_time ? (
+        <span className="c-mono" style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-st-warm)', flexShrink: 0 }}>{t.due_time}</span>
+      ) : null}
     </div>
   )
 }

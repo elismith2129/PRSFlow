@@ -12,6 +12,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `components/PRSFloIcon.tsx` is **THE RIBBON (spec §20, 2026-08-22)** — one solid twisted-ribbon wave filled **sea green `#43dfae`**, fixed in both themes. This is the sanctioned brand exception to the design spec's Law 3 (like the Flo glow is to the no-glow rule); nothing else may borrow the colour. No gradients, no glow, never currentColor, and never the old three-wave strokes. `scripts/generate-icons.js` carries the identical path (charcoal ground; runner set = warm amber `#ffa94d`); regenerate with `node scripts/generate-icons.js`.
   - (The original rule existed because the login page drifted to the wrong font and colour. A shared component removes the failure mode rather than restating the rule.)
 
+- **BOXES ARE A FIXED SIZE. CONTENT SCROLLS INSIDE THEM; A BOX NEVER GROWS. (Eli, 2026-10-05: "I've mentioned this a lot and we keep building these pages that have weird different size boxes that push each other around.")** App-wide, every page, every rework — this is the dashboard's FIXED GEOMETRY LAW (v1.24.0) promoted from one page to a house rule.
+  - Every card / panel has ONE designed height, and peers in the same grid share it. Nothing a user adds and nothing a night produces may change a box's outer size or move its neighbours.
+  - Variable content (lists, badges, tasks, notes, anything with a count) lives in a region INSIDE the box with `overflow-y: auto`. Fixed content is laid out to fit; long text is clamped or ellipsised, never allowed to wrap the box taller.
+  - An empty box keeps its size — a quiet empty state, never a collapse. Data-emptiness is legal; a box that shrinks because it is empty is the same bug as one that grows because it is full.
+  - Grid tracks are `minmax(0, …)` so long text cannot widen a column either.
+  - **A mock that shows same-row boxes at different heights is wrong before it is reviewed.** Check it at the heaviest and the emptiest realistic load before showing it.
+  - First applied under this rule: the Daily Ops studio cards (Oct 2026 rework) — the only things that vary per card are the missed-work-order badges and the studio's tasks, and both scroll inside the card.
+
 ## Standing Architecture Rules
 
 ### The Work Order IS the booking (July 2026 rebuild — read docs/WO-SPEC.md first)

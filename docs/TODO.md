@@ -7,6 +7,8 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
+- [x] ~~Run `20261005120000_daily_ops_reviews_billing.sql`~~ — ran Oct 5; `dor_ins` and `dor_del` both list `billing` (Eli's screenshot of pg_policies). The Billing role can check items off on Daily Ops. *(Oct 5)*
+
 - [ ] **Run** `20261001150000_lakers_games.sql` before the v1.42.0 push. When the Lakers drop the 26–27 schedule: Admin → Lakers → 26–27 → Paste schedule. *(Oct 1)*
 
 - [ ] **Run the SRS migrations** `20261001120000_srs_payouts.sql`, `…130000_srs_backfill_wo_flag.sql`, `…140000_srs_history.sql`. *(Oct 1)*

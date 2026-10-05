@@ -4,6 +4,15 @@
 // Deliberately NOT included (each has an owner elsewhere, one copy of
 // everything): work orders → Billing's review bucket; punches → HR; tonight's
 // live status → the dashboard.
+//
+// 2026-10-05 — the page lost its "Needs you" queue: the four studio cards are
+// the page now, and a missing duty is checked off on its own row (see
+// DutyState.reviewKey). `loadNight` still BUILDS the queue below; nothing
+// renders it. It is left in place rather than half-removed — the absence /
+// missing-mic / attention-note rules in it are the reference for what a card's
+// red and amber rows mean. Work orders did arrive, as a badge: the night's
+// never-submitted sessions come from lib/unsubmitted (the one rule), not from
+// here.
 import { supabase } from '@/lib/supabase'
 import { opsDayOf } from '@/lib/time'
 
@@ -70,6 +79,21 @@ export type DutyState = {
   // 'dormant' is a studio nobody is rostered to (DORMANT_STUDIOS).
   state: 'done' | 'missing' | 'flagged' | 'pending' | 'dormant'
   detail: string
+  // ── The check-off (2026-10-05). Set only on a MISSING duty inside a shift
+  // group: the cards replaced the "Needs you" queue, so a red row is now the
+  // thing you tap. `reviewKey` is the daily_ops_reviews item_key the tap
+  // writes — per SHIFT, because petty cash sits under both opener and closer
+  // and each is its own row to answer for. A check made in the queue era
+  // (key without the shift) still counts: see legacyReviewKey.
+  reviewKey?: string
+  reviewed?: boolean
+  reviewedBy?: string | null
+}
+
+/** 'missing:<studio>:<shift>:<duty>' → the queue-era 'missing:<studio>:<duty>'. */
+export function legacyReviewKey(key: string): string | null {
+  const p = key.split(':')
+  return p.length === 4 && p[0] === 'missing' ? `missing:${p[1]}:${p[3]}` : null
 }
 
 // One per author-shift since 2026-08-26 (shift_note_docs — the big-field
@@ -135,7 +159,7 @@ export function prettyDate(date: string): string {
  * that never came in is the loudest signal there is and used to be invisible),
  * then missing mics, then attention notes.
  */
-export async function loadNight(date: string): Promise<{ queue: QueueItem[]; studios: StudioNight[] }> {
+export async function loadNight(date: string): Promise<{ queue: QueueItem[]; studios: StudioNight[]; reviews: Record<string, string | null> }> {
   // Today is a day IN PROGRESS, not a day that failed (Eli, 2026-08-31 — the
   // page can now page forward to today). Nothing has come in yet at 2pm, so
   // every unsubmitted duty reads 'pending' instead of 'missing', and the
@@ -178,10 +202,14 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       .lt('created_at', `${shiftDateStr(date, 2)}T00:00:00-12:00`)
       .neq('text', '').order('created_at'),
     supabase.from('runner_section_notes').select('*').eq('date', date).neq('text', '').order('created_at'),
-    supabase.from('daily_ops_reviews').select('item_key').eq('date', date),
+    supabase.from('daily_ops_reviews').select('item_key, reviewed_by').eq('date', date),
   ])
 
   const seen = new Set((reviews ?? []).map((r: any) => r.item_key))
+  // item_key → who checked it. The page reads this for the keys it owns
+  // itself (the 'wo:<booking>' badges); duty rows get theirs stamped below.
+  const reviewMap: Record<string, string | null> = {}
+  for (const r of (reviews ?? []) as any[]) reviewMap[r.item_key] = r.reviewed_by ?? null
   const micName = (id: string) => (mics ?? []).find((m: any) => m.id === id)?.name ?? 'Mic'
   const queue: QueueItem[] = []
   const studios: StudioNight[] = []
@@ -313,6 +341,14 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       Array.from(new Set(names.map(n => (n ?? '').trim()).filter(Boolean))).join(', ') || '—'
     const openCl = sChecklists.find((r: any) => r.type === 'opening')
     const closeCl = sChecklists.find((r: any) => r.type === 'closing')
+    // A missing duty carries its own check-off state (see DutyState).
+    const withReview = (shiftKey: string, d: DutyState): DutyState => {
+      if (d.state !== 'missing') return d
+      const reviewKey = `missing:${s.key}:${shiftKey}:${d.key}`
+      const legacy = `missing:${s.key}:${d.key}`
+      const hit = reviewKey in reviewMap ? reviewKey : legacy in reviewMap ? legacy : null
+      return { ...d, reviewKey, reviewed: !!hit, reviewedBy: hit ? reviewMap[hit] : null }
+    }
     const shifts: ShiftGroup[] = SHIFT_DUTIES.map(sh => ({
       key: sh.key,
       label: sh.label,
@@ -322,14 +358,14 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
       // Petty cash is one duty, but the CLOSER's half is the closing count
       // (petty_cash_balances.counted_close, 2026-09-15): the opener's count
       // marks it submitted, and that alone used to satisfy both shifts.
-      duties: sh.duties.map(k => {
+      duties: sh.duties.map((k): DutyState => {
         if (k !== 'petty_cash' || sh.key !== 'closer') return dutyBy(k)
         const d = dutyBy(k)
         if (d.state !== 'done' && d.state !== 'flagged') return d
         const bal = (cashBal ?? []).find((r: any) => r.studio === s.key)
         if (bal?.counted_close != null) return { ...d, detail: `counted $${Number(bal.counted_close).toFixed(0)} · ${d.detail}` }
         return { ...d, state: dormant ? 'dormant' : isToday ? 'pending' : 'missing', detail: dormant ? 'not staffed' : isToday ? 'opened · no closing count yet' : 'no closing count' }
-      }),
+      }).map(d => withReview(sh.key, d)),
     }))
 
     studios.push({
@@ -350,7 +386,7 @@ export async function loadNight(date: string): Promise<{ queue: QueueItem[]; stu
   // Hot before warm; within a severity, keep insertion order (flags, absences,
   // mics, notes) — that IS the urgency ladder.
   queue.sort((a, b) => Number(b.severity === 'hot') - Number(a.severity === 'hot'))
-  return { queue, studios }
+  return { queue, studios, reviews: reviewMap }
 }
 
 export async function markReviewed(date: string, itemKey: string, by: string) {
@@ -358,5 +394,8 @@ export async function markReviewed(date: string, itemKey: string, by: string) {
 }
 
 export async function unmarkReviewed(date: string, itemKey: string) {
-  return supabase.from('daily_ops_reviews').delete().eq('date', date).eq('item_key', itemKey)
+  // Un-checking a duty row also clears a queue-era check on the same duty, or
+  // the row would spring back to "handled" on the next load.
+  const legacy = legacyReviewKey(itemKey)
+  return supabase.from('daily_ops_reviews').delete().eq('date', date).in('item_key', legacy ? [itemKey, legacy] : [itemKey])
 }

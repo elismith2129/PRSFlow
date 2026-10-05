@@ -16,9 +16,9 @@ export type FloLine = { text: string; go?: FloGo }
 export const FLO_GO_ROUTES: Record<FloGo, string> = {
   'notes': '/shift-notes',
   'runner-notes': '/shift-notes?tab=runner',
-  'flags': '/flags',
+  'flags': '/daily-ops?tab=flags',
   'holds': '/calendar',
-  'tasks': '/tasks',
+  'tasks': '/daily-ops?tab=flags',
   'crm': '/crm',
 }
 

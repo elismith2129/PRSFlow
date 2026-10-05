@@ -527,7 +527,7 @@ export default function DashboardPage() {
         })
       }
       for (const t of tasks) {
-        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/flags?item=${t.id}` })
+        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/daily-ops?tab=flags&item=${t.id}` })
       }
       return rows
     }
@@ -548,7 +548,7 @@ export default function DashboardPage() {
     }
     if (qTab === effectiveView) {
       for (const t of tasks) {
-        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/flags?item=${t.id}` })
+        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/daily-ops?tab=flags&item=${t.id}` })
       }
     }
     return rows
@@ -883,7 +883,7 @@ export default function DashboardPage() {
       {/* Tech sees neither (2026-09-16): one portal, the open Tech flags. */}
       {isTech ? (
       <div className="n-row2">
-        <div className="n-portal" onClick={() => router.push('/flags')}>
+        <div className="n-portal" onClick={() => router.push('/daily-ops?tab=flags')}>
           <div className="n-pt"><b>Flags — tech</b><span className="n-arrow">→</span></div>
           <div className="n-pbody">
             <div className="n-pleft">

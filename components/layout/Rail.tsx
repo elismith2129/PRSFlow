@@ -72,9 +72,11 @@ const OPERATIONS: RailItem[] = [
   // Engineers moved out of the retired Admin page (Eli, 2026-08-17) — the one
   // thing in there still used. Admin's rebuild is a later phase.
   { href: '/engineers', label: 'Engineers', ic: '◈' },
-  // Tasks + Flags are ONE page (2026-09-15): a task is a flag someone typed.
-  // /tasks redirects here — do not re-add a Tasks item.
-  { href: '/flags', label: 'Flags', ic: '⚑' },
+  // FLAGS LEFT THE RAIL (2026-10-05). It is the second tab of /daily-ops now
+  // (Eli: "we keep adding things to the rail and things get more complicated
+  // and get hidden to where people don't actually use them"). /flags and
+  // /tasks are redirect stubs — do not re-add either item. A tech still gets
+  // a "Flags" row: see techItem() below, which relabels Daily Ops for them.
   { href: '/nadines', label: "Nadine's", ic: '♫' },
 ]
 const HR: RailItem[] = [
@@ -230,6 +232,15 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
     router.replace('/login')
   }
 
+  /** A tech's only business on /daily-ops is the Flags tab (the page shows
+   *  them nothing else), so their rail row says so and lands there. Same
+   *  route, honest label — everyone else sees "Daily Ops". */
+  function techItem(item: RailItem): RailItem {
+    return profile?.role === 'tech' && item.href === '/daily-ops'
+      ? { ...item, href: '/daily-ops?tab=flags', label: 'Flags', ic: '⚑' }
+      : item
+  }
+
   function isActive(href: string) {
     // Links may carry a query (Runner Hub → /preview?path=…); match on the
     // path part only, since usePathname() never includes the query string.
@@ -334,7 +345,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
           <div className="c-rail-grp">Business</div>
           {filterItems(BUSINESS).map(i => renderGroup(i))}
           <div className="c-rail-grp">Operations</div>
-          {filterItems(OPERATIONS).map(i => renderItem(i))}
+          {filterItems(OPERATIONS).map(i => renderItem(techItem(i)))}
           <div className="c-rail-grp">HR</div>
           {filterItems(HR).map(i => renderItem(i))}
           {filterItems(ADMIN).map(i => renderGroup(i))}

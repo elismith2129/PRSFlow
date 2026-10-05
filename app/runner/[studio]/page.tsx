@@ -7,6 +7,7 @@ import { opsToday, dayPartLabel } from '@/lib/time'
 import { type ChannelKey, type ChannelUnread, CHANNEL_SHORT, fetchChannelUnread, isChannel } from '@/lib/runnerChannel'
 import { noteText } from '@/components/shared/RichNote'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { profileInitials } from '@/lib/format'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
@@ -274,10 +275,14 @@ export default function StudioDailyOpsPage() {
   // Check a task off (or un-check a same-shift mistake). Optimistic, verified.
   async function toggleTask(t: StudioTask) {
     const nextDone = t.done_at ? null : new Date().toISOString()
+    // WHO checked it (Eli, 2026-10-05) — the office's Daily Ops card shows the
+    // initials beside the time. studio_tasks.done_by has existed since the
+    // table was made ("optional initials, if ever collected"); this collects.
+    const nextBy = nextDone ? (hubProfile?.initials || profileInitials(hubProfile?.display_name) || null) : null
     setTasks(prev => prev.map(x => x.id === t.id ? { ...x, done_at: nextDone } : x))
     const { error } = await supabase
       .from('studio_tasks')
-      .update({ done_at: nextDone })
+      .update({ done_at: nextDone, done_by: nextBy })
       .eq('id', t.id)
     if (!dbResult('Saving task', error)) load()
   }

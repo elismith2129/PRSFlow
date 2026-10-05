@@ -14,7 +14,7 @@
 //   · a studio row dated that day is still 'in_progress'.
 // Completed work orders are skipped: the office has already closed the book.
 //
-// Read in three places, from the same function so they can never disagree:
+// Read in four places, from the same function so they can never disagree:
 //   · the runner's closing checklist — Submit closing is a hard stop while
 //     any of TODAY's sessions at that studio is unsubmitted (Eli: "runners
 //     need to work on the closing checklist, so make the notification show
@@ -22,9 +22,12 @@
 //   · the office dashboard — a once-a-day pop-up listing the last 14 days.
 //   · the billing hub — a chip on the row (computed in lib/billing from the
 //     rows it already holds; same rule, see unsubmittedDaysOf).
+//   · Daily Ops — a red "WO not submitted" badge on that studio's card for
+//     the night being viewed (fetchNightMissedWorkOrders, 2026-10-05). This
+//     reader passes `includeCovered`: see the note on that option.
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabase } from './supabase'
-import { dateRange } from './time'
+import { dateRange, opsDayOf } from './time'
 import { STUDIO_SHORT } from './studios'
 
 export type UnsubmittedSession = {
@@ -42,6 +45,9 @@ export type UnsubmittedSession = {
   toTime: string | null
   /** Who submitted closing ops for that studio that day — the accountability line. Null = nobody closed out in the app. */
   closedBy: string | null
+  /** The office has since closed the book on this day (work order completed, or
+   *  the day reviewed/locked). Only ever true when `includeCovered` was asked for. */
+  covered: boolean
 }
 
 const SLUGS: Record<string, string> = { Paramount: 'paramount', Ameraycan: 'ameraycan', Encore: 'encore', Track: 'track' }
@@ -79,11 +85,20 @@ export function unsubmittedDaysOf(
  * Every unsubmitted (booking, day) between `from` and `to` inclusive,
  * optionally for one studio slug. Confirmed bookings only — lockouts have no
  * nightly submit (the standing rule), so they never nag.
+ *
+ * `includeCovered` (Daily Ops, 2026-10-05) — by default a day drops off this
+ * list the moment the office covers for it (Complete WO, or reviewing the day),
+ * because the two original readers are about work still OWED. Daily Ops asks a
+ * different question: did the runner turn it in THAT NIGHT. The office fixing
+ * it the next morning does not change the answer, and a look back at last
+ * Tuesday must still show the miss. With the flag on, completed work orders and
+ * locked days are kept and marked `covered`. The row's own `status` is the
+ * evidence: only the runner's Submit ever moves it off 'in_progress'.
  */
-export async function fetchUnsubmittedSessions(opts: { from: string; to: string; slug?: string }): Promise<UnsubmittedSession[]> {
+export async function fetchUnsubmittedSessions(opts: { from: string; to: string; slug?: string; includeCovered?: boolean }): Promise<UnsubmittedSession[]> {
   const { data: bData, error } = await supabase
     .from('bookings')
-    .select('id, location, studio, start_date, end_date, from_time, to_time, client_name, artist, label, work_order_id, wo_number')
+    .select('id, location, studio, start_date, end_date, from_time, to_time, client_name, artist, label, work_order_id, wo_number, imported_at')
     .lte('start_date', opts.to)
     .gte('end_date', opts.from)
     .eq('status', 'confirmed')
@@ -118,22 +133,31 @@ export async function fetchUnsubmittedSessions(opts: { from: string; to: string;
 
   const out: UnsubmittedSession[] = []
   for (const { b, wo } of resolved) {
-    if (wo && wo.status === 'completed') continue
+    const woCompleted = !!wo && wo.status === 'completed'
+    if (woCompleted && !opts.includeCovered) continue
     for (const date of dateRange(b.start_date, b.end_date)) {
       if (date < opts.from || date > opts.to) continue
+      // Imported history is not a miss (CLAUDE.md → Imported bookings: past +
+      // imported = read-only history, never a work order). A WO-less card
+      // whose day predates its own import came off the old WordPress calendar
+      // already finished. Daily Ops pages back far enough to meet these; the
+      // other readers never look that far, so this changes nothing for them.
+      if (!wo && b.imported_at && date < String(b.imported_at).slice(0, 10)) continue
       const dayRows = (rowsByWo.get(wo?.id ?? '') ?? []).filter(r => r.date === date && (r.studio ?? '').trim())
       // Per-day status (2026-09-19): a day marked tentative/cancelled on the
       // WO is not a night to submit, even under a confirmed card.
       if (dayRows.length > 0 && dayRows.every(r => r.day_status === 'tentative' || r.day_status === 'cancelled')) continue
+      const unsent = dayRows.filter(r => !SENT.has(r.status ?? 'in_progress'))
       const unsubmitted = !wo
         || dayRows.length === 0
-        || dayRows.some(r => !r.admin_locked && !SENT.has(r.status ?? 'in_progress'))
+        || unsent.some(r => opts.includeCovered || !r.admin_locked)
       if (!unsubmitted) continue
+      const covered = woCompleted || (unsent.length > 0 && unsent.every(r => r.admin_locked))
       out.push({
         bookingId: b.id, workOrderId: wo?.id ?? null, woNumber: wo?.wo_number ?? b.wo_number ?? null,
         date, location: b.location, slug: studioSlugOf(b.location), room: b.studio,
         client: b.label || b.client_name || b.artist || 'Unknown',
-        fromTime: b.from_time, toTime: b.to_time, closedBy: null,
+        fromTime: b.from_time, toTime: b.to_time, closedBy: null, covered,
       })
     }
   }
@@ -148,4 +172,45 @@ export async function fetchUnsubmittedSessions(opts: { from: string; to: string;
   for (const o of ops ?? []) if (o.staff_name) closer.set(`${o.studio}|${o.date}`, o.staff_name)
   for (const o of out) o.closedBy = closer.get(`${o.slug}|${o.date}`) ?? null
   return out.sort((a, b) => a.date.localeCompare(b.date) || a.slug.localeCompare(b.slug))
+}
+
+// ─── Daily Ops: the night's missed work orders, with a name ─────────────────
+//
+// Eli, 2026-10-05: "for the WO not submitted I need a name or initials."
+// The app never assigns a runner to a session (openers, closers and floats all
+// touch them), so the name is the best evidence available, in this order:
+//   1. the LAST RUNNER WHO SAVED that work order during that operational day
+//      (wo_activity, source 'runner') — they had it open and did not submit;
+//   2. whoever filed that studio's closing checklist (`closedBy`);
+//   3. nobody — the badge shows "?" rather than guessing.
+// `whoSource` says which, so the badge's tooltip can be honest about it.
+export type MissedWorkOrder = UnsubmittedSession & { who: string | null; whoSource: 'saved' | 'closer' | null }
+
+export async function fetchNightMissedWorkOrders(date: string): Promise<MissedWorkOrder[]> {
+  const list = await fetchUnsubmittedSessions({ from: date, to: date, includeCovered: true })
+  if (list.length === 0) return []
+  const ids = Array.from(new Set(list.map(o => o.workOrderId).filter(Boolean))) as string[]
+  const lastSaver = new Map<string, string>()
+  if (ids.length) {
+    // A generous superset (the day ± a calendar day, any timezone), trimmed to
+    // the operational day below — the same shape as the runner-notes read.
+    const end = new Date(`${date}T12:00:00`); end.setDate(end.getDate() + 2)
+    const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+    const { data: acts } = await supabase
+      .from('wo_activity')
+      .select('work_order_id, actor_name, at')
+      .in('work_order_id', ids)
+      .eq('source', 'runner')
+      .gte('at', `${date}T00:00:00-12:00`)
+      .lt('at', `${endStr}T00:00:00-12:00`)
+      .order('at', { ascending: true })
+    for (const a of acts ?? []) {
+      const name = (a.actor_name ?? '').trim()
+      if (name && opsDayOf(a.at) === date) lastSaver.set(a.work_order_id, name) // ascending → last one wins
+    }
+  }
+  return list.map(o => {
+    const saved = o.workOrderId ? lastSaver.get(o.workOrderId) ?? null : null
+    return { ...o, who: saved ?? o.closedBy ?? null, whoSource: saved ? 'saved' as const : o.closedBy ? 'closer' as const : null }
+  })
 }

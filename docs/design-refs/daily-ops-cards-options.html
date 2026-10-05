@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Ops — card options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0a09; --fg: #f2efe7;
+    --fg2: rgba(242,239,231,.72); --fg3: rgba(242,239,231,.45); --fg4: rgba(242,239,231,.22);
+    --wash: rgba(242,239,231,.06); --wash2: rgba(242,239,231,.12);
+    --hot: #ff5a4d; --warm: #ffa94d; --ok: #43dfae; --ink: #1c2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: Inter, system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; }
+
+  .mocknote { font-size: 11.5px; color: var(--fg3); background: var(--wash); border-radius: 10px; padding: 8px 12px; margin-bottom: 18px; line-height: 1.5; }
+  .mocknote b { color: var(--fg2); font-weight: 600; }
+
+  .top { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .title { font-family: 'Archivo Black', sans-serif; font-size: 26px; letter-spacing: -.02em; }
+  .title small { font-family: Inter, sans-serif; font-size: 14px; font-weight: 500; color: var(--fg3); letter-spacing: 0; margin-left: 8px; }
+  .seg { margin-left: auto; display: flex; background: var(--wash); border-radius: 99px; padding: 3px; }
+  .seg button { padding: 7px 18px; border-radius: 99px; font-size: 12px; font-weight: 700; color: var(--fg2); }
+  .seg button.on { background: var(--fg); color: var(--bg); }
+  .ptabs { display: flex; align-items: baseline; gap: 22px; margin-bottom: 14px; }
+  .ptab { font-family: 'Archivo Black', sans-serif; font-size: 26px; letter-spacing: -.02em; color: var(--fg4); display: flex; align-items: baseline; gap: 7px; }
+  .ptab.on { color: var(--fg); }
+  .ptab i { font-family: 'DM Mono', monospace; font-style: normal; font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--fg3); }
+  .datebar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .datebar b { font-size: 17px; font-weight: 700; }
+  .datebar span { font-size: 13px; color: var(--fg3); }
+  .datebar .pg { margin-left: auto; display: flex; gap: 8px; }
+  .datebar .pg button { width: 36px; height: 36px; border-radius: 11px; background: var(--wash); font-size: 16px; }
+  .flagsph { border: 1.5px dashed var(--wash2); border-radius: 20px; height: 686px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--fg3); font-size: 13px; text-align: center; padding: 20px; }
+  .flagsph b { font-family: 'Archivo Black', sans-serif; font-weight: 400; font-size: 18px; color: var(--fg2); }
+  .blurb { font-size: 12.5px; color: var(--fg2); margin: 0 0 16px; min-height: 36px; line-height: 1.45; max-width: 760px; }
+  .blurb b { color: var(--fg); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ── THE CARD: one size, always ── */
+  .sc { background: rgba(242,239,231,.035); border-radius: 20px; padding: 18px 20px 0; display: flex; flex-direction: column; overflow: hidden; }
+  .optA .sc { height: 336px; }
+  .optB .sc { height: 348px; }
+  .optC .sc { height: 276px; }
+  .sc.dim > * { opacity: .38; }
+
+  .sh { display: flex; align-items: baseline; gap: 10px; flex: 0 0 auto; height: 30px; }
+  .sh h2 { font-family: 'Archivo Black', sans-serif; font-weight: 400; font-size: 20px; margin: 0; letter-spacing: -.01em; }
+  .sh .crew { margin-left: auto; font-size: 12px; color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .gh { display: flex; justify-content: space-between; align-items: center; height: 22px; font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--fg3); }
+  .gh .w { letter-spacing: .04em; }
+
+  .duty { display: flex; align-items: center; gap: 10px; height: 28px; }
+  .duty .d { width: 8px; height: 8px; border-radius: 99px; background: var(--ok); flex: 0 0 auto; }
+  .duty b { font-weight: 500; font-size: 13.5px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .duty .v { font-size: 11.5px; color: var(--fg3); white-space: nowrap; }
+  .duty.amb .d { background: var(--warm); }
+  .duty.off .d { background: var(--wash2); }
+  .duty.bad { cursor: pointer; }
+  .duty.bad .d { background: var(--hot); }
+  .duty.bad b { font-weight: 600; }
+  .duty.bad .v { color: var(--hot); }
+  /* handled: the dot itself becomes the check — no extra controls on the row */
+  .duty.bad.h .d { width: 14px; height: 14px; margin: 0 -3px; background: none; border: 1.5px solid var(--fg3); position: relative; }
+  .duty.bad.h .d::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--fg3); font-style: normal; }
+  .duty.bad.h b { font-weight: 500; color: var(--fg3); }
+  .duty.bad.h .v { color: var(--fg3); }
+
+  /* ── THE LANE: the only part that varies, and it scrolls inside the card ── */
+  .lanewrap { display: flex; flex-direction: column; min-height: 0; position: relative; }
+  .lh { display: flex; align-items: center; gap: 8px; height: 22px; flex: 0 0 auto; }
+  .lh .lab { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--fg3); flex: 1; }
+  .lh .plus { width: 20px; height: 20px; border-radius: 99px; background: var(--wash2); font-size: 14px; line-height: 20px; color: var(--fg2); }
+  .lh input { flex: 1; min-width: 0; height: 22px; background: var(--wash); border: none; border-radius: 6px; padding: 0 8px; color: var(--fg); font: inherit; font-size: 12px; outline: none; display: none; }
+  .lh.adding .lab { display: none; } .lh.adding input { display: block; }
+  .lane { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--wash2) transparent; margin-right: -8px; padding-right: 8px; }
+  .lane::-webkit-scrollbar { width: 4px; } .lane::-webkit-scrollbar-thumb { background: var(--wash2); border-radius: 4px; }
+  .lanewrap.more::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22px; background: linear-gradient(rgba(19,18,17,0), #131211); pointer-events: none; }
+  .empty { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--fg4); }
+
+  .wo { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 8px; align-items: center; height: 44px; margin-bottom: 5px; background: var(--hot); color: var(--ink); border-radius: 10px; padding: 0 7px 0 11px; cursor: pointer; }
+  .wo b { font-size: 12px; font-weight: 800; white-space: nowrap; line-height: 1.2; align-self: end; }
+  .wo span { grid-column: 1; font-size: 11.5px; font-weight: 600; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; align-self: start; }
+  .wo .who { grid-column: 2; grid-row: 1 / span 2; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; font-style: normal; background: rgba(0,0,0,.2); border-radius: 99px; min-width: 28px; height: 22px; padding: 0 7px; display: flex; align-items: center; justify-content: center; }
+  .wo .ck { grid-column: 3; grid-row: 1 / span 2; }
+  .ck { width: 20px; height: 20px; border-radius: 99px; background: rgba(0,0,0,.2); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; font-style: normal; }
+  .wo.h { background: var(--wash); color: var(--fg3); }
+  .wo.h .who { background: var(--wash2); }
+  .wo.h .ck { background: var(--fg3); color: var(--bg); }
+
+  .task { display: flex; align-items: center; gap: 9px; height: 28px; cursor: pointer; }
+  .task .ck { width: 16px; height: 16px; background: none; border: 1.5px solid var(--fg3); }
+  .task span { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task small { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--fg3); white-space: nowrap; display: none; }
+  .task.done .ck { background: var(--ok); border-color: var(--ok); color: var(--ink); }
+  .task.done span { color: var(--fg3); text-decoration: line-through; }
+  .task.done small { display: block; }
+
+  .nf { flex: 0 0 auto; height: 40px; margin: 0 -20px; padding: 0 20px; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--wash); font-size: 11.5px; color: var(--fg3); cursor: pointer; }
+  .nf .k { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+  .nf .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg2); }
+  .nf .t.none { color: var(--fg4); font-style: italic; }
+  .nf .go { white-space: nowrap; font-weight: 600; }
+
+  /* ── A: side by side ── */
+  .optA .body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; padding: 6px 0 12px; }
+  .optA .duties { display: flex; flex-direction: column; }
+  .optA .duties .gh + .duty { margin-top: 0; }
+  .gh.g2 { margin-top: 8px; }
+  .optB .gh.g2 { margin-top: 0; }
+  .optA .lanewrap { border-left: 1px solid var(--wash); padding-left: 20px; margin-left: -8px; }
+
+  /* ── B: stacked ── */
+  .optB .cols { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; padding: 6px 0 10px; }
+  .optB .lanewrap { flex: 1; border-top: 1px solid var(--wash); padding: 8px 0 10px; margin: 0; }
+  .optB .lane { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-content: start; }
+  .optB .lane .empty { grid-column: 1 / -1; height: 84px; }
+  .optB .wo { margin-bottom: 4px; }
+
+  /* ── C: lights ── */
+  .optC .lights { flex: 0 0 auto; padding: 6px 0 10px; }
+  .optC .lrow { display: flex; align-items: center; height: 26px; gap: 6px; }
+  .optC .lrow .k { width: 62px; font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--fg3); flex: 0 0 auto; }
+  .optC .lrow .w { width: 30px; font-size: 11px; color: var(--fg3); flex: 0 0 auto; }
+  .optC .duty { flex: 1; min-width: 0; gap: 7px; height: 26px; }
+  .optC .duty b { font-size: 12.5px; }
+  .optC .duty .v { display: none; }
+  .optC .lanewrap { flex: 1; border-top: 1px solid var(--wash); padding: 8px 0 10px; }
+  .optC .lane { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px; align-content: start; }
+  .optC .lane .empty { grid-column: 1 / -1; height: 96px; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="mocknote"><b>The page with its two tabs.</b> Daily Ops and Flags sit at the top as title tabs, the way Billing / COD / Tenants do in the billing hub. Daily Ops is option A. The Flags tab is a placeholder here because the real one is your current Flags page, unchanged. Night is your Sun Oct 4 screenshot; badges and tasks are invented <b>examples</b>.</div>
+
+  <div class="ptabs">
+    <button class="ptab on" id="tOps" onclick="tab('ops')">Daily Ops</button>
+    <button class="ptab" id="tFlags" onclick="tab('flags')">Flags<i>4</i></button>
+  </div>
+  <div class="seg hide"><button data-o="A" class="on">A</button><button data-o="B">B</button><button data-o="C">C</button></div>
+  <p class="blurb" id="blurb"></p>
+
+  <div id="ops">
+  <div class="datebar"><b>Yesterday</b><span>Sun, Oct 4</span><div class="pg"><button>‹</button><button>›</button></div></div>
+  <div id="A" class="grid optA"></div>
+  <div id="B" class="grid optB hide"></div>
+  <div id="C" class="grid optC hide"></div>
+  </div>
+  <div id="flags" class="hide"><div class="flagsph"><b>The Flags page, exactly as it is today</b>Same lists, same add line, same detail card. It just lives on this tab instead of its own rail item.</div></div>
+</div>
+
+<script>
+var STUDIOS = [
+  { name: 'Paramount', crew: 'CM',
+    opener: { who: '—', rows: [['Opening','never submitted','bad'],['Petty cash','not done','bad'],['Stock','15 low','amb']] },
+    closer: { who: '—', rows: [['Closing','never submitted','bad'],['Petty cash','not done','bad'],['Mic inventory','not done','bad']] },
+    wos: [['Studio A','Sample Client','CM','CM was the last runner to save this work order that night'],['Studio C','Sample Client','?','No runner opened this work order and nobody filed a closing checklist']],
+    tasks: [['Restock green room waters',''],['Take out the A lounge trash',''],['Label the new XLR bin',''],['Check the B iso booth light',''],['Wipe down the C console','CM 1:04 PM']],
+    notes: 'CM: 10/4 Opening Notes- Kovan given 9p start time- I arrived at 12:50p- Took inventory and went to the store', n: 1 },
+  { name: 'Ameraycan', crew: 'EE, LB, TT',
+    opener: { who: '—', rows: [['Opening','never submitted','bad'],['Petty cash','0 entries',''],['Stock','6 low','amb']] },
+    closer: { who: 'EE', rows: [['Closing','7:39 AM',''],['Petty cash','counted $5',''],['Mic inventory','not done','bad']] },
+    wos: [],
+    tasks: [['Restock printer paper',''],['Wipe down the X console','EE 7:20 AM']],
+    notes: 'LB: 10/03/26 ARS Closing Notes• @tristan check in for start• Both A and B just arrived as I got in', n: 3 },
+  { name: 'Encore', crew: '—',
+    opener: { who: '—', rows: [['Opening','never submitted','bad'],['Petty cash','not done','bad'],['Stock','not done','bad']] },
+    closer: { who: '—', rows: [['Closing','never submitted','bad'],['Petty cash','not done','bad'],['Mic inventory','not done','bad']] },
+    wos: [], tasks: [], notes: '', n: 0 },
+  { name: 'Track', crew: 'Long-term lease · not staffed', dim: true,
+    opener: { who: '—', rows: [['Opening','not staffed','off'],['Petty cash','not staffed','off'],['Stock','not staffed','off']] },
+    closer: { who: '—', rows: [['Closing','not staffed','off'],['Petty cash','not staffed','off'],['Mic inventory','not staffed','off']] },
+    wos: [], tasks: [], notes: '', n: 0 }
+];
+var SHORT = { 'Petty cash': 'Cash', 'Mic inventory': 'Mics' };
+var BLURB = {
+  A: '<b>Side by side.</b> Duties on the left exactly as they read today. Badges and tasks on the right, scrolling in their own lane. Closest to the page you have.',
+  B: '<b>Stacked.</b> Opener and closer sit beside each other across the top, so the six duties take three lines. Badges and tasks run full width underneath, two across.',
+  C: '<b>Lights.</b> Duties shrink to two lines of labelled lights: colour tells you done or missed, and the times come off the card (hover a light in this mock). Shortest card, so all four studios and the flags fit on one screen.'
+};
+
+function duty(r, short) {
+  return '<div class="duty ' + r[2] + '" title="' + r[0] + ' · ' + r[1] + '"><i class="d"></i><b>' + (short && SHORT[r[0]] || r[0]) + '</b><span class="v">' + r[1] + '</span></div>';
+}
+function lane(s) {
+  var h = '';
+  s.wos.forEach(function (w) { h += '<div class="wo" title="' + w[3] + '"><b>WO not submitted</b><span>' + w[0] + ' · ' + w[1] + '</span><i class="who">' + w[2] + '</i><i class="ck">✓</i></div>'; });
+  s.tasks.forEach(function (t) { h += '<div class="task' + (t[1] ? ' done' : '') + '"><i class="ck">✓</i><span>' + t[0] + '</span><small>' + (t[1] || 'you · now') + '</small></div>'; });
+  if (!h) h = '<div class="empty">' + (s.dim ? 'Not staffed' : 'No tasks') + '</div>';
+  return '<div class="lanewrap"><div class="lh"><span class="lab">Tasks</span><input placeholder="New task for ' + s.name + '… then Enter">' + (s.dim ? '' : '<button class="plus" title="Add a task">+</button>') + '</div><div class="lane">' + h + '</div></div>';
+}
+function notes(s) {
+  return '<div class="nf"><span class="k">Notes' + (s.n ? ' · ' + s.n : '') + '</span><span class="t' + (s.notes ? '' : ' none') + '">' + (s.notes || 'No shift notes') + '</span>' + (s.notes ? '<span class="go">View →</span>' : '') + '</div>';
+}
+function head(s) { return '<div class="sh"><h2>' + s.name + '</h2><span class="crew">' + s.crew + '</span></div>'; }
+function group(label, g) { return '<div class="gh' + (label === 'Closer' ? ' g2' : '') + '"><span>' + label + '</span><span class="w">' + g.who + '</span></div>' + g.rows.map(function (r) { return duty(r); }).join(''); }
+
+function cardA(s) { return '<div class="sc' + (s.dim ? ' dim' : '') + '">' + head(s) + '<div class="body"><div class="duties">' + group('Opener', s.opener) + group('Closer', s.closer) + '</div>' + lane(s) + '</div>' + notes(s) + '</div>'; }
+function cardB(s) { return '<div class="sc' + (s.dim ? ' dim' : '') + '">' + head(s) + '<div class="cols"><div>' + group('Opener', s.opener) + '</div><div>' + group('Closer', s.closer) + '</div></div>' + lane(s) + notes(s) + '</div>'; }
+function lrow(label, g) { return '<div class="lrow"><span class="k">' + label + '</span><span class="w">' + g.who + '</span>' + g.rows.map(function (r) { return duty(r, true); }).join('') + '</div>'; }
+function cardC(s) { return '<div class="sc' + (s.dim ? ' dim' : '') + '">' + head(s) + '<div class="lights">' + lrow('Opener', s.opener) + lrow('Closer', s.closer) + '</div>' + lane(s) + notes(s) + '</div>'; }
+
+document.getElementById('A').innerHTML = STUDIOS.map(cardA).join('');
+document.getElementById('B').innerHTML = STUDIOS.map(cardB).join('');
+document.getElementById('C').innerHTML = STUDIOS.map(cardC).join('');
+
+function fades() {
+  document.querySelectorAll('.lane').forEach(function (l) {
+    var more = l.scrollHeight - l.clientHeight - l.scrollTop > 2;
+    l.parentElement.classList.toggle('more', more);
+  });
+}
+function show(o) {
+  ['A', 'B', 'C'].forEach(function (k) {
+    document.getElementById(k).classList.toggle('hide', k !== o);
+    document.querySelector('[data-o="' + k + '"]').classList.toggle('on', k === o);
+  });
+  document.getElementById('blurb').innerHTML = BLURB[o];
+  fades();
+}
+document.querySelectorAll('[data-o]').forEach(function (b) { b.onclick = function () { show(b.dataset.o); }; });
+document.addEventListener('scroll', fades, true);
+
+document.addEventListener('click', function (e) {
+  var t = e.target;
+  var d = t.closest('.duty.bad'); if (d) { d.classList.toggle('h'); return; }
+  var w = t.closest('.wo'); if (w) { w.classList.toggle('h'); return; }
+  var k = t.closest('.task'); if (k) { k.classList.toggle('done'); return; }
+  var p = t.closest('.plus'); if (p) { var lh = p.parentElement; lh.classList.toggle('adding'); if (lh.classList.contains('adding')) lh.querySelector('input').focus(); return; }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter' || !e.target.matches('.lh input') || !e.target.value.trim()) return;
+  var l = e.target.closest('.lanewrap').querySelector('.lane');
+  var em = l.querySelector('.empty'); if (em) em.remove();
+  var row = document.createElement('div'); row.className = 'task';
+  row.innerHTML = '<i class="ck">✓</i><span></span><small>you · now</small>';
+  row.querySelector('span').textContent = e.target.value.trim();
+  var firstTask = l.querySelector('.task'); l.insertBefore(row, firstTask);
+  e.target.value = ''; fades();
+});
+show('A'); document.getElementById('blurb').classList.add('hide');
+function tab(t) {
+  document.getElementById('ops').classList.toggle('hide', t !== 'ops');
+  document.getElementById('flags').classList.toggle('hide', t !== 'flags');
+  document.getElementById('tOps').classList.toggle('on', t === 'ops');
+  document.getElementById('tFlags').classList.toggle('on', t === 'flags');
+  fades();
+}
+</script>
+</body>
+</html>
