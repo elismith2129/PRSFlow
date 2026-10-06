@@ -465,6 +465,13 @@ the history if the WO is then saved; two routines in WorkOrderPopup that delete 
 own (the "live date range sync" effect and the day-rate "dedup by date" reconcile); the
 billing hub's line-item loads are unpaginated and will meet the 1,000-row cap.
 
+**No show (added after the wrap-up, v1.43.3).** "Real quick lets add a no show option on the
+WO card when artists dont show up. this would be only right beside the actual arrival times."
+Built as a flag on the row, mirroring Times TBD, because the real problem was the submit gate:
+a no-show has no Arrived / Left, so the runner was stuck or invented times. Decided without
+asking, and worth revisiting if Eli wants otherwise: it changes no charge (the times it sits
+beside never did), and it appears nowhere but the work order - "only" was his word.
+
 **Process.** A `git status` run through the bridge left a stale `.git/index.lock`. Standing
 practice since: Claude edits files and hands Eli a copy-paste box (migration SQL in full to
 review first, then a `git add` by name + `git commit -F -` + push); every box starts with

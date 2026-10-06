@@ -232,6 +232,13 @@ type StRow = {
    */
   actual_from_time: string
   actual_to_time: string
+  /**
+   * NO SHOW (Eli, 2026-10-05): the client never came. The chip beside
+   * Arrived / Left sets it and clears both times; typing a time clears it.
+   * Counts as an answer for the runner's Arrived/Left submit gate. Like the
+   * times it sits beside, NO money math reads it — billed stays as booked.
+   */
+  no_show: boolean
   admin_checked: boolean
   admin_locked: boolean
   eng_visible: boolean
@@ -571,6 +578,7 @@ function normalizeStRow(d: any): StRow {
     eng_to_time: engToTime,
     actual_from_time: d.actual_from_time ?? '',
     actual_to_time: d.actual_to_time ?? '',
+    no_show: d.no_show === true,
     admin_checked: d.admin_checked ?? false,
     admin_locked: d.admin_locked ?? false,
     eng_visible: d.eng_visible ?? true,
@@ -960,7 +968,7 @@ export function WorkOrderPopup({
         sort_order: maxOrder, day_count: null,
         eng_hours: null, eng_rate: '', eng_charge: null,
         eng_from_time: from, eng_to_time: to,
-        actual_from_time: '', actual_to_time: '',
+        actual_from_time: '', actual_to_time: '', no_show: false,
         admin_checked: false, admin_locked: false,
         // Staff is the modal's own answer now (monthlyStaff), not a side
         // effect of the times toggle — see the state declaration.
@@ -1900,6 +1908,10 @@ export function WorkOrderPopup({
     if (('from_time' in updates && updates.from_time) || ('to_time' in updates && updates.to_time)) {
       if (row?.times_tbd && !('times_tbd' in updates)) updates = { ...updates, times_tbd: false }
     }
+    // Same for No show (2026-10-05): typing Arrived or Left means they came.
+    if (('actual_from_time' in updates && updates.actual_from_time) || ('actual_to_time' in updates && updates.actual_to_time)) {
+      if (row?.no_show && !('no_show' in updates)) updates = { ...updates, no_show: false }
+    }
     // RUNNER FIELD LOCKS (defence in depth — the inputs are also disabled).
     // A locked day is the office's; rates are the office's on every day.
     if (runner) {
@@ -2547,6 +2559,7 @@ export function WorkOrderPopup({
       eng_to_time: toTime,
       actual_from_time: '',
       actual_to_time: '',
+      no_show: false,
       admin_checked: false,
       admin_locked: false,
       // A second room on an already-staffed day carries no staff line.
@@ -2688,7 +2701,7 @@ export function WorkOrderPopup({
       eng_to_time: dayStudio?.to_time || '',
       eng_rate: lastEng?.eng_rate || '',
       eng_hours: null, eng_charge: null,
-      actual_from_time: '', actual_to_time: '',
+      actual_from_time: '', actual_to_time: '', no_show: false,
       admin_checked: false, admin_locked: false, eng_visible: true,
       eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null, bundle_id: null,
     }
@@ -2981,6 +2994,8 @@ export function WorkOrderPopup({
     const lacksActual = (r: StRow) =>
       !!(r.studio ?? '').trim()
       && r.day_status !== 'tentative' && r.day_status !== 'cancelled'
+      // No show IS the answer (2026-10-05) — there are no times to give.
+      && !r.no_show
       && (!(r.actual_from_time || '').trim() || !(r.actual_to_time || '').trim())
     // An EARLIER day with no Arrived/Left, on a work order that also has
     // today's rows, is somebody else's forgotten night on a long session —
@@ -3567,6 +3582,7 @@ export function WorkOrderPopup({
       eng_to_time: r.eng_to_time || null,
       actual_from_time: r.actual_from_time || null,
       actual_to_time: r.actual_to_time || null,
+      no_show: r.no_show === true,
       admin_checked: r.admin_checked,
       admin_locked: r.admin_locked,
       eng_visible: r.eng_visible,
@@ -7032,6 +7048,11 @@ export function WorkOrderPopup({
                             </div>
                             {/* Actual arrival/departure (2026-09-01) — quiet,
                                 times only (no percentage — Eli), internal only. */}
+                            {first?.no_show && (
+                              <div style={{ marginTop: 3, fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-hot)', whiteSpace: 'nowrap' }}>
+                                No show
+                              </div>
+                            )}
                             {(first?.actual_from_time || first?.actual_to_time) && (
                               <div style={{ marginTop: 3, fontSize: 10.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', whiteSpace: 'nowrap' }}>
                                 Actually here{' '}
@@ -8152,6 +8173,30 @@ export function WorkOrderPopup({
                         <div style={{ display: 'flex', gap: 8 }}>
                           {timeWell(r, 'actual_from_time', 'Arrived', r.actual_from_time, true)}
                           {timeWell(r, 'actual_to_time', 'Left', r.actual_to_time, true)}
+                          {/* NO SHOW (Eli, 2026-10-05: "only right beside the
+                              actual arrival times"). The third answer to "when
+                              were they here": a time, a blank someone forgot,
+                              or never. Tapping clears Arrived/Left and marks
+                              the row; typing a time un-marks it. Runner and
+                              office both. It lets the runner submit (the
+                              Arrived/Left gate takes it as the answer) and it
+                              changes NO charge — billed stays as booked. Do
+                              not surface it anywhere else without asking. */}
+                          {!readOnly && (
+                            <button
+                              type="button"
+                              disabled={runner && r.admin_locked}
+                              onClick={() => updateStRow(r.id, r.no_show ? { no_show: false } : { no_show: true, actual_from_time: '', actual_to_time: '' })}
+                              title={r.no_show ? 'Marked no show — tap to clear, or just type a time' : 'The client never showed up'}
+                              style={{
+                                flexShrink: 0, alignSelf: 'center', borderRadius: 99, padding: '6px 10px', cursor: 'pointer', font: 'inherit',
+                                fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+                                background: r.no_show ? 'var(--c-st-hot)' : 'var(--c-wash2)',
+                                color: r.no_show ? '#fff' : 'var(--c-fg-2)',
+                                border: r.no_show ? '1px solid transparent' : '1px dashed var(--c-fg-3)',
+                              }}
+                            >No show</button>
+                          )}
                         </div>
                         {/* THE ROOM'S RATE, BESIDE THE ROOM'S TIMES (Eli,
                             2026-08-20: "still not a good place for the rate to
@@ -8647,8 +8692,8 @@ export function WorkOrderPopup({
                 </div>
                 <div style={{ fontSize: 12.5, color: 'var(--c-fg-2)', lineHeight: 1.55, margin: '7px 0 4px' }}>
                   {rooms.length > 0
-                    ? <>Fill in <b>Client actually here</b> for {rooms.length === 1 ? <b>{rooms[0]}</b> : <b>{rooms.join(' and ')}</b>} before you submit.</>
-                    : <>Fill in <b>Client actually here</b> before you submit.</>}
+                    ? <>Fill in <b>Client actually here</b> for {rooms.length === 1 ? <b>{rooms[0]}</b> : <b>{rooms.join(' and ')}</b>} before you submit — or tap <b>No show</b> if they never came.</>
+                    : <>Fill in <b>Client actually here</b> before you submit — or tap <b>No show</b> if they never came.</>}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--c-fg-3)', lineHeight: 1.55, marginBottom: 10 }}>
                   It&rsquo;s the one thing nobody can work out in the morning. The billed times stay exactly as booked — this is only what actually happened.

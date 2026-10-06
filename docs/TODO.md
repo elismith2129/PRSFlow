@@ -7,6 +7,7 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
+- [ ] **Run `20261005190000_st_rows_no_show.sql` BEFORE the No show push** - every work order save sends the new column and fails without it. *(Oct 5)*
 - [ ] **Confirm WO-1240 is back** (Epic / Molly Santana, Ameraycan B, Sep 23–29) in the billing hub and on the calendar — restored from the Oct 2 backup with `restore-WO-1240.sql`. **Bill Oct 3 once:** QuickBooks invoice 34828 lists it, and that night now lives on the newer October work order. *(Oct 5)*
 - [ ] **Test delete → recover on a throwaway work order** as Lori or Fernando (Testing → the Oct 5 batch, last four items). The SQL was only ever run against a copy of the Oct 2 backup. *(Oct 5)*
 - [x] ~~Run `20261005180000_deleted_work_orders.sql`~~ — Eli confirmed at wrap-up Oct 5; the code that depends on it is on `main`. *(Oct 5)*

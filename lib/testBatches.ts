@@ -103,6 +103,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'On a phone open a work order as a runner and sign in the signature box. You should see the line as you draw it (light ink on the dark screen). Save. Then on the computer download the work order PDF: the signature should be dark on the white page.',
       },
       {
+        id: 'v143-runner-no-show', area: 'Runner work order', device: 'phone',
+        what: 'A runner can mark a no show and still submit',
+        how: 'On a phone, as a runner, open a session for tonight on a THROWAWAY work order. Leave Arrived and Left empty and press Submit: it stops you and mentions No show. Close that, tap the "No show" chip beside Arrived and Left (it turns red), and press Submit again. It should go through. Then type an Arrived time: the chip should switch itself off.',
+      },
+      {
         id: 'v143-runner-petty-history', area: 'Runner petty cash', device: 'phone',
         what: 'Runners can see earlier petty cash counts',
         how: 'On a phone, as a runner, open Petty cash. Below tonight there is a box listing earlier days (up to 14). Each day shows the opening amount, what went in and out, what was counted and any over or short. The box scrolls inside itself. Nothing in it can be edited.',

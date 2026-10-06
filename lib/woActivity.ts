@@ -101,6 +101,7 @@ export type WoAuditRow = {
   eng_to_time?: string | null
   actual_from_time?: string | null
   actual_to_time?: string | null
+  no_show?: boolean | null
   session_info?: string | null
 }
 
@@ -222,6 +223,8 @@ function diffRowPair(a: WoAuditRow, b: WoAuditRow): WoChange[] {
   // worthy too — who recorded it and whether it was later changed.
   push('Arrived (actual)', norm(a.actual_from_time), norm(b.actual_from_time))
   push('Left (actual)', norm(a.actual_to_time), norm(b.actual_to_time))
+  // No show (2026-10-05): who marked it, and whether it was later undone.
+  push('No show', a.no_show ? 'Yes' : '', b.no_show ? 'Yes' : '')
   push('Session info', norm(a.session_info), norm(b.session_info))
   return out
 }

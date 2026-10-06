@@ -20,6 +20,22 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.3 — "No show" beside Arrived / Left — Oct 5, 2026
+
+**Why.** Eli: *"add a 'no show' option on the WO card when artists don't show up. this would be only right beside the actual arrival times."* Until now a no-show left Arrived / Left blank, which the runner's submit gate refuses - so the runner either could not submit or typed made-up times.
+
+- **`studio_time_rows.no_show`** (boolean, default false), one per studio-time row. A **No show** chip sits in the same row as the Arrived / Left wells (runner and office; hidden when read-only). Tapping sets it and clears both times; typing a time clears it (`updateStRow`, same pattern as Times TBD).
+- **The Arrived/Left submit gate accepts it** (`lacksActual` in `handleRunnerSubmit`). The gate sheet now says "or tap No show if they never came".
+- The day card shows a red "No show" where "Actually here 7:00 PM - 2:00 AM" would be. The history logs it (`lib/woActivity.ts`, "No show").
+
+**Migrations:** `20261005190000_st_rows_no_show.sql` - the column only; `save_work_order_atomic` is a generic applier. Run before the push or every WO save fails on the unknown column.
+
+**Watch-outs:** **no money math reads it** - a no-show bills exactly as booked, same law as the actual times. If Eli later wants a no-show fee or a status, that is a separate decision; do not hang it on this flag quietly. It is deliberately shown nowhere else (not the hub, not Daily Ops, not the PDF). `handleCancel`'s row re-insert does not carry it (nor the actual times - pre-existing).
+
+**Files:** `supabase/migrations/20261005190000_st_rows_no_show.sql`, `components/calendar/WorkOrderPopup.tsx`, `lib/woActivity.ts`.
+
+---
+
 ## v1.43.2 — Deletes are kept and recoverable; a session is deleted from the billing hub only — Oct 5, 2026
 
 **Why.** WO-1240 (Epic Records / Molly Santana, Ameraycan B, Sep 23–29 + a tentative Oct 3; runner-submitted, invoice 34828 approved) was gone from the calendar and the hub. The nightly backups placed the delete on Oct 2 between 7:23 AM and ~5:40 PM PT; nothing in the app could say who. Cause: **"Delete session" in the WO popup deleted the WHOLE work order behind whichever card was open** — every card, day and payment — and `wo_activity` cascades from the WO, so its history went with it. Eli: *"get rid of the delete button that's on the WOs. only a delete button from the billing hub. and i do want lori and fernando to be able to do this. i just want an in app log for all deletions and a recover function."*
