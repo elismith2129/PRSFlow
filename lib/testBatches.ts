@@ -108,6 +108,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'On a phone, as a runner, open a session for tonight on a THROWAWAY work order. Leave Arrived and Left empty and press Submit: it stops you and mentions No show. Close that, tap the "No show" chip beside Arrived and Left (it turns red), and press Submit again. It should go through. Then type an Arrived time: the chip should switch itself off.',
       },
       {
+        id: 'v143-pay-card-amount', area: 'Work order',
+        what: 'Typing the card amount into Toward balance is caught',
+        how: 'Open a THROWAWAY COD work order that owes money (say $410). Under Payments press "+ Add payment", pick Credit Card, and in the small "Toward balance" box type the CARD amount instead ($422.30), then click out of the box. A red line should appear under that payment saying it is more than the balance, with a "Use $410.00" link. Press the link: the box becomes $410.00, the big number reads $422.30 and the red line goes away. Do NOT save.',
+      },
+      {
         id: 'v143-runner-petty-history', area: 'Runner petty cash', device: 'phone',
         what: 'Runners can see earlier petty cash counts',
         how: 'On a phone, as a runner, open Petty cash. Below tonight there is a box listing earlier days (up to 14). Each day shows the opening amount, what went in and out, what was counted and any over or short. The box scrolls inside itself. Nothing in it can be edited.',

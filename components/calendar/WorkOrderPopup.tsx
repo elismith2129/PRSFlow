@@ -14,7 +14,7 @@ import { ClientPanel, type ClientPanelValue } from '@/components/shared/ClientPa
 import { seedStudioTimeRows } from '@/lib/seedStudioTimeRows'
 import { timeToMins, calcHours, calcCharge, calcRentalCharge, dateRange, isNextDay, toStudioLetter, getLocalToday, opsToday } from '@/lib/time'
 import { formatCurrency, stripCurrency, longDate, oneLine } from '@/lib/format'
-import { computeWoTotals, engChargeForRow, cardTotalForBase, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_PCT, foodFeePct, foodServiceFee } from '@/lib/woTotals'
+import { computeWoTotals, engChargeForRow, cardTotalForBase, CARD_FEE_RATE, DAY_HOUR_RATIO, FOOD_SERVICE_FEE_PCT, foodFeePct, foodServiceFee } from '@/lib/woTotals'
 import {
   findMissingTimes, missingTimesMessage, woNeedsTimes, problemsDetail, confirmStartProblem,
   findMissingEngRates, missingEngRatesMessage,
@@ -3923,6 +3923,44 @@ export function WorkOrderPopup({
     const base = stripCurrency(row.base) ?? 0
     return { ...row, amount: base > 0 ? formatCurrency(String(base)) : '', fee_amount: '' }
   }
+  /** "IS THAT THE CARD AMOUNT?" (Eli, 2026-10-06). A $410 session, paid 30% /
+   *  70% by card: $126.69 and $295.61 ran on the terminal — correct, $422.30 —
+   *  and those two receipt numbers were then typed into Toward balance, which
+   *  put the 3% on a second time. The sheet read $434.97 paid and a −$12.30
+   *  balance, and nothing on it said why. The box takes the amount BEFORE the
+   *  fee; this catches the two ways a fee-inclusive number shows itself:
+   *    · it OVERPAYS — more than the balance without this row; or
+   *    · it is not whole dollars, but it is exactly a whole-dollar amount + 3%
+   *      (a deposit, which overpays nothing — $126.69 = $123.00 × 1.03).
+   *  A WARNING, NEVER A BLOCK: a client can overpay on purpose, and about one
+   *  odd-cents amount in a hundred is a coincidence. `fix` is the amount before
+   *  the fee, offered as one tap only when it is plausibly what they meant.
+   *  COD card rows carrying a fee only — a waived fee or a cash row has no
+   *  second number to confuse. Reads the row as it stands after blur. */
+  function payRowWarning(row: PayRow): { text: string; fix: number | null } | null {
+    if (!isCodWo || !CARD_PAY_TYPES.includes(row.payment_type) || !row.fee_amount) return null
+    const base = stripCurrency(row.base) ?? 0
+    if (!(base > 0)) return null
+    const fmt = (n: number) => formatCurrency(String(parseFloat(n.toFixed(2))))
+    const owed = collectBaseExcluding(row.id)
+    const inner = parseFloat((base / (1 + CARD_FEE_RATE)).toFixed(2))
+    const innerRoundTrips = Math.abs(cardTotalForBase(inner) - base) < 0.006
+    const innerWhole = innerRoundTrips && Math.abs(inner - Math.round(inner)) < 0.006 && Math.abs(base - Math.round(base)) > 0.006
+    const over = base - owed > 0.006
+    if (over) {
+      const matchesCardTotal = owed > 0 && Math.abs(cardTotalForBase(owed) - base) < 0.011
+      const fix = matchesCardTotal ? owed : (innerWhole || (innerRoundTrips && inner - owed < 0.006)) ? inner : null
+      return {
+        text: `${fmt(base)} is ${fmt(base - owed)} more than the balance.`
+          + (fix != null ? ` If ${fmt(base)} is what ran on the card, the amount before the 3% is ${fmt(fix)}.` : ' This box is the amount before the 3% card fee.'),
+        fix,
+      }
+    }
+    if (innerWhole) {
+      return { text: `Is ${fmt(base)} what ran on the card? Then the amount before the 3% is ${fmt(inner)} - the fee is added for you.`, fix: inner }
+    }
+    return null
+  }
 
   // Food budget math — spent is the expense rows' sum; remaining against
   // wo.food_amount. Text money fields, parsed the same way everywhere.
@@ -7562,6 +7600,24 @@ export function WorkOrderPopup({
                         <div style={{ ...cellS, paddingTop: 6, paddingBottom: 6, justifyContent: 'center', ...(isMobile ? { order: 2 } : {}) }}>
                           {!readOnly && <button type="button" onClick={() => setPayRows(p2 => p2.filter(x => x.id !== p.id))} style={{ background: 'none', color: 'var(--c-fg-3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>}
                         </div>
+                        {/* The card-amount catch (2026-10-06) — see payRowWarning.
+                            Inside the row's own box, full width, last. */}
+                        {(() => {
+                          const w = payRowWarning(p)
+                          if (!w) return null
+                          return (
+                            <div style={{ gridColumn: '1 / -1', order: 9, padding: '0 12px 8px', fontSize: 10.5, fontFamily: 'Inter', lineHeight: 1.45, color: 'var(--c-st-hot)' }}>
+                              {w.text}
+                              {!readOnly && w.fix != null && (
+                                <button
+                                  type="button"
+                                  onClick={() => { const v = w.fix as number; prefilledPayIdsRef.current.delete(p.id); setPayRows(prev => prev.map(x => x.id === p.id ? withCardFee({ ...x, base: formatCurrency(String(v)) }) : x)) }}
+                                  style={{ background: 'none', color: 'var(--c-fg)', cursor: 'pointer', fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, padding: 0, marginLeft: 8, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                                >Use {formatCurrency(String(w.fix))}</button>
+                              )}
+                            </div>
+                          )
+                        })()}
                       </div>
                     )
                   })}

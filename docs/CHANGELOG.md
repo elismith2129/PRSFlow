@@ -20,6 +20,23 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.4 — "Is that the card amount?" on a payment row; TV walls poll every 15s — Oct 6, 2026
+
+**Why (payments).** A $410 COD session paid 30% / 70% by card. The terminal ran $126.69 and $295.61 ($422.30, correct) and those receipt numbers were typed into **Toward balance** - which takes the amount BEFORE the fee - so the 3% went on twice: $434.97 "paid", balance -$12.30, and nothing on the sheet said why. The other 11 card payments in the Oct 3 backup are clean; this is an entry mistake the screen made easy.
+
+- **`payRowWarning(row)`** (WorkOrderPopup) - a red line inside the payment row, COD card rows carrying a fee only. Fires when the typed amount **overpays** the balance (computed without that row), or when it is odd cents but exactly a whole-dollar amount + 3% (the deposit case, which overpays nothing). Offers a one-tap **Use $X** (the amount before the fee) when that is plausibly what was meant. **Warns, never blocks** - a client can overpay on purpose.
+- Shows on saved rows too, so a work order that already has the mistake flags itself when opened.
+
+**Why (TV walls).** Vercel usage was $16.38 in ten days: ~240,000 function calls a day from the panels' 5-second change check. `POLL_MS` 5000 -> 15000 in `app/display/[room]/route.ts` (shipped earlier the same day). Expect ~80k calls/day; the shared CDN-cached probe in TODO is still the real fix.
+
+**Migrations:** none.
+
+**Watch-outs:** the "whole dollars + 3%" test will be a coincidence for roughly one odd-cents amount in a hundred - that is why it is a question, not an error. The warning reads the row after blur (the fee is derived on blur), so it does not flicker while typing. It does not look at what the terminal actually charged; nothing in the app can.
+
+**Files:** `components/calendar/WorkOrderPopup.tsx`, `app/display/[room]/route.ts`, `docs/TV-DISPLAY-BRIEF.md`.
+
+---
+
 ## v1.43.3 — "No show" beside Arrived / Left — Oct 5, 2026
 
 **Why.** Eli: *"add a 'no show' option on the WO card when artists don't show up. this would be only right beside the actual arrival times."* Until now a no-show left Arrived / Left blank, which the runner's submit gate refuses - so the runner either could not submit or typed made-up times.
