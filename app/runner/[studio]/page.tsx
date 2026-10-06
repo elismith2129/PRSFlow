@@ -8,6 +8,7 @@ import { type ChannelKey, type ChannelUnread, CHANNEL_SHORT, fetchChannelUnread,
 import { noteText } from '@/components/shared/RichNote'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { profileInitials } from '@/lib/format'
+import { fetchUnsubmittedSessions } from '@/lib/unsubmitted'
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { dbResult } from '@/lib/db'
 import { SessionCardBody, sessionFillClass, initials } from '@/components/calendar/SessionCard'
@@ -113,10 +114,30 @@ export default function StudioDailyOpsPage() {
     // TODAY'S OWN TIMES AND STAFF (Eli, 2026-09-28, Melly Mike 6P vs 3P):
     // the card carries day one; lib/dayTimes overlays this date's row and
     // re-sorts by it. Same read the calendar and the wall do.
-    const filtered = await overlayDayTimes((bData ?? []).filter((b: Booking) => {
+    const todays = await overlayDayTimes((bData ?? []).filter((b: Booking) => {
       const loc = (b.location ?? '').toLowerCase()
       return loc.includes(studio) || loc.includes(meta.abbr.toLowerCase())
     }), today)
+
+    // AN OPEN WORK ORDER STAYS ON THE HUB (Eli, 2026-10-05: "an open WO is an
+    // open WO… right now runners can't document the session after 8:50a").
+    // The ops day rolls at 8:50 AM and the query above is today's sessions, so
+    // a session still running at 9 vanished from this page with its work order
+    // unsubmitted and no way back to it. Yesterday's sessions that are still
+    // not submitted (lib/unsubmitted — the one rule) are carried at the top of
+    // the same list, the same card, until they are submitted or the office
+    // closes them out. No new section, no new state: the card just stays.
+    const [ty, tm, td] = today.split('-').map(Number)
+    const yd = new Date(ty, tm - 1, td - 1)
+    const yesterday = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`
+    const owed = await fetchUnsubmittedSessions({ from: yesterday, to: yesterday, slug: studio })
+    const carryIds = Array.from(new Set(owed.map(o => o.bookingId))).filter(id => !todays.some((b: Booking) => b.id === id))
+    let carried: Booking[] = []
+    if (carryIds.length > 0) {
+      const { data: cData } = await supabase.from('bookings').select('*').in('id', carryIds).order('from_time', { ascending: true })
+      carried = await overlayDayTimes((cData ?? []) as Booking[], yesterday)
+    }
+    const filtered = [...carried, ...todays]
     setBookings(filtered)
 
     if (filtered.length > 0) {

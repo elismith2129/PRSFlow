@@ -604,6 +604,44 @@ export type WOFormSync = {
 /** A day already turned in — by the runner, or by the office on their behalf. */
 const SENT_STATUSES = new Set(['submitted', 'approved'])
 
+/** "2026-10-03" → "Sat, Oct 3" — the day a runner is about to turn in. */
+function fmtSubmitDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+// ── THE SIGNATURE'S INK (fix, 2026-10-05) ──────────────────────────────────
+// Eli: "writing for signature on assistant WO is black and unseeable."
+// The pen was set with `ctx.strokeStyle = 'var(--c-fg)'`. A canvas does not
+// read CSS variables — it rejects the string and keeps its default, black, on
+// a near-black pad. So: draw in the screen's REAL foreground colour (resolved
+// here), and keep the STORED copy in one fixed dark ink, so a signature made
+// on a dark screen is not ivory-on-white wherever else it is shown. Loading
+// re-inks the stored copy for the screen it lands on; old black signatures
+// become readable the same way.
+const SIG_STORED_INK = '#111111'
+function sigInk(canvas: HTMLCanvasElement): string {
+  try { return getComputedStyle(canvas).getPropertyValue('--c-fg').trim() || SIG_STORED_INK } catch { return SIG_STORED_INK }
+}
+/** Flood every inked pixel with one colour, keeping the strokes' own alpha. */
+function sigReink(ctx: CanvasRenderingContext2D, w: number, h: number, color: string) {
+  ctx.globalCompositeOperation = 'source-in'
+  ctx.fillStyle = color
+  ctx.fillRect(0, 0, w, h)
+  ctx.globalCompositeOperation = 'source-over'
+}
+/** The copy that goes on the record: the pad's strokes, in the stored ink. */
+function sigDataUrl(canvas: HTMLCanvasElement): string {
+  const off = document.createElement('canvas')
+  off.width = canvas.width; off.height = canvas.height
+  const o = off.getContext('2d')
+  if (!o) return canvas.toDataURL('image/png')
+  o.drawImage(canvas, 0, 0)
+  sigReink(o, off.width, off.height, SIG_STORED_INK)
+  return off.toDataURL('image/png')
+}
+
 export function WorkOrderPopup({
   booking,
   liveForm,
@@ -1067,7 +1105,7 @@ export function WorkOrderPopup({
   const [timeDDKey, setTimeDDKey] = useState<string | null>(null)
   // Swipe-between-days (Eli, 2026-08-16): touch start X, for the day sheet.
   const sheetTouchX = useRef<number | null>(null)
-  // Runner submit (today's rows → 'submitted').
+  // Runner submit (the day's rows → 'submitted'; see runnerSubmittable).
   const [submittingRun, setSubmittingRun] = useState(false)
   /** Row ids missing Arrived/Left when the runner pressed Submit — the gate below. */
   const [needTimes, setNeedTimes] = useState<string[] | null>(null)
@@ -1758,13 +1796,17 @@ export function WorkOrderPopup({
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.strokeStyle = 'var(--c-fg)'
+    ctx.strokeStyle = sigInk(canvas)
     ctx.lineWidth = 2.5
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     if (adminInitialSigRef.current) {
       const img = new Image()
-      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        // The stored copy is dark ink; show it in this screen's ink.
+        sigReink(ctx, canvas.width, canvas.height, sigInk(canvas))
+      }
       img.src = adminInitialSigRef.current
     }
   }, [loading])
@@ -1793,7 +1835,7 @@ export function WorkOrderPopup({
     const canvas = adminCanvasRef.current; if (!canvas) return
     adminIsDrawingRef.current = true
     const ctx = canvas.getContext('2d')!
-    ctx.strokeStyle = 'var(--c-fg)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+    ctx.strokeStyle = sigInk(canvas); ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
     const pos = getAdminCanvasPos(e, canvas)
     ctx.beginPath(); ctx.moveTo(pos.x, pos.y)
   }
@@ -1811,7 +1853,7 @@ export function WorkOrderPopup({
     adminIsDrawingRef.current = false
     const canvas = adminCanvasRef.current; if (!canvas) return
     setDirtyFields(prev => new Set(prev).add('signature_data'))
-    setWo(w => w ? { ...w, signature_data: canvas.toDataURL('image/png') } : w)
+    setWo(w => w ? { ...w, signature_data: sigDataUrl(canvas) } : w)
   }
 
   function clearAdminSignature() {
@@ -2885,15 +2927,70 @@ export function WorkOrderPopup({
 
   /**
    * THE RUNNER'S TERMINAL ACT (spec §15): save everything through the same
-   * atomic RPC the admin uses, then mark today's rows 'submitted'. Submitted
+   * atomic RPC the admin uses, then mark the day's rows 'submitted'. Submitted
    * is a SIGNAL, not a seal — the runner can reopen and edit until the office
    * approves a day (admin_locked), then that day alone is out of reach. There
    * is no penalty for resubmitting; the button just reads "Update submission"
-   * once today's rows are already in. Sessions with no rows dated today still
-   * save (a runner fixing yesterday), they just have nothing to mark.
+   * once today's rows are already in. WHICH days a press can mark is
+   * runnerSubmittable(), next; the act itself is handleRunnerSubmit() below it.
+   */
+  /**
+   * WHAT A RUNNER CAN TURN IN RIGHT NOW (Eli, 2026-10-05: "runners need the
+   * ability to submit WOs whenever, not cut off at 8:50a, as sessions run past
+   * 8:50a"). Submit used to mark only rows dated opsToday(); the ops day rolls
+   * at 8:50 AM, so a session still running at 9 had no day left to submit —
+   * the button saved and marked nothing, and the night read "never submitted".
+   *
+   * Now: today's rows as before, PLUS any earlier day of this work order that
+   * was never sent and that the office has not already reviewed (admin_locked)
+   * or marked tentative / cancelled. Staff sub-rows follow their studio row,
+   * so only a studio row makes a day count.
+   */
+  function runnerSubmittable(): { today: string; days: string[] } {
+    const today = opsToday()
+    const days = new Set<string>()
+    for (const r of stRows) {
+      if (!r.date || r.date > today) continue
+      if (r.date === today) { days.add(today); continue }
+      if (!(r.studio ?? '').trim()) continue
+      if (r.admin_locked) continue
+      if (r.day_status === 'tentative' || r.day_status === 'cancelled') continue
+      if (SENT_STATUSES.has(r.status ?? 'in_progress')) continue
+      days.add(r.date)
+    }
+    return { today, days: Array.from(days).sort() }
+  }
+
+  /**
+   * ONE TAP, EVERYTHING OPEN (Eli, 2026-10-05: "an open WO is an open WO…
+   * keeping everything as it is now but allowing runners to submit"). A
+   * "which days are yours?" sheet was built first and ruled out the same day
+   * as more than this needs — a missed day on a long session goes in under
+   * whoever submits next, and that is accepted: the office still sees the
+   * night flagged until it does, and the submit time is on the row.
    */
   async function handleRunnerSubmit() {
     if (!woIdRef.current) return
+    const { today, days: sending } = runnerSubmittable()
+    // The rows this press will stamp. Today: every row (resubmitting is free —
+    // "Update submission"). An earlier day: only what was never sent and is
+    // not locked, so a room someone already turned in keeps its own name/time.
+    const openRows = stRows.filter(r => sending.includes(r.date) && (
+      r.date === today || (!r.admin_locked && !SENT_STATUSES.has(r.status ?? 'in_progress'))
+    ))
+    const lacksActual = (r: StRow) =>
+      !!(r.studio ?? '').trim()
+      && r.day_status !== 'tentative' && r.day_status !== 'cancelled'
+      && (!(r.actual_from_time || '').trim() || !(r.actual_to_time || '').trim())
+    // An EARLIER day with no Arrived/Left, on a work order that also has
+    // today's rows, is somebody else's forgotten night on a long session —
+    // tonight's runner cannot know those times and must not be blocked by
+    // them. That day is left open (it stays flagged for the office) and
+    // today goes in. When the earlier day is ALL there is to submit — last
+    // night's session at 9:30 AM — the gate below applies to it as usual.
+    const hasToday = openRows.some(r => r.date === today)
+    const skipDays = new Set(hasToday ? openRows.filter(r => r.date < today && lacksActual(r)).map(r => r.date) : [])
+    const markRows = openRows.filter(r => !skipDays.has(r.date))
     // ARRIVED / LEFT ARE REQUIRED TO SUBMIT (Eli, 2026-09-23: "runners are not
     // putting in actual arrival and departure times… if they submit a WO that
     // doesn't have that they have to correct before submitting").
@@ -2906,42 +3003,36 @@ export function WorkOrderPopup({
     // office can correct a rate, it cannot remember what time a client walked
     // out.
     //
-    // Only TODAY's studio rows, and only days that actually happened: a day
-    // marked tentative or cancelled was never a session to time, and staff
+    // Only the days being submitted, and only days that actually happened: a
+    // day marked tentative or cancelled was never a session to time, and staff
     // sub-rows carry no studio so they follow their studio row.
-    const todayForTimes = opsToday()
-    const missingActual = stRows.filter(r =>
-      r.date === todayForTimes
-      && (r.studio ?? '').trim()
-      && r.day_status !== 'tentative' && r.day_status !== 'cancelled'
-      && (!(r.actual_from_time || '').trim() || !(r.actual_to_time || '').trim()))
+    const missingActual = markRows.filter(lacksActual)
     if (missingActual.length > 0) { setNeedTimes(missingActual.map(r => r.id)); return }
     setSubmittingRun(true)
     const saved = await handleClose(false)
     if (!saved) { setSubmittingRun(false); return }
     // opsToday, NEVER getLocalToday (Eli, 2026-09-01: "we definitely need to
     // anticipate runners submitting after midnight. this will be 80% of
-    // sessions"). This was the Aug 28 rule's one miss in this file: keyed on
-    // the calendar day, a 1 AM submit matched no rows and silently marked
-    // nothing. The 8:50 AM boundary IS the no-midnight-logic implementation —
-    // the shift's day holds until the building turns over.
-    const today = opsToday()
-    const todayIds = stRows.filter(r => r.date === today).map(r => r.id)
-    if (todayIds.length > 0) {
+    // sessions"). The 8:50 AM boundary is still what "today" means here; what
+    // changed on 2026-10-05 is that crossing it no longer strands the night.
+    const ids = markRows.map(r => r.id)
+    if (ids.length > 0) {
       // WHO and WHEN ride along (Eli, 2026-09-17: "the runner name included
       // in that tag"). The name is the profile's display name — the same one
       // the activity log records below — so the tag and the history agree.
       const submittedBy = (profile?.display_name || '').trim() || null
       const submittedAt = new Date().toISOString()
       const { error } = await supabase.from('studio_time_rows')
-        .update({ status: 'submitted', submitted_by_name: submittedBy, submitted_at: submittedAt }).in('id', todayIds)
-      if (!dbResult('Submitting today', error)) { setSubmittingRun(false); return }
+        .update({ status: 'submitted', submitted_by_name: submittedBy, submitted_at: submittedAt }).in('id', ids)
+      if (!dbResult('Submitting', error)) { setSubmittingRun(false); return }
       const mark = (rows: StRow[]) => rows.map(r =>
-        todayIds.includes(r.id) && r.status !== 'approved' ? { ...r, status: 'submitted', submitted_by_name: submittedBy, submitted_at: submittedAt } : r)
+        ids.includes(r.id) && r.status !== 'approved' ? { ...r, status: 'submitted', submitted_by_name: submittedBy, submitted_at: submittedAt } : r)
       setStRows(mark)
       originalStRowsRef.current = mark(originalStRowsRef.current)
       // History: the runner's terminal act gets its own line (the save above
-      // already logged any field changes as a 'saved' entry).
+      // already logged any field changes as a 'saved' entry). One change per
+      // day sent — the timestamp on the entry says how late an earlier day was.
+      const sentDays = Array.from(new Set(markRows.map(r => r.date))).sort()
       void logWoActivity({
         workOrderId: woIdRef.current,
         actorId: profile?.id ?? null,
@@ -2949,7 +3040,7 @@ export function WorkOrderPopup({
         source: 'runner',
         kind: 'submitted',
         afterInvoice: hadInvoiceRef.current,
-        changes: [{ what: 'Day submitted', day: today }],
+        changes: sentDays.map(d => ({ what: 'Day submitted', day: d })),
       })
     }
     setSubmittingRun(false)
@@ -8497,20 +8588,29 @@ export function WorkOrderPopup({
           const today = opsToday()
           const todayRows = stRows.filter(r => r.date === today)
           const alreadySubmitted = todayRows.length > 0 && todayRows.every(r => r.status === 'submitted' || r.status === 'approved')
+          // Earlier days that never went in (2026-10-05 — see runnerSubmittable).
+          // With just one, the button names it, so a runner at 9:30 AM reads
+          // "Submit Sat, Oct 3", not a "today" that has no rows.
+          const { days: canSend } = runnerSubmittable()
+          const earlier = canSend.filter(d => d < today)
+          const submitLabel = earlier.length > 0 ? (earlier.length === 1 && todayRows.length === 0 ? `Submit ${fmtSubmitDay(earlier[0])}` : 'Submit')
+            : alreadySubmitted ? 'Update submission'
+            : todayRows.length > 0 ? 'Submit today' : 'Save'
+          const submitSub = earlier.length > 0 ? 'Sends the times to the office · nothing is invoiced yet'
+            : todayRows.length > 0 ? 'Sends today’s times to the office · nothing is invoiced yet'
+            : 'Nothing left to submit — this saves your changes'
           return (
             <div style={{ flexShrink: 0, padding: '10px 16px calc(14px + env(safe-area-inset-bottom))', background: 'var(--c-bg)' }}>
               <button
-                onClick={handleRunnerSubmit}
+                onClick={() => handleRunnerSubmit()}
                 disabled={submittingRun || saving}
                 className="c-control c-pill c-fill-booked c-raised-chip"
                 style={{ width: '100%', minHeight: 48, justifyContent: 'center', display: 'flex', alignItems: 'center', cursor: (submittingRun || saving) ? 'default' : 'pointer', opacity: (submittingRun || saving) ? 0.5 : 1, fontSize: 13 }}
               >
-                {submittingRun ? 'Submitting…' : alreadySubmitted ? 'Update submission' : 'Submit today'}
+                {submittingRun ? 'Submitting…' : submitLabel}
               </button>
               <div style={{ textAlign: 'center', fontSize: 9.5, fontFamily: 'Inter', color: 'var(--c-fg-3)', marginTop: 6 }}>
-                {todayRows.length > 0
-                  ? 'Sends today’s times to the office · nothing is invoiced yet'
-                  : 'No rows dated today — this saves your changes'}
+                {submitSub}
               </div>
             </div>
           )

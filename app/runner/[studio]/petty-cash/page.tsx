@@ -31,6 +31,7 @@ import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { draftKey, readDraft, writeDraft, clearDraft } from '@/lib/draft'
 import { opsToday } from '@/lib/time'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { PettyCashHistory } from '@/components/runner/PettyCashHistory'
 
 const STUDIO_META: Record<string, { label: string }> = {
   paramount: { label: 'Paramount' },
@@ -80,6 +81,10 @@ export default function PettyCashPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Bumped by the realtime channel so the read-only "Previous days" box
+  // (PettyCashHistory, 2026-10-05) refetches. It has no inputs, so unlike the
+  // ledger above it refreshes even while the runner is mid-edit.
+  const [historyV, setHistoryV] = useState(0)
   // True once the runner edits anything; blocks the realtime refetch so a live update
   // never clobbers unsaved local entries. Reset to false whenever we load fresh data.
   const dirtyRef = useRef(false)
@@ -165,8 +170,8 @@ export default function PettyCashPage() {
   useEffect(() => {
     const channel = supabase
       .channel(`runner-petty-cash-${studio}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_entries' }, () => { if (!dirtyRef.current) load() })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_balances' }, () => { if (!dirtyRef.current) load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_entries' }, () => { setHistoryV(v => v + 1); if (!dirtyRef.current) load() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'petty_cash_balances' }, () => { setHistoryV(v => v + 1); if (!dirtyRef.current) load() })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [studio, load])
@@ -305,7 +310,7 @@ export default function PettyCashPage() {
   return (
     <div style={{
       minHeight: '100dvh', maxWidth: '100vw', overflowX: 'hidden',
-      background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 130,
+      background: 'var(--c-bg)', color: 'var(--c-fg)', paddingBottom: 170,
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 11,
@@ -470,6 +475,11 @@ export default function PettyCashPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* The trail behind tonight's opening — see the component's header. */}
+      <div style={{ padding: '18px 14px 0' }}>
+        <PettyCashHistory studio={studio} today={today} refresh={historyV} />
       </div>
 
       <div style={{
