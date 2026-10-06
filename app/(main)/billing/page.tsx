@@ -380,6 +380,44 @@ export default function BillingPage() {
     else setOpenBooking(booking)
   }
 
+  /**
+   * AFTER A DECISION, THE NEXT ONE OPENS (Eli, 2026-10-06: "when i hit approve
+   * i want it to jump to the next one… instead of going back to the billing
+   * hub page and i have to click the next one").
+   *
+   * The owner's sweep: Approve (or Don't approve) in the package window swaps
+   * straight to the next package waiting, in the strip's own order — oldest
+   * first, continuing from the one just decided and wrapping round to any that
+   * were skipped. When nothing is left it closes and says so.
+   *
+   * ONLY rows that open as a PACKAGE are stepped to. A queue row with no
+   * invoice on file opens the work order instead, which has no Approve in it —
+   * jumping there would strand the sweep on a screen that cannot continue it.
+   * Those stay in the strip, where their Approve button is.
+   *
+   * The window is swapped, not closed and reopened, so the hub never flashes
+   * in between; PackageModal is keyed on the work order so nothing (the view,
+   * the built preview, a half-typed return note) carries across.
+   */
+  async function openNextApproval(after: InvoiceRow) {
+    const queue = approvals.filter(r => r.hasInvoiceDoc)
+    const i = queue.findIndex(r => r.workOrderId === after.workOrderId)
+    const rest = i >= 0
+      ? [...queue.slice(i + 1), ...queue.slice(0, i)]
+      : queue.filter(r => r.workOrderId !== after.workOrderId)
+    load()
+    for (const next of rest) {
+      if (!next.bookingId) continue
+      const { data } = await supabase.from('bookings').select('*').eq('id', next.bookingId).limit(1)
+      const booking = data?.[0] as Booking | undefined
+      if (booking) { setPkg({ row: next, booking }); return }
+    }
+    setPkg(null)
+    // Only when the WHOLE queue is empty — a row with no invoice on file may
+    // still be waiting in the strip, and "all caught up" would be a lie.
+    if (!approvals.some(r => r.workOrderId !== after.workOrderId)) toast('All caught up — nothing left to approve', 'success')
+  }
+
   async function openDoc(row: InvoiceRow) {
     const url = await signedInvoiceUrl(row.workOrderId)
     if (url) window.open(url, '_blank', 'noopener')
@@ -895,9 +933,11 @@ export default function BillingPage() {
 
       {pkg && (
         <PackageModal
+          key={pkg.row.workOrderId}
           row={pkg.row}
           booking={pkg.booking}
           onClose={() => { setPkg(null); load() }}
+          onDecided={() => openNextApproval(pkg.row)}
           isOwner={isOwner}
           approverId={profile?.id ?? null}
           approverName={profile?.display_name || ''}
@@ -1567,10 +1607,13 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
  * rendered inline, so it is fully editable and prints from its own button; the
  * invoice pane is the stored PDF.
  */
-function PackageModal({ row, booking, onClose, isOwner, approverId, approverName }: {
+function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, approverName }: {
   row: InvoiceRow
   booking: Booking
   onClose: () => void
+  /** After Approve / Don't approve succeeds: the hub swaps this window to the
+   *  next package waiting, or closes it when there is none (2026-10-06). */
+  onDecided: () => void | Promise<void>
   isOwner: boolean
   approverId: string | null
   approverName: string
@@ -1626,15 +1669,17 @@ function PackageModal({ row, booking, onClose, isOwner, approverId, approverName
     if (busy) return
     setBusy(true)
     const ok = await approveInvoice(row, approverId, approverName || undefined)
+    // Stays busy until the window has moved on, so a second click cannot land
+    // on the row that was just approved.
+    if (ok) { toast(`Approved — ${formatCurrency(String(row.total))}`, 'success'); await onDecided() }
     setBusy(false)
-    if (ok) { toast(`Approved — ${formatCurrency(String(row.total))}`, 'success'); onClose() }
   }
   async function doReject() {
     if (busy) return
     setBusy(true)
     const ok = await rejectInvoice(row, approverId, approverName, rejectNote)
+    if (ok) { toast('Returned to billing with your note', 'success'); await onDecided() }
     setBusy(false)
-    if (ok) { toast('Returned to billing with your note', 'success'); onClose() }
   }
 
   return (
