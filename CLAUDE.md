@@ -65,6 +65,13 @@ Per-person **six-digit** PINs are the primary login (`scripts/set-pins.mjs` deal
 - Errors surface in **Admin → Errors** (app_errors table); `lib/errlog.ts` `logAppError()` for manual reporting.
 - **`noImplicitAny` is ON** — keep it passing; full `strict` is the staged goal.
 
+### Deleting a work order: one door, always kept (Oct 5, 2026 — WO-1240)
+WO-1240 (a week of invoiced Molly Santana sessions) was deleted from the WO popup with no trace, because "Delete session" removed the WHOLE work order behind whichever card was open and `wo_activity` cascaded with it. Rules since:
+- **A session's work order is deleted from the billing hub only** (row ⋯ → Delete, typed confirm; owner / manager / billing). The WO popup shows Delete **for blocks only** (Tour / Tech / Open hours / Tenant - they never reach the hub). Do not put a session delete back on the popup, the calendar, the dashboard or Daily Ops.
+- **Nothing in the app deletes `work_orders` or `bookings` rows directly.** Every delete calls `delete_with_archive()` (migration `20261005180000`, wrapped by `lib/deleteSession.ts`): it snapshots the work order, its cards and every table carrying a `work_order_id` into `deleted_work_orders`, then deletes - one transaction. Never add a client-side `.delete()` on those tables.
+- **The log is read-only and recoverable.** `deleted_work_orders` has no write policy; `recover_deleted_work_order()` restores a snapshot with its original ids. UI: billing hub page ⋯ → Deleted work orders (`components/billing/DeletedLog.tsx`).
+- **WO-number gaps are NOT deletions** - `create_work_order_atomic` burns a sequence number on every `on conflict do nothing`. The deleted log is the only evidence of a delete.
+
 ### The operational day is 8:50 AM (Aug 28, 2026)
 **Every runner surface keys its day on `opsToday()` from `lib/time.ts` — never `getLocalToday()`.** A studio night runs past midnight, and keying on the calendar day meant a runner mid-shift watched their sessions, work orders and checklists roll over under them at 12:00am. `getLocalToday()` is for **calendar semantics only** (booking dates on admin surfaces). Using the wrong one is invisible in daylight and wrong for nine hours a night.
 - `opsToday()` is an alias of `shiftLogDate()` — the same 8:50 AM America/Los_Angeles boundary as the shift-note seal, on purpose. **If the boundary ever moves, `shiftLogDate()` and the `shift_note_docs` / `shift_log_entries` RLS policies move together** — the interval is hard-coded in the SQL.

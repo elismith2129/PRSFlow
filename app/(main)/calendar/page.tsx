@@ -8,7 +8,7 @@ import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
 import { type FormData, emptyForm } from '@/components/calendar/sessionFormData'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { createWorkOrderForBooking, bookingShouldHaveWorkOrder } from '@/lib/createWorkOrder'
-import { deleteSessionAndWO } from '@/lib/deleteSession'
+import { deleteBlock } from '@/lib/deleteSession'
 import { dateRange, toStudioLetter } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass, fmtCardTime } from '@/components/calendar/SessionCard'
@@ -1652,11 +1652,12 @@ function CalendarPageInner() {
     createBookingAndOpenWO({ location, studio, start_date: date, end_date: date })
   }
 
-  // Delete a session opened as a WO — removes the WO + its line items, then ALL
-  // of its booking cards. Shared helper (lib/deleteSession.ts) — the dashboard's
-  // WO popup uses the same one.
+  // Delete, from the WO popup — BLOCKS ONLY (Tour / Tech / Open hours /
+  // Tenant). The popup shows no Delete for a session: a session's work order
+  // is deleted from the billing hub (Eli, 2026-10-05). Kept in the deleted
+  // log either way — lib/deleteSession.ts. Stays open if it did not happen.
   async function deleteSessionFromWO(b: Booking) {
-    await deleteSessionAndWO(b)
+    if (!(await deleteBlock(b))) return
     setWoBooking(null)
     await load()
   }

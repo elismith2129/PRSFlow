@@ -7,6 +7,7 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
+- [ ] **Run `20261005180000_deleted_work_orders.sql` BEFORE the delete-log code is pushed** - the billing hub's Delete and the block Delete both call `delete_with_archive()` and fail without it. Then test: delete a throwaway WO from the hub as Lori or Fernando, find it under ⋯ → Deleted work orders, Recover it. *(Oct 5)*
 - [x] ~~Run `20261005120000_daily_ops_reviews_billing.sql`~~ — ran Oct 5; `dor_ins` and `dor_del` both list `billing` (Eli's screenshot of pg_policies). The Billing role can check items off on Daily Ops. *(Oct 5)*
 
 - [ ] **Run** `20261001150000_lakers_games.sql` before the v1.42.0 push. When the Lakers drop the 26–27 schedule: Admin → Lakers → 26–27 → Paste schedule. *(Oct 1)*

@@ -41,7 +41,6 @@ import { useFlagsVersion } from '@/hooks/useFlagsVersion'
 import { dbResult } from '@/lib/db'
 import { profileInitials } from '@/lib/format'
 import { fetchOpenFlags } from '@/lib/flags'
-import { deleteSessionAndWO } from '@/lib/deleteSession'
 import { fetchNightMissedWorkOrders, type MissedWorkOrder } from '@/lib/unsubmitted'
 import { Hint } from '@/components/ui/Hint'
 import { RichNoteView, noteText } from '@/components/shared/RichNote'
@@ -519,7 +518,6 @@ function OpsNight({ me, myInitials, isMobile }: { me: string; myInitials: string
           booking={editBooking}
           onClose={() => { setEditBooking(null); load() }}
           onSaved={() => { load() }}
-          onDelete={async () => { await deleteSessionAndWO(editBooking); setEditBooking(null); load() }}
         />
       )}
     </>

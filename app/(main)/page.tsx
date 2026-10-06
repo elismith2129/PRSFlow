@@ -29,7 +29,7 @@ import { supabase, Lead, Booking, DashboardTask } from '@/lib/supabase'
 import { overlayDayTimes } from '@/lib/dayTimes'
 import { useRouter } from 'next/navigation'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
-import { deleteSessionAndWO } from '@/lib/deleteSession'
+import { deleteBlock } from '@/lib/deleteSession'
 import { initials } from '@/components/calendar/SessionCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
@@ -589,7 +589,8 @@ export default function DashboardPage() {
   }
   async function handleDashDelete() {
     if (!dashEditBooking) return
-    await deleteSessionAndWO(dashEditBooking)
+    // Blocks only — the popup shows no Delete for a session (billing hub only).
+    if (!(await deleteBlock(dashEditBooking))) return
     setDashEditBooking(null)
     await refreshDayBookings()
   }

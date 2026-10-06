@@ -1,69 +1,76 @@
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
+import { dbResult } from '@/lib/db'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// deleteSessionAndWO — deletes a session opened as a WO: the work order + all
-// of its line items, its SRS log rows, and ALL of its booking cards (primary +
-// secondary room-run cards; bookings.work_order_id is ON DELETE CASCADE, so
-// deleting the WO removes its cards — the explicit deletes are belt+braces for
-// legacy rows that predate the link). Used by the WO Delete-session button on
-// both the calendar and the dashboard. (Step 8 extraction — was calendar-only.)
+// DELETING A WORK ORDER — one door, always kept, always recoverable.
+// (Eli, 2026-10-05, after WO-1240 — a week of Molly Santana sessions,
+// runner-submitted and invoiced — vanished with no trace.)
+//
+// "Get rid of the delete button that's on the WOs. Only a delete button from
+// the billing hub… I do want Lori and Fernando to be able to do this. I just
+// want an in-app log for all deletions and a recover function."
+//
+// THE RULES THIS FILE HOLDS:
+//   · A SESSION's work order is deleted from the billing hub and nowhere else
+//     (owner / manager / billing). The WO popup has no Delete for a session.
+//   · A BLOCK (Tour / Tech / Open hours / Tenant) never reaches the billing
+//     hub, so its popup keeps a Delete — deleteBlock() below.
+//   · NOTHING here deletes rows itself. Both paths call delete_with_archive()
+//     (migration 20261005180000): the snapshot and the delete are one
+//     transaction, so nothing can be deleted without being kept. Do not add a
+//     client-side `.delete()` on work_orders or bookings anywhere — that is
+//     the hole this closed.
+//   · The log (deleted_work_orders) is read-only from the app; Recover puts a
+//     snapshot back with its original ids.
 // ─────────────────────────────────────────────────────────────────────────────
-export async function deleteSessionAndWO(b: Booking): Promise<void> {
-  const woIds = new Set<string>()
-  if ((b as any).work_order_id) woIds.add((b as any).work_order_id as string)
-  const { data: wos } = await supabase.from('work_orders').select('id').eq('booking_id', b.id)
-  for (const w of (wos ?? [])) woIds.add(w.id)
-  for (const id of woIds) {
-    await supabase.from('studio_time_rows').delete().eq('work_order_id', id)
-    await supabase.from('equipment_condition_rows').delete().eq('work_order_id', id)
-    await supabase.from('equipment_condition_notes').delete().eq('work_order_id', id)
-    await supabase.from('rental_rows').delete().eq('work_order_id', id)
-    await supabase.from('payment_rows').delete().eq('work_order_id', id)
-    await supabase.from('bookings').delete().eq('work_order_id', id).neq('id', b.id)
-    await supabase.from('work_orders').delete().eq('id', id)
-  }
-  await supabase.from('srs_log').delete().eq('booking_id', b.id)
-  await supabase.from('bookings').delete().eq('id', b.id)
+
+/** The billing hub's Delete WO: the work order, every card, every row — kept
+ *  in the deleted log first. Returns the reason on failure so the caller can
+ *  say it; nothing here is silent. */
+export async function deleteWorkOrderEverywhere(woId: string): Promise<{ ok: boolean; reason?: string }> {
+  const { error } = await supabase.rpc('delete_with_archive', { p_wo_id: woId, p_booking_id: null })
+  if (error) return { ok: false, reason: error.message }
+  return { ok: true }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// deleteWorkOrderEverywhere — the billing hub's Delete WO (Eli-only, 2026-09-16).
-// The same teardown as deleteSessionAndWO, keyed on the WORK ORDER: every
-// line item, every booking card that points at it (primary and siblings),
-// their SRS log rows, then the WO. wo_expenses / wo_activity /
-// wo_rate_bundles / bookings.work_order_id all cascade from the WO row; the
-// explicit deletes are belt+braces for legacy rows. Returns false on the
-// first failure so the caller can say so — nothing here is silent.
-// ─────────────────────────────────────────────────────────────────────────────
-export async function deleteWorkOrderEverywhere(woId: string): Promise<{ ok: boolean; reason?: string }> {
-  const { data: wo, error: wErr } = await supabase.from('work_orders').select('booking_id').eq('id', woId).limit(1)
-  if (wErr) return { ok: false, reason: wErr.message }
-  const { data: cards, error: cErr } = await supabase.from('bookings').select('id').eq('work_order_id', woId)
-  if (cErr) return { ok: false, reason: cErr.message }
-  const bookingIds = Array.from(new Set([...(cards ?? []).map(c => c.id), wo?.[0]?.booking_id].filter(Boolean) as string[]))
+/** The WO popup's Delete, for a BLOCK only (Tour / Tech / Open hours /
+ *  Tenant): that card, plus any dormant work order still attached to it.
+ *  Kept in the same log. False (with a toast) if it did not happen. */
+export async function deleteBlock(b: Booking): Promise<boolean> {
+  const { error } = await supabase.rpc('delete_with_archive', { p_wo_id: null, p_booking_id: b.id })
+  return dbResult('Deleting block', error)
+}
 
-  const step = async (what: string, q: PromiseLike<{ error: { message: string } | null }>): Promise<string | null> => {
-    const { error } = await q
-    return error ? `${what}: ${error.message}` : null
-  }
-  // In order, stopping at the first failure — the WO row goes LAST, so a
-  // failed child delete never leaves a headless set of rows behind.
-  const plan: Array<[string, () => PromiseLike<{ error: { message: string } | null }>]> = [
-    ['studio time', () => supabase.from('studio_time_rows').delete().eq('work_order_id', woId)],
-    ['equipment', () => supabase.from('equipment_condition_rows').delete().eq('work_order_id', woId)],
-    ['equipment notes', () => supabase.from('equipment_condition_notes').delete().eq('work_order_id', woId)],
-    ['rentals', () => supabase.from('rental_rows').delete().eq('work_order_id', woId)],
-    ['payments', () => supabase.from('payment_rows').delete().eq('work_order_id', woId)],
-    ...(bookingIds.length ? [
-      ['SRS log', () => supabase.from('srs_log').delete().in('booking_id', bookingIds)] as [string, () => PromiseLike<{ error: { message: string } | null }>],
-      ['booking cards', () => supabase.from('bookings').delete().in('id', bookingIds)] as [string, () => PromiseLike<{ error: { message: string } | null }>],
-    ] : []),
-    ['work order', () => supabase.from('work_orders').delete().eq('id', woId)],
-  ]
-  for (const [what, fn] of plan) {
-    const fail = await step(what, fn())
-    if (fail) return { ok: false, reason: fail }
-  }
+/** One line of the deleted log. The snapshot itself is never loaded into the
+ *  page — it can be large, and Recover works from the id. */
+export type DeletedEntry = {
+  id: string
+  deleted_at: string
+  deleted_by_name: string
+  kind: 'work_order' | 'block'
+  wo_number: string | null
+  title: string
+  detail: string
+  recovered_at: string | null
+  recovered_by_name: string | null
+}
+
+/** The log, newest first. 200 is years of deletes at the rate they happen. */
+export async function fetchDeleted(): Promise<DeletedEntry[]> {
+  const { data, error } = await supabase
+    .from('deleted_work_orders')
+    .select('id, deleted_at, deleted_by_name, kind, wo_number, title, detail, recovered_at, recovered_by_name')
+    .order('deleted_at', { ascending: false })
+    .limit(200)
+  if (!dbResult('Loading deleted work orders', error)) return []
+  return (data ?? []) as DeletedEntry[]
+}
+
+/** Put a deleted entry back. The database refuses (and says why) if it was
+ *  already recovered or the work order exists again. */
+export async function recoverDeleted(id: string): Promise<{ ok: boolean; reason?: string }> {
+  const { error } = await supabase.rpc('recover_deleted_work_order', { p_id: id })
+  if (error) return { ok: false, reason: error.message }
   return { ok: true }
 }

@@ -4866,11 +4866,18 @@ export function WorkOrderPopup({
             </button>
           )}
           {/* Delete, moved down from the header. It keeps its two-step confirm —
-              a one-click delete next to Close & Save would be a bad neighbour. */}
-          {!readOnly && onDelete && (
+              a one-click delete next to Close & Save would be a bad neighbour.
+              BLOCKS ONLY (Eli, 2026-10-05: "get rid of the delete button
+              that's on the WOs. only a delete button from the billing hub").
+              This button deleted the WHOLE work order behind whichever card
+              was open — it is how WO-1240, a week of invoiced sessions, went.
+              A session is now deleted from the billing hub and nowhere else.
+              Tour / Tech / Open hours / Tenant never reach the hub, so they
+              keep this. Do not widen it back to sessions. */}
+          {!readOnly && onDelete && isBlock && (
             confirmDeleteSession ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 'auto' }}>
-                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete session?</span>
+                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>Delete block?</span>
                 <button onClick={() => { setConfirmDeleteSession(false); onDelete() }} className="c-pill c-fill-hot c-control c-raised-chip" style={{ cursor: 'pointer' }}>
                   Delete
                 </button>

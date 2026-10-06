@@ -62,6 +62,7 @@ import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
 import { deleteWorkOrderEverywhere } from '@/lib/deleteSession'
+import { DeletedLogModal } from '@/components/billing/DeletedLog'
 import { Hint } from '@/components/ui/Hint'
 import { FinancialsView } from '@/components/billing/FinancialsView'
 import { TenantsView } from '@/components/billing/TenantsView'
@@ -85,6 +86,10 @@ export default function BillingPage() {
 
   const isEli = profile?.email === 'eli@paramountrecording.com'
   const isOwner = isEli || profile?.role === 'owner'
+  // DELETE + RECOVER: owner, manager, billing (Eli, 2026-10-05 — "I do want
+  // Lori and Fernando to be able to do this"). The database checks the same
+  // three roles again inside delete_with_archive().
+  const canDelete = isOwner || profile?.role === 'manager' || profile?.role === 'billing'
 
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -139,8 +144,10 @@ export default function BillingPage() {
   const [poNum, setPoNum] = useState('')
   const [poFile, setPoFile] = useState<File | null>(null)
   const [closing, setClosing] = useState<InvoiceRow | null>(null)
-  // DELETE WO (Eli only, 2026-09-16): the one place a work order can be
-  // removed outright — with its cards, rows and log. Typed confirmation.
+  // DELETE WO: the ONE place a session's work order can be deleted (the WO
+  // popup's Delete is gone for sessions — 2026-10-05). Owner / manager /
+  // billing. Typed confirmation. Every delete is kept whole in the deleted
+  // log (page ⋯ → Deleted work orders) and can be recovered from there.
   const [deleting, setDeleting] = useState<InvoiceRow | null>(null)
   const [deleteTyped, setDeleteTyped] = useState('')
   async function confirmDelete() {
@@ -149,7 +156,7 @@ export default function BillingPage() {
     setBusy(r.workOrderId)
     const res = await deleteWorkOrderEverywhere(r.workOrderId)
     setBusy(null)
-    if (res.ok) { toast(`${r.woNumber || 'Work order'} deleted`); setDeleting(null); setDeleteTyped(''); await load() }
+    if (res.ok) { toast(`${r.woNumber || 'Work order'} deleted — kept under ⋯ → Deleted work orders`); setDeleting(null); setDeleteTyped(''); await load() }
     else toast(`Could not delete — ${res.reason ?? 'unknown error'}`)
   }
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
@@ -180,6 +187,7 @@ export default function BillingPage() {
   const [dragOver, setDragOver] = useState<string | null>(null)
   /** The page-level ⋯ menu. Rare actions that belong to the PAGE, not a row. */
   const [pageMenu, setPageMenu] = useState(false)
+  const [deletedLog, setDeletedLog] = useState(false)
   const [blankBusy, setBlankBusy] = useState(false)
   const uploadFor = useRef<InvoiceRow | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
@@ -511,7 +519,7 @@ export default function BillingPage() {
         <button
           className="c-bmore"
           onClick={() => setPageMenu(true)}
-          title="More — generate a blank work order"
+          title="More — blank work order, deleted work orders"
           style={{ fontSize: 15, padding: '4px 6px' }}
         >
           ⋯
@@ -925,7 +933,7 @@ export default function BillingPage() {
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
           onAp={() => { const r = moreFor; setMoreFor(null); setApFor(r) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
-          onDelete={isEli ? () => { const r = moreFor; setMoreFor(null); setDeleteTyped(''); setDeleting(r) } : undefined}
+          onDelete={canDelete ? () => { const r = moreFor; setMoreFor(null); setDeleteTyped(''); setDeleting(r) } : undefined}
           onRedownload={() => { downloadPackage(moreFor.workOrderId); setMoreFor(null) }}
           onExportWo={() => { downloadPackage(moreFor.workOrderId, true); setMoreFor(null) }}
           onNoPo={() => {
@@ -977,18 +985,37 @@ export default function BillingPage() {
               fill in by hand. It creates nothing and appears nowhere — if the
               session is real, enter it properly too.
             </div>
+            {/* THE DELETED LOG (2026-10-05). Here, not on the rail: it is
+                opened a few times a year. Same three roles that can delete. */}
+            {canDelete && (
+              <>
+                <button className="c-bact c-bblock" onClick={() => { setPageMenu(false); setDeletedLog(true) }}>
+                  Deleted work orders — see what was deleted, and recover it
+                </button>
+                <div style={{ fontSize: 10.5, opacity: 0.45, lineHeight: 1.5, margin: '2px 2px 10px' }}>
+                  Every deleted work order or calendar block is kept: who deleted
+                  it, when, and one button to put it back.
+                </div>
+              </>
+            )}
             <button className="c-bact c-bmuted c-bblock" onClick={() => setPageMenu(false)}>Cancel</button>
           </div>
         </div>
+      )}
+
+      {deletedLog && (
+        <DeletedLogModal onClose={() => setDeletedLog(false)} onRecovered={() => { load() }} />
       )}
 
       {deleting && (
         <div className="c-bmodal-wrap" onClick={() => setDeleting(null)}>
           <div className="c-bmodal" onClick={e => e.stopPropagation()}>
             <div className="c-lozenge"><b>Delete {deleting.woNumber || 'this work order'}</b></div>
-            <div style={{ fontSize: 12.5, marginBottom: 6 }}>{deleting.client}{deleting.sessionDate ? ` · ${deleting.sessionDate}` : ''}</div>
+            <div style={{ fontSize: 12.5, marginBottom: 6 }}>{[deleting.client, deleting.artist, deleting.sessionDate, deleting.invoiceNumber ? `invoice ${deleting.invoiceNumber}` : ''].filter(Boolean).join(' · ')}</div>
             <div style={{ fontSize: 11.5, color: 'var(--c-fg-2)', lineHeight: 1.55, marginBottom: 12 }}>
-              This removes the work order, every calendar card that belongs to it, all of its studio time, staff, equipment, rental and payment rows, and its activity log. Nothing is archived. There is no undo.
+              This removes the WHOLE work order — every day on it and every calendar card that belongs to it, with its studio time, staff, equipment, rentals, payments and history. To remove one day, open the work order and delete that day instead.
+              <br /><br />
+              A full copy is kept with your name on it. It can be put back from ⋯ → Deleted work orders.
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginBottom: 6 }}>Type <b style={{ color: 'var(--c-fg)', fontFamily: "'DM Mono', ui-monospace, monospace" }}>{deleting.woNumber || 'DELETE'}</b> to confirm.</div>
             <input
@@ -1513,7 +1540,7 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
         )}
         {onDelete && (
           <button className="c-bact c-bblock" onClick={onDelete} style={{ color: 'var(--c-st-hot)' }}>
-            Delete this work order — and its calendar cards, rows and log
+            Delete this work order — every day and calendar card on it (kept, recoverable)
           </button>
         )}
         {canClose && (
