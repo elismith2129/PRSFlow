@@ -78,6 +78,11 @@
 > return — hosting migrated, whitelist lost, new building — set `POLL_MS`
 > to 60000 + the watchdog to 3600 first, then re-request the whitelist.
 > The whole building shares one public IP at the WordPress host.
+>
+> **Oct 6, 2026: `POLL_MS` is 15s, and this time it IS a Vercel budget.** At 5s the
+> panels made ~240,000 function calls a day, each with a database read - $16.38 of
+> usage in ten days. 15s is the stopgap; the shared CDN-cached probe in `docs/TODO.md`
+> is the fix. Do not put it back to 5s without reading the bill.
 
 *Per-room wall calendars on Sharp Info Displays (signage screens that render a
 web page). First up in a fresh session: mock → Eli picks → build. Start with

@@ -323,7 +323,16 @@ function spanBar(b: B, day: string): string {
 // 2026-09-03 until the whitelist landed. **If 429s ever come back** (hosting
 // migrated, whitelist lost, a fifth building added), turn this back to 60000
 // first and re-request the whitelist — see docs/TV-DISPLAY-BRIEF.md.
-const POLL_MS = 5000
+//
+// 15000 (Eli, 2026-10-06: "lets just move it to 15 seconds for now"). Not a
+// 429 this time — the Vercel bill. Every panel asks its own probe, each probe
+// is a real function call with a database read, and at 5s that was ~240,000
+// calls a day: $16.38 of usage in ten days (Sep 26 – Oct 6), $10.78 of it
+// Active CPU. 15s is a third of that; the wall now follows a booking edit
+// within ~15 seconds instead of ~5. A panel picks the new interval up on its
+// next reload (any booking change, or the 15-minute watchdog). The real fix
+// is still one shared, CDN-cached probe — docs/TODO.md, "TV walls".
+const POLL_MS = 15000
 
 function poller(hash: string, _probeUrl: string): string {
   // The probe URL is built from location at runtime, not baked in, so the page
