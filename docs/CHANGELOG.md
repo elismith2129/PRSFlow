@@ -20,6 +20,67 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.2 — Deletes are kept and recoverable; a session is deleted from the billing hub only — Oct 5, 2026
+
+**Why.** WO-1240 (Epic Records / Molly Santana, Ameraycan B, Sep 23–29 + a tentative Oct 3; runner-submitted, invoice 34828 approved) was gone from the calendar and the hub. The nightly backups placed the delete on Oct 2 between 7:23 AM and ~5:40 PM PT; nothing in the app could say who. Cause: **"Delete session" in the WO popup deleted the WHOLE work order behind whichever card was open** — every card, day and payment — and `wo_activity` cascades from the WO, so its history went with it. Eli: *"get rid of the delete button that's on the WOs. only a delete button from the billing hub. and i do want lori and fernando to be able to do this. i just want an in app log for all deletions and a recover function."*
+
+- **`delete_with_archive(p_wo_id, p_booking_id)`** — the only delete path. SECURITY DEFINER, role-checked (owner / manager / billing). Snapshots `work_orders`, `bookings`, **every public table with a `work_order_id` column** (found in `information_schema`, so a table added later is kept without touching this) and `srs_log` by card, writes one `deleted_work_orders` row (who, when, title, detail, snapshot), then deletes. One transaction: nothing is deleted without being kept.
+- **`recover_deleted_work_order(p_id)`** — cards back first (unlinked), then the WO, relink, then every other table in the snapshot (`wo_rate_bundles` first), relink the lead, add a "Recovered — it had been deleted by X on …" line to `wo_activity`, stamp the log row. Original ids and WO number. Refuses if already recovered or if the WO id / WO number / a card exists again; all-or-nothing.
+- **`lib/deleteSession.ts` rewritten.** `deleteWorkOrderEverywhere(woId)` (hub) and the new `deleteBlock(booking)` both call the RPC; `fetchDeleted()` / `recoverDeleted(id)` for the log. `deleteSessionAndWO` is gone, and with it every client-side `.delete()` on `work_orders` / `bookings`.
+- **WO popup: Delete is blocks only** (`!readOnly && onDelete && isBlock`, "Delete block?"). Tour / Tech / Open hours / Tenant never reach the hub, so they keep it. Calendar + dashboard call `deleteBlock` and only close on success; Daily Ops passes no `onDelete`.
+- **Billing hub:** row ⋯ → Delete is `canDelete` (owner / manager / billing — was Eli only). Modal copy now says the whole WO goes and a copy is kept. Page ⋯ gains **Deleted work orders** → `components/billing/DeletedLog.tsx` (fixed-height list, two-step Recover, realtime on `deleted_work_orders`).
+- **WO-1240 itself** predates the log: rebuilt from the Oct 2 backup as a one-off transaction (`restore-WO-1240.sql`, handed to Eli, not in the repo). The tentative Oct 3 row was left out — that night lives on a newer October WO.
+
+**Migrations:** `20261005180000_deleted_work_orders.sql` — table (select-only RLS for owner/manager/billing, **no write policy**: only the two functions write it), both functions, grants, realtime. Run before the push.
+
+**Watch-outs:**
+- **RLS still permits a direct DELETE on `work_orders` / `bookings` for the office roles.** The guarantee is the code path, not the policy. Never add a client-side delete on those tables. If you tighten the policy, check what `save_work_order_atomic` does to projection cards first.
+- The snapshot discovers child tables; the DELETE list in the function is explicit. A new child table whose FK is not `on delete cascade` must be added to that list or the delete fails (loudly — nothing is removed).
+- Recover is `insert … select * from jsonb_populate_recordset(null::<table>, …)`. A column dropped since the snapshot is ignored; a NEW `not null` column without a default makes the recover fail (again loudly, nothing changed).
+- **WO-number gaps are not deletions.** `create_work_order_atomic` burns a sequence value on every `on conflict (booking_id) do nothing`. There were ~95 gaps on Oct 5 and almost none are deletes. The log is the only evidence.
+- Deleting a block is now owner / manager / billing (the RPC's role check). Assistant managers can no longer delete a Tour.
+- Not fixed, in TODO: "Delete day" removes rows immediately but is only logged if the WO is then saved; two row-deleting routines in WorkOrderPopup (the "live date range sync" effect and the day-rate "dedup by date" reconcile).
+- SQL was exercised on a local Postgres mirror of the Oct 2 backup (role refusals, delete → archive, recover = identical rows, double recover refused, blocks with and without a dormant WO). Not exercised against production before the push.
+
+**Files:** `supabase/migrations/20261005180000_deleted_work_orders.sql`, `lib/deleteSession.ts`, `components/billing/DeletedLog.tsx`, `components/calendar/WorkOrderPopup.tsx`, `app/(main)/billing/page.tsx`, `app/(main)/calendar/page.tsx`, `app/(main)/page.tsx`, `app/(main)/daily-ops/page.tsx`, `CLAUDE.md`.
+
+---
+
+## v1.43.1 — Runners can submit after 8:50 AM; signature ink; petty cash history — Oct 5, 2026
+
+**Why.** Three notes from the floor. (1) Sessions run past 8:50 AM; once the operational day rolled, the runner had no way to submit last night's work order. (2) The signature on the assistant's WO was drawn in black on the dark screen — invisible. (3) Runners only saw tonight's petty cash, so they could not check the box against earlier counts.
+
+- **Submit works whenever** (`WorkOrderPopup`: `runnerSubmittable()` → `handleRunnerSubmit()`). One tap sends today's rows plus any earlier studio days that are unsent, unlocked and not tentative/cancelled. An earlier day missing Arrived/Left is skipped when today has rows; otherwise the usual Arrived/Left gate applies. One `wo_activity` entry, a change per day sent.
+- **The runner hub carries yesterday's unsubmitted sessions** at the top of the same list (`fetchUnsubmittedSessions({ from: yesterday, to: yesterday, slug })`). Nothing else changed: the morning still flags it not submitted until it is.
+- **Signature ink** draws in the resolved `--c-fg`; the stored copy is re-inked `#111111` (`sigReink` / `sigDataUrl`) so the PDF and the light theme still get a dark signature.
+- **`components/runner/PettyCashHistory.tsx`** — read-only, last 14 days, per day: opening (`petty_cash_opening` RPC), lines, expected, counted, by whom, note, over/short. Fixed 320px box, scrolls inside.
+
+**Rejected (built, then removed the same hour):** a day picker on submit, a separate "Not submitted yet" section on the hub, and a 3-day limit. Eli: *"an open WO is an open WO… keeping everything as it is now but allowing runners to submit."*
+
+**Migrations:** none. **Files:** `components/calendar/WorkOrderPopup.tsx`, `app/runner/[studio]/page.tsx`, `components/runner/PettyCashHistory.tsx`, `app/runner/[studio]/petty-cash/page.tsx`.
+
+---
+
+## v1.43.0 — Daily Ops: four fixed cards, "WO not submitted" badges, Flags as a tab — Oct 5, 2026
+
+**Why.** Eli wants accountability for runners who do not submit a work order, owned by the Billing Coordinator, as a list that can be checked off — *without* a new page ("we keep adding things to the rail"). Daily Ops and Flags were both under-used, and the Daily Ops "Needs you" queue repeated what the studio cards already showed.
+
+- **`/daily-ops` rewritten** (`app/(main)/daily-ops/page.tsx`). Title tabs like the billing hub: **Daily Ops | Flags** (`?tab=flags`). Four studio cards at ONE height (`CARD_H = 312`, phone `490`): duties and their dots on the left, a lane on the right holding `WoBadge`s then that studio's tasks, notes in the footer. The lane scrolls; the card never grows.
+- **"WO not submitted" badge** (the wording is Eli's — do not shorten to "missing"): room · client, an initials chip, a check. Who = the last runner to save that WO that ops day (`wo_activity`), else the closing-checklist name, else `?` (`fetchNightMissedWorkOrders`, `lib/unsubmitted.ts`). Tap opens the WO; the check writes `daily_ops_reviews` key `wo:<bookingId>`.
+- **The "Needs you" queue is not rendered** any more. Duty check-offs moved onto the dots; keys are now `missing:<studio>:<shift>:<duty>` and the old `missing:<studio>:<duty>` still counts.
+- **Studio tasks live in the card.** Ticking one writes `studio_tasks.done_by` (initials) from the office and from the runner hub.
+- **Flags moved verbatim** to `components/flags/FlagsView.tsx` and renders as the tab. `/flags` and `/tasks` are redirect stubs to `/daily-ops?tab=flags` (`?item=` carried). Rail: the Flags item is gone; a tech sees one item, "Flags", pointing at the tab.
+- **`lib/unsubmitted.ts`:** `covered` on each session, `includeCovered` option, and it now skips WO-less imported cards whose day predates `imported_at`.
+- **CLAUDE.md, Locked Design Conventions:** *boxes are a fixed size; content scrolls inside them; a box never grows.* Eli has asked for this repeatedly — a mock with same-row boxes at different heights is wrong.
+
+**Migrations:** `20261005120000_daily_ops_reviews_billing.sql` — adds `billing` to `dor_ins` / `dor_del` so the Billing role can check items off. Ran Oct 5 (verified in `pg_policies`).
+
+**Watch-outs:** pushed straight to `main` on a clean type-check and self-test, never seen against live data first (Eli's call). `loadNight` still builds the queue nobody renders. Admin roles only — runners do not see this page. The tab is read from `window.location` on mount, not `useSearchParams`.
+
+**Files:** `app/(main)/daily-ops/page.tsx`, `lib/dailyOps.ts`, `lib/unsubmitted.ts`, `components/flags/FlagsView.tsx`, `app/(main)/flags/page.tsx`, `app/(main)/tasks/page.tsx`, `components/layout/Rail.tsx`, `app/(main)/page.tsx`, `lib/floLines.ts`, `app/runner/[studio]/page.tsx`, `CLAUDE.md`, `docs/design-refs/daily-ops-cards-options.html`.
+
+---
+
 ## v1.42.1 — Top clients: rolling window, counted from days worked; labels grouped by label — Oct 2, 2026
 
 **Why.** Eli: *"we have CODs who have definitely booked more than one session within the past month… for the labels, I really think it should just be grouped by the label… click on the label… see who's booking the most… maybe it's a rolling 30-day thing. You tell me."* Three bugs in v1.42.0: (1) the window was the calendar month by the WO's `session_date`, so on Oct 2 it showed only sessions that STARTED Oct 1–2 — and a lockout starting Oct 1 counted all its future days (Olivia 14, "10 Summers" 62); (2) the tenant exclusion matched lease names against `client`, and Mustard's WO is under "10 Summers"; (3) the label side split by A&R.

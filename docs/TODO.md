@@ -7,7 +7,9 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
-- [ ] **Run `20261005180000_deleted_work_orders.sql` BEFORE the delete-log code is pushed** - the billing hub's Delete and the block Delete both call `delete_with_archive()` and fail without it. Then test: delete a throwaway WO from the hub as Lori or Fernando, find it under ⋯ → Deleted work orders, Recover it. *(Oct 5)*
+- [ ] **Confirm WO-1240 is back** (Epic / Molly Santana, Ameraycan B, Sep 23–29) in the billing hub and on the calendar — restored from the Oct 2 backup with `restore-WO-1240.sql`. **Bill Oct 3 once:** QuickBooks invoice 34828 lists it, and that night now lives on the newer October work order. *(Oct 5)*
+- [ ] **Test delete → recover on a throwaway work order** as Lori or Fernando (Testing → the Oct 5 batch, last four items). The SQL was only ever run against a copy of the Oct 2 backup. *(Oct 5)*
+- [x] ~~Run `20261005180000_deleted_work_orders.sql`~~ — Eli confirmed at wrap-up Oct 5; the code that depends on it is on `main`. *(Oct 5)*
 - [x] ~~Run `20261005120000_daily_ops_reviews_billing.sql`~~ — ran Oct 5; `dor_ins` and `dor_del` both list `billing` (Eli's screenshot of pg_policies). The Billing role can check items off on Daily Ops. *(Oct 5)*
 
 - [ ] **Run** `20261001150000_lakers_games.sql` before the v1.42.0 push. When the Lakers drop the 26–27 schedule: Admin → Lakers → 26–27 → Paste schedule. *(Oct 1)*
@@ -47,6 +49,13 @@ Newest at the top of each group.*
 - [ ] **Billing hub Mark paid takes a date** — same as the Tenants tab now does: a small pop-up, date received, defaults to today. Today it stamps "now". COD is fine (its payment rows carry their own date). *(Sep 28)*
 
 - [ ] **Texting: the sending side** — provider (Twilio/etc.), 10DLC brand + campaign registration (needs a public privacy-policy URL on the website), STOP/HELP webhook → `sms_consent_log` source `sms`, quiet hours 8am–9pm. The list and consent record exist (v1.40.1). *(Sep 29)*
+
+- [ ] **"Delete day" leaves no trace if the WO is closed without saving** — the rows go at once, the history entry is only written on save. Either log it at the moment of delete or stage it until save. Same family as WO-1240. *(Oct 5)*
+- [ ] **Two routines in WorkOrderPopup delete rows by themselves** — the "live date range sync" effect (looks dead) and the day-rate "dedup by date" reconcile. Read both, remove or log. *(Oct 5)*
+- [ ] **Billing hub line-item loads are unpaginated** (`fetchInvoices`: studio time, rentals, payments, expenses `.in(ids)`) — they will meet the 1,000-row cap and under-total quietly. Paginate like Top clients does. *(Oct 5)*
+- [ ] **Tighten RLS so nothing but `delete_with_archive()` can delete a work order or a card** — check how `save_work_order_atomic` removes projection cards first. Today the guarantee is the code path only. *(Oct 5)*
+- [ ] **Assistant managers can no longer delete a Tour / Tech block** (the RPC is owner / manager / billing). Add `asst_manager` for blocks only if Sam or Isaac need it. *(Oct 5)*
+- [ ] `lib/dailyOps.loadNight` still builds the "Needs you" queue nobody renders — remove once the new page has had a week. *(Oct 5)*
 
 ## Small / maybe
 

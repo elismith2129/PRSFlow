@@ -381,6 +381,96 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 5, 2026 — Daily Ops gets small, runners get a late submit, and a work order that vanished (v1.43.0 – v1.43.2)
+
+**Where it started.** Eli wanted to see, after the fact, which runners forgot to submit a
+work order — "good accountability", owned by the Billing Coordinator, as a list she can
+check off. The first proposal was a new "Missed Submissions" page. **Rejected:** "im trying
+not to make more pages… we keep adding things to the rail and things get more complicated
+and get hidden to where people don't actually use them." Second idea, the Flags page —
+then Eli noticed neither Flags nor Daily Ops was really being used and merged them.
+
+**Daily Ops, in four rounds of mocks.** Rejected along the way: one row per runner (there
+are openers, closers and floats — it is "what happened last night and what was missed",
+per studio, admin only); the long "Needs you" list (it repeated the cards); a dedicated
+section for missed work orders ("as we grow and this becomes less of an issue we have not
+dedicated a space for it" — hence badges on the existing card); the label "WO missing"
+(it is **"WO not submitted"**, with a name or initials). Kept: the four studio cards with
+their dots, tasks by studio inside the card, a simple check with no detail, Flags as a
+tab "like the billing hub and CRM", the current Flags page unchanged.
+
+**The box rule.** "I want each card to be one size that doesn't change… ive mentioned this
+a lot and we keep building these pages that have weird different size boxes that push each
+other around. please note this in our logs." It is now a Locked Design Convention in
+CLAUDE.md: a box has one designed height, variable content scrolls inside it, an empty box
+keeps its size, and a mock that shows same-row boxes at different heights is wrong.
+
+**Correction to something said in-session:** task "done by" did NOT need a database change
+— `studio_tasks.done_by` already existed. The migration that was actually needed was RLS:
+the Billing role could not write `daily_ops_reviews`.
+
+**Runner notes.** Submit after 8:50, signature ink, petty cash history. The first build of
+the late submit over-reached: a day picker, a "Not submitted yet" section on the hub, a
+three-day limit. Eli: "i dont like adding stuff to this. an open WO is an open WO. in the
+morning it should still flag not submitted the same way it does, just changes to submitted
+whenever it's submitted." All three were removed; it is one tap, and yesterday's unsent
+session simply stays on the hub list. Decisions Eli made on petty cash: 14 days back, and
+runners DO see over/short.
+
+**The missing Molly Santana week.** Eli: sessions over two weeks, gone from the billing hub
+and the calendar; "do we have a logic bug where when sessions are completed or paid for
+they disappear?" No — the calendar has no status filter and the hub loads every work order.
+It was deleted. What was established, and how:
+- The nightly Drive backups are the only forensic record the app had. WO-1240 is in the
+  Oct 2 file (14:23 UTC) and absent from Oct 3 (12:56 UTC). A Supabase log export showed the
+  TV walls no longer reading it by 00:40 UTC Oct 3 — so, Oct 2 between 7:23 AM and ~5:40 PM PT.
+- One work order held the whole first stint: cards Sep 23–26 and Sep 28–29 plus a tentative
+  Oct 3; seven studio rows, 61 history entries, invoice 34828 approved Sep 25.
+- **Who is not knowable.** The delete took the history with it. The timing is consistent
+  with someone clearing the tentative Oct 3 hold to make room for another booking in that
+  room, and pressing "Delete session" on that one card. If so it was the app's fault: the
+  button said "session" and deleted the work order.
+- Restored from the Oct 2 backup as a single guarded transaction (cards → WO → relink →
+  rows → equipment → history → collection note → lead), dry-run on a local Postgres mirror.
+  The Oct 3 tentative row was left out; that night is on a newer October work order, and the
+  QuickBooks invoice lists Oct 3 too — **bill it once.**
+
+**Wrong turns worth recording so nobody repeats them.**
+- *"Gaps in the WO numbers are deleted work orders."* Wrong, and it caused real alarm ("this
+  is a huge problem") when the query returned ~95 gaps. `create_work_order_atomic` takes a
+  sequence value and then hits `on conflict (booking_id) do nothing`; the number is burned.
+  Retracted in-session.
+- *"It was one of the duplicates deleted at creation."* Eli: several days of operations,
+  submitting and invoicing happened on it afterwards. The backups agreed with him.
+- A SQL search by date range kept returning only the October stint, because the September
+  one no longer existed — absence of rows is not absence of a booking.
+
+**Deleting, redesigned.** Eli's ruling is in the changelog. Decisions inside it:
+- **Blocks keep a Delete in the popup.** Tour / Tech / Open hours / Tenant never appear in
+  the billing hub, so "hub only" would have left them undeletable. Every real session —
+  tentative and cancelled included — is in the hub.
+- **An RPC, against the house rule that RPCs are dumb appliers.** That rule is about business
+  values. This is custody: read-copy-delete from the client is three round trips that can stop
+  between any two, and "deleted with no copy" is precisely the failure being closed.
+- **Snapshot by discovery, delete by list.** The snapshot asks the catalogue for every table
+  with a `work_order_id` column (the backup script's rule). The delete list stays explicit.
+- **The log has no write policy at all.** It cannot be edited or emptied from the app.
+- **Typed confirmation kept** in the hub even though it is now recoverable — the modal also
+  now says in words that the WHOLE work order goes, and how to remove one day instead.
+- **Not done, deliberately:** tightening RLS so a direct DELETE is impossible. The save RPC
+  manages projection cards and nobody has checked how; parked.
+
+**Also seen, not touched (in TODO):** "Delete day" removes its rows at once but only reaches
+the history if the WO is then saved; two routines in WorkOrderPopup that delete rows on their
+own (the "live date range sync" effect and the day-rate "dedup by date" reconcile); the
+billing hub's line-item loads are unpaginated and will meet the 1,000-row cap.
+
+**Process.** A `git status` run through the bridge left a stale `.git/index.lock`. Standing
+practice since: Claude edits files and hands Eli a copy-paste box (migration SQL in full to
+review first, then a `git add` by name + `git commit -F -` + push); every box starts with
+`rm -f .git/index.lock .git/HEAD.lock`. All three pushes went straight to `main` at Eli's
+request.
+
 ### October 1, 2026 (evening) — Lakers tickets, Top clients, Admin dropdown (v1.42.0)
 
 **Lakers.** Eli sent the workbook (23–24, 24–25, 25–26 tabs). Read it before modelling:

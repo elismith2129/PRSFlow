@@ -679,6 +679,35 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.43', date:'Oct 5, 2026',
+    headline:'Daily Ops is one clean page. Runners can submit late. Deleted work orders can be recovered.',
+    desc:'Last night at a glance in four same-size cards, with Flags as a tab beside it. Runners can submit after 8:50 AM. And nothing that gets deleted is gone for good.',
+    changes:[
+      '<b>Daily Ops</b> is four cards, one per studio, all the same size. Duties and their dots are on the left. On the right: any work order that was not submitted, then the tasks for that studio.',
+      'A red <b>WO not submitted</b> badge shows the room, the client and the initials of the runner who had it. Tap it to open the work order. Tick it once you have followed up with the runner.',
+      '<b>Flags</b> is now a tab at the top of Daily Ops (Daily Ops | Flags). It is the same page as before, and old links still land on it.',
+      'Studio tasks live inside each studio card. Whoever ticks one off leaves their initials.',
+      '<b>Runners can submit a work order at any time</b>, including after 8:50 AM when a session runs late. Last night&rsquo;s session stays on the runner list until it is submitted. Until then the office still sees it as not submitted.',
+      'Signing a work order on the phone: the ink now shows up on the dark screen.',
+      '<b>Petty cash</b>: runners can see the last 14 days of counts &mdash; the opening amount, money in and out, what was counted, and any over or short.',
+      '<b>Delete is gone from the work order.</b> A session can only be deleted from the <b>Billing hub</b> (the &#8943; on its row), by Eli, Fernando or Lori. Tour, Tech and Open Hours blocks still have their own Delete.',
+      'Everything deleted is kept. Billing hub &rarr; &#8943; at the top right &rarr; <b>Deleted work orders</b> shows who deleted what and when, with a <b>Recover</b> button that puts it back exactly as it was.',
+    ],
+    affects:'Billing: start the morning on Daily Ops and tick each WO not submitted badge after you have spoken to the runner. Runners: if a session ran past 8:50 AM, open it and submit as usual. Everyone: to remove ONE day from a work order, delete that day inside the work order. Deleting the work order removes every day on it.',
+    dev:[
+      '<b>v1.43.2 &mdash; deletes.</b> <code>delete_with_archive(p_wo_id, p_booking_id)</code> is the only delete path: SECURITY DEFINER, owner / manager / billing, snapshots <code>work_orders</code>, <code>bookings</code>, every public table with a <code>work_order_id</code> column and <code>srs_log</code> into <code>deleted_work_orders</code>, then deletes &mdash; one transaction.',
+      '<code>recover_deleted_work_order(p_id)</code> restores a snapshot with its original ids and WO number, relinks the lead, adds a Recovered line to <code>wo_activity</code>. Refuses if already recovered or if the WO exists again.',
+      '<code>lib/deleteSession.ts</code> rewritten: <code>deleteWorkOrderEverywhere</code> (hub) and <code>deleteBlock</code> (popup, blocks only) call the RPC. No client-side <code>.delete()</code> on <code>work_orders</code> / <code>bookings</code> remains.',
+      'Watch-out: RLS still permits a direct DELETE for office roles &mdash; the guarantee is the code path. WO-number gaps are NOT deletions (<code>create_work_order_atomic</code> burns sequence values); the log is the only evidence.',
+      'Watch-out: the snapshot discovers child tables, the delete list is explicit. A new child table without <code>on delete cascade</code> must be added to the list.',
+      '<b>v1.43.1 &mdash; runners.</b> <code>runnerSubmittable()</code> / <code>handleRunnerSubmit()</code>: one tap sends today&rsquo;s rows plus earlier unsent, unlocked days; the hub carries yesterday&rsquo;s unsubmitted sessions in the same list. Signature draws in <code>--c-fg</code>, stored re-inked <code>#111111</code>. <code>components/runner/PettyCashHistory.tsx</code>, 14 days, read-only.',
+      'Rejected the same hour: a day picker on submit, a separate Not submitted yet section, a 3-day limit.',
+      '<b>v1.43.0 &mdash; Daily Ops.</b> Page rewritten: title tabs, four cards at <code>CARD_H = 312</code>, <code>WoBadge</code> + tasks in a scrolling lane. Check-offs are <code>daily_ops_reviews</code> keys <code>wo:&lt;bookingId&gt;</code> and <code>missing:&lt;studio&gt;:&lt;shift&gt;:&lt;duty&gt;</code> (the old key still counts).',
+      'Flags moved verbatim to <code>components/flags/FlagsView.tsx</code>; <code>/flags</code> and <code>/tasks</code> redirect to <code>/daily-ops?tab=flags</code>. Who on a badge = last runner saver that ops day, else the closer (<code>fetchNightMissedWorkOrders</code>).',
+      'New locked convention in CLAUDE.md: boxes are a fixed size, content scrolls inside them. Watch-out: <code>loadNight</code> still builds the queue nobody renders.',
+    ],
+  },
+  {
     ver:'v1.42', date:'Oct 1, 2026',
     headline:'Top clients on the Clients tab; Admin is one dropdown.',
     desc:'A quick look at who booked the most each month, and a tidier rail.',

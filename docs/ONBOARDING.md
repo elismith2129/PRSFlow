@@ -114,6 +114,8 @@ Things that look safe and aren't.
 - **New Supabase tables need explicit GRANTs.** Tables created before 2026-05-30 are grandfathered; new ones aren't.
 - **Every important write must be checked** via `dbResult(label, error)` from `lib/db.ts` — it shows a red "NOT saved" toast and logs to `app_errors`. The July 2026 audit found ~80% of writes unchecked; silent save failure was the #1 defect class. Don't add an unchecked write.
 - **Mic inventory must never be pre-filled from the previous night.** Physical eyes on every mic, every night. Pre-filling masks theft. This is a business rule, not a UI preference.
+- **A work order is deleted through ONE door, and the delete is kept (Oct 5, 2026).** `delete_with_archive()` via `lib/deleteSession.ts` — billing hub for a session, the WO popup for a block. Never add a client-side `.delete()` on `work_orders` or `bookings`: that is how WO-1240, a week of invoiced sessions, vanished with no record of who. The log and Recover are under billing hub ⋯ → Deleted work orders.
+- **Gaps in the WO numbers are not deleted work orders.** `create_work_order_atomic` burns a sequence value every time it hits `on conflict do nothing`. A query for "missing numbers" returns ~100 rows and proves nothing. `deleted_work_orders` is the record; before Oct 5, 2026 the nightly Drive backups are.
 - **Day rate is a flat charge**, never multiplied by hours.
 - **Tech, Tour and Open Hours sessions never generate work orders**, invoice numbers, or appear in daily ops.
 - `bookings.studio` holds full room labels (`"Studio X"`, `"North"`); `studio_time_rows.studio` holds bare letters (`"X"`). They are deliberately not synced. Don't prefix `"Studio "` onto `bookings.studio` — you'll get "Studio Studio X".

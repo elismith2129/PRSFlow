@@ -55,6 +55,86 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-5-2026-daily-ops-late-submit-deletes',
+    title: 'Daily Ops cards, late submit, deleted work orders',
+    version: 'v1.43',
+    date: 'Oct 5, 2026',
+    intro:
+      'Three things. The new Daily Ops page with Flags as a tab, the runner being able to submit after 8:50 AM (phone), and deleting / recovering a work order from the billing hub. For the delete items make a THROWAWAY session first (any room, a made-up client) and use only that one.',
+    items: [
+      {
+        id: 'v143-ops-cards', area: 'Daily Ops',
+        what: 'The four studio cards are exactly the same size',
+        how: 'Open Daily Ops. There is one card per studio. All four should be the same height, even if one has more in it than another. If a card has a lot on its right side, that side scrolls inside the card. No card should be taller than the others or push them around.',
+      },
+      {
+        id: 'v143-ops-badge', area: 'Daily Ops',
+        what: 'A work order that was not submitted shows as a red badge with initials',
+        how: 'Look at a studio that had a session last night whose work order the runner did not submit. On the right of its card there should be a red badge reading "WO not submitted", with the room, the client and a small circle with the runner initials (or a ? if nobody touched it). Tap the badge: the work order opens.',
+      },
+      {
+        id: 'v143-ops-badge-check', area: 'Daily Ops',
+        what: 'Billing can tick a badge and it stays ticked',
+        how: 'Signed in as Billing, tick the check on a "WO not submitted" badge. Refresh the page. It should still be ticked. Untick it again.',
+      },
+      {
+        id: 'v143-ops-task-add', area: 'Daily Ops',
+        what: 'A task added to a studio card shows inside that card',
+        how: 'On one studio card, add a task (for example "Test task - ignore"). It should appear in that card only, under any badges.',
+      },
+      {
+        id: 'v143-runner-task-tick', area: 'Runner hub', device: 'phone',
+        what: 'A runner ticks the task and their initials show in the office',
+        how: 'On a phone, sign in as a runner at the same studio. Find the test task and tick it. Back on the computer, the task on the Daily Ops card should show as done with the runner initials.',
+      },
+      {
+        id: 'v143-flags-tab', area: 'Daily Ops',
+        what: 'Flags is a tab on Daily Ops and old links still work',
+        how: 'At the top of Daily Ops press the Flags title. The usual Flags page shows. Press Daily Ops to go back. Then type /flags on the end of the site address: you should land on the Flags tab. The left rail should no longer have a separate Flags item.',
+      },
+      {
+        id: 'v143-runner-late-submit', area: 'Runner hub', device: 'phone',
+        what: 'A runner can submit the work order from last night after 8:50 AM',
+        how: 'After 8:50 AM, sign in as a runner at a studio that had a session last night that was NOT submitted. That session should still be at the top of the list. Open it, fill Arrived and Left if empty, and press Submit. It should submit normally. On the computer, its red badge on Daily Ops should be gone after a refresh.',
+      },
+      {
+        id: 'v143-runner-signature', area: 'Runner work order', device: 'phone',
+        what: 'The signature is visible while signing',
+        how: 'On a phone open a work order as a runner and sign in the signature box. You should see the line as you draw it (light ink on the dark screen). Save. Then on the computer download the work order PDF: the signature should be dark on the white page.',
+      },
+      {
+        id: 'v143-runner-petty-history', area: 'Runner petty cash', device: 'phone',
+        what: 'Runners can see earlier petty cash counts',
+        how: 'On a phone, as a runner, open Petty cash. Below tonight there is a box listing earlier days (up to 14). Each day shows the opening amount, what went in and out, what was counted and any over or short. The box scrolls inside itself. Nothing in it can be edited.',
+      },
+      {
+        id: 'v143-wo-no-delete', area: 'Calendar',
+        what: 'A session work order has no Delete button',
+        how: 'Open any normal session from the calendar. Look along the bottom of the work order. There should be NO Delete button. Do the same from the dashboard.',
+      },
+      {
+        id: 'v143-block-delete', area: 'Calendar',
+        what: 'A Tour / Tech / Open Hours block can still be deleted',
+        how: 'Make a throwaway Tour block on the calendar. Open it: a Delete button is at the bottom left. Press it, then confirm "Delete block?". The block disappears from the calendar.',
+      },
+      {
+        id: 'v143-hub-delete', area: 'Billing',
+        what: 'Fernando or Lori can delete a work order from the billing hub',
+        how: 'Signed in as Fernando or Lori, find your THROWAWAY work order in the billing hub. Press the three dots on its row, then "Delete this work order". Read the message, type the WO number shown, press Delete it. The row disappears and it is gone from the calendar.',
+      },
+      {
+        id: 'v143-hub-log', area: 'Billing',
+        what: 'The deleted work order and the deleted block are both in the log',
+        how: 'In the billing hub press the three dots at the TOP RIGHT of the page, then "Deleted work orders". The throwaway work order and the Tour block should both be listed with the name of who deleted them and the time.',
+      },
+      {
+        id: 'v143-hub-recover', area: 'Billing',
+        what: 'Recover puts the work order back exactly as it was',
+        how: 'In that list press Recover on the throwaway work order, then "Put it back". It should now read Recovered. Close the list: the work order is back in the hub with the same WO number, and back on the calendar on the same day. Open it: its details are intact and the history has a line saying it was recovered. (Now delete it again to clean up.)',
+      },
+    ],
+  },
+  {
     id: 'sep-14-2026-collect-blanket',
     title: 'COLLECT display, roomless alarm, whole-building rate',
     version: 'v1.28.0',
