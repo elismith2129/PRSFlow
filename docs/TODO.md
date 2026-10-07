@@ -7,6 +7,8 @@ Newest at the top of each group.*
 
 ## Eli's hands (settings, SQL, data — not code)
 
+- [ ] **Run `20261006120000_st_rows_submitted_for_runner.sql` BEFORE the v1.43.6 push** - Mark reviewed's rescue and Cancel's restore both name the new column; it also replaces `recover_deleted_work_order`. *(Oct 6)*
+- [ ] **Can Lori pull an invoice back?** The repo's `enforce_invoice_approver` lets only an owner change the approval stamps, which Pull it back does. If that is what is live, Pull it back is owners-only in practice (it now fails cleanly and says so). Decide: leave it, or let billing clear an approval. *(Oct 6)*
 - [ ] **Run `20261005190000_st_rows_no_show.sql` BEFORE the No show push** - every work order save sends the new column and fails without it. *(Oct 5)*
 - [ ] **Confirm WO-1240 is back** (Epic / Molly Santana, Ameraycan B, Sep 23–29) in the billing hub and on the calendar — restored from the Oct 2 backup with `restore-WO-1240.sql`. **Bill Oct 3 once:** QuickBooks invoice 34828 lists it, and that night now lives on the newer October work order. *(Oct 5)*
 - [ ] **Test delete → recover on a throwaway work order** as Lori or Fernando (Testing → the Oct 5 batch, last four items). The SQL was only ever run against a copy of the Oct 2 backup. *(Oct 5)*
@@ -57,6 +59,13 @@ Newest at the top of each group.*
 - [ ] **Tighten RLS so nothing but `delete_with_archive()` can delete a work order or a card** — check how `save_work_order_atomic` removes projection cards first. Today the guarantee is the code path only. *(Oct 5)*
 - [ ] **Assistant managers can no longer delete a Tour / Tech block** (the RPC is owner / manager / billing). Add `asst_manager` for blocks only if Sam or Isaac need it. *(Oct 5)*
 - [ ] `lib/dailyOps.loadNight` still builds the "Needs you" queue nobody renders — remove once the new page has had a week. *(Oct 5)*
+
+- [ ] **Rewrite the other manuals the same way as Billing (v1.43.5):** Runner app guide, Studio Manager SOP, Owner's page, and the older CRM / Clients / Tasks / Flags sections of the main SOP. Facts from the code, then an independent fact-check pass. *(Oct 6)*
+- [x] ~~Found writing the Billing SOP: Mark reviewed lost its submit-in-your-name; COLLECT ignored food~~ - fixed v1.43.6. *(Oct 6)*
+- [x] ~~Seven more gaps from the SOP fact-check (wrong-row drops, package-window edits lost, paid stamp after Pull it back, Flo counting closed COD, COD "Built, not sent", Reopen, Cancel on a deleted day)~~ - each verified in code, then fixed v1.43.6. *(Oct 6)*
+
+- [ ] **Seed reloads every day from the database** and drops unsaved edits to existing days; the x on a room's staff line clears it in the database at once and Cancel does not restore it. Both noted by the v1.43.6 review, not fixed. *(Oct 6)*
+- [ ] **The runner's Submit never clears `submitted_for_runner`** - only matters if a runner submits from a stale phone after an office rescue. Add `submitted_for_runner: false` to `handleRunnerSubmit`'s stamp once the column has been live a while. *(Oct 6)*
 
 ## Small / maybe
 

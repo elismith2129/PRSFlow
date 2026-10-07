@@ -854,8 +854,12 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       ageDays: daysSince(w.invoice_sent_at ?? null),
       downloadedAt: w.invoice_downloaded_at ?? null,
       hasPackage: !!(w as any).invoice_package_path,
+      // BILLING ONLY (2026-10-06). The flag means "you built it and never
+      // pressed Mark sent" — and COD has no Mark sent. An approved COD row
+      // that had been downloaded once wore "Built, not sent" for ever and held
+      // the In progress count red with nothing anyone could press to clear it.
       staleDownload:
-        step === 3 && !!w.invoice_downloaded_at
+        !isCod && step === 3 && !!w.invoice_downloaded_at
         && (daysSince(w.invoice_downloaded_at) ?? 0) >= DOWNLOAD_STALE_DAYS,
       sentAt: w.invoice_sent_at ?? null,
       paidAt: w.invoice_paid_at ?? null,
@@ -1561,16 +1565,16 @@ export async function pullBack(row: InvoiceRow): Promise<boolean> {
   // approval carrying the invoice that was wrong in the first place — and it
   // would look complete the whole way, because the Invoiced light would be
   // green. Removing it forces the one act that fixes the actual problem.
-  {
-    const { data: wo } = await supabase
-      .from('work_orders')
-      .select('invoice_doc_path, invoice_package_path').eq('id', row.workOrderId).limit(1)
-    const path = [wo?.[0]?.invoice_doc_path, wo?.[0]?.invoice_package_path].filter(Boolean) as string[]
-    // Best effort: a file that fails to delete is orphaned storage, which is
-    // untidy. A row still pointing at a stale invoice is wrong. Clearing the
-    // pointer matters more than the bytes.
-    if (path.length) await supabase.storage.from(INVOICES_BUCKET).remove(path)
-  }
+  //
+  // THE ROW FIRST, THE FILES AFTER (2026-10-06). The files used to be removed
+  // before the update — and the update can be refused: this clears the
+  // approval stamps, and enforce_invoice_approver lets only an owner change
+  // those. A refused pull-back must leave the row AND its documents exactly as
+  // they were, not an approved row pointing at nothing.
+  const { data: woFiles } = await supabase
+    .from('work_orders')
+    .select('invoice_doc_path, invoice_package_path').eq('id', row.workOrderId).limit(1)
+  const path = [woFiles?.[0]?.invoice_doc_path, woFiles?.[0]?.invoice_package_path].filter(Boolean) as string[]
 
   const { error } = await supabase
     .from('work_orders')
@@ -1583,9 +1587,98 @@ export async function pullBack(row: InvoiceRow): Promise<boolean> {
       invoice_downloaded_at: null,
       invoice_approved_at: null,
       invoice_approved_by: null,
+      // THE PAID STAMP GOES TOO (2026-10-06). Pull it back is the only undo
+      // for a mistaken Mark paid, and it left `invoice_paid_at` behind — so
+      // "Received this month" (summarise counts by paidAt) kept the money that
+      // had just been un-received, for the rest of the month.
+      invoice_paid_at: null,
     })
     .eq('id', row.workOrderId)
-  return dbResult('Pulling the invoice back', error)
+  // Say it in words when it is the owners-only rule and not a fault.
+  const ownerOnly = !!error && /only an owner/i.test(error.message ?? '')
+  const ok = dbResult('Pulling the invoice back', ownerOnly
+    ? { message: 'It carries an owner\u2019s approval, and only an owner can take that off. Ask Eli or Adam-Mike to pull it back' }
+    : error)
+  // Best effort: a file that fails to delete is orphaned storage, which is
+  // untidy. A row still pointing at a stale invoice is wrong. Clearing the
+  // pointer matters more than the bytes.
+  if (ok && path.length) await supabase.storage.from(INVOICES_BUCKET).remove(path)
+  return ok
+}
+
+/**
+ * TAKE THE INVOICE OFF A ROW (2026-10-06).
+ *
+ * A PDF dropped on the wrong row attached at once and could not be removed:
+ * Pull it back only exists from Ready to send onward, so a wrong drop on a row
+ * that had no invoice left it sitting in the owner's approval queue carrying
+ * somebody else's invoice, with no exit short of asking Eli.
+ *
+ * ONLY WHILE NO APPROVAL IS STORED — and that is judged on the stored state,
+ * NOT the derived step. An approved row that drifted (a rate edited after
+ * sign-off) or grew (the client extended) is DERIVED back to step 2 or 1 while
+ * `invoice_state` still says approved. Detaching there would null the invoiced
+ * total, so the drift vanishes; the row would read Ready to send with no
+ * invoice on it; and the next PDF dropped would be "approved" at the new
+ * numbers with no owner involved — the hole the 2026-09-03 snapshot fix
+ * closed. From approval onward the tool is Pull it back, which strips the
+ * approval with the invoice.
+ *
+ * The row returns to where it was before the drop: a completed work order to
+ * Needs invoice, an open one to its derived step. A standing rejection is left
+ * alone — "Not approved, drop the corrected invoice" is still true of a
+ * returned row with its PDF removed. The stored preview goes too: it has the
+ * wrong invoice stapled into it.
+ */
+export function canDetachInvoice(row: InvoiceRow): boolean {
+  return row.hasInvoiceDoc
+    && row.bucket !== 'closed'
+    && row.state !== 'approved' && row.state !== 'awaiting_po'
+    && row.state !== 'sent' && row.state !== 'paid'
+}
+export async function detachInvoice(
+  row: InvoiceRow,
+  actor?: { id: string | null; name: string },
+): Promise<boolean> {
+  if (!canDetachInvoice(row)) {
+    return dbResult('Removing the invoice', { message: 'This invoice can no longer be removed here — use Pull it back.' })
+  }
+  const { data: wo } = await supabase
+    .from('work_orders').select('invoice_doc_path, invoice_package_path').eq('id', row.workOrderId).limit(1)
+  const paths = [wo?.[0]?.invoice_doc_path, wo?.[0]?.invoice_package_path].filter(Boolean) as string[]
+  // GUARDED IN THE DATABASE TOO: `row` is what the screen had when the menu
+  // opened. If an owner approved it a second ago, this must change nothing —
+  // the filter refuses any row whose stored state has moved past approval,
+  // and an update that matched no row is reported, not assumed.
+  const { data: hit, error } = await supabase
+    .from('work_orders')
+    .update({
+      invoice_doc_path: null,
+      invoice_package_path: null,
+      invoice_total: null,
+      invoice_downloaded_at: null,
+      ...(row.state === 'needs_approval' ? { invoice_state: 'needs_invoice' as InvoiceState } : {}),
+    })
+    .eq('id', row.workOrderId)
+    .or('invoice_state.is.null,invoice_state.in.(needs_invoice,needs_approval)')
+    .select('id')
+  const ok = dbResult('Removing the invoice', error ?? ((hit ?? []).length === 0
+    ? { message: 'It was approved or sent in the meantime — nothing was removed' }
+    : null))
+  // Files only once the row has let go of them (same order as pullBack).
+  if (ok && paths.length) await supabase.storage.from(INVOICES_BUCKET).remove(paths)
+  if (ok) {
+    void logWoActivity({
+      workOrderId: row.workOrderId,
+      actorId: actor?.id ?? null,
+      actorName: actor?.name ?? '',
+      source: 'office',
+      kind: 'saved',
+      afterInvoice: false,
+      changes: [{ what: 'Attached invoice removed' }],
+    })
+  }
+  return ok
 }
 
 /**
@@ -1638,13 +1731,35 @@ export async function closeInvoice(
  *
  * Returns it to `sent` when it had been sent (the aging clock is still on the
  * row and resumes from the original date — reopening a debt does not make it
- * young again), otherwise back to needs_approval.
+ * young again).
+ *
+ * OTHERWISE IT GOES BACK TO WHERE THE EVIDENCE SAYS IT WAS (2026-10-06). It
+ * used to go to `needs_approval` unconditionally — so a duplicate closed at
+ * Needs review came back in the OWNER'S approval queue with no invoice on it.
+ * Close overwrites the state, so the previous one is rebuilt from what
+ * survives it:
+ *   invoice on file → needs approval (COD: no stored state; its ladder derives
+ *                     "invoiced, awaiting the owner" from the document)
+ *   no invoice      → Needs invoice if the work order was completed, otherwise
+ *                     no state at all, so the step derives from the work order
+ *                     exactly as it did before it was closed.
+ * It NEVER restores an approval, even when the approved stamp is still on the
+ * row: approving is an owner's act (enforce_invoice_approver guards those
+ * columns), a stale stamp is not evidence of a current one, and a row closed
+ * at Ready to send coming back for one more sign-off is the safe direction.
  */
 export async function reopenInvoice(row: InvoiceRow): Promise<boolean> {
+  const back: InvoiceState | null = row.sentAt ? 'sent'
+    : row.hasInvoiceDoc ? (row.isCod ? null : 'needs_approval')
+    : row.woCompleted ? 'needs_invoice'
+    : null
   const { error } = await supabase
     .from('work_orders')
     .update({
-      invoice_state: row.sentAt ? 'sent' : 'needs_approval',
+      invoice_state: back,
+      // An unsent row starts its send again: without this a re-approved row
+      // would offer "Mark sent" for a package nobody has rebuilt.
+      ...(row.sentAt ? {} : { invoice_downloaded_at: null }),
       // The note goes with the reason. A reopened invoice carrying the
       // explanation for a close that no longer applies is worse than no note.
       invoice_closed_note: null,

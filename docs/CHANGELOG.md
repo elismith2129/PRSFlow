@@ -20,6 +20,50 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.6 — The gaps the SOP rewrite turned up: nine fixes — Oct 6, 2026
+
+**Why.** Writing the Billing SOP from the code (v1.43.5) and fact-checking it surfaced nine places where the app did not do what its own comments, changelog or screen said. Eli: *"we should fix all of them."* Every fix was then reviewed by a second pass, twice; that review found a laundering hole in the first draft of #3 and a silent-loss regression in the first draft of #2, both closed before this shipped.
+
+1. **Mark reviewed submits a missed night in your name again** (v1.39.4 had it; the code had lost it). `rescueIdsForDay` / `submitForRunner` in WorkOrderPopup: on review, rows of a day that is over (before `opsToday()`), on a confirmed night of a non-lockout session, that no runner sent, are stamped `submitted` + reviewer + time + **`submitted_for_runner`**. Decided from the SAVED rows, per day (a runner-submitted night is never overwritten), and written with a guard so a runner submitting at the same moment wins. Reopening the review does not un-submit.
+2. **Cancel puts a deleted day back whole.** "Delete day" removes rows at once; Cancel re-inserted the on-screen row from a field list that had fallen behind the table (a submitted night came back "Not submitted", no Arrived/Left), re-inserted rows that were never saved (a phantom billable day), and did not check the insert. Now the SAVED copy is parked at delete time (`deleteStRow` / `deleteDayRows`) and restored by an idempotent upsert; a failure is reported and the popup stays open.
+3. **A dropped file is checked before it lands** (`attachFile`, billing hub). Refused on sent / paid / closed rows; asks before replacing an existing invoice (re-checked against the row as it is at the moment of confirming); attaches at once only when the row has none. New ⋯ item **Remove the attached invoice** (`detachInvoice` / `canDetachInvoice`, lib/billing) while no approval is STORED.
+4. **The package window no longer drops work-order edits.** WorkOrderPopup reports unsaved edits to its host (`onDirtyChange`, which also counts payments and rentals); PackageModal blocks Close, backdrop, tab switches and Approve / Don't approve while dirty, with one answer: go back and use the work order's own Save or Cancel.
+5. **Pull it back clears the paid stamp** (`invoice_paid_at`), so "Received this month" no longer keeps money that was un-received. It also writes the row BEFORE deleting files, and says in words when it is the owners-only rule.
+6. **Flo's COD line and the COD-out tile** (`fetchBalancesQueue`) skip closed work orders and read `fee_amount`.
+7. **"Built, not sent" is billing only.** COD has no Mark sent to clear it.
+8. **Reopen goes back where the evidence says**: sent -> sent; invoice on file -> Needs approval; no invoice -> Needs invoice if the work order was completed, otherwise no state. It never restores an approval.
+9. **COLLECT, the payment pre-fill and the card-amount warning include food**, matching Balance Due. (COD rarely carries food; that is exactly when nobody would notice.)
+
+**Also fixed, found on the way: recover could not survive a new column.** `recover_deleted_work_order()` inserted `select *` from `jsonb_populate_recordset`, which writes an explicit NULL for any column added after the snapshot was taken - so every `not null default` column added since (no_show on Oct 5, submitted_for_runner today) made older snapshots unrecoverable. It now inserts only the columns the snapshot carries (`app_private.restore_rows`), strictly for the cards and the work order, leniently for children. Reproduced and verified on a local Postgres.
+
+**Migrations:** `20261006120000_st_rows_submitted_for_runner.sql` - the column, `app_private.restore_rows`, and the replaced `recover_deleted_work_order`. **Run before the push**: the rescue stamp and Cancel's restore both name the new column.
+
+**Watch-outs:**
+- **`submitted_for_runner` is how two rulings coexist.** Daily Ops' "WO not submitted" badge must outlive an office rescue (Oct 5), and a rescue must put a name on the night (Sep 23). Status alone could not say both. `lib/unsubmitted.ts` now asks two questions: `stillOwed` (pop-up, runner hub) and `neverByRunner` (Daily Ops, `includeCovered`). It selects `*` on purpose - a named column that is missing would fail the query and read as "everything unsubmitted".
+- **`detachInvoice` is gated on the STORED state, not the derived step.** An approved row that drifted is derived back to step 2; detaching there would null the invoiced total and let the next PDF be "approved" at new numbers with no owner. Do not relax `canDetachInvoice` to `step < 3`.
+- **Pull it back changes the approval stamps, and `enforce_invoice_approver` (20260811120000) lets only an owner do that.** For a non-owner it fails cleanly now (row and files untouched, a plain-words message). NOT verified against the live trigger. If Lori needs to pull back herself, that is a deliberate change to the trigger, not a bug.
+- The host-dirty check exists only for a host that unmounts the popup without saving. `isDirty()` itself is unchanged and still fail-safe.
+- Not fixed, still in TODO: Seed reloads every day and drops unsaved edits; the × on a staff line clears it in the database at once.
+
+**Files:** `supabase/migrations/20261006120000_st_rows_submitted_for_runner.sql`, `components/calendar/WorkOrderPopup.tsx`, `app/(main)/billing/page.tsx`, `lib/billing.ts`, `lib/myday.ts`, `lib/unsubmitted.ts`, `public/billing-sop.html`.
+
+---
+
+## v1.43.5 — Billing SOP rewritten from the app as it stands — Oct 6, 2026
+
+**Why.** The role manuals were last edited Aug 20 (launch day), 69 releases back. The Billing one still taught a My Day page, a Flags page, three lights on hub rows, an Attach-invoice button, a PO gate on approval, and COD with no approval. Eli: *"grab all the current logic and make new ones… this is how we created them in the first place."* Billing first, as the trial.
+
+- **`public/billing-sop.html` replaced** (11 chapters: Your job · A session start to finish · The work order · The Billing hub · COD · Tenants/SRS/Petty cash · Dashboard · Flo · Daily Ops & Flags · The rhythm · Help & words). Same shell (chapter rail, hints, theme flip). Every label is quoted as the app prints it.
+- **Method, for the next three manuals:** each screen's facts were read out of the code that draws it, the draft was then fact-checked against the code by a separate pass (about 240 claims; 7 wrong and 13 too strong, all corrected). Not from the changelog: several entries describe behaviour the code no longer has.
+- **Dropped on purpose:** the full drawn mock of the work order (it was the first thing to go stale) and the list of the Billing seat's duties (they live in `myday_duties` and change without a release; the manual points at Your list).
+- `public/billing-sop.html` is now the source; there is no design-refs original to re-copy.
+
+**Found while writing it (NOT fixed - see docs/TODO.md):** Mark reviewed no longer stamps a never-submitted day "submitted in your name" (v1.39.4 says it does; the tooltip still promises it); the COLLECT box and the card-amount warning leave food out while Balance Due includes it; plus seven more hub/dashboard gaps reported by the fact-check and not yet verified by hand.
+
+**Migrations:** none. **Files:** `public/billing-sop.html`, `app/(main)/sop/billing/page.tsx` (comment).
+
+---
+
 ## v1.43.4 — "Is that the card amount?" on a payment row; Approve jumps to the next package; TV walls poll every 15s — Oct 6, 2026
 
 **Why (payments).** A $410 COD session paid 30% / 70% by card. The terminal ran $126.69 and $295.61 ($422.30, correct) and those receipt numbers were typed into **Toward balance** - which takes the amount BEFORE the fee - so the 3% went on twice: $434.97 "paid", balance -$12.30, and nothing on the sheet said why. The other 11 card payments in the Oct 3 backup are clean; this is an entry mistake the screen made easy.

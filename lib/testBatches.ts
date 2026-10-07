@@ -108,6 +108,31 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'On a phone, as a runner, open a session for tonight on a THROWAWAY work order. Leave Arrived and Left empty and press Submit: it stops you and mentions No show. Close that, tap the "No show" chip beside Arrived and Left (it turns red), and press Submit again. It should go through. Then type an Arrived time: the chip should switch itself off.',
       },
       {
+        id: 'v143-drop-guard', area: 'Billing',
+        what: 'A PDF cannot be dropped onto an invoice that was already sent',
+        how: 'In the billing hub open the Awaiting payment tab. Drag any PDF from your computer onto one of the rows and let go. Nothing should attach: a red message says the invoice was already sent and points to Pull it back.',
+      },
+      {
+        id: 'v143-drop-replace', area: 'Billing',
+        what: 'Replacing an invoice asks first, and a wrong drop can be removed',
+        how: 'On a THROWAWAY row that says Needs invoice, drag a PDF onto it: it attaches straight away and the row reads Needs approval. Drag a second PDF onto the same row: a box asks "Replace the invoice on WO-...?" Press "Cancel - wrong row". Then press the three dots on the row and choose "Remove the attached invoice": the row goes back to Needs invoice.',
+      },
+      {
+        id: 'v143-pkg-unsaved', area: 'Billing',
+        what: 'The package window will not throw away work order changes',
+        how: 'Click a row that has an invoice so the package window opens. Go to its Work order tab and change something small (for example the session notes). Now press Close at the top right of the window. It should stop you and tell you to use Save or Cancel on the work order. Press "Back to the work order", then Cancel on the work order itself.',
+      },
+      {
+        id: 'v143-review-rescue', area: 'Work order',
+        what: 'Reviewing a night nobody submitted puts your name on it',
+        how: 'Open a work order with a past day that reads "Not submitted" in red (use a throwaway, or one you really are reviewing). Press "Mark reviewed" on that day. The day should now read "Submitted" with your name and the time, beside "Reviewed". On Daily Ops, that night keeps its red "WO not submitted" badge.',
+      },
+      {
+        id: 'v143-cancel-restores-day', area: 'Work order',
+        what: 'Cancel brings a deleted day back with everything on it',
+        how: 'On a THROWAWAY work order with a day the runner submitted (it shows Submitted and has Arrived / Left filled in), delete that day with the x on its card. Then press Cancel at the top. Reopen the work order: the day is back, still reading Submitted with the same name, and Arrived / Left are still there.',
+      },
+      {
         id: 'v143-approve-next', area: 'Billing',
         what: 'Approving a package opens the next one waiting',
         how: 'Owners only, and only when at least two invoices are waiting under "Ready for your approval" in the billing hub. Click the first row to open its package, then press Approve at the bottom. The window should switch straight to the next package waiting (different client / WO number in the top left) without showing the hub in between. Approve the last one: the window closes and a message says you are all caught up.',

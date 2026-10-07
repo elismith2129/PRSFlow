@@ -3,8 +3,9 @@
 // /sop/billing — the Billing SOP (public/billing-sop.html), served the same
 // way /sop serves the general guide (iframe). Shipped 2026-08-20: the SOP was
 // built in docs/design-refs but never copied to public/ or routed, so launch
-// day found it missing. public/billing-sop.html is the SERVED copy; the
-// design-refs original is the working mock — edit there, then re-copy.
+// day found it missing. public/billing-sop.html is the SERVED copy AND the
+// source since the 2026-10-06 rewrite (it was rebuilt from the code, not from
+// the design-refs mock, which is now history). Edit it in place.
 export default function BillingSopPage() {
   return (
     <div style={{ height: 'calc(100vh - 52px)', display: 'flex', flexDirection: 'column' }}>

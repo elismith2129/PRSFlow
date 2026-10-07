@@ -92,8 +92,9 @@ export function unsubmittedDaysOf(
  * different question: did the runner turn it in THAT NIGHT. The office fixing
  * it the next morning does not change the answer, and a look back at last
  * Tuesday must still show the miss. With the flag on, completed work orders and
- * locked days are kept and marked `covered`. The row's own `status` is the
- * evidence: only the runner's Submit ever moves it off 'in_progress'.
+ * locked days are kept and marked `covered`. The evidence is the row itself:
+ * status still 'in_progress', or sent with `submitted_for_runner` set (the
+ * office's review submitted it - migration 20261006120000).
  */
 export async function fetchUnsubmittedSessions(opts: { from: string; to: string; slug?: string; includeCovered?: boolean }): Promise<UnsubmittedSession[]> {
   const { data: bData, error } = await supabase
@@ -126,8 +127,13 @@ export async function fetchUnsubmittedSessions(opts: { from: string; to: string;
   const resolved = bookings.map(b => ({ b, wo: (b.work_order_id ? woById.get(b.work_order_id) : undefined) ?? woByBooking.get(b.id) ?? null }))
   const allWo = Array.from(new Set(resolved.map(r => r.wo?.id).filter(Boolean))) as string[]
   const { data: rows } = allWo.length
-    ? await supabase.from('studio_time_rows').select('work_order_id, date, studio, status, admin_locked, day_status').in('work_order_id', allWo).gte('date', opts.from).lte('date', opts.to)
-    : { data: [] as { work_order_id: string; date: string | null; studio: string | null; status: string | null; admin_locked: boolean | null; day_status: string | null }[] }
+    // select('*') ON PURPOSE (2026-10-06): this read now needs
+    // submitted_for_runner, and a named column that is not there yet fails the
+    // whole query - which this function would read as "no rows", i.e. every
+    // session in range unsubmitted. With '*' a missing column is just
+    // undefined and nothing changes until the migration has run.
+    ? await supabase.from('studio_time_rows').select('*').in('work_order_id', allWo).gte('date', opts.from).lte('date', opts.to)
+    : { data: [] as { work_order_id: string; date: string | null; studio: string | null; status: string | null; admin_locked: boolean | null; day_status: string | null; submitted_for_runner?: boolean | null }[] }
   const rowsByWo = new Map<string, NonNullable<typeof rows>>()
   for (const r of rows ?? []) (rowsByWo.get(r.work_order_id) ?? rowsByWo.set(r.work_order_id, []).get(r.work_order_id)!).push(r)
 
@@ -147,12 +153,20 @@ export async function fetchUnsubmittedSessions(opts: { from: string; to: string;
       // Per-day status (2026-09-19): a day marked tentative/cancelled on the
       // WO is not a night to submit, even under a confirmed card.
       if (dayRows.length > 0 && dayRows.every(r => r.day_status === 'tentative' || r.day_status === 'cancelled')) continue
-      const unsent = dayRows.filter(r => !SENT.has(r.status ?? 'in_progress'))
+      // TWO QUESTIONS, TWO LISTS (2026-10-06).
+      //   stillOwed      - not sent by anyone and not reviewed: work the office
+      //                    still has to deal with (the pop-up, the runner hub).
+      //   neverByRunner  - the runner did not turn it in: never sent at all, OR
+      //                    sent by the office on review (submitted_for_runner).
+      //                    Daily Ops' question, whatever happened afterwards.
+      // Before the rescue stamp came back, status alone answered both.
+      const stillOwed = dayRows.filter(r => !SENT.has(r.status ?? 'in_progress') && !r.admin_locked)
+      const neverByRunner = dayRows.filter(r => !SENT.has(r.status ?? 'in_progress') || (r as { submitted_for_runner?: boolean | null }).submitted_for_runner === true)
       const unsubmitted = !wo
         || dayRows.length === 0
-        || unsent.some(r => opts.includeCovered || !r.admin_locked)
+        || (opts.includeCovered ? neverByRunner.length > 0 : stillOwed.length > 0)
       if (!unsubmitted) continue
-      const covered = woCompleted || (unsent.length > 0 && unsent.every(r => r.admin_locked))
+      const covered = woCompleted || (neverByRunner.length > 0 && stillOwed.length === 0)
       out.push({
         bookingId: b.id, workOrderId: wo?.id ?? null, woNumber: wo?.wo_number ?? b.wo_number ?? null,
         date, location: b.location, slug: studioSlugOf(b.location), room: b.studio,

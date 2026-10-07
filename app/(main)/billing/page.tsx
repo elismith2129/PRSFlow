@@ -71,7 +71,7 @@ import {
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, rejectInvoice, previewPackageUrl,
   markSent, markPaid, closeInvoice, reopenInvoice,
-  uploadInvoiceDoc, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
+  uploadInvoiceDoc, detachInvoice, canDetachInvoice, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
   pipelineCount, recordPoNumber, setNoPoNeeded, billingStage, sortByColumn,
   downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
   BILLING_LIGHTS, COD_LIGHTS,
@@ -320,12 +320,40 @@ export default function BillingPage() {
   // Who is acting — attach and PO writes log WO history lines now.
   const actor = { id: profile?.id ?? null, name: profile?.display_name || '' }
 
+  /**
+   * A FILE IS CHECKED BEFORE IT LANDS (2026-10-06).
+   *
+   * Every row is a drop target, and a drop used to attach at once whatever
+   * the row was: a PDF let go one row too low replaced the invoice on a SENT
+   * or PAID work order (the as-sent package survives, the invoice of record
+   * did not), or silently swapped the one an owner was about to approve.
+   *   · Sent, paid or closed → refused, with the way to do it on purpose.
+   *   · Already has an invoice → asked first, naming the row and the file.
+   *   · No invoice yet → attaches at once, as before; that is the daily
+   *     gesture and a question on it would be a tax. Its undo is the row's
+   *     ⋯ → "Remove the attached invoice".
+   */
+  const [replacing, setReplacing] = useState<{ row: InvoiceRow; file: File } | null>(null)
+  async function attachFile(row: InvoiceRow, file: File) {
+    if (row.bucket === 'closed' || (!row.isCod && row.step >= 4)) {
+      toast(
+        row.bucket === 'closed'
+          ? `${row.woNumber || 'That work order'} is closed — reopen it before attaching an invoice.`
+          : `${row.woNumber || 'That invoice'} has already been sent, so its invoice can't be swapped here. If it really needs replacing: ⋯ → Pull it back.`,
+        'error',
+      )
+      return
+    }
+    if (row.hasInvoiceDoc) { setReplacing({ row, file }); return }
+    await run(row.workOrderId, () => uploadInvoiceDoc(row, file, actor))
+  }
+
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     const row = uploadFor.current
     e.target.value = '' // let the same file be picked again after a failure
     if (!file || !row) return
-    await run(row.workOrderId, () => uploadInvoiceDoc(row, file, actor))
+    await attachFile(row, file)
   }
 
   /**
@@ -341,7 +369,7 @@ export default function BillingPage() {
     setDragOver(null)
     const file = e.dataTransfer.files?.[0]
     if (!file) return
-    await run(row.workOrderId, () => uploadInvoiceDoc(row, file, actor))
+    await attachFile(row, file)
   }
 
   /**
@@ -971,6 +999,15 @@ export default function BillingPage() {
           row={moreFor}
           onCancel={() => setMoreFor(null)}
           onOpenDoc={() => { openDoc(moreFor); setMoreFor(null) }}
+          onDetach={() => {
+            const r = rows.find(x => x.workOrderId === moreFor.workOrderId) ?? moreFor
+            setMoreFor(null)
+            run(r.workOrderId, async () => {
+              const ok = await detachInvoice(r, actor)
+              if (ok) toast(`Invoice removed from ${r.woNumber || 'the work order'}`)
+              return ok
+            })
+          }}
           onAp={() => { const r = moreFor; setMoreFor(null); setApFor(r) }}
           onClose={() => { const r = moreFor; setMoreFor(null); setClosing(r) }}
           onDelete={canDelete ? () => { const r = moreFor; setMoreFor(null); setDeleteTyped(''); setDeleting(r) } : undefined}
@@ -1039,6 +1076,36 @@ export default function BillingPage() {
               </>
             )}
             <button className="c-bact c-bmuted c-bblock" onClick={() => setPageMenu(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {replacing && (
+        <div className="c-bmodal-wrap" onClick={() => setReplacing(null)}>
+          <div className="c-bmodal" onClick={e => e.stopPropagation()}>
+            <div className="c-lozenge"><b>Replace the invoice on {replacing.row.woNumber || 'this work order'}?</b></div>
+            <div style={{ fontSize: 12.5, marginBottom: 6 }}>{[replacing.row.client, replacing.row.artist, replacing.row.sessionDate].filter(Boolean).join(' · ')}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--c-fg-2)', lineHeight: 1.55, marginBottom: 12 }}>
+              It already has an invoice attached. <b style={{ color: 'var(--c-fg)' }}>{replacing.file.name}</b> will take its place.
+              {replacing.row.rejectedAt ? ' That puts it back in the owner\u2019s approval queue.' : ''}
+            </div>
+            <button
+              className="c-bact c-bblock"
+              onClick={() => {
+                if (busy) { toast('Still finishing the last thing — try again in a moment.'); return }
+                // The row as it stands NOW, not as it was when the file was
+                // dropped: someone may have sent or closed it in between.
+                const r = replacing
+                const now = rows.find(x => x.workOrderId === r.row.workOrderId) ?? r.row
+                setReplacing(null)
+                if (now.bucket === 'closed' || (!now.isCod && now.step >= 4)) {
+                  toast(`${now.woNumber || 'That invoice'} was sent or closed in the meantime — nothing was replaced.`, 'error')
+                  return
+                }
+                run(now.workOrderId, () => uploadInvoiceDoc(now, r.file, actor))
+              }}
+            >Replace it</button>
+            <button className="c-bact c-bmuted c-bblock" onClick={() => setReplacing(null)}>Cancel — wrong row</button>
           </div>
         </div>
       )}
@@ -1499,9 +1566,10 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload, onExportWo, onNoPo, onAddPo, onAp, onDelete }: {
+function MoreModal({ row, onCancel, onOpenDoc, onDetach, onClose, onPullBack, onRedownload, onExportWo, onNoPo, onAddPo, onAp, onDelete }: {
   row: InvoiceRow
   onCancel: () => void
+  onDetach: () => void
   /** Eli only — absent for everyone else, so the button never renders. */
   onDelete?: () => void
   onOpenDoc: () => void
@@ -1523,6 +1591,15 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
         <div style={{ fontSize: 12.5, marginBottom: 12 }}>{row.client}</div>
         {row.hasInvoiceDoc && (
           <button className="c-bact c-bblock" onClick={onOpenDoc}>Open the attached invoice PDF</button>
+        )}
+        {/* THE UNDO FOR A DROP ON THE WRONG ROW (2026-10-06). Only while no
+            approval is STORED (canDetachInvoice — see lib/billing for why the
+            derived step is the wrong test). From approval onward Pull it back
+            is the tool, because there the approval has to go with it. */}
+        {canDetachInvoice(row) && (
+          <button className="c-bact c-bblock" onClick={onDetach}>
+            Remove the attached invoice — it went on the wrong work order
+          </button>
         )}
         {/* The AP procedure. Duplicated from the row's chip on purpose: the chip
             is the shortcut at the moment of need, this is the findable home. */}
@@ -1573,7 +1650,7 @@ function MoreModal({ row, onCancel, onOpenDoc, onClose, onPullBack, onRedownload
             Not two undos to choose between. And it is the only way back out of
             Awaiting payment, which is what stops a misclicked send becoming a
             permanent lie about when the client was billed. */}
-        {row.step >= 3 && (
+        {(row.step >= 3 || row.state === 'approved' || row.state === 'awaiting_po') && row.bucket !== 'closed' && (
           <button className="c-bact c-bblock" onClick={onPullBack}>
             Pull it back — removes the invoice and the approval, back to the start
           </button>
@@ -1630,6 +1707,26 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
   const [busy, setBusy] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [rejectNote, setRejectNote] = useState('')
+  // UNSAVED WORK-ORDER EDITS (2026-10-06). The Work order tab is the live
+  // editor, but this window's Close, its backdrop and its other tabs all
+  // unmount it without going through the work order's own "you've made
+  // changes" question — an hour of corrections could vanish on a stray click.
+  // The work order reports its dirty flag (onDirtyChange); anything that would
+  // leave it while dirty parks here and asks first.
+  //
+  // IT DOES NOT OFFER "DISCARD". Throwing the edits away properly is not just
+  // unmounting: "Delete day" has already hit the database and only the work
+  // order's own Cancel puts those rows back. So the question has one answer —
+  // go back and press Save or Cancel on the work order — and those two buttons
+  // close this window themselves.
+  const [woDirty, setWoDirty] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  // A function, not a const: `view` is declared further down.
+  function dirtyOnWo() { return view === 'wo' && woDirty }
+  function leave(fn: () => void) {
+    if (dirtyOnWo()) setBlocked(true)
+    else fn()
+  }
   // WHAT ACTUALLY WENT OUT WINS (ruling 2026-08-11). Once a package has been
   // built, the default view is the STORED FILE — page for page, as the client
   // received it. Eli: "we need to see what's actually going out — see a bug we
@@ -1667,6 +1764,9 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
 
   async function doApprove() {
     if (busy) return
+    // Approving signs off the SAVED numbers. With unsaved edits on the work
+    // order tab, the owner would approve a total they are no longer looking at.
+    if (dirtyOnWo()) { setBlocked(true); return }
     setBusy(true)
     const ok = await approveInvoice(row, approverId, approverName || undefined)
     // Stays busy until the window has moved on, so a second click cannot land
@@ -1676,6 +1776,7 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
   }
   async function doReject() {
     if (busy) return
+    if (dirtyOnWo()) { setBlocked(true); return }
     setBusy(true)
     const ok = await rejectInvoice(row, approverId, approverName, rejectNote)
     if (ok) { toast('Returned to billing with your note', 'success'); await onDecided() }
@@ -1683,7 +1784,7 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
   }
 
   return (
-    <div className="c-bmodal-wrap" onClick={onClose}>
+    <div className="c-bmodal-wrap" onClick={() => leave(onClose)}>
       <div className="c-bpkg" onClick={e => e.stopPropagation()}>
         <div className="c-bpkghd">
           <div style={{ minWidth: 0 }}>
@@ -1705,10 +1806,10 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
                 today. First when an approval is pending: it is the thing being
                 signed. ('As sent' remains the frozen artifact for sent ones.) */}
             {approvalPending && (
-              <button className={view === 'pkg' ? 'c-on' : ''} onClick={() => setView('pkg')}>Package</button>
+              <button className={view === 'pkg' ? 'c-on' : ''} onClick={() => leave(() => setView('pkg'))}>Package</button>
             )}
             {row.hasPackage && (
-              <button className={view === 'sent' ? 'c-on' : ''} onClick={() => setView('sent')}>
+              <button className={view === 'sent' ? 'c-on' : ''} onClick={() => leave(() => setView('sent'))}>
                 {/* "Previously saved" (Eli 2026-09-07 — "As built" read as jargon
                     next to the live Package build). "As sent" stays: once sent,
                     that label is the whole meaning. */}
@@ -1716,10 +1817,10 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
               </button>
             )}
             <button className={view === 'wo' ? 'c-on' : ''} onClick={() => setView('wo')}>Work order</button>
-            <button className={view === 'inv' ? 'c-on' : ''} onClick={() => setView('inv')}>Invoice</button>
+            <button className={view === 'inv' ? 'c-on' : ''} onClick={() => leave(() => setView('inv'))}>Invoice</button>
           </div>
           <div style={{ flex: 1 }} />
-          <button className="c-bact c-bmuted" onClick={onClose}>Close</button>
+          <button className="c-bact c-bmuted" onClick={() => leave(onClose)}>Close</button>
         </div>
 
         {/* Says plainly which of the two you are looking at, because the whole
@@ -1745,6 +1846,7 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
                 booking={booking}
                 inline
                 onClose={onClose}
+                onDirtyChange={setWoDirty}
                 // FIX → TOGGLE BACK → FRESH BUILD (Eli, 2026-09-01: "if you
                 // change the digital version the bw version builds again").
                 // A save drops the cached Package/As-built URLs, so returning
@@ -1762,6 +1864,18 @@ function PackageModal({ row, booking, onClose, onDecided, isOwner, approverId, a
                 ? <div className="c-bempty">{view === 'pkg' ? 'The package could not be built.' : 'That file isn’t there any more.'}</div>
                 : <div className="c-bempty">{view === 'pkg' ? 'Building the package…' : 'Loading…'}</div>}
         </div>
+
+        {blocked && (
+          <div className="c-bmodal-wrap" style={{ zIndex: 10060 }} onClick={() => setBlocked(false)}>
+            <div className="c-bmodal" onClick={e => e.stopPropagation()}>
+              <div className="c-lozenge"><b>You&rsquo;ve changed the work order</b></div>
+              <div style={{ fontSize: 11.5, color: 'var(--c-fg-2)', lineHeight: 1.55, marginBottom: 12 }}>
+                Those changes are not saved yet. Press <b style={{ color: 'var(--c-fg)' }}>Save</b> on the work order to keep them, or <b style={{ color: 'var(--c-fg)' }}>Cancel</b> on it to drop them. Either one closes this window.
+              </div>
+              <button className="c-bact c-bblock" onClick={() => setBlocked(false)}>Back to the work order</button>
+            </div>
+          </div>
+        )}
 
         {/* ── THE OWNER'S CALL (owners only, while an approval is pending).
             Approve signs off the numbers as they stand; Don't approve REQUIRES

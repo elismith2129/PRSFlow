@@ -999,7 +999,7 @@ export async function fetchBalancesQueue(opts?: {
 
   const { data: wosAll, error } = await supabase
     .from('work_orders')
-    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status, discount_kind, discount_value, food_fee_pct')
+    .select('id, booking_id, invoice_number, client, label, artist, session_date, payment_status, invoice_state, discount_kind, discount_value, food_fee_pct')
     .gte('session_date', from)
     .lte('session_date', to)
   if (!dbResult('Loading work orders for balances', error)) return []
@@ -1008,7 +1008,15 @@ export async function fetchBalancesQueue(opts?: {
   // — it is somewhere in the billing pipeline (invoice → approval → PO → sent)
   // and is tracked there; counting it here made the Flo line shout about money
   // that is simply mid-process. Same predicate as lib/billing.ts.
-  const wos = (wosAll ?? []).filter(w => ((w as any).payment_status ?? '').toUpperCase() === 'COD')
+  //
+  // AND NOT CLOSED (2026-10-06). A COD balance written off or voided in the
+  // hub leaves Balance due there — that is what Close is for — but it kept
+  // counting here, so Flo's red "COD balances outstanding" line and the
+  // dashboard's COD-out tile could not be cleared by the one act meant to
+  // clear them.
+  const wos = (wosAll ?? []).filter(w =>
+    ((w as any).payment_status ?? '').toUpperCase() === 'COD'
+    && (w as any).invoice_state !== 'closed')
   if (wos.length === 0) return []
 
   const ids = wos.map(w => w.id)
@@ -1020,7 +1028,11 @@ export async function fetchBalancesQueue(opts?: {
       .select('work_order_id, charge, ot_charge, from_time, to_time, eng_from_time, eng_to_time, eng_hours, eng_rate, day_status')
       .in('work_order_id', ids),
     supabase.from('rental_rows').select('work_order_id, charge').in('work_order_id', ids),
-    supabase.from('payment_rows').select('work_order_id, amount').in('work_order_id', ids),
+    // fee_amount is REQUIRED (2026-10-06 — the hub learned this on WO-1121,
+    // 2026-09-10; this copy of the query never did). Without it cardFees sums
+    // to 0 while `amount` still includes the 3%, so a part-paid card session
+    // read as owing less here than on its own work order.
+    supabase.from('payment_rows').select('work_order_id, amount, fee_amount').in('work_order_id', ids),
     // Food joins the total (2026-09-28).
     supabase.from('wo_expenses').select('work_order_id, amount').in('work_order_id', ids),
   ])

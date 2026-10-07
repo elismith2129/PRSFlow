@@ -6,25 +6,32 @@
 <title>PRSFlo — Billing SOP</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" rel="stylesheet">
 <!--
-  BILLING SOP — DESIGN + CONTENT MOCK (Eli, 2026-08-17)
+  BILLING SOP — REWRITTEN FROM THE APP AS IT STANDS (2026-10-06, app v1.43.4).
 
-  Eli's brief, this sitting: NOT one long "here's how things work" page.
-  Chapters in a sidebar, and the heart of it is THE FLOW — the life of a
-  session start to finish (that's why the app is named Flo). Session starts →
-  WO is born with it (WO numbers) → invoice created in QB the second the
-  session CONFIRMS so the invoice number is referenced from the start → set up
-  the WO → runners update it live → morning review → the hub takes it to Paid.
-  Other chapters: dashboard, My Day, the Flo briefing (incl. the recurring
-  dates — 25th, 5th, Mondays), the hub in detail, help/glossary.
+  The Aug 20 edition was written at launch and fell 69 releases behind: it
+  taught a My Day page, a standalone Flags page, three "lights" on hub rows,
+  an Attach-invoice button, a PO gate on approval, and COD with no approval —
+  none of which exist any more. Eli (2026-10-06): "grab all the current logic
+  and make new ones… this is how we created them in the first place."
 
-  Content source: docs/sop-drafts/BILLING-SOP-DRAFT.md (same facts, re-shaped).
-  Design: soft skin per spec §7c — flat --srf panes + --softsh, no borders
-  (Law 1), Archivo Black display, status colours are status only. Mock
-  polarity inverted vs the app, same as every workbench mock.
+  HOW THIS EDITION WAS MADE, so the next one is made the same way:
+    1. Every statement about a screen was read out of the code that draws it
+       (app/(main)/billing/page.tsx, lib/billing.ts, WorkOrderPopup.tsx,
+       app/(main)/page.tsx, lib/myday.ts, daily-ops, the Tenants / SRS / petty
+       cash views), not out of the changelog. Where a comment and the code
+       disagreed, the code won.
+    2. Button, tab and badge words are quoted exactly as the app prints them.
+    3. Nothing here describes a screen pixel-for-pixel. The Aug 20 edition
+       carried a full drawn mock of the work order; it was the first thing to
+       go stale. This edition uses small word-echoes (a chip, a row) instead.
 
-  If this shape is approved, it ships as the billing track of the rebuilt
-  /sop (role-picked per SOP-REWORK-BRIEF), with VERSIONS surviving wherever
-  that lands.
+  SAME SHELL: chapters in a left rail, the flow first, hints toggle, theme
+  flip. Served by /sop/billing as an iframe (app/(main)/sop/billing/page.tsx).
+  This file IS the source now — there is no design-refs original to re-copy.
+
+  NOT IN HERE ON PURPOSE: the list of the Billing seat's recurring duties.
+  Those live in the database and change without a release; the manual explains
+  how Your list behaves and points at it as the source of truth.
 -->
 <style>
 :root{
@@ -33,16 +40,15 @@
   --chip-ink:#1c2626;
   --st-hot:#ff5a4d; --st-warm:#ffa94d; --st-cold:#5fc9e8; --st-booked:#43dfae;
   --st-uncon:#7fb2e5; --st-dead:#cfd6d4;
-  --ivory:#d5d0c2; --flo-ink:42,39,34;
+  --ivory:#d5d0c2;
   --srf:#ffffff;
   --softsh:0 1px 3px rgba(42,39,34,.08), 0 5px 16px rgba(42,39,34,.07);
   --ctlsh:0 1px 2px rgba(42,39,34,.10);
 }
 [data-theme="dark"]{
-  --bg:#1b1a17; --fg:#d9d6cd;
-  --wash:rgba(217,214,205,.07); --wash2:rgba(217,214,205,.13);
-  --flo-ink:213,208,194;
-  --srf:#242320;
+  --bg:#0b0a09; --fg:#f2efe7;
+  --wash:rgba(242,239,231,.06); --wash2:rgba(242,239,231,.12);
+  --srf:#161513;
   --softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
   --ctlsh:0 1px 3px rgba(0,0,0,.3);
 }
@@ -64,7 +70,7 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .frame{display:flex;min-height:100vh}
 
 /* ── SOP chapter rail ── */
-.rail{width:212px;flex-shrink:0;padding:16px 10px 14px 12px;display:flex;flex-direction:column;
+.rail{width:218px;flex-shrink:0;padding:16px 10px 14px 12px;display:flex;flex-direction:column;
   gap:2px;background:var(--wash);position:sticky;top:41px;height:calc(100vh - 41px);overflow-y:auto}
 .rail .wm{font-family:'Archivo Black',sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px 2px}
 .rail .wm .flo{opacity:.45}
@@ -78,28 +84,26 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
 .rail .grp{margin-top:12px;padding:0 10px 4px}
 .railfoot{margin-top:auto;padding:12px 10px 2px;font-size:10px;opacity:.4;line-height:1.5}
 
-/* Centered column, wider cap. 900px left-pinned created a dead zone on the
-   right of every chapter; centering balances the page and the extra width goes
-   to the panes (the WO document and hub table especially). Prose inside stays
-   clamped to a readable measure. */
 .main{flex:1;min-width:0;padding:18px 34px 60px;max-width:1080px;margin:0 auto}
 
 .hbar{padding:4px 2px 6px}
 .hbar h1{font-family:'Archivo Black',sans-serif;font-size:27px;letter-spacing:-.03em;line-height:1.1}
 .kicker{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;opacity:.45;margin-bottom:5px}
-.lede{font-size:13.5px;opacity:.72;max-width:640px;margin:10px 0 4px;line-height:1.6}
+.lede{font-size:13.5px;opacity:.72;max-width:660px;margin:10px 0 4px;line-height:1.6}
 
 .pane{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:16px 18px;margin-top:14px}
 .pane h3{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.01em;margin-bottom:8px}
-.pane p{font-size:12.5px;opacity:.82;margin-bottom:8px;max-width:620px}
+.pane p{font-size:12.5px;opacity:.82;margin-bottom:8px;max-width:660px}
 .pane p:last-child{margin-bottom:0}
-.pane .why{font-size:11px;opacity:.55;background:var(--wash);border-radius:11px;
-  padding:8px 12px;margin-top:10px;max-width:620px;line-height:1.55}
-.pane .why b{font-weight:800;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+.pane .why{font-size:11px;opacity:.6;background:var(--wash);border-radius:11px;
+  padding:8px 12px;margin-top:10px;max-width:660px;line-height:1.55}
+.pane .why > b:first-child{font-weight:800;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
   display:block;margin-bottom:2px;opacity:.8}
+.pane ol,.pane ul{font-size:12.5px;opacity:.82;margin:0 0 8px 20px;max-width:640px}
+.pane li{margin-bottom:4px}
 
-/* two-column helper */
-.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
+.two .pane{margin-top:14px}
 
 /* ── FLOW stepper ── */
 .fstep{display:flex;gap:14px;margin-top:14px}
@@ -109,332 +113,120 @@ button{font:inherit;color:var(--fg);background:none;border:none;cursor:pointer}
   font-family:'Archivo Black',sans-serif;font-size:12px}
 [data-theme="dark"] .fnum .bub{background:var(--ivory);color:#1b1a17}
 .fnum .line{width:2px;flex:1;background:var(--wash2);margin-top:6px;border-radius:2px}
-.fstep:last-child .fnum .line{display:none}
+.fstep.last .fnum .line{display:none}
 .fbody{flex:1;min-width:0;padding-bottom:10px}
 .fcard{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:14px 16px}
 .fcard .who{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-bottom:3px}
 .fcard h3{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.01em;margin-bottom:7px}
-.fcard p{font-size:12.5px;opacity:.82;margin-bottom:7px;max-width:600px}
+.fcard p{font-size:12.5px;opacity:.82;margin-bottom:7px;max-width:640px}
 .fcard p:last-of-type{margin-bottom:0}
 
-/* small UI echoes inside flow cards */
+/* small UI echoes */
 .echo{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 4px}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;
-  background:var(--wash2);font-size:10.5px;font-weight:700}
+  background:var(--wash2);font-size:10.5px;font-weight:700;white-space:nowrap}
 .chip.mono{font-family:ui-monospace,monospace;letter-spacing:.02em}
 .chip.hot{background:color-mix(in srgb,var(--st-hot) 18%,transparent);color:var(--st-hot)}
 .chip.ok{background:var(--st-booked);color:var(--chip-ink)}
-.chip.warm{background:color-mix(in srgb,var(--st-warm) 22%,transparent)}
-.lights{display:inline-flex;gap:10px;padding:5px 12px;border-radius:99px;background:var(--wash)}
-.lt{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;opacity:.4}
-.lt .d{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.35}
-.lt.on{opacity:.9}
-.lt.on .d{background:var(--st-booked);opacity:1}
+.chip.warm{background:color-mix(in srgb,var(--st-warm) 24%,transparent)}
+.chip.cold{background:color-mix(in srgb,var(--st-uncon) 26%,transparent)}
 .btn{display:inline-block;padding:5px 13px;border-radius:99px;background:var(--fg);color:var(--bg);
-  font-size:11px;font-weight:700;box-shadow:var(--ctlsh)}
+  font-size:11px;font-weight:700;box-shadow:var(--ctlsh);white-space:nowrap}
 [data-theme="dark"] .btn{background:var(--ivory);color:#1b1a17}
-.btn.ghost{background:var(--wash2);color:var(--fg);opacity:.6}
+.btn.ghost{background:var(--wash2);color:var(--fg);opacity:.7}
 
-/* ── hub table echo ── */
-.tabs{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh);margin-bottom:10px}
-.tabs span{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;opacity:.55}
+/* ── hub echo ── */
+.tabs{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border-radius:16px;background:var(--wash);box-shadow:var(--ctlsh);margin-bottom:10px}
+.tabs span{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;opacity:.55;white-space:nowrap}
 .tabs span.on{opacity:1;background:var(--fg);color:var(--bg)}
 [data-theme="dark"] .tabs span.on{background:var(--ivory);color:#1b1a17}
 .tabs span.alert{color:var(--st-hot);opacity:.9}
 .hrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:11px;font-size:12px}
 .hrow:hover{background:var(--wash)}
+.hrow .bd{flex:0 0 118px}
 .hrow .cl{flex:1;min-width:0}
 .hrow .cl b{font-weight:700}
 .hrow .cl small{display:block;font-size:10px;opacity:.5}
+.hrow .fl{flex:0 0 230px;font-size:10.5px;opacity:.7}
 .hrow .amt{font-family:ui-monospace,monospace;font-size:11.5px;opacity:.8;width:74px;text-align:right}
+.hrow .nx{flex:0 0 92px;text-align:right}
 .stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
 .bstat{background:var(--wash);border-radius:12px;padding:9px 11px}
 .bstat .n{font-family:'Archivo Black',sans-serif;font-size:18px;letter-spacing:-.02em;line-height:1.1}
 .bstat .k{font-size:9.5px;opacity:.55;margin-top:2px}
 .bstat.alert .n{color:var(--st-hot)}
 
-/* ── Flo box echo ── */
-.flo-box{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:14px 16px;margin-top:14px}
-.flo-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.flo-head .fname{font-family:'Archivo Black',sans-serif;font-size:14px}
-.flo-head .ftag{font-size:10.5px;opacity:.5}
-.fb{display:flex;align-items:flex-start;gap:9px;padding:5px 4px;font-size:12.5px}
-.fb .dot{margin-top:5px}
-.fb.dim{opacity:.65}
-.flosyn{margin-top:9px;padding:8px 12px;border-radius:11px;background:var(--wash);
-  font-size:12px;font-style:italic;opacity:.8}
-.annot{font-size:10.5px;opacity:.5;padding:1px 4px 7px 25px;line-height:1.5;max-width:560px}
-
-/* ── THE REAL FLO BOX — exact port of the app's (globals.css .c-ringwrap):
-   flat inner surface outlined by a slowly ROTATING ring of light + soft halo.
-   The ring is the only glow in the whole app — glow means AI, exclusively. */
-.ringwrap{position:relative;border-radius:15px;overflow:hidden;padding:1.5px;margin-top:14px;
-  box-shadow:0 0 16px 3px rgba(var(--flo-ink),.045)}
-.ringwrap::before{content:"";position:absolute;inset:-120%;
-  background:conic-gradient(rgba(var(--flo-ink),.06) 0deg,rgba(var(--flo-ink),.32) 90deg,
-  rgba(var(--flo-ink),.06) 200deg,rgba(var(--flo-ink),.06) 360deg);
-  animation:flospin 8s linear infinite}
-@keyframes flospin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion: reduce){.ringwrap::before{animation:none}}
-.flo-inner{position:relative;border-radius:13.5px;background:var(--bg);padding:10px 12px}
-.flohead2{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-.flohead2 .fname2{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:-.01em}
-.flohead2 .ftag2{font-size:7.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.45}
+/* ── Flo echo ── */
+.flobox{background:var(--bg);border-radius:14px;padding:11px 13px;max-width:560px;box-shadow:inset 0 0 0 1px var(--wash2)}
 .flob{display:flex;gap:8px;align-items:baseline;font-size:12px;line-height:1.45;margin-bottom:4px}
 .flob .flodot{width:7px;height:7px;border-radius:50%;flex-shrink:0;position:relative;top:-1px}
 .flob.alert{color:var(--st-hot);font-weight:600}
-.flosyn2{font-size:11px;opacity:.55;font-style:italic;margin-top:3px}
-.askflo{margin-top:7px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
+.flosyn{font-size:11px;opacity:.55;font-style:italic;margin-top:3px}
 
-/* ── duty card echo ── */
+/* ── Your list echo ── */
 .duty{display:flex;align-items:flex-start;gap:9px;padding:6px 10px;border-radius:10px;margin-bottom:2px}
 .bx{width:15px;height:15px;border-radius:5px;background:var(--wash2);flex-shrink:0;margin-top:2px;
   display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
 .duty.done .bx{background:var(--st-booked);color:var(--chip-ink)}
 .duty.done .tx{opacity:.42;text-decoration:line-through}
 .tx{font-size:12.5px;flex:1;min-width:0}
-.cap{width:52px;padding:2px 7px;border-radius:7px;background:var(--wash2);
-  font-family:ui-monospace,monospace;font-size:10px;text-align:right;flex-shrink:0}
-.due{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45;flex-shrink:0;margin-top:3px}
+.tg{font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45;flex-shrink:0;margin-top:4px;width:30px}
 .duty.late{background:color-mix(in srgb,var(--st-hot) 11%,transparent)}
 .late-tag{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
   color:var(--st-hot);flex-shrink:0;margin-top:3px}
-.lozenge{display:flex;align-items:baseline;justify-content:space-between;border-radius:99px;
-  padding:7px 14px;margin-bottom:9px;font-size:10px;font-weight:800;letter-spacing:.1em;
-  text-transform:uppercase}
-:root .lozenge{background:var(--fg);color:var(--bg)}
-[data-theme="dark"] .lozenge{background:var(--wash2);color:var(--fg)}
-.lozenge .ct{font-family:ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
 
 /* ── rhythm strip ── */
 .rr{display:flex;gap:10px;align-items:flex-start;padding:8px 6px;border-radius:11px}
 .rr:hover{background:var(--wash)}
-.when{flex-shrink:0;width:86px;font-family:'Archivo Black',sans-serif;font-size:11px;letter-spacing:.02em;
+.when{flex-shrink:0;width:112px;font-family:'Archivo Black',sans-serif;font-size:11px;letter-spacing:.02em;
   padding:4px 0;text-align:left}
 .rr .what{flex:1;font-size:12.5px;opacity:.82;padding-top:3px}
-.rr .what small{display:block;font-size:10.5px;opacity:.55;margin-top:1px}
+.rr .what small{display:block;font-size:10.5px;opacity:.6;margin-top:1px}
 
-/* dashboard chapter mini-renders */
-.mini{background:var(--srf);box-shadow:var(--softsh);border-radius:16px;padding:12px 14px}
-.mini .cap-line{font-size:10.5px;opacity:.55;margin-top:9px;line-height:1.5}
-.minihead{display:flex;align-items:center;gap:7px;margin-bottom:8px}
-.minihead .t{font-family:'Archivo Black',sans-serif;font-size:12px}
-.minihead .pt{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;
-  opacity:.4;margin-left:auto}
-.trow{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:9px;font-size:11.5px}
-.trow:hover{background:var(--wash)}
-.trow .tby{font-size:9.5px;opacity:.45;margin-left:auto;flex-shrink:0}
-.rooms{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.room{border-radius:10px;background:var(--wash);padding:7px 8px;min-height:52px}
-.room .rk{font-family:ui-monospace,monospace;font-size:9px;opacity:.45;display:block}
-.room .ra{font-size:11px;font-weight:700;margin-top:2px;line-height:1.2}
-.room .rt{font-size:9.5px;opacity:.5;font-family:ui-monospace,monospace}
-.room.live{background:color-mix(in srgb,var(--st-booked) 14%,transparent)}
-.room.hold{background:color-mix(in srgb,var(--st-warm) 13%,transparent)}
-
-/* clearing table */
+/* definition rows */
 .crow{display:flex;gap:10px;align-items:flex-start;padding:7px 6px;border-radius:10px;font-size:12px}
 .crow:hover{background:var(--wash)}
 .crow .cdot{margin-top:5px}
-.crow .h{font-weight:700;width:96px;flex-shrink:0}
-.crow .b{flex:1;opacity:.78}
+.crow .h{font-weight:700;width:200px;flex-shrink:0}
+.crow .h .chip{font-size:10px;white-space:normal;text-align:left;border-radius:12px}
+.crow .b{flex:1;opacity:.8}
 
-/* ── HELPFUL HINTS (toggle in the top bar) ──
-   Off by default. When on, small ? markers appear beside things worth a tip;
-   hover (or tap) shows the hint. The mechanic to rule on: same markers would
-   ship across the whole SOP — and could later ride along in the app itself. */
+/* ── HELPFUL HINTS (toggle in the top bar) ── */
 .hint{display:none;position:relative;width:15px;height:15px;border-radius:50%;
   background:var(--st-cold);color:var(--chip-ink);font-size:9.5px;font-weight:800;
   align-items:center;justify-content:center;cursor:help;flex-shrink:0;
-  vertical-align:middle;margin-left:5px;line-height:1;
-  animation:hintpulse 2.4s ease-in-out infinite}
+  vertical-align:middle;margin-left:5px;line-height:1}
 body.hints .hint{display:inline-flex}
-@keyframes hintpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-cold) 45%,transparent)}
-  50%{box-shadow:0 0 0 5px transparent}}
-.tipb{display:none;position:absolute;bottom:135%;left:-8px;width:230px;z-index:20;
+.tipb{display:none;position:absolute;bottom:135%;left:-8px;width:240px;z-index:20;
   background:var(--fg);color:var(--bg);border-radius:11px;padding:9px 12px;
   font-size:11px;font-weight:500;line-height:1.5;text-align:left;letter-spacing:0;
-  text-transform:none;box-shadow:var(--softsh)}
+  text-transform:none;box-shadow:var(--softsh);white-space:normal}
 .hint:hover .tipb,.hint.open .tipb{display:block}
-
-/* ── WO WALKTHROUGH (chapter 03) ──
-   The REAL work order layout — UPDATED 2026-08-20 to the launched two-column
-   redesign (ref: components/calendar/WorkOrderPopup.tsx + the locked rulings
-   in docs/design-refs/wo-compact-options.html): open-space letterhead with the
-   big WO number top-right, WORDS LEFT (contact card with the label as hero,
-   status/type segs, Inv/PO/Food row, notes) and NUMBERS RIGHT (day CARDS with
-   the List/Cards toggle, itemized pinned studio total, rentals, payments).
-   Logic copy unchanged — only the render moved. A sticky step bar above it
-   explains one part at a time: the active part lights up, the rest dims. */
-.wstep{position:sticky;top:41px;z-index:8;background:var(--srf);box-shadow:var(--softsh);
-  border-radius:18px;padding:13px 18px;margin-top:14px;display:flex;gap:18px;align-items:flex-start}
-.wstep .wtxt{flex:1;min-width:0}
-.wstep .k{font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
-.wstep h3{font-family:'Archivo Black',sans-serif;font-size:14px;margin:3px 0 4px}
-.wstep p{font-size:12px;opacity:.85;line-height:1.55;margin-bottom:4px}
-.wstep p:last-child{margin-bottom:0}
-.wstep .wnav{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:9px;padding-top:2px}
-.wstep .navr{display:flex;gap:8px}
-.wstep .navr button{padding:6px 14px;border-radius:99px;background:var(--wash2);font-size:11.5px;font-weight:700}
-.wstep .navr button.pri{background:var(--fg);color:var(--bg)}
-[data-theme="dark"] .wstep .navr button.pri{background:var(--ivory);color:#1b1a17}
-.wdots{display:flex;gap:5px}
-.wdots span{width:7px;height:7px;border-radius:50%;background:var(--wash2);cursor:pointer}
-.wdots span.on{background:var(--st-booked)}
-
-.wodoc{background:var(--srf);box-shadow:var(--softsh);border-radius:18px;padding:20px 22px;
-  margin-top:14px;overflow-x:auto}
-.wsec{border-radius:12px;padding:8px 10px;margin:0 -10px 10px;transition:opacity .25s, box-shadow .25s}
-.touring .wsec{opacity:.18}
-.touring .wsec.hl,.touring .wsec.open{opacity:1}
-.touring .wsec.hl{box-shadow:0 0 0 2px color-mix(in srgb,var(--st-booked) 70%,transparent),
-  0 0 24px color-mix(in srgb,var(--st-booked) 22%,transparent)}
-/* nested highlightables (rows inside the table): the parent opens (full
-   opacity, no ring), the matched rows ring individually, siblings fade */
-.touring [data-sec].hl:not(.wsec){box-shadow:0 0 0 2px color-mix(in srgb,var(--st-booked) 70%,transparent);
-  border-radius:8px;position:relative;z-index:1}
-.touring .wsec.subdim [data-sec]:not(.hl){opacity:.3}
-.wlab{font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-bottom:6px}
-
-/* letterhead */
-.wbrand{text-align:center}
-.wbrand .co{font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
-.wbrand .st{font-size:10px;opacity:.55;margin-top:3px}
-.wbrand .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:10px;opacity:.7}
-.wbrand .inv{font-family:ui-monospace,monospace;font-size:11px;opacity:1}
-
-/* status + type segments */
-.wseg{display:inline-flex;gap:2px;padding:2px;border-radius:99px;background:var(--wash);box-shadow:var(--ctlsh)}
-.wseg span{padding:4px 12px;border-radius:99px;font-size:10.5px;font-weight:700;opacity:.5}
-.wseg span.on{opacity:1;background:var(--st-booked);color:var(--chip-ink)}
-.wseg span.on.neut{background:var(--fg);color:var(--bg)}
-[data-theme="dark"] .wseg span.on.neut{background:var(--ivory);color:#1b1a17}
-
-/* meta wells + client panel */
-.wcols{display:grid;grid-template-columns:.85fr 1fr;gap:0;align-items:stretch}
-.wwell{display:inline-flex;align-items:center;gap:7px;background:var(--wash);border-radius:10px;
-  padding:6px 11px;font-size:11px}
-.wwell .pfx{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
-.wwell .val{font-family:ui-monospace,monospace}
-.wnote{background:var(--wash);border-radius:11px;padding:9px 11px;font-size:11px;opacity:.75;
-  min-height:64px;line-height:1.5}
-.cfield{margin-bottom:9px}
-.cfield .fl{font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.38;margin-bottom:3px}
-.cfield .fv{background:var(--wash);border-radius:9px;padding:6px 10px;font-size:11.5px}
-.tagint{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--st-warm);margin-left:6px}
-
-/* seed bar */
-.wseed{display:flex;justify-content:space-between;align-items:center;background:var(--wash);
-  border-radius:12px;padding:9px 14px;font-family:'Archivo Black',sans-serif;font-size:10px;
-  letter-spacing:.08em;text-transform:uppercase;opacity:.7}
-
-/* studio time — the real 14 columns */
-.stgrid{display:grid;grid-template-columns:46px 56px minmax(120px,1fr) 60px 60px 32px 42px 58px 40px 54px 62px 68px 26px 20px;
-  gap:0;align-items:center;font-family:ui-monospace,monospace;font-size:10px;min-width:760px}
-.stgrid>div{padding:6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stgrid.hdr{font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.4}
-.stgrid .r{text-align:right}
-.stgrid .c{text-align:center}
-.dayblk{background:var(--wash);border-radius:12px;margin-bottom:7px;overflow:hidden;min-width:760px}
-.datec{display:flex;align-items:center;gap:4px}
-.sd{width:6px;height:6px;border-radius:50%;flex-shrink:0}
-.rtype{font-size:8.5px;font-weight:800;padding:2px 6px;border-radius:4px;background:var(--fg);
-  color:var(--bg);font-family:inherit;justify-self:start}
-[data-theme="dark"] .rtype{background:var(--ivory);color:#1b1a17}
-.role1{font-size:8px;font-weight:800;letter-spacing:.04em}
-.role2{font-size:8px;font-weight:800;letter-spacing:.04em;color:var(--st-warm)}
-.lockp{font-size:9px;background:var(--st-booked);color:var(--chip-ink);border-radius:4px;
-  padding:1px 4px;justify-self:center}
-.lockn{font-size:9px;background:var(--wash2);border-radius:4px;padding:1px 5px;justify-self:center;opacity:.6}
-.eqline{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:3px 12px 9px}
-.eqline .el{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.38}
-.eqpill{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;
-  padding:3px 9px;border-radius:99px;background:var(--wash2)}
-.eqpill i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.3;font-style:normal}
-.eqpill.ok{color:var(--st-booked)}.eqpill.ok i{background:var(--st-booked);opacity:1}
-.eqpill.bad{color:var(--st-hot)}.eqpill.bad i{background:var(--st-hot);opacity:1}
-.addrow{display:flex;gap:16px;font-size:10px;opacity:.5;padding:2px 4px}
-
-/* ── the two-column WO (2026-08-20 redesign) ── */
-.wbrand2{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;text-align:left}
-.wbrand2 .co{font-family:'Archivo Black',sans-serif;font-size:16px;letter-spacing:-.02em}
-.wbrand2 .addr{font-size:9.5px;opacity:.55;margin-top:6px;line-height:1.7}
-.wbrand2 .wonum{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:-.02em;text-align:right}
-.wbrand2 .inv{font-family:ui-monospace,monospace;font-size:10.5px;opacity:.6;text-align:right;margin-top:2px}
-.wbrand2 .pills{display:flex;gap:6px;justify-content:flex-end;margin-top:6px}
-.wpill{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
-  border-radius:99px;padding:3px 10px;background:var(--wash2)}
-.wpill.open{color:var(--st-booked)}
-.wgrid2{display:grid;grid-template-columns:.72fr 1.28fr;gap:4px;align-items:start}
-.wcolL,.wcolR{display:flex;flex-direction:column;min-width:0}
-.ccard .hero{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-.ccard .hero b{font-size:13.5px}
-.ccard .tag{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
-  background:var(--wash2);border-radius:5px;padding:2px 7px}
-.ccard .aw{display:flex;gap:8px;align-items:center;margin-bottom:9px}
-.ccard .aw .in{background:var(--wash2);border-radius:8px;padding:4px 10px;font-size:11px}
-.ccard .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.ccard .who{font-size:11.5px;font-weight:600;margin:2px 0}
-.ccard .cd{font-size:9.5px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ccard .foot{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;
-  text-align:center;margin-top:8px}
-.wcard{background:var(--wash);border-radius:13px;padding:11px 13px;margin-bottom:8px;
-  display:flex;gap:12px;align-items:stretch}
-.wcard .cl{flex:0 0 205px;min-width:0}
-.wcard .chd{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.wcard .chd b{font-family:'Archivo Black',sans-serif;font-size:12px;font-weight:400}
-.wcard .chd .dt{font-size:10px;opacity:.55;font-weight:700}
-.wcard .times{font-family:ui-monospace,monospace;font-size:14px;font-weight:600}
-.wcard .times small{font-size:10px;opacity:.5;font-family:Inter,sans-serif;font-weight:400}
-.wcard .stf{display:flex;align-items:baseline;gap:5px;margin-top:4px;font-size:10.5px;white-space:nowrap}
-.wcard .stf .mono2{font-family:ui-monospace,monospace;font-size:9.5px;opacity:.6}
-.wcard .cm{flex:1;min-width:0;border-left:1px solid var(--wash2);padding-left:11px}
-.wcard .cm .sk{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-bottom:3px}
-.wcard .cm .sv2{font-size:10.5px;opacity:.7;line-height:1.5}
-.wcard .cr{flex:0 0 106px;text-align:right;display:flex;flex-direction:column}
-.wcard .cr .ed{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4}
-.wcard .cr .ot2{font-size:9.5px;font-weight:700;color:var(--st-warm)}
-.wcard .cr .dtl{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.4;margin-top:auto}
-.wcard .cr .amt{font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:-.02em}
-.sttotal{display:flex;gap:14px;align-items:flex-end;background:var(--wash);border-radius:12px;padding:8px 12px;margin-top:2px}
-.sttotal .adds{font-size:9.5px;opacity:.5;line-height:1.7}
-.sttotal .rgt{margin-left:auto;text-align:right}
-.sttotal .ln{display:flex;justify-content:flex-end;gap:18px;font-size:10.5px;font-family:ui-monospace,monospace;opacity:.85;padding:1px 0}
-.sttotal .big{font-family:'Archivo Black',sans-serif;font-size:17px;letter-spacing:-.02em}
-.nstrip{display:flex;gap:8px;align-items:baseline;background:var(--wash2);border-radius:11px;padding:7px 11px;font-size:10.5px}
-
-/* rentals */
-.rentgrid{display:grid;grid-template-columns:44px 1fr 100px 90px 56px 76px 20px;gap:0;align-items:center;
-  font-family:ui-monospace,monospace;font-size:10px}
-.rentgrid>div{padding:6px 6px}
-.rentgrid.hdr{font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.4}
-.rentrow{background:var(--wash);border-radius:10px;margin-bottom:5px}
-.rentgrid .r{text-align:right}
-
-/* payments + totals */
-.payrow{display:grid;grid-template-columns:90px 80px 1fr 20px;gap:0;align-items:center;
-  background:var(--wash);border-radius:10px;margin-bottom:5px;font-family:ui-monospace,monospace;font-size:10.5px}
-.payrow>div{padding:7px 8px}
-.wline{display:flex;justify-content:space-between;font-size:11px;padding:3px 4px;
-  font-family:ui-monospace,monospace;opacity:.85}
-.wline.grand{font-size:12.5px;opacity:1;padding-top:7px;font-weight:700}
-.wline.bal{color:var(--st-hot);font-weight:700}
-.songrow{display:grid;grid-template-columns:76px 1fr;gap:8px;align-items:center;font-size:10.5px;margin-bottom:5px}
-.songrow .sl{opacity:.45;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-.songrow .sv{background:var(--wash);border-radius:8px;padding:5px 9px;font-family:ui-monospace,monospace}
 
 .section{display:none}
 .section.on{display:block}
 .nextbar{display:flex;justify-content:space-between;margin-top:22px}
 .nextbar button{padding:7px 15px;border-radius:99px;background:var(--wash2);font-size:11.5px;font-weight:700}
-.nextbar button:hover{background:var(--wash2);opacity:.85}
+.nextbar button:hover{opacity:.85}
+
+@media (max-width:820px){
+  .frame{display:block}
+  .rail{position:static;width:auto;height:auto;flex-direction:row;flex-wrap:wrap;gap:4px;padding:10px}
+  .rail .wm,.rail .sub,.rail .grp,.railfoot{display:none}
+  .ch{width:auto;padding:6px 10px;font-size:11.5px}
+  .main{padding:14px 14px 50px}
+  .two,.stat4{grid-template-columns:1fr}
+  .hrow{flex-wrap:wrap}
+  .hrow .fl,.hrow .bd,.hrow .nx{flex:0 0 auto}
+  .crow{flex-direction:column;gap:3px}
+  .crow .h{width:auto}
+}
 </style>
 </head>
 <body>
 
 <div class="bar">
-  <span style="font-size:12px;opacity:.55">Billing SOP · Paramount Recording Studios — click the chapters on the left</span>
+  <span style="font-size:12px;opacity:.55">Billing SOP · Paramount Recording Studios · written from the app as of Oct 6, 2026</span>
   <span class="grow"></span>
   <button class="ctl" onclick="hints()" id="hintBtn">💡 Hints: Off</button>
   <button class="ctl" onclick="flip()" id="themeBtn">View light</button>
@@ -442,21 +234,23 @@ body.hints .hint{display:inline-flex}
 
 <div class="frame">
 <nav class="rail">
-  <span class="wm">PRS<span class="flo">FLO</span></span>
+  <span class="wm">PRS<span class="flo">Flo</span></span>
   <span class="sub">Billing Coordinator · Operating Manual</span>
   <button class="ch on" data-s="job" onclick="go('job')"><span class="n">01</span> Your job</button>
   <div class="grp label">The flow</div>
   <button class="ch" data-s="flow" onclick="go('flow')"><span class="n">02</span> A session, start to finish</button>
   <button class="ch" data-s="wo" onclick="go('wo')"><span class="n">03</span> The work order</button>
   <button class="ch" data-s="hub" onclick="go('hub')"><span class="n">04</span> The Billing hub</button>
+  <button class="ch" data-s="cod" onclick="go('cod')"><span class="n">05</span> COD</button>
+  <button class="ch" data-s="more" onclick="go('more')"><span class="n">06</span> Tenants · SRS · Petty cash</button>
   <div class="grp label">Your day</div>
-  <button class="ch" data-s="dash" onclick="go('dash')"><span class="n">05</span> The Dashboard</button>
-  <button class="ch" data-s="myday" onclick="go('myday')"><span class="n">06</span> My Day</button>
-  <button class="ch" data-s="flo" onclick="go('flo')"><span class="n">07</span> The Flo briefing</button>
-  <button class="ch" data-s="rhythm" onclick="go('rhythm')"><span class="n">08</span> The rhythm</button>
+  <button class="ch" data-s="dash" onclick="go('dash')"><span class="n">07</span> The Dashboard</button>
+  <button class="ch" data-s="flo" onclick="go('flo')"><span class="n">08</span> Flo</button>
+  <button class="ch" data-s="ops" onclick="go('ops')"><span class="n">09</span> Daily Ops &amp; Flags</button>
+  <button class="ch" data-s="rhythm" onclick="go('rhythm')"><span class="n">10</span> The rhythm</button>
   <div class="grp label">Reference</div>
-  <button class="ch" data-s="help" onclick="go('help')"><span class="n">09</span> Help &amp; words</button>
-  <div class="railfoot">Version history lives here too once this ships — release notes per version, plain English.</div>
+  <button class="ch" data-s="help" onclick="go('help')"><span class="n">11</span> Help &amp; words</button>
+  <div class="railfoot">What changed in each release: Training → App guide (SOP) → Version History.</div>
 </nav>
 
 <main class="main">
@@ -466,43 +260,46 @@ body.hints .hint{display:inline-flex}
   <div class="hbar">
     <div class="kicker">Chapter 01</div>
     <h1>You own the money side</h1>
-    <p class="lede">PRSFlo is two worlds. <b>Operations</b> is the studio manager's — the
-    building, the runners, the daily checklists. <b>Billing</b> is yours — work orders,
-    invoices, payments, money owed. Nothing in your world lives anywhere else, and nothing
-    from the other world will chase you. One item, one home.</p>
+    <p class="lede">PRSFlo is two worlds. <b>Operations</b> is the studio manager's: the
+    building, the runners, the nightly checklists. <b>Billing</b> is yours: work orders,
+    invoices, payments, money owed. The two meet in one place, every morning: a work order
+    a runner did not submit. That one is yours to chase.</p>
   </div>
 
   <div class="pane">
     <h3>The one rule that shapes everything</h3>
-    <p><b>PRSFlo owns the workflow and the documents. QuickBooks owns the money.</b><span class="hint">?<span class="tipb">Quick test: "where is this invoice?" → PRSFlo. "How much did we make in July?" → QuickBooks.</span></span>
-    PRSFlo tells you what needs invoicing, keeps the work order and the invoice PDF
-    together, and always knows where every invoice sits. QuickBooks is still the
-    accounting — the invoice itself is created there, and the books live there.</p>
-    <div class="why"><b>Why it works</b>The two systems track different things, so they
-    never fight. There's no "which one is right" — PRSFlo is right about where things
-    are, QuickBooks is right about the money.</div>
+    <p><b>PRSFlo owns the workflow and the documents. QuickBooks owns the money.</b><span class="hint">?<span class="tipb">Quick test: "where is this invoice, and what is it waiting for?" is a PRSFlo question. "How much did we make in July?" is a QuickBooks question.</span></span>
+    PRSFlo tells you what needs invoicing, keeps the work order and the invoice PDF together,
+    and always knows where every invoice sits. The invoice itself is still made in
+    QuickBooks, and the books still live there.</p>
+    <div class="why"><b>Why it works</b>The two systems track different things, so they never
+    fight. PRSFlo is right about where things are. QuickBooks is right about the money.</div>
   </div>
 
   <div class="two">
     <div class="pane">
       <h3>COD clients</h3>
-      <p>Pay at the desk, during or right after the session. The money is already in by
-      the time you see the work order — your job is to check it's accurate and attach
-      the invoice. Minutes per session. Overtime gets collected at the desk, in the moment.</p>
+      <p>Pay at the desk, during or right after the session. The runner records the payment
+      on the work order. Your part: check the work order, attach the QuickBooks invoice, and
+      an owner signs it off. If money was <b>not</b> collected, the session lands in
+      <b>Balance due</b>, the one place COD goes wrong.</p>
     </div>
     <div class="pane">
       <h3>Billing clients</h3>
       <p>Labels, and anyone invoiced after the fact. The full cycle: review → invoice →
-      owner approval → send → chase → paid. Days to weeks per invoice.</p>
+      owner approval → PO → send → chase → paid. Days to weeks per invoice, and the hub
+      tracks every one of them for you.</p>
     </div>
   </div>
 
   <div class="pane">
     <h3>Where you'll live</h3>
-    <p>Three screens, all in the left rail. <b>Dashboard</b> — the morning read; Flo's
-    briefing tells you what needs you. <b>My Day</b> — your recurring duties, as a card
-    that tracks itself. <b>Billing</b> — the hub; every work order and invoice sorted by
-    what it's waiting for. The next chapter follows one session all the way through them.</p>
+    <p>Everything is in the left rail.</p>
+    <div class="crow"><span class="h">Dashboard</span><span class="b">The morning read. Flo's lines at the top, your duties and tasks in <b>Your list</b>, and four money tiles that jump to the hub.</span></div>
+    <div class="crow"><span class="h">Billing ▾</span><span class="b">A drop-down with four pages: <b>Billing Hub</b> (every work order and invoice, sorted by what it is waiting for), <b>Petty Cash</b>, <b>SRS</b>, and <b>Client AP Protocols</b> (how each label wants its invoices sent).</span></div>
+    <div class="crow"><span class="h">Daily Ops</span><span class="b">Last night, studio by studio. Your part is the red <b>WO not submitted</b> badges. Flags live on the second tab of the same page.</span></div>
+    <div class="crow"><span class="h">Calendar</span><span class="b">Where sessions are booked. Clicking any session opens its work order, the same one the hub opens.</span></div>
+    <p style="margin-top:8px">The next chapter follows one session all the way through them.</p>
   </div>
   <div class="nextbar"><span></span><button onclick="go('flow')">Next · A session, start to finish →</button></div>
 </section>
@@ -513,140 +310,156 @@ body.hints .hint{display:inline-flex}
     <div class="kicker">Chapter 02 · The flow</div>
     <h1>A session, start to finish</h1>
     <p class="lede">This is why the app is called <b>Flo</b>. Every session moves down one
-    line — from first hold to money in the bank — and every screen you use is just a
-    window onto a different part of that line. Learn this chapter and the rest of the
-    manual is detail.</p>
+    line, from first hold to money in the bank, and every screen you use is a window onto a
+    different part of that line. Learn this chapter and the rest of the manual is detail.
+    This is the <b>Billing</b> client's path; COD's shorter path is chapter 05.</p>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">1</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
       <div class="who">Front desk / management · Calendar</div>
-      <h3>It starts with a session</h3>
-      <p>A lead becomes a hold, a hold becomes a session on the calendar. You don't book
-      sessions — but the moment one exists, it's already on its way to you. A
-      <b>tentative</b> hold isn't yours yet; a <b>confirmed</b> session is where your
-      clock starts.</p>
-      <div class="echo"><span class="chip">Tentative — a hold, not yours yet</span>
-      <span class="chip ok">Confirmed — your clock starts</span></div>
+      <h3>It starts with a session, and the work order is born with it</h3>
+      <p>A lead becomes a hold, a hold becomes a session on the calendar. Every session gets
+      <b>one work order, created automatically</b>, with its own number. Nobody makes one by
+      hand. The work order <i>is</i> the session's paperwork: the calendar is just where it
+      shows its dates.</p>
+      <p>In the hub, a session whose first day is still in the future waits in
+      <b>Not started</b>. From its first day it sits in <b>In progress</b>.</p>
+      <div class="echo"><span class="chip mono">WO-1310</span><span class="chip">One session · one work order</span><span class="chip">Not started → In progress</span></div>
+      <div class="why"><b>If Flo ever says a session is missing a work order</b>the automatic
+      step failed. Open that session from the calendar and it retries. It should be rare, and
+      it is always shown in red.</div>
     </div></div>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">2</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
-      <div class="who">PRSFlo · automatic</div>
-      <h3>The work order is born with it</h3>
-      <p>Every session gets <b>one work order, created automatically</b> the moment it's
-      booked — nobody makes one by hand, and there's never a session without one or two
-      for one session. It gets a work order number, and it's the single container for
-      everything billable: studio time, engineer time, rentals, overtime, payments.</p>
-      <div class="echo"><span class="chip mono">WO-1042</span>
-      <span class="chip">One session · one work order</span></div>
-      <div class="why"><b>The idea to internalize</b>The work order IS the session's
-      paperwork. The calendar and the work order aren't two things — the calendar is
-      just where the work order shows its dates.</div>
+      <div class="who">The office · the work order</div>
+      <h3>Set it up before it runs</h3>
+      <p>Open the work order and make sure the office's half is right: the <b>client is on
+      file</b>, each day has its <b>room, times and rate</b>, the staff line has a rate if an
+      engineer is being charged, and for a label the <b>PO #</b> is typed in, or
+      <b>Not req'd</b> is switched on.</p>
+      <p>A <b>confirmed</b> session will not save without a start and end time on every day
+      and a client on file. A hold can save with just a name.</p>
+      <div class="echo"><span class="chip">Rates are the office's — runners cannot change them</span><span class="chip warm">PO # typed, or Not req'd</span></div>
+      <div class="why"><b>The PO does not hold up approval any more</b>It holds up
+      <i>sending</i>. An owner can approve a package with no PO; you just cannot download or
+      send it until the PO is in. Knowing early still saves you a chase later.</div>
     </div></div>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">3</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
-      <div class="who">You · QuickBooks + the hub</div>
-      <h3>Confirmed means an invoice exists</h3>
-      <p><b>The second a session confirms, create its invoice in QuickBooks.</b> That way
-      the invoice number exists from day one and is referenced on the work order — every
-      document about this session carries both numbers from the start. The amounts get
-      trued up later; the number is what matters now.</p>
-      <div class="echo"><span class="chip mono">WO-1042</span><span class="chip mono">INV-2214</span>
-      <span class="chip">Created at confirmation, updated after review</span><span class="hint">?<span class="tipb">Quote both numbers in any email about a session — either one finds it instantly, in PRSFlo or in QuickBooks.</span></span></div>
-      <div class="why"><b>Why so early</b>A session that runs before its invoice exists
-      is a session you're chasing paperwork for afterwards. Number first, money later —
-      the flow never has a document with no reference.</div>
+      <div class="who">Runners · their phones, live</div>
+      <h3>The session runs, and the runner submits the night</h3>
+      <p>The runner works the same work order from their phone: equipment, rentals, the song
+      titles, and when the client really <b>Arrived</b> and <b>Left</b>. If the artist never
+      came, they tap <b>No show</b> instead. Then they press <b>Submit</b> for that night.
+      They cannot submit without Arrived and Left, or No show.</p>
+      <p>Arrived / Left and No show are a record only. <b>They never change the bill.</b>
+      Billed stays as booked.</p>
+      <p>Runners can submit at any time, including the next morning when a session runs late.
+      Until they do, the office sees that night as <b>Not submitted</b>.</p>
+      <div class="echo"><span class="chip">Submitted · Terren L. · 12:14 AM</span><span class="chip hot">Not submitted</span></div>
     </div></div>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">4</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
-      <div class="who">You · the work order</div>
-      <h3>Set the work order up before it runs</h3>
-      <p>Open the work order (double-click its row in the hub) and set what the office
-      knows: studio rates, engineer rates, expected rentals — and for billing clients,
-      the <b>PO number, or mark "No PO needed."</b> Do it now: nothing can be approved
-      later until PO-or-none is noted, and this is the cheapest moment to know.</p>
-      <div class="echo"><span class="chip">Rates — office-set, runners can't touch</span>
-      <span class="chip warm">PO noted or No-PO ticked</span></div>
+      <div class="who">You · next morning</div>
+      <h3>The morning after: chase what's missing, review what's in</h3>
+      <p><b>First, Daily Ops.</b> Any night a runner did not submit shows as a red
+      <b>WO not submitted</b> badge on that studio's card, with the runner's initials. Open it,
+      talk to the runner, and tick the badge once you have dealt with it.</p>
+      <p><b>Then the hub.</b> Work that has come in wears an amber <b>Needs review</b> badge
+      at the top of In progress. Click the row, read each day against reality (times, rates,
+      rentals, payments), fix what is wrong, and press <b>Mark reviewed</b> on each day you
+      have checked. That locks the day so the runner can no longer change it.</p>
+      <p>When the whole session is done and right, press <b>Complete WO</b>. The badge
+      becomes <b>Needs invoice</b>.</p>
+      <div class="echo"><span class="chip warm">Needs review</span><span class="btn ghost">Mark reviewed</span><span class="btn">Complete WO</span><span class="chip">Needs invoice</span></div>
+      <div class="why"><b>A long session does not wait for its last night</b>On a multi-day
+      run you review each night as it comes in. The row reads "Needs review / in progress"
+      when a night is waiting and "In progress / all reviewed" when you are caught up.</div>
     </div></div>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">5</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
-      <div class="who">Runners · their phones, live</div>
-      <h3>The session runs — the work order fills itself in</h3>
-      <p>During the session the runner works the same work order from their phone: real
-      start and end times, who engineered, equipment condition, song titles — and for COD,
-      payments taken at the desk. <b>Overtime computes itself from the clock</b> (past the
-      booked end on hourly days, past 12h on lockouts), so it can't be typed wrong or
-      double-billed.</p>
-      <p>When their day is done they <b>submit</b> it. Submitted is a <b>signal, not a
-      seal</b> — a runner can keep correcting their day until the office approves it,
-      and everything they type appears on your screen live.</p>
-      <div class="echo"><span class="chip warm">● Submitted — runner says it's done</span>
-      <span class="chip ok">● Approved — office checked it, now it's locked</span></div>
+      <div class="who">You · QuickBooks, then the hub</div>
+      <h3>Make the invoice, drop it on the row</h3>
+      <p>Create the invoice in QuickBooks from the reviewed totals and export the PDF. Then
+      <b>drag the PDF onto the work order's row in the hub</b> and let go. The row reads
+      "Release to attach" while you hover. (Or click the chip that says
+      <b>Drop invoice here · or click</b> and pick the file.)</p>
+      <p>The work order and its invoice now travel as one <b>package</b>, and the badge
+      becomes <b>Needs approval</b>. There is nothing for you to press: it is in the owner's
+      queue.</p>
+      <p>Dropped it on the wrong row? Its ⋯ → <b>Remove the attached invoice</b>. If a row
+      already has an invoice, the hub asks before replacing it.</p>
+      <div class="echo"><span class="chip">Drop invoice here · or click</span><span class="chip cold">Needs approval</span></div>
+      <div class="why"><b>Complete first, then drop</b>A PDF dropped on a work order that has
+      not been completed still sends it to the owner. Complete WO is how you say "I checked
+      this"; do it before the invoice goes on.</div>
     </div></div>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">6</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
-      <div class="who">You · next morning</div>
-      <h3>The morning after: review</h3>
-      <p>Yesterday's sessions are waiting in the hub. Double-click each one and check the
-      runner's story against reality: times per day (a wrong end time makes a wrong OT),
-      rates, rentals, payments recorded. Fix anything wrong — your edits land live,
-      including on a runner's phone. <b>Approve each day as you verify it</b> (that's the
-      lock), then <b>Complete</b> the work order. Missing times block completion — the
-      app tells you exactly what's unfinished.</p>
-      <p>In QuickBooks, true up INV-2214 to the reviewed totals and export the PDF. Then
-      attach it the easy way: <b>drag the PDF straight onto the work order's row in the
-      hub and drop it.</b> The row highlights as you hover, the invoice attaches, the
-      Invoiced light turns on, and the row routes itself to its next stop — no upload
-      screen, no filing. (The Attach invoice button does the same thing through a file
-      picker if you'd rather click.) From here the work order and its invoice travel
-      together as one package.</p>
-      <div class="echo"><span class="lights"><span class="lt on"><span class="d"></span>Reviewed</span>
-      <span class="lt on"><span class="d"></span>Invoiced</span>
-      <span class="lt"><span class="d"></span>Approved</span></span></div>
+      <div class="who">An owner · the hub</div>
+      <h3>The owner approves, or sends it back</h3>
+      <p>An owner (Eli or Adam-Mike) reads the package exactly as the client will get it and
+      presses Approve. You cannot approve; the button is theirs alone.</p>
+      <p>If they do <b>not</b> approve, they must write a note. The row turns red:
+      <b>Not approved</b>, with the flag <b>See note · drop the corrected invoice</b>. Hover
+      it to read the note. Fix the work order, re-issue the invoice in QuickBooks, and
+      <b>drag the corrected PDF onto the row</b>. That puts it straight back in the owner's
+      queue.</p>
+      <div class="echo"><span class="chip hot">Not approved</span><span class="chip hot">See note · drop the corrected invoice</span><span class="chip ok">Ready to send</span></div>
     </div></div>
   </div>
 
   <div class="fstep">
     <div class="fnum"><div class="bub">7</div><div class="line"></div></div>
     <div class="fbody"><div class="fcard">
-      <div class="who">You + an owner · the hub</div>
-      <h3>Out the door, and back with money</h3>
-      <p><b>Billing side:</b> an owner (Eli or Adam-Mike) approves the package — the PO
-      gate holds it until PO-or-none is on the work order. Then two acts, in order:
-      <b>Download</b> builds the merged invoice + work order PDF; you email it;
-      <b>Mark sent</b> confirms it actually left. From that day it ages. At 31+ days it's
-      your chase list. When the cheque or ACH lands: <b>Mark paid</b> — that button is the
-      only record on our side that the money arrived, so press it the day it does.</p>
-      <p><b>COD side:</b> the money came in at the desk, so there's no approval and
-      nothing to send. Check it, attach the invoice, done. If collection was missed, the
-      session lands in <b>Balance due</b> — rare, and the most important thing on the
-      page when it happens.</p>
-      <div class="echo"><span class="btn">Download</span><span class="btn">Mark sent</span><span class="hint">?<span class="tipb">Press Mark sent the day it actually leaves — aging starts from this moment, so batching it "for Friday" makes every invoice look younger than it is.</span></span>
-      <span class="btn">Mark paid</span><span class="chip hot">Balance due — collection missed</span></div>
+      <div class="who">You · the hub, then your email</div>
+      <h3>PO, Download, send, Mark sent</h3>
+      <p>Approved with a PO (or Not req'd): the badge is green <b>Ready to send</b> and the
+      row's button is <b>Download</b>. It builds one PDF: the invoice plus the work order.
+      Email it the way that client wants it (the <b>AP</b> chip beside their name shows how),
+      then press <b>Mark sent</b>.</p>
+      <p>Approved with <b>no PO yet</b>: the row waits in <b>Awaiting PO</b> and its button is
+      <b>Add PO</b>. When the label sends the number, press it, type the PO, and
+      <b>Save &amp; download</b>. No second approval is needed.</p>
+      <div class="echo"><span class="btn">Add PO</span><span class="btn">Download</span><span class="btn">Mark sent</span><span class="hint">?<span class="tipb">Press Mark sent the day it actually leaves. Aging starts from that press, so saving them up for Friday makes every invoice look younger than it is.</span></span></div>
+    </div></div>
+  </div>
+
+  <div class="fstep last">
+    <div class="fnum"><div class="bub">8</div><div class="line"></div></div>
+    <div class="fbody"><div class="fcard">
+      <div class="who">You · the hub</div>
+      <h3>It ages, you chase, it gets paid</h3>
+      <p>From Mark sent the row lives in <b>Awaiting payment</b> and its <b>Age</b> counts the
+      days. At 31 days it is overdue. Keep what you learn chasing it in the row's
+      <b>✎ collection notes</b>. When the cheque or ACH lands, press <b>Mark paid</b> that
+      day: it is the only record on our side that the money arrived.</p>
+      <div class="echo"><span class="chip">Sent · 12d</span><span class="chip hot">Over 31 days</span><span class="btn">Mark paid</span><span class="chip ok">Paid</span></div>
     </div></div>
   </div>
 
   <div class="pane">
     <h3>The whole flow in one line</h3>
-    <p class="mono" style="font-size:11.5px;opacity:.75">session confirmed → WO-1042 born → INV-2214 created →
-    WO set up (rates·PO) → runners fill it live → you review + approve days → owner approves →
-    download → sent → aging → paid</p>
+    <p class="mono" style="font-size:11.5px;opacity:.75">session booked → WO born → set up (client · rates · PO) →
+    runner submits each night → you review + Complete WO → invoice dropped on the row →
+    owner approves → PO → Download → Mark sent → aging → Mark paid</p>
   </div>
   <div class="nextbar"><button onclick="go('job')">← Your job</button><button onclick="go('wo')">Next · The work order →</button></div>
 </section>
@@ -656,199 +469,161 @@ body.hints .hint{display:inline-flex}
   <div class="hbar">
     <div class="kicker">Chapter 03</div>
     <h1>The work order</h1>
-    <p class="lede">One document per session, and the single source of truth for it. This
-    chapter is a real work order — <b>click through the steps on the right</b> and each
-    part of the document lights up as it's explained. Understand this one page and you
-    understand the whole system.</p>
+    <p class="lede">One document per session, and the single source of truth for it. The
+    calendar card, the runner's phone, the hub row and the PDF the client receives are all
+    windows onto this one document. On a computer it is two columns: <b>words on the
+    left</b> (who, what kind, notes), <b>numbers on the right</b> (days, rentals, payments,
+    totals). This chapter goes through it part by part.</p>
   </div>
 
-  <div class="wstep">
-    <div class="wtxt">
-      <span class="k" id="wk">Step 1 of 10</span>
-      <h3 id="wt"></h3>
-      <div id="wb"></div>
-    </div>
-    <div class="wnav">
-      <div class="navr"><button onclick="wgo(-1)" id="wprev">← Back</button>
-        <button class="pri" onclick="wgo(1)" id="wnext">Next →</button></div>
-      <div class="wdots" id="wdots"></div>
-    </div>
+  <div class="pane">
+    <h3>The top bar: Cancel · Complete WO · Save</h3>
+    <div class="crow"><span class="h"><span class="btn">Save</span></span><span class="b">Saves and closes. Most of what you type is only on your screen until you press it.</span></div>
+    <div class="crow"><span class="h"><span class="btn ghost">Cancel</span></span><span class="b">Closes without saving, with no question asked. It removes any day you added since opening and puts back, whole, any day you deleted.</span></div>
+    <div class="crow"><span class="h"><span class="btn">Complete WO</span></span><span class="b">"I checked this and it is right." It saves, records your name, and moves the work order to <b>Needs invoice</b> in the hub. It will not complete if any day is missing its times (lockouts excepted). Afterwards the button reads <b>Reopen WO</b>, which asks first and takes it back out of the billing queue.</span></div>
+    <div class="why"><b>A few things save the moment you touch them</b>and Cancel will not undo
+    them: <b>Mark reviewed</b>, food expenses and their receipt photos, the equipment pills,
+    the <b>SRS</b> tick, the × that clears a room's staff line, and days added with
+    <b>Seed</b>. Press Save <i>before</i> you use Seed: it reloads every day and drops edits
+    you had not saved. If you click outside the work order with unsaved changes, it asks:
+    Save and close, Discard my changes, or Keep editing.</div>
   </div>
 
-  <div class="wodoc touring" id="wodoc">
-
-    <!-- letterhead — open space: brand left, the big WO number right -->
-    <div class="wsec wbrand2" data-sec="brand">
-      <div>
-        <div class="co">Paramount Recording</div>
-        <div class="addr">6245 Santa Monica Blvd, Hollywood, CA 90038<br>
-          (323) 465-4000 · booking@paramountrecording.com</div>
-      </div>
-      <div>
-        <div class="wonum">WO-1042</div>
-        <div class="inv">Invoice #2214</div>
-        <div class="pills"><span class="wpill open">● Open</span><span class="wpill">✓ Complete</span></div>
-      </div>
+  <div class="two">
+    <div class="pane">
+      <h3>The letterhead</h3>
+      <p>The <b>WO number</b>, the <b>Invoice #</b> under it, the status badge, and
+      <b>⟲ HISTORY</b>.</p>
+      <p>History shows who changed what and when, and the original work order as it was
+      first created. It records changes to the client, status, PO, days, times, rates, staff
+      and notes, every "Day submitted" and "Reviewed the day", and the owner's approve or
+      return.</p>
+      <p>It does <b>not</b> record payments, rentals, food receipts, the discount, Complete /
+      Reopen, or the hub's Mark sent, Mark paid, Pull it back and Close. For those, what is
+      on the page is the record.</p>
     </div>
-
-    <div class="wgrid2">
-      <!-- ══ WORDS COLUMN ══ -->
-      <div class="wcolL">
-        <!-- client card — the label is the hero -->
-        <div class="wsec ccard" data-sec="client">
-          <div style="display:flex;justify-content:center;gap:8px;margin-bottom:10px">
-            <div class="wseg"><span>SRS</span></div>
-            <div class="wseg"><span>COD</span><span class="on neut">Label/Billing</span></div>
-          </div>
-          <div class="hero"><b>Hitline Records</b><span class="tag">Label/Billing</span></div>
-          <div class="aw"><span class="wlab" style="margin:0">Artist</span><span class="in">KAYA B</span></div>
-          <div class="two">
-            <div style="min-width:0">
-              <div class="wlab" style="margin-bottom:2px">A&amp;R</div>
-              <div class="who">D. Marsh</div>
-              <div class="cd">d.marsh@hitline.com</div>
-              <div class="cd">(818) 555-0142</div>
-            </div>
-            <div style="min-width:0">
-              <div class="wlab" style="margin-bottom:2px">Admin</div>
-              <div class="who">R. Calloway</div>
-              <div class="cd">r.calloway@hitline.com</div>
-              <div class="cd">(818) 555-0197</div>
-            </div>
-          </div>
-          <div class="foot">View full profile →</div>
-        </div>
-
-        <!-- status + type + reference wells + booking notes -->
-        <div class="wsec" data-sec="meta">
-          <div class="wseg" style="margin-bottom:8px"><span class="on" style="font-size:9px;padding:3px 9px">Confirmed</span><span style="font-size:9px;padding:3px 9px">Tentative</span><span style="font-size:9px;padding:3px 9px">Cancelled</span><span style="font-size:9px;padding:3px 9px">Tour</span><span style="font-size:9px;padding:3px 9px">Tech</span><span style="font-size:9px;padding:3px 9px">Open Hours</span></div>
-          <div class="wseg" style="margin-bottom:10px"><span class="on neut" style="font-size:9px;padding:3px 9px">Recording</span><span style="font-size:9px;padding:3px 9px">Filming</span><span style="font-size:9px;padding:3px 9px">Event / Playback</span></div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-            <span class="wwell"><span class="pfx">Inv #</span><span class="val">2214</span></span>
-            <span class="wwell"><span class="pfx">PO #</span><span class="val">88-4471</span><span style="font-size:8.5px;font-weight:800;opacity:.4">NO PO</span></span>
-            <span class="wwell"><span class="pfx">Food $</span><span class="val">—</span></span>
-          </div>
-          <div class="wlab">Booking Notes<span class="tagint">Internal only</span></div>
-          <div class="wnote" style="min-height:44px">Label wants rough bounces after every session. Parking for 3. Last session ran long — bill OT without a call, per D. Marsh.</div>
-        </div>
-
-        <!-- whole-session notes + needs attention -->
-        <div class="wsec" data-sec="notes">
-          <div class="wlab">Session Notes · whole session</div>
-          <div class="wnote" style="min-height:36px;margin-bottom:8px">Client happy with vocal chain. Mic buzz on Sat traced to a cable — see equipment note.</div>
-          <div class="nstrip"><span class="wlab" style="margin:0">Needs attention</span><span class="tagint" style="margin:0">Internal</span><span style="margin-left:auto;opacity:.4">—</span></div>
-        </div>
-      </div>
-
-      <!-- ══ NUMBERS COLUMN ══ -->
-      <div class="wcolR">
-        <!-- seed -->
-        <div class="wsec wseed" data-sec="seed"><span>+ Seed — add multiple days</span><span>▼</span></div>
-
-        <!-- studio time — CARDS view (the default for short runs) -->
-        <div class="wsec" data-sec="st">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-            <div class="wlab" style="margin-bottom:0">Studio Time · 3 days</div>
-            <div class="wseg"><span>☰ List</span><span class="on neut">▦ Cards</span></div>
-          </div>
-
-          <!-- Fri — approved + locked -->
-          <div class="wcard" data-sec="dots">
-            <div class="cl">
-              <div class="chd"><b>Studio B</b><span class="dt">Fri, Aug 14</span><span class="sd" style="background:var(--st-booked)"></span><span class="lockp">🔒</span></div>
-              <div class="times">2:00 PM – 12:00 AM <small>10h · Day $1,400</small></div>
-              <div class="stf" data-sec="staff"><span class="role1">1ST</span><span style="font-weight:600">M. Torres</span><span class="mono2">2:00 PM – 12:00 AM · 10h</span><span style="opacity:.35">×</span></div>
-              <div class="eqline" data-sec="equip" style="padding:6px 0 0"><span class="eqpill ok"><i></i>Spk</span><span class="eqpill ok"><i></i>Mic</span><span class="eqpill ok"><i></i>Con</span></div>
-            </div>
-            <div class="cm"><div class="sk">Song / session notes · Aug 14</div>
-              <div class="sv2">"Midnight Run" — vocals. Client kept the SM7 chain.</div></div>
-            <div class="cr"><span class="ed">✎ edit &nbsp;×</span>
-              <div style="margin-top:auto"><div class="dtl">Day total</div><div class="amt">$1,950.00</div></div></div>
-          </div>
-
-          <!-- Sat — submitted, hourly + OT -->
-          <div class="wcard" data-sec="dots">
-            <div class="cl">
-              <div class="chd"><b>Studio B</b><span class="dt">Sat, Aug 15</span><span class="sd" style="background:var(--st-warm)"></span></div>
-              <div class="times">2:00 PM – 2:00 AM <small>12h · Hr $150</small></div>
-              <div class="stf" data-sec="staff"><span class="role1">1ST</span><span style="font-weight:600">M. Torres</span><span class="mono2">2:00 PM – 2:00 AM · 12h</span><span style="opacity:.35">×</span></div>
-              <div class="stf" data-sec="staff"><span class="role2">2ND</span><span style="font-weight:600">K. Ito</span><span class="mono2">6:00 PM – 2:00 AM · 8h</span><span style="opacity:.35">×</span></div>
-              <div class="eqline" data-sec="equip" style="padding:6px 0 0"><span class="eqpill ok"><i></i>Spk</span><span class="eqpill bad"><i></i>Mic ·</span><span class="eqpill ok"><i></i>Con</span></div>
-            </div>
-            <div class="cm"><div class="sk">Song / session notes · Aug 15</div>
-              <div class="sv2">"Midnight Run" comps. Mic buzz traced to a cable — see equipment note.</div></div>
-            <div class="cr"><span class="ed">✎ edit &nbsp;×</span>
-              <div style="margin-top:auto"><div class="ot2">OT 2h · $450</div><div class="dtl">Day total</div><div class="amt">$3,190.00</div></div></div>
-          </div>
-
-          <!-- Sun — in progress, no end time yet -->
-          <div class="wcard" data-sec="dots" style="opacity:.92">
-            <div class="cl">
-              <div class="chd"><b>Studio B</b><span class="dt">Sun, Aug 16</span></div>
-              <div class="times">2:00 PM – <span style="opacity:.35">—</span> <small>Day $1,400</small></div>
-              <div class="eqline" data-sec="equip" style="padding:6px 0 0"><span class="eqpill"><i></i>Spk</span><span class="eqpill"><i></i>Mic</span><span class="eqpill"><i></i>Con</span></div>
-            </div>
-            <div class="cm"><div class="sk">Song / session notes · Aug 16</div>
-              <div class="sv2" style="font-style:italic;opacity:.5">—</div></div>
-            <div class="cr"><span class="ed">✎ edit &nbsp;×</span>
-              <div style="margin-top:auto"><div class="dtl">Day total</div><div class="amt">$1,400.00</div></div></div>
-          </div>
-
-          <!-- itemized pinned studio total -->
-          <div class="sttotal" data-sec="tot">
-            <div class="adds">+ Add Studio Time<br>+ Add Engineer · + Add Assistant</div>
-            <div class="rgt">
-              <div class="ln"><span style="opacity:.6">Studio</span><span>$5,050.00</span></div>
-              <div class="ln"><span style="opacity:.6">1ST · M. Torres</span><span>$1,210.00</span></div>
-              <div class="ln"><span style="opacity:.6">2ND · K. Ito</span><span>$280.00</span></div>
-              <div class="ot2" style="font-size:9.5px">OT 2h · $450 included</div>
-              <div class="wlab" style="margin:4px 0 0">Studio total · 3 days</div>
-              <div class="big">$6,540.00</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- rentals — its own scroll bin when long -->
-        <div class="wsec" data-sec="rent">
-          <div class="wlab">Rentals</div>
-          <div class="rentgrid hdr"><div>Qty</div><div>Item</div><div>Date</div><div>Rate</div><div>Days</div><div class="r">Charge</div><div></div></div>
-          <div class="rentgrid rentrow"><div>2</div><div>Neve 1073 preamp</div><div>8/14–16</div><div>$75/day</div><div>3</div><div class="r">$450.00</div><div style="opacity:.4">×</div></div>
-          <div class="rentgrid rentrow"><div>1</div><div>Sony C800G</div><div>8/15</div><div>$200/day</div><div>1</div><div class="r">$200.00</div><div style="opacity:.4">×</div></div>
-        </div>
-
-        <!-- payments + totals — pinned, never scroll away -->
-        <div class="wsec" data-sec="pay">
-          <div class="wlab">Payments</div>
-          <div class="payrow"><div>Zelle</div><div>$2,000.00</div><div style="opacity:.6">deposit · Aug 12</div><div style="opacity:.4">×</div></div>
-          <div style="margin-top:12px" data-sec="tot">
-            <div class="wline"><span>Studio Total</span><span>$6,540.00</span></div>
-            <div class="wline"><span>Rentals Total</span><span>$650.00</span></div>
-            <div class="wline grand"><span>Grand Total</span><span>$7,190.00</span></div>
-            <div class="wline" style="color:var(--st-booked)"><span>Total Paid</span><span>$2,000.00</span></div>
-            <div class="wline bal"><span>Balance Due</span><span>$5,190.00</span></div>
-          </div>
-        </div>
-      </div>
+    <div class="pane">
+      <h3>The client card</h3>
+      <p>Who the session is for. Search for the client, the A&amp;R or the artist. Picking an
+      <b>artist</b> fills the artist, their A&amp;R and the label. Picking an <b>A&amp;R</b>
+      fills the A&amp;R and the label. Picking a <b>label</b> fills only the label.</p>
+      <p>A client we have never worked with gets a new card: a first and last name for a
+      COD client, the label or company name for a Billing one, and a phone or an email. A
+      session with only a typed name shows <b>Not on file</b> with <b>Put on file →</b>.</p>
+      <p>The <b>COD / Label/Billing</b> switch is the big one for you. It decides which side
+      of the hub this work order lives on, and whether the 3% card fee applies. Picking a
+      label sets it to Label/Billing for you.</p>
     </div>
   </div>
 
   <div class="pane">
-    <h3>Who can touch what</h3>
-    <p><b>The office (you)</b> — everything: rates, dates, rooms, rows, batch edits,
-    approval, Complete.</p>
-    <p><b>Runners</b> — the things that happen at the desk: times, staff names and
-    roles, OT that follows from times, equipment condition, song titles, payments taken,
-    session notes, the COD signature. And rentals — a rental added at the desk is a real
-    event.</p>
-    <p><b>Runners can't touch</b> — the client block ("set by the office"), any rate,
-    row dates (the schedule is the office's), or an approved day. They see rates as
-    read-only text; the schedule they can only report against, not rewrite.</p>
-    <div class="why"><b>The principle</b>Whoever witnesses a fact records it. Runners
-    witness time, condition, and cash; the office owns identity, price, and schedule.
-    Every edit lands live on the other side's screen either way.</div>
+    <h3>Status: for the session, and for each day</h3>
+    <p>The status bar has eight pills: <b>Confirmed</b>, <b>Tentative</b>, <b>Cancelled</b>,
+    <b>Lockout</b>, and four that are calendar blocks with no billing at all: <b>Tour</b>,
+    <b>Tech</b>, <b>Open Hrs</b> and <b>Tenant</b>.</p>
+    <p>On a multi-day session <b>each day has its own pill</b> (Confirmed / Tentative /
+    Cancelled). When the days differ, the top bar reads <b>Mixed</b>. Tapping a pill on the
+    top bar sets every day at once.</p>
+    <div class="crow"><span class="h">A cancelled <i>day</i></span><span class="b">Stays on the work order, struck through, and reads <b>Not billed</b>. It adds nothing to the total.</span></div>
+    <div class="crow"><span class="h">A cancelled <i>session</i></span><span class="b">Still bills in full and still comes to you in the hub. If it is a kill fee, put it in as a <b>Discount</b> with the reason. If nothing is owed, close the invoice from the hub with a reason (chapter 04).</span></div>
   </div>
 
-  <div class="nextbar"><button onclick="go('flow')">← The flow</button><button onclick="go('hub')">Next · The Billing hub →</button></div>
+  <div class="pane">
+    <h3>Studio Time: one card per day</h3>
+    <p>This is the only place the schedule and the staffing live. Each card shows the room,
+    the date, the booked times, the staff, and the day's total. <b>Click a card to open that
+    day</b> and edit it. The day's own Save only keeps the edit on screen; the top-bar Save
+    is what stores it.</p>
+    <div class="crow"><span class="h">Adding days</span><span class="b"><b>+ Add studio time</b> asks First day, Last day and Studio. New days copy the times and rate type from the last day. <b>+ Seed</b> adds several rooms or a long run in one go, and it saves immediately.</span></div>
+    <div class="crow"><span class="h">Moving a day</span><span class="b">Use the − date + chip inside the day. Its rooms, staff and rate move with it.</span></div>
+    <div class="crow"><span class="h">Deleting one day</span><span class="b">The × on the day's card, then <b>Delete</b>. This is how you remove one day. It is <b>not</b> kept in the Deleted work orders log, so be sure.</span></div>
+    <div class="crow"><span class="h">Times TBD</span><span class="b">A <b>TBD</b> chip beside Start / End says "not decided yet" on purpose. A blank is an oversight; a chip is a decision. Typing a time clears it.</span></div>
+    <div class="crow"><span class="h">Two rooms, one day</span><span class="b">One block per room inside the same day, each with its own rate. The calendar shows a card in each room.</span></div>
+  </div>
+
+  <div class="two">
+    <div class="pane">
+      <h3>Rates: by the hour or by the day</h3>
+      <p>Each room on each day is priced <b>/ HR</b> or <b>/ DAY</b>. A day rate is always
+      ten times the hourly rate, and switching converts it for you.</p>
+      <p><b>Hourly rows have no overtime.</b> They bill the booked hours, and a longer
+      session is simply more hours.</p>
+      <p><b>Day rows</b> include a set number of hours: the <b>Hours included</b> box, blank
+      meaning 12. Past that, overtime is charged at the <b>OT rate / hr</b> beside it, which
+      fills in as the day rate ÷ 10 and can be changed.</p>
+      <p>A new room's rate fills in from <b>Admin → Rates</b> when there is one. It never
+      overwrites a rate somebody typed. A missing rate shows an orange <b>rate?</b> on the
+      card.</p>
+    </div>
+    <div class="pane">
+      <h3>Staff: 1ST and 2ND</h3>
+      <p>Every day starts with one staff line. The chip toggles between <b>1ST</b>
+      (engineer) and <b>2ND</b> (assistant). A name is optional: "Engineer · TBD" is valid.
+      A second room added to the same day comes with no staff of its own.</p>
+      <p>The charge is the staff hours × their rate. <b>No rate means no charge.</b> A named
+      engineer with no rate shows <b>rate?</b> so it cannot be missed.</p>
+      <p>Staff times follow the studio times until you change them.
+      <b>+ Add engineer</b> / <b>+ Add assistant</b> inside a day adds a second person.</p>
+      <h3 style="margin-top:12px">Whole-building price</h3>
+      <p>The <b>Blanket rate</b> switch sets one price for all of that day's rooms. The
+      price is shared out across the rooms for you, and overtime is typed as an amount.</p>
+    </div>
+  </div>
+
+  <div class="pane">
+    <h3>What the runner sent, and your review</h3>
+    <div class="crow"><span class="h"><span class="chip">Submitted · name · time</span></span><span class="b">The runner pressed Submit for that night. They can still correct it until you review it.</span></div>
+    <div class="crow"><span class="h"><span class="chip hot">Not submitted</span></span><span class="b">The night has passed and nobody submitted it. This is the red flag in the hub and the badge on Daily Ops.</span></div>
+    <div class="crow"><span class="h"><span class="btn ghost">Mark reviewed</span></span><span class="b">Your check on one day. It becomes <b>✓ Reviewed</b> and <b>locks</b> that day: the runner sees "Approved by the office — locked" and can no longer edit or submit it. If the night is over and the runner never submitted it, your review <b>submits it in your name</b>. Tap again to reopen the day (that does not un-submit it). You can still edit a reviewed day yourself.</span></div>
+    <div class="crow"><span class="h">Client actually here</span><span class="b"><b>Arrived</b> / <b>Left</b>, or the red <b>No show</b> chip. A record of what really happened, for our own use. No charge is worked out from it.</span></div>
+    <div class="why"><b>Three things clear a "never submitted" flag</b>The runner submits late,
+    you <b>Mark reviewed</b> that day, or someone presses <b>Complete WO</b>. Invoicing,
+    sending and getting paid do not clear it. The flag does not care about status: a
+    cancelled session or an old hold whose date has passed gets it too, and is cleared the
+    same way.</div>
+  </div>
+
+  <div class="two">
+    <div class="pane">
+      <h3>Rentals</h3>
+      <p>Item · Supplier · Date(s) Used · Qty · Rate · Charge. <b>Charge fills in as Qty ×
+      Rate.</b> You can type over Charge; it holds until the Qty or Rate changes.</p>
+      <h3 style="margin-top:12px">Food</h3>
+      <p>The <b>Food budget</b> pill turns it on. The bubble beside it opens the expense
+      report: the budget, each receipt (place, amount including tip, a photo), what is left.</p>
+      <p>The client is billed <b>receipts + a service fee</b>. The fee is 45% unless you
+      change the % on that line for this work order. It appears in the totals as its own
+      Food line.</p>
+    </div>
+    <div class="pane">
+      <h3>Discount</h3>
+      <p>One line in the totals: <b>%</b> or <b>$</b>, a value, and a <b>reason</b>. It comes
+      off studio time and engineering only, never rentals, food or card fees.</p>
+      <p>This is how a kill fee is done: leave the cancelled session billing in full and
+      discount it down, with the reason typed in.</p>
+      <h3 style="margin-top:12px">The notes, and who sees them</h3>
+      <p><b>Booking Notes</b> — internal. Never on the invoice.<br>
+      <b>Session Notes</b> — the client-facing note.<br>
+      <b>Needs Attention</b> — internal. Never on the PDF.<br>
+      <b>Song title / session info</b> — one line per day. Some labels will not pay without it.</p>
+    </div>
+  </div>
+
+  <div class="pane">
+    <h3>Payments and the totals</h3>
+    <p>The Payments section opens with a <b>COLLECT</b> box. On a Billing client it says the
+    amount is invoiced and there is nothing to collect at the desk. On COD it shows two
+    numbers the same size: cash / Zelle / check, and card including the 3% fee. Chapter 05
+    covers taking a COD payment properly.</p>
+    <p>Below it, the totals, every one worked out from the rows above and never typed:</p>
+    <p class="mono" style="font-size:11.5px;opacity:.8">Studio Total + Eng Total + Rentals Total + Food = Subtotal<br>
+    − Discount + Card Fees (3%) = Grand Total<br>
+    − Total Paid = Balance Due</p>
+    <div class="why"><b>If a number looks wrong</b>do not argue with the total. Read the rows:
+    the day cards, the rentals, the payments. The answer is always in them, and the hub row
+    shows the same figures.</div>
+  </div>
+  <div class="nextbar"><button onclick="go('flow')">← A session, start to finish</button><button onclick="go('hub')">Next · The Billing hub →</button></div>
 </section>
 
 <!-- ════════ 04 · THE HUB ════════ -->
@@ -856,281 +631,528 @@ body.hints .hint{display:inline-flex}
   <div class="hbar">
     <div class="kicker">Chapter 04</div>
     <h1>The Billing hub</h1>
-    <p class="lede">Open <b>Billing</b> in the rail. Every work order is one row, sorted
-    into tabs by <b>what it's waiting for</b> — this page replaced the old Dropbox
-    folders, and the app moves things between tabs for you. The flow from chapter 02
-    happens here, on one screen.</p>
+    <p class="lede">Rail → <b>Billing ▾ → Billing Hub</b>. Every work order is one row, sorted
+    into tabs by <b>what it is waiting for</b>, and the app moves rows between tabs for you.
+    The words at the top are the switch: <b>Billing</b> · <b>COD</b> · <b>Tenants</b>. This
+    chapter is the Billing side.</p>
   </div>
 
   <div class="pane">
-    <div class="tabs"><span class="on">In progress · 6</span><span>Awaiting payment · 4</span><span>Paid</span><span>Closed</span></div>
+    <div class="tabs"><span class="on">In progress · 9</span><span>Not started · 4</span><span>Awaiting PO · 2</span><span>Awaiting payment · 6</span><span>Paid</span><span>Closed</span></div>
     <div class="stat4">
-      <div class="bstat"><div class="n">$16,410</div><div class="k">Outstanding</div></div>
+      <div class="bstat"><div class="n">$41,280</div><div class="k">Outstanding</div></div>
       <div class="bstat"><div class="n">$22,750</div><div class="k">Received this month</div></div>
       <div class="bstat"><div class="n">2</div><div class="k">Waiting on approval</div></div>
       <div class="bstat alert"><div class="n">1</div><div class="k">Over 31 days</div></div>
     </div>
-    <div class="hrow"><span class="cl"><b>Hitline Records — KAYA B</b><small>Aug 14–16 · Studio B · WO-1042 · INV-2214</small></span>
-      <span class="lights"><span class="lt on"><span class="d"></span>Rev</span><span class="lt on"><span class="d"></span>Inv</span><span class="lt"><span class="d"></span>App</span></span><span class="hint">?<span class="tipb">The lights are derived — you can't set them. They read the package's real state, so a light is never wrong.</span></span>
-      <span class="amt">$4,180</span><span class="btn ghost">Approve</span></div>
-    <div class="hrow"><span class="cl"><b>Vantage Music Group — DECOY</b><small>Aug 15 · Studio A · WO-1038 · INV-2209</small></span>
-      <span class="lights"><span class="lt on"><span class="d"></span>Rev</span><span class="lt"><span class="d"></span>Inv</span><span class="lt"><span class="d"></span>App</span></span>
-      <span class="amt">$2,760</span><span class="btn">Attach invoice</span></div>
-    <div class="hrow"><span class="cl"><b>Northside Ent. — J. RIVAS</b><small>Aug 12–13 · Studio D · WO-1031 · INV-2201</small></span>
-      <span class="lights"><span class="lt on"><span class="d"></span>Rev</span><span class="lt on"><span class="d"></span>Inv</span><span class="lt on"><span class="d"></span>App</span></span>
-      <span class="amt">$6,240</span><span class="btn">Mark sent</span></div>
-    <p class="why" style="margin-top:12px"><b>Read this screen like this</b>The four figures
-    are clickable — each jumps to the tab it counts. The three lights are the assembly
-    line (Reviewed · Invoiced · Approved). And every row shows <b>at most one button —
-    always the next action</b>. You never choose from a menu; the app knows where the
-    package is and asks for the one thing that moves it. Double-clicking a row opens the
-    document itself — the work order, or once the invoice is attached, both combined.</p>
+    <div class="hrow"><span class="bd"><span class="chip warm">Needs review</span></span><span class="cl"><b>Hitline Records — KAYA B</b><small>Oct 2–4 · PRS B</small></span><span class="fl">Submitted by Terren L. 12:14 AM</span><span class="amt">$4,180</span><span class="nx"></span></div>
+    <div class="hrow"><span class="bd"><span class="chip">Needs invoice</span></span><span class="cl"><b>Vantage Music Group — DECOY</b><small>Oct 1 · PRS A</small></span><span class="fl">Drop invoice here · or click</span><span class="amt">$2,760</span><span class="nx"></span></div>
+    <div class="hrow"><span class="bd"><span class="chip cold">Needs approval</span></span><span class="cl"><b>Northside Ent. — J. RIVAS</b><small>Sep 29–30 · ARS A</small></span><span class="fl"></span><span class="amt">$6,240</span><span class="nx"></span></div>
+    <div class="hrow"><span class="bd"><span class="chip ok">Ready to send</span></span><span class="cl"><b>Crest Label Group — MARA</b><small>Sep 26 · ERS B</small></span><span class="fl"></span><span class="amt">$1,950</span><span class="nx"><span class="btn">Download</span></span></div>
+    <p class="why" style="margin-top:12px"><b>Read this screen like this</b>The <b>badge</b> on
+    the left says where the row is. The <b>flag</b> in the middle says the one thing worth
+    knowing about it. The <b>button</b> on the right, when there is one, is the next thing
+    <i>you</i> do. No button means it is waiting on somebody else, or on a PDF. Click a row
+    to open it. Of the four figures at the top, the last three jump to the tab they count.</p>
   </div>
 
   <div class="pane">
-    <h3>The COD side of the toggle</h3>
-    <div class="tabs"><span class="alert">Balance due · 1</span><span class="on">Needs review · 3</span><span>Paid</span></div>
-    <p><b>Balance due leads its side, always.</b> A COD session where collection was
-    missed is the only way COD goes wrong — rare, critical, and never allowed to hide
-    behind settled sessions. The balance is collected and recorded on the work order
-    itself. <b>Needs review</b> is your normal COD morning: money's in, check the work
-    order, attach the invoice, done.</p>
+    <h3>The tabs</h3>
+    <div class="crow"><span class="h">In progress</span><span class="b">Where you land, and where the work is. It opens as a queue: Needs review, then Needs invoice, Needs approval, Not approved, Ready to send, then sessions still running. A heading sits over each group.</span></div>
+    <div class="crow"><span class="h">Not started</span><span class="b">Sessions whose first day is still in the future. Nothing to do yet.</span></div>
+    <div class="crow"><span class="h">Awaiting PO</span><span class="b">Approved by the owner, but no PO number yet. Your chase list for label POs.</span></div>
+    <div class="crow"><span class="h">Awaiting payment</span><span class="b">Sent. Sorted oldest first, with the Age in days since you pressed Mark sent.</span></div>
+    <div class="crow"><span class="h">Paid · Closed</span><span class="b">Done. Closed is the archive for anything written off or voided, shared with COD.</span></div>
+    <p style="margin-top:8px">Fifteen rows to a page. Click a column heading (Status, WO, Client
+    &amp; session, Balance, Age) to sort by it; changing tabs puts the queue order back.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The badges</h3>
+    <div class="crow"><span class="h"><span class="chip">In progress</span></span><span class="b">The session is still running and nothing is waiting for you. With "all reviewed" under it: a long run, and you are caught up.</span></div>
+    <div class="crow"><span class="h"><span class="chip warm">Needs review</span></span><span class="b">Work has come in. Open it, check it, Mark reviewed, and Complete WO when the session is finished.</span></div>
+    <div class="crow"><span class="h"><span class="chip">Needs invoice</span></span><span class="b">You completed it. Make the invoice in QuickBooks and drop the PDF on the row.</span></div>
+    <div class="crow"><span class="h"><span class="chip cold">Needs approval</span></span><span class="b">The invoice is on. Waiting on an owner.</span></div>
+    <div class="crow"><span class="h"><span class="chip hot">Not approved</span></span><span class="b">The owner sent it back with a note. Fix, re-issue, drag the corrected PDF onto the row.</span></div>
+    <div class="crow"><span class="h"><span class="chip ok">Ready to send</span></span><span class="b">Approved and the PO is settled. Download, email, Mark sent.</span></div>
+    <div class="crow"><span class="h"><span class="chip">Awaiting PO</span></span><span class="b">Approved, no PO. Add PO when it arrives, or mark No PO required.</span></div>
+    <div class="crow"><span class="h"><span class="chip">Sent</span> <span class="chip ok">Paid</span></span><span class="b">Out the door; money in.</span></div>
+  </div>
+
+  <div class="pane">
+    <h3>The one button</h3>
+    <div class="crow"><span class="h"><span class="btn">Add PO</span></span><span class="b">Opens a strip under the row: the <b>PO number</b>, and optionally a <b>re-issued invoice</b> if QuickBooks re-dated it. <b>Save &amp; download</b> stores the PO, swaps the invoice if you chose one, and downloads the package. The owner's approval is not disturbed.</span></div>
+    <div class="crow"><span class="h"><span class="btn">Download</span></span><span class="b">Builds the package: one PDF with the invoice and the work order as it stands right now. Until you press Mark sent, each download is built fresh. Mark sent freezes the last one you built: that file is what "As sent" shows from then on.</span></div>
+    <div class="crow"><span class="h"><span class="btn">Mark sent</span></span><span class="b">One press, no question. Starts the Age clock and moves the row to Awaiting payment. Press it only once the email has really gone.</span></div>
+    <div class="crow"><span class="h"><span class="btn">Mark paid</span></span><span class="b">One press, no question, stamped with today's date. Press it the day the money lands.</span></div>
+    <div class="crow"><span class="h"><span class="btn ghost">Reopen</span></span><span class="b">On a Closed row. If it had been sent it goes back to Awaiting payment with its original date. If it has an invoice on it, it comes back as <b>Needs approval</b> for the owner. With no invoice, it goes back to where it was.</span></div>
+    <div class="why"><b>What is not a button</b>Reviewing happens on the work order. Attaching
+    the invoice is a drag onto the row. Approving is the owner's. That is why three of the
+    badges have no button beside them.</div>
+  </div>
+
+  <div class="pane">
+    <h3>The flag in the middle of the row</h3>
+    <div class="crow"><span class="h"><span class="chip">Submitted by Terren L.</span></span><span class="b">The runner turned the night in, and when.</span></div>
+    <div class="crow"><span class="h"><span class="chip hot">Never submitted · name · 2 days</span></span><span class="b">A past night nobody submitted, and who closed that studio. "2 days" means two nights are missing, not how long ago. Open the work order, find out what happened, fix it, then Mark reviewed or Complete WO.</span></div>
+    <div class="crow"><span class="h"><span class="chip ok">Submitted by Lori</span></span><span class="b">The runner missed it and the office completed the work order instead.</span></div>
+    <div class="crow"><span class="h"><span class="chip hot">Changed since invoiced</span></span><span class="b">The work order's total no longer matches the invoice on it. Hover for both figures. Re-issue the invoice and drop the corrected PDF. The flag stays until the owner approves it again; that is normal, not a failed drop.</span></div>
+    <div class="crow"><span class="h"><span class="chip hot">Built, not sent</span></span><span class="b">You downloaded the package two or more days ago and never pressed Mark sent. Send it, or mark it. The count on the In progress tab turns red while any row has this.</span></div>
+    <div class="crow"><span class="h"><span class="chip">✓ Reviewed thru Oct 3</span></span><span class="b">On a running session: the last night you have reviewed.</span></div>
+    <div class="crow"><span class="h"><span class="chip">AP</span></span><span class="b">Beside the client's name. Opens <b>How to send this invoice</b>: the label's portal or AP email, whether they need a PO, and the steps, which you can tick as you go. Passwords are never kept in the app.</span></div>
+  </div>
+
+  <div class="two">
+    <div class="pane">
+      <h3>Opening a row</h3>
+      <p><b>No invoice yet</b>: the work order opens.</p>
+      <p><b>Invoice attached</b>: the package window opens, with tabs. <b>Work order</b> is
+      the live one, and you can edit it right there. <b>Invoice</b> is the PDF you dropped.
+      Once a package has been built there is also <b>Previously saved</b>, or <b>As sent</b>
+      after Mark sent: the exact file, page for page.</p>
+      <p>On a returned row the window shows the owner's note in red at the top.</p>
+      <p>If you edit the work order here, use its own <b>Save</b> or <b>Cancel</b>. The
+      window will not let you close it or switch tabs with unsaved changes.</p>
+    </div>
+    <div class="pane">
+      <h3>✎ Collection notes</h3>
+      <p>The pencil on every row. A running log for chasing money: who you spoke to, what
+      they said, what happens next. Your initials and the time go on each note. A dot on the
+      pencil means notes exist.</p>
+      <p>They are <b>internal</b>: never on the work order, the package or the runner app.
+      Notes can be edited but not deleted.</p>
+      <h3 style="margin-top:12px">Search</h3>
+      <p>The box above the tabs searches <b>everything</b> at once, both Billing and COD and
+      Closed: client, artist, invoice #, WO #, PO.</p>
+    </div>
+  </div>
+
+  <div class="pane">
+    <h3>The ⋯ on a row</h3>
+    <div class="crow"><span class="h">Open the attached invoice PDF</span><span class="b">Just the invoice, in a new tab.</span></div>
+    <div class="crow"><span class="h">How to send this to …</span><span class="b">The same AP card as the AP chip.</span></div>
+    <div class="crow"><span class="h">No PO required</span><span class="b">"This one can go out without it." Clears Awaiting PO for this work order. It is set per work order, so a client who never issues POs needs it each time (or switch on Not req'd on the work order when you set it up).</span></div>
+    <div class="crow"><span class="h">Download the package again</span><span class="b">Before Mark sent only. Builds it again from the work order as it stands now.</span></div>
+    <div class="crow"><span class="h">Pull it back</span><span class="b">Removes the invoice <b>and</b> the approval, deletes the stored invoice and package files, and sends the row back to Needs invoice. It is the only undo for Mark sent and Mark paid, and <b>it does not ask first</b>. Because it takes off an owner's approval, it may tell you only an owner can do it: ask Eli or Adam-Mike.</span></div>
+    <div class="crow"><span class="h">Remove the attached invoice</span><span class="b">Before the owner has approved: takes the PDF off the row and puts the row back where it was. For a file that went on the wrong work order.</span></div>
+    <div class="crow"><span class="h">Close this invoice</span><span class="b">Write it off or void it. You must pick a reason: bad debt, client goodwill, session cancelled with no charge, duplicate invoice, billing error, settled at an adjusted amount, or Other (which needs a note). The row moves to Closed with the reason showing.</span></div>
+    <div class="crow"><span class="h">Delete this work order</span><span class="b">See the next box.</span></div>
+  </div>
+
+  <div class="pane">
+    <h3>Deleting a work order, and getting it back</h3>
+    <p>A session's work order can be deleted in <b>one place only</b>: its row's ⋯ in the hub.
+    You, the manager and the owners can do it. The work order itself has no Delete button
+    (calendar blocks like a Tour still do). A Closed row with no invoice on it has no ⋯;
+    Reopen it first.</p>
+    <p><b>It removes the whole work order</b>: every day on it and every calendar card. You
+    have to type the WO number to confirm. To remove just one day, delete that day inside
+    the work order instead.</p>
+    <p><b>Everything deleted is kept.</b> The ⋯ at the <b>top right of the page</b> →
+    <b>Deleted work orders</b> lists what was deleted, by whom and when. <b>Recover</b> →
+    <b>Put it back</b> restores it exactly as it was, same WO number, and writes a
+    "Recovered" line into its history.</p>
+    <div class="why"><b>Also under the page ⋯</b>"Generate WO" downloads a blank work order
+    form to print. It creates nothing in the app. If the session is real, it needs a real
+    work order too.</div>
   </div>
 
   <div class="pane">
     <h3>Guardrails you'll notice (they're features)</h3>
-    <p><b>Editing an approved package un-approves it, by itself.</b> An owner approved
-    $4,180 — not "whatever this becomes." Change the numbers and it quietly returns to
-    needs-approval.</p>
-    <p><b>The drift flag.</b> If a work order changes after its invoice was attached, the
-    row flags that billed ≠ owed. Better to hear it from the app than from the client. A
-    <i>sent</i> invoice never silently un-approves — use <b>Pull it back</b> to
-    deliberately restart the cycle.</p>
-    <p><b>The stale-download reminder.</b> Downloaded but not marked sent within 2 days
-    goes hot — the nudge that keeps a finished package from dying in your Downloads
-    folder.</p>
-    <p><b>Cancelled sessions with a live invoice don't vanish.</b> The client still owes
-    the money — void it properly through Closed, with a reason on the record.</p>
+    <p><b>Changing the money after approval un-approves it.</b> An owner approved $4,180, not
+    "whatever this becomes". Edit the numbers and the row goes back to Needs approval, with
+    <b>Changed since invoiced</b> showing until the owner approves the corrected invoice.
+    Swapping the PDF or adding a PO does not un-approve.</p>
+    <p><b>A session that grows goes back.</b> If the client extends and new nights are added
+    to an invoiced, unsent work order, the row reads <b>Needs invoice</b> again (even though
+    an invoice is on it) until those nights have been submitted or the last day has passed.
+    Then it returns to Needs approval; re-issue the invoice for the new total.</p>
+    <p><b>A sent invoice never silently changes.</b> Once it is in Awaiting payment the only
+    way to restart it is Pull it back.</p>
+    <p><b>Overdue is counted from sent.</b> The 31 days run from the day you pressed Mark
+    sent, never from the session date.</p>
+    <p><b>The hub is where state changes are made, not where they are logged.</b> Mark sent,
+    Mark paid, Pull it back and Close leave no line in the work order's history. If one of
+    them matters later, put a line in ✎ collection notes when you do it.</p>
   </div>
-  <div class="nextbar"><button onclick="go('wo')">← The work order</button><button onclick="go('dash')">Next · The Dashboard →</button></div>
+  <div class="nextbar"><button onclick="go('wo')">← The work order</button><button onclick="go('cod')">Next · COD →</button></div>
 </section>
 
-<!-- ════════ 05 · DASHBOARD ════════ -->
-<section class="section" id="s-dash">
+<!-- ════════ 05 · COD ════════ -->
+<section class="section" id="s-cod">
   <div class="hbar">
     <div class="kicker">Chapter 05</div>
-    <h1>The Dashboard</h1>
-    <p class="lede">The dashboard is the morning read, not a work surface. You open it,
-    Flo tells you the state of your world in five lines, and you head to the hub or your
-    My Day card knowing exactly what the day holds.</p>
-  </div>
-  <p class="lede" style="margin-top:0">Four things on it are yours. Here's each one, the
-  way it looks on the page:</p>
-
-  <div class="two" style="margin-top:14px">
-    <div class="mini">
-      <div class="minihead"><span class="t">Flo</span><span class="ftag" style="font-size:10px;opacity:.5">· Your briefing · Aug 28</span><span class="pt">Top left</span></div>
-      <div class="fb"><span class="dot" style="background:var(--st-warm)"></span><span>3 balances outstanding · $5,940</span></div>
-      <div class="fb"><span class="dot" style="background:var(--st-booked)"></span><span>You cleared all 5 duties yesterday</span></div>
-      <div class="fb dim"><span class="dot" style="background:var(--st-dead)"></span><span>Tomorrow: Ramp weekly report</span></div>
-      <div class="flosyn" style="margin-top:7px">"Nothing slipped — a few things are building, none urgent."</div>
-      <div class="cap-line"><b>The Flo box</b> — your briefing, first thing your eye should hit.
-      Computed and rule-based; chapter 07 explains every line.</div>
-    </div>
-    <div class="mini">
-      <div class="minihead"><span class="t">My Day</span><span class="pt">Beside Flo</span></div>
-      <div class="lozenge" style="margin-bottom:6px"><span>Billing · Today</span><span class="ct">2 of 4</span></div>
-      <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions</div><span class="cap">14</span></div>
-      <div class="duty done"><div class="bx">✓</div><div class="tx">Review yesterday's work orders</div></div>
-      <div class="duty"><div class="bx"></div><div class="tx">Update yesterday's invoices in QB</div></div>
-      <div class="duty"><div class="bx"></div><div class="tx">COD outstanding follow-up</div></div>
-      <div class="cap-line"><b>Your My Day card</b> — today's duties with checkboxes and the
-      progress pill. Short form of the full My Day page (chapter 06); same checkmarks
-      either place.</div>
-    </div>
-    <div class="mini">
-      <div class="minihead"><span class="t">My Tasks</span><span class="pt">Below My Day</span></div>
-      <div class="trow"><span class="dot" style="background:var(--st-warm)"></span><span>Re-send July statement to Hitline</span><span class="tby">from Eli</span></div>
-      <div class="trow"><span class="dot" style="background:var(--st-dead)"></span><span>Call Ramp about the duplicate charge</span><span class="tby">from Fernando</span></div>
-      <div class="cap-line"><b>My Tasks</b> — one-off tasks assigned to you by name, each with
-      a comment thread. Different thing from My Day: tasks are one-offs, duties recur.</div>
-    </div>
-    <div class="mini">
-      <div class="minihead"><span class="t">Today's sessions</span><span class="hint">?<span class="tipb">Today's teal cards are tomorrow morning's review queue — a busy grid today means a full In-progress tab tomorrow.</span></span><span class="pt">Center</span></div>
-      <div class="rooms">
-        <div class="room live"><span class="rk">PRS · A</span><span class="ra">KAYA B</span><span class="rt">2p–12a</span></div>
-        <div class="room live"><span class="rk">PRS · B</span><span class="ra">DECOY</span><span class="rt">6p–2a</span></div>
-        <div class="room hold"><span class="rk">ARS · D</span><span class="ra">J. RIVAS</span><span class="rt">hold</span></div>
-        <div class="room"><span class="rk">ERS · A</span><span class="ra" style="opacity:.3">—</span></div>
-      </div>
-      <div class="cap-line"><b>The room grid</b> — what's running in the buildings today.
-      Teal = confirmed, orange = a hold. Worth a glance because today's sessions are
-      tomorrow morning's review queue.</div>
-    </div>
+    <h1>COD</h1>
+    <p class="lede">COD is paid at the desk, at the top of the session. When that happens, your
+    part takes minutes. The only way COD goes wrong is a balance nobody collected, and the
+    whole COD side of the hub is built to make that impossible to miss.</p>
   </div>
 
   <div class="pane">
-    <div class="why" style="margin-top:0"><b>Everything else</b>Needs-action leads, flags,
-    ops cards — other roles' worlds. You can see them; none of them wait on you.</div>
+    <div class="tabs"><span class="on alert">Balance due · 1</span><span>In progress</span><span class="on">Needs review · 3</span><span>Paid</span><span>Not started</span></div>
+    <p>Click <b>COD</b> at the top of the hub. These tabs are <b>switches</b>, not pages: more
+    than one can be on at once, and the list shows them together. It opens with
+    <b>Balance due</b> and <b>Needs review</b> on, which is your COD morning.</p>
+    <div class="crow"><span class="h"><span class="chip hot">Balance due</span></span><span class="b">The session has happened and the charges are more than the payments. The row says <b>Record payment on the WO</b>. There is no button: collect the money, add the payment on the work order, and the row moves by itself.</span></div>
+    <div class="crow"><span class="h"><span class="chip warm">Needs review</span></span><span class="b">Paid up, no invoice on it yet. Check the work order, Complete WO, drop the QuickBooks invoice on the row.</span></div>
+    <div class="crow"><span class="h"><span class="chip cold">Needs approval</span></span><span class="b">Paid and invoiced. COD needs an owner's sign-off too; it waits in the Paid tab until they approve.</span></div>
+    <div class="crow"><span class="h"><span class="chip ok">Paid</span></span><span class="b">Paid up and approved by an owner. Finished. The row keeps a <b>Download</b> button for building the package; on COD you rarely need it.</span></div>
+    <p style="margin-top:8px">COD has no Mark sent and no Mark paid. <b>Paid is worked out from
+    the payments on the work order</b>, so it cannot be marked paid when it is not.</p>
   </div>
-  <div class="nextbar"><button onclick="go('hub')">← The hub</button><button onclick="go('myday')">Next · My Day →</button></div>
+
+  <div class="pane">
+    <h3>Taking a payment: the COLLECT box</h3>
+    <p>On a COD work order the Payments section opens with <b>COLLECT</b>: two numbers, the
+    same size.</p>
+    <div class="echo"><span class="chip">$410.00 · cash · Zelle · check</span><span class="chip">$422.30 · card · incl. 3% fee $12.30</span></div>
+    <p>Quote the client the number for how they are paying. Then:</p>
+    <ol>
+      <li>Press <b>+ Add payment</b> and pick the type. The list shows the amount beside each
+      type, and picking one fills the row in for the full balance.</li>
+      <li>For a part payment or a deposit, type the amount in <b>Toward balance</b>.</li>
+      <li>On a card, the row adds the fee and shows the total in red:
+      <span class="mono">$123.00 + $3.69 fee = $126.69</span>. <b>The red number is what you
+      run on the terminal.</b></li>
+      <li>Type the card's last 4, then <b>Save</b>.</li>
+    </ol>
+    <div class="why"><b>Toward balance is the amount BEFORE the fee</b>Never type what the
+    terminal charged into that box, or the 3% goes on twice. If you do, a red line appears
+    under the payment ("Is $126.69 what ran on the card?") with a <b>Use $123.00</b> link
+    that fixes it in one tap. It catches the common cases, not every one, and it never
+    blocks. A "paid" figure higher than the total is the sign it was missed.</div>
+  </div>
+
+  <div class="pane">
+    <h3>The 3% card fee</h3>
+    <p>Applies to <b>Credit Card</b> and <b>Debit Card</b> on <b>COD</b> work orders only.
+    Cash, Zelle, Venmo, Wire, ACH, Check and Other carry no fee. Billing clients never
+    carry it.</p>
+    <p>It belongs to the <i>payment</i>, not the invoice, and shows in the totals as
+    <b>Card Fees (3%)</b>. The <b>waive</b> link on a payment removes the fee from that
+    payment.</p>
+  </div>
+
+  <div class="pane">
+    <h3>From the row's ⋯ on COD</h3>
+    <div class="crow"><span class="h">Export the work order PDF</span><span class="b">"For the client, before approval." The work order on its own, with the food expense table and receipts, for a client who wants paperwork on the night. No invoice in it.</span></div>
+    <div class="crow"><span class="h">Add a PO number</span><span class="b">For the rare COD client whose company wants one on the paperwork.</span></div>
+    <div class="crow"><span class="h">Close this invoice</span><span class="b">The same seven reasons as Billing. This is how a COD balance that will never be collected leaves Balance due, with the reason on the record.</span></div>
+  </div>
+  <div class="nextbar"><button onclick="go('hub')">← The Billing hub</button><button onclick="go('more')">Next · Tenants · SRS · Petty cash →</button></div>
 </section>
 
-<!-- ════════ 06 · MY DAY ════════ -->
-<section class="section" id="s-myday">
+<!-- ════════ 06 · TENANTS / SRS / PETTY CASH ════════ -->
+<section class="section" id="s-more">
   <div class="hbar">
     <div class="kicker">Chapter 06</div>
-    <h1>My Day</h1>
-    <p class="lede">The recurring part of your job, as a card that knows its own schedule.
-    Sessions flow through the hub; My Day is the drumbeat around them — Ramp, QuickBooks,
-    COD follow-up, rent. Check things off as you do them; the card does the remembering.</p>
+    <h1>Tenants · SRS · Petty cash</h1>
+    <p class="lede">Three smaller pieces of the money side. None of them runs through a
+    work order's pipeline, so each has its own page.</p>
   </div>
 
   <div class="pane">
-    <div class="lozenge"><span>Billing · Today</span><span class="ct">3 of 5</span></div>
-    <div class="duty done"><div class="bx">✓</div><div class="tx">Approve Ramp transactions + chase missing receipts</div><span class="cap">14</span><span class="hint">?<span class="tipb">The number well is a captured count — type the real figure. Flo quotes it in tomorrow's briefing, and Eli's oversight numbers are built from it.</span></span></div>
-    <div class="duty done"><div class="bx">✓</div><div class="tx">Collect + accuracy-check yesterday's work orders</div></div>
-    <div class="duty done"><div class="bx">✓</div><div class="tx">Update yesterday's invoices in QB</div><span class="cap">6</span></div>
-    <div class="duty"><div class="bx"></div><div class="tx">COD invoicing + outstanding follow-up<div class="mono" style="font-size:10px;opacity:.55">records: COD outstanding · chased today · 31+ past due</div></div></div>
-    <div class="duty late"><div class="bx"></div><div class="tx">Tenant rent — create invoices<div class="mono" style="font-size:10px;opacity:.6">was due the 25th</div></div><span class="late-tag">3 days late · ASAP</span></div>
-    <p class="why" style="margin-top:10px"><b>Reading the card</b>The small number wells
-    are <b>captured counts</b> — type the real number when you complete the duty
-    (transactions cleared, invoices updated, COD outstanding). They're not busywork:
-    they're what Flo's briefing and Eli's oversight numbers are built from, until the
-    QuickBooks connection can compute them automatically.</p>
+    <h3>Tenants: the rent board</h3>
+    <p>Hub → <b>Tenants</b> at the top. One row per tenant per rent period, grouped by
+    building, with a month switcher. Tenants pay rent, not work orders, so nothing here
+    appears in the Billing or COD lists.</p>
+    <div class="echo"><span class="btn">Mark sent</span><span class="btn">Mark paid</span><span class="btn">In QB</span><span class="chip ok">Done ↩</span></div>
+    <div class="crow"><span class="h">Mark sent</span><span class="b">You emailed the rent invoice. Each row shows a "send by" date, a few days before the period starts.</span></div>
+    <div class="crow"><span class="h">Mark paid</span><span class="b">Asks <b>how much</b> and <b>the date received</b>. Less than the full rent reads <b>Partial</b> and shows what is still open. The box is the <b>total received so far</b>: when the rest comes in, type the running total, not just the second payment.</span></div>
+    <div class="crow"><span class="h">In QB</span><span class="b">You have entered the payment in QuickBooks. That is the last step.</span></div>
+    <div class="crow"><span class="h">Undo</span><span class="b">Tap the status word on the row to take back the last step.</span></div>
+    <div class="crow"><span class="h">Late</span><span class="b">Unpaid rent goes red once it is several days past the start of its period.</span></div>
+    <div class="crow"><span class="h">The ledger</span><span class="b">Tap a tenant's name: every period, what was invoiced, what was paid, the balance.</span></div>
+    <p style="margin-top:8px">A tenant's rent period runs from their own start day, not the
+    1st of the month. Adding or editing a tenant is the owner's or manager's.</p>
+    <div class="why"><b>The one tenant with a work order</b>Mustard's lockout has a normal work
+    order for his overtime and shared-runner hours. His row has a second line,
+    <b>Incidentals</b>, with a <b>Month sheet →</b> showing the runner hours to bill.</div>
   </div>
 
   <div class="pane">
-    <h3>The rules the card lives by</h3>
-    <p><b>Day-scoped duties only show on their day.</b> Monday's report shows Monday;
-    rent shows on the 25th. Friday's work never clutters Monday's list — the day-before
-    heads-up comes from Flo instead.</p>
-    <p><b>Missed days accrue, honestly.</b> Miss Ramp two days and the duty doesn't
-    duplicate — one line says "covering 3 days," and one checkmark clears the whole
-    backlog, because you did catch up on all of it.</p>
-    <p><b>Monthly duties escalate instead.</b> Miss rent on the 25th and it stays put,
-    red, counting the days — the next natural chance is four weeks away and rent can't
-    wait for it.</p>
-    <p><b>Never "late" on the day itself.</b> At 9am, today's unfinished duties are just
-    today's work. Late means a previous day went unfinished.</p>
-    <p><b>Anyone can cover.</b> If you're out, another admin can work your card — the
-    record shows who actually did each item. And unchecking a mistake is allowed;
-    history is kept either way.</p>
+    <h3>SRS payouts</h3>
+    <p>Rail → <b>Billing ▾ → SRS</b>. Every session with <b>SRS</b> ticked on its work order
+    shows up here by itself.</p>
+    <div class="crow"><span class="h">Owed</span><span class="b">At the top, oldest first: the date, the client, a % chip, the fee, and <b>Mark paid</b>.</span></div>
+    <div class="crow"><span class="h">The fee</span><span class="b">A percentage of the <b>room charges</b>, before any discount. Engineering is not included. The default is 20% (an owner or the manager can change it); tap the % chip on a session to make it 15% or 10% for that one session.</span></div>
+    <div class="crow"><span class="h">Mark paid</span><span class="b">Asks the date it went out and locks that amount. The row drops to <b>Paid</b> with a green chip; tap the chip to undo a mistake.</span></div>
+    <div class="crow"><span class="h">Forgot the tick?</span><span class="b">Open the work order, tick <b>SRS</b> on the client card. It saves at once and the session appears on the list.</span></div>
+    <p style="margin-top:8px"><b>On the 1st</b>: open SRS, pay what is in Owed, mark each one
+    paid.</p>
   </div>
-  <div class="nextbar"><button onclick="go('dash')">← Dashboard</button><button onclick="go('flo')">Next · The Flo briefing →</button></div>
+
+  <div class="pane">
+    <h3>Petty cash</h3>
+    <p>Rail → <b>Billing ▾ → Petty Cash</b>. One studio, one month: the opening balance, every
+    amount in and out with a running balance, the closing balance, and the last count.</p>
+    <p>You do not enter anything here. Runners record the cash in the runner app each night
+    and count the box at close. Under the table, <b>Nights the box didn't match</b> lists
+    every night the count disagreed with the ledger, by how much, who counted, and their
+    note.</p>
+    <p><b>Download CSV</b> and <b>Print</b> are for month-end.</p>
+  </div>
+
+  <div class="pane">
+    <h3>Client AP Protocols</h3>
+    <p>Rail → <b>Billing ▾ → Client AP Protocols</b>. The page behind the <b>AP</b> chip: each
+    label's procedure for getting an invoice paid, and which clients use it. Keep it current
+    when a label changes its portal or its AP contact; it is what the next person will follow.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('cod')">← COD</button><button onclick="go('dash')">Next · The Dashboard →</button></div>
 </section>
 
-<!-- ════════ 07 · FLO ════════ -->
-<section class="section" id="s-flo">
+<!-- ════════ 07 · DASHBOARD ════════ -->
+<section class="section" id="s-dash">
   <div class="hbar">
     <div class="kicker">Chapter 07</div>
-    <h1>The Flo briefing</h1>
-    <p class="lede">The Flo box reads like a note from an assistant. It is <b>not AI and
-    not guessing</b> — every line is computed from real records by fixed rules. Once you
-    know the rules you can trust it completely, and you'll know exactly what to do about
-    every line it shows you.</p>
+    <h1>The Dashboard</h1>
+    <p class="lede">The morning read. You open it, Flo tells you the state of your world in a
+    few lines, <b>Your list</b> shows what is due today, and the money tiles take you straight
+    to the hub. There is no separate My Day page any more: your duties live here.</p>
   </div>
 
-  <!-- THE ACTUAL FLO BOX — exact port from the dashboard, ring animation and
-       all, so the reader recognizes it on sight. -->
-  <div class="ringwrap" style="max-width:520px"><div class="flo-inner">
-    <div class="flohead2">
-      <svg width="22" height="22" viewBox="0 0 200 200" aria-hidden="true" style="flex-shrink:0">
-        <path d="M 14 100 Q 70 -10, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".35"/>
-        <path d="M 14 100 Q 70 30, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" opacity=".6"/>
-        <path d="M 14 100 Q 70 70, 113 100 T 186 100" stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round"/>
-      </svg>
-      <span class="fname2">Flo</span><span class="ftag2">· Your briefing · Aug 28</span>
-    </div>
-    <div class="flob alert"><span class="flodot" style="background:var(--st-hot)"></span>Billing: Tenant rent — create invoices was due Mon 8/25 — 3 days late, needs doing ASAP</div>
-    <div class="flob"><span class="flodot" style="background:var(--st-warm)"></span>2 sessions missing work orders</div>
-    <div class="flob"><span class="flodot" style="background:var(--st-warm)"></span>3 balances outstanding · $5,940</div>
-    <div class="flob"><span class="flodot" style="background:var(--st-booked)"></span>You cleared all 5 duties yesterday</div>
-    <div class="flob"><span class="flodot" style="background:var(--st-dead)"></span>Tomorrow: Ramp weekly report</div>
-    <div class="flosyn2">Quiet day — one thing needs you: the rent invoices.</div>
-    <div class="askflo">Ask Flo →</div>
-  </div></div>
-  <p style="font-size:11px;opacity:.5;max-width:520px;margin-top:8px;line-height:1.5">This is
-  the exact box from your dashboard — the slow ring of light around it is Flo's signature.
-  <b>Glow means AI</b>: nothing else in the app glows, so if something is glowing, it's Flo.<span class="hint">?<span class="tipb">No AI here yet — every line is a fixed rule over live data. If a line surprises you, the data changed, not the rules.</span></span></p>
+  <div class="pane">
+    <h3>Top to bottom</h3>
+    <div class="crow"><span class="h">Flo · Your briefing</span><span class="b">A few computed lines about your duties and the money. Chapter 08.</span></div>
+    <div class="crow"><span class="h">CRM — pipeline</span><span class="b">The sales side: active leads and new inquiries. Not yours, but worth a glance.</span></div>
+    <div class="crow"><span class="h">The money</span><span class="b">"Where billing is at". Four tiles: <b>COD out</b> (unpaid COD and how old the worst one is), <b>WOs need review</b>, <b>Wait on approval</b>, and <b>Ready to go out</b>. Clicking the box opens the hub.</span></div>
+    <div class="crow"><span class="h">Your list</span><span class="b">Your duties and your tasks. Below.</span></div>
+    <div class="crow"><span class="h">Today's sessions</span><span class="b">A card for every room. Click a booked room to open its work order. Today's sessions are tomorrow morning's review queue.<span class="hint">?<span class="tipb">A busy grid today means a full Needs review group tomorrow. An orange card is a hold; it is not billable yet.</span></span></span></div>
+    <div class="crow"><span class="h">Landed &amp; in the air</span><span class="b">What was confirmed today, and the holds to check in the next seven days.</span></div>
+  </div>
 
   <div class="pane">
-    <h3>Reading it, line by line</h3>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">Red — slipped</span><span class="b">Appears for exactly three reasons: a duty backlog hits 3+ days · a monthly duty blew its date (loudest — the next chance is a month away, and the whole line turns red like above) · a duty due yesterday wasn't done.</span></div>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">Amber — building</span><span class="b">Pressure, not failure. Counted fresh every morning from the live queues: sessions that should have a work order and don't, work orders where owed exceeds taken, and the COD numbers you typed on your card.</span></div>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-booked)"></span><span class="h">Green — went well</span><span class="b">Earned, not decorative. Only appears when every duty due yesterday was actually done.</span></div>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-dead)"></span><span class="h">Tomorrow</span><span class="b">The heads-up that day-scoped duties give up by only showing on their own day. Weekly and monthly duties only; never repeats something already red.</span></div>
-    <div class="crow"><span class="dot cdot" style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--fg);opacity:.4"></span><span class="h">The synopsis</span><span class="b">One italic line at the bottom, always: "All clear." / "Nothing slipped — a few things are building" / "one thing needs you" / "N things need you."</span></div>
+    <h3>Your list</h3>
+    <div class="duty done"><div class="bx">✓</div><span class="tg">duty</span><div class="tx">A daily duty you have done</div></div>
+    <div class="duty"><div class="bx"></div><span class="tg">duty</span><div class="tx">A daily duty still to do</div></div>
+    <div class="duty late"><div class="bx"></div><span class="tg">duty</span><div class="tx">A daily duty you missed twice</div><span class="late-tag">3 days</span></div>
+    <div class="duty late"><div class="bx"></div><span class="tg">duty</span><div class="tx">A monthly duty past its date</div><span class="late-tag">4d late</span></div>
+    <div class="duty"><div class="bx"></div><span class="tg">task</span><div class="tx">A one-off somebody assigned to you</div></div>
+    <p style="margin-top:10px"><b>Duties</b> are the recurring part of the job: daily, weekly on
+    set days, or monthly on a date. <b>Tasks</b> are one-offs assigned to you. Click a duty to
+    tick it; click again to untick. Click a task to open it on the Flags tab.</p>
+    <p>Click the box itself to open the <b>full list</b>. There you can see every recurring
+    item, and add your own (repeating or one-off). Items Eli set carry a 🔒 and cannot be
+    edited or removed.</p>
+    <div class="why"><b>This list is the source of truth for your duties</b>This manual does
+    not name them, because they can change without the app changing. If it is on Your list
+    today, it is due today.</div>
+  </div>
+
+  <div class="pane">
+    <h3>The rules the list lives by</h3>
+    <p><b>Weekdays only.</b> Daily duties are due Monday to Friday. On a weekend they show as
+    "not due". Monday covers the weekend's work without counting it as missed.</p>
+    <p><b>Day-scoped duties only show on their day.</b> A Monday duty shows on Monday; a duty
+    for the 25th shows on the 25th. Do not count on a reminder the day before.</p>
+    <p><b>Missed days add up, honestly.</b> For the duties set up that way, a missed day does
+    not duplicate. One red line says how many days it covers, and one tick clears the whole
+    backlog. Items you add yourself never go red; they simply wait.</p>
+    <p><b>Monthly duties stay until done.</b> Miss one and it stays on the list, red, counting
+    the days late.</p>
+    <p><b>Never late on the day itself.</b> At 9 AM, today's unticked duties are just today's
+    work. Late means an earlier day went unfinished.</p>
+  </div>
+
+  <div class="pane">
+    <h3>Two pop-ups you'll meet here</h3>
+    <p><b>"Last night: a work order was never submitted."</b> Once a day, if any of last
+    night's sessions was not submitted. It lists each one with the room, the client and who
+    closed that studio. <b>Open →</b> goes to the work order. It will not come back the next
+    day; after that the only reminders are the red flag in the hub and the badge on Daily Ops.</p>
+    <p><b>A memo.</b> Announcements from Eli or the manager open on the dashboard to read
+    and, if asked, sign with your initials. You can put one off once; 48 hours later it
+    comes back and stays until you sign it. They are all kept under <b>Memos</b> in the rail.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('more')">← Tenants · SRS · Petty cash</button><button onclick="go('flo')">Next · Flo →</button></div>
+</section>
+
+<!-- ════════ 08 · FLO ════════ -->
+<section class="section" id="s-flo">
+  <div class="hbar">
+    <div class="kicker">Chapter 08</div>
+    <h1>Flo</h1>
+    <p class="lede">Flo is two things. The <b>lines at the top of the dashboard</b> are
+    computed from real records by fixed rules, fresh every time you load the page. The
+    <b>written briefing</b> behind "Full briefing →" is Flo reading last night's notes, the
+    open flags and the week's holds and writing them up. Trust the numbers in the first; read
+    the second like a colleague's handover note.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The lines</h3>
+    <div class="flobox">
+      <div class="flob alert"><span class="flodot" style="background:var(--st-hot)"></span>2 sessions missing a work order — auto-create failed, open each one to retry</div>
+      <div class="flob alert"><span class="flodot" style="background:var(--st-hot)"></span>3 COD balances outstanding · $5,940</div>
+      <div class="flob"><span class="flodot" style="background:var(--st-warm)"></span>4 work orders need review — get them ready for approval.</div>
+      <div class="flob"><span class="flodot" style="background:var(--st-dead)"></span>We landed Hitline Records today.</div>
+      <div class="flosyn">Quiet day — one thing needs you.</div>
+    </div>
+    <div class="crow" style="margin-top:10px"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">Red</span><span class="b">Something is wrong or has slipped: a session with no work order, a booking with no room, unpaid COD, a duty missed yesterday, a backlog of three days or more, a monthly duty past its date.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">Amber</span><span class="b">Work orders waiting for your review. On a Monday it starts "Weekend catch-up:".</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-dead)"></span><span class="h">A calm line</span><span class="b">One at most, and only when nothing is red and nothing landed today: for example that you cleared yesterday's duties.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--fg);opacity:.4"></span><span class="h">The last line</span><span class="b">A one-line summary of your duties. It counts duties only, so it can say "All clear." under a red money line. Read the red lines first.</span></div>
   </div>
 
   <div class="pane">
     <h3>What clearing something means</h3>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">Red clears</span><span class="b">by doing the duty — check it off on your My Day card and the whole backlog it names is covered. There is no dismiss and no snooze, on purpose.</span></div>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">Amber clears</span><span class="b">itself, when reality improves. Create the missing work orders and that line vanishes; collect the balances and that one goes. You never tick anything.</span></div>
-    <div class="crow"><span class="dot cdot" style="background:var(--st-booked)"></span><span class="h">Green &amp; Tomorrow</span><span class="b">aren't clearable — one is a report, the other a heads-up.</span></div>
-    <div class="why" style="margin-top:10px"><b>The mental model</b>Flo is a mirror, not an
-    inbox. Nothing in it needs "processing," and every line disappears exactly when the
-    thing it describes stops being true.</div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-hot)"></span><span class="h">A duty line</span><span class="b">clears when you tick the duty on Your list. One tick covers the whole backlog it names. There is no dismiss and no snooze, on purpose.</span></div>
+    <div class="crow"><span class="dot cdot" style="background:var(--st-warm)"></span><span class="h">A money or data line</span><span class="b">clears itself when reality changes. Collect the balance and that line goes; review the work orders and that one goes. You never tick anything.</span></div>
+    <div class="why"><b>The mental model</b>Flo's lines are a mirror, not an inbox. Nothing in
+    them needs "processing", and a line disappears when the thing it describes stops being
+    true.</div>
+    <p style="margin-top:10px"><b>Flo is a summary; the hub is the count.</b> Flo shows only the
+    first few red lines, so on a bad morning the COD line can be pushed off. And its COD
+    figure is not quite the hub's Balance due: it looks back 90 days and includes sessions
+    still running tonight. When the two differ, the hub's <b>Balance due</b> is the one to
+    work from.</p>
   </div>
 
   <div class="pane">
-    <h3>What Flo will never do</h3>
-    <p>Never accuses you of history before your time — day one starts from zero. Never
-    marks today's unfinished work late. Never says the same thing twice in one briefing.
-    And never shows you another role's chores — you get your world; Eli gets the
-    cross-role view.</p>
+    <h3>The written briefing</h3>
+    <p><b>Full briefing →</b> opens it. It also opens by itself once a day, the first time you
+    visit the dashboard after it has been written. It has a shared read of the building and a
+    <b>For you</b> section for the Billing seat.</p>
+    <p><b>Brief me now →</b> asks Flo to write a fresh one on the spot (it reads
+    <b>Re-brief ↻</b> once one exists). Some lines end in a
+    small link (notes →, flags →, calendar →, crm →) that takes you to the thing it is talking
+    about.</p>
+    <p>It is written from notes people typed, so it can be incomplete or out of date. When it
+    and the hub disagree about money, the hub is right.</p>
   </div>
-  <div class="nextbar"><button onclick="go('myday')">← My Day</button><button onclick="go('rhythm')">Next · The rhythm →</button></div>
+  <div class="nextbar"><button onclick="go('dash')">← The Dashboard</button><button onclick="go('ops')">Next · Daily Ops &amp; Flags →</button></div>
 </section>
 
-<!-- ════════ 08 · RHYTHM ════════ -->
-<section class="section" id="s-rhythm">
-  <div class="hbar">
-    <div class="kicker">Chapter 08</div>
-    <h1>The rhythm</h1>
-    <p class="lede">Everything recurring in your role, by when it comes around. These are
-    the things that pop onto your My Day card on their day — and into Flo's "Tomorrow"
-    line the evening before.</p>
-  </div>
-  <div class="pane">
-    <div class="rr"><span class="when arch">Every day</span><span class="what">Ramp approvals + missing receipts · review yesterday's work orders · update yesterday's invoices in QB · COD invoicing + outstanding follow-up<small>The daily four. The review + QB items are the flow of chapter 02, happening on schedule.</small></span></div>
-    <div class="rr"><span class="when arch">Mondays</span><span class="what">Ramp weekly report · open/sent-invoice follow-up pass<small>The follow-up rule of thumb: anything sent 14+ days ago that nobody has touched in 7 gets a call or an email.</small></span></div>
-    <div class="rr"><span class="when arch">The 25th</span><span class="what">Create tenant rent invoices<small>Monthly. Miss it and it goes red and stays red — rent can't wait four weeks for its next chance.</small></span></div>
-    <div class="rr"><span class="when arch">The 5th</span><span class="what">Tenant rent follow-up<small>Anyone who hasn't paid the rent invoiced on the 25th gets chased.</small></span></div>
-    <div class="rr"><span class="when arch">31+ days</span><span class="what">A sent invoice past 31 days is past due<small>Not a calendar date — a clock on every invoice, running from the day it was SENT (never the session date). The hub's alert figure counts these.</small></span></div>
-  </div>
-  <div class="nextbar"><button onclick="go('flo')">← The Flo briefing</button><button onclick="go('help')">Next · Help &amp; words →</button></div>
-</section>
-
-<!-- ════════ 09 · HELP ════════ -->
-<section class="section" id="s-help">
+<!-- ════════ 09 · DAILY OPS ════════ -->
+<section class="section" id="s-ops">
   <div class="hbar">
     <div class="kicker">Chapter 09</div>
+    <h1>Daily Ops &amp; Flags</h1>
+    <p class="lede">Daily Ops is mostly the studio manager's page: did last night's opening
+    and closing duties come in. One thing on it is yours, and it is the first stop of your
+    morning: the runners who did not submit a work order.</p>
+  </div>
+
+  <div class="pane">
+    <h3>The page</h3>
+    <p>Rail → <b>Daily Ops</b>. It opens on <b>Yesterday</b>; the arrows step back and forward
+    a day. Four cards, one per studio, all the same size. On the left of each card are the
+    opener's and closer's duties with a dot beside each: green came in, amber came in with a
+    problem, red never came in. Those dots are the manager's.</p>
+    <p>At the top there are two titles: <b>Daily Ops</b> and <b>Flags</b>.</p>
+  </div>
+
+  <div class="pane">
+    <h3>Yours: the red "WO not submitted" badge</h3>
+    <div class="echo"><span class="chip hot">WO not submitted · PRS B · Hitline Records</span><span class="chip">TL</span></div>
+    <p>It sits at the top of the right side of a studio's card. It shows the room, the client,
+    and the initials of the runner who had it: the last runner to touch that work order that
+    night, or failing that whoever filed the closing checklist. A <b>?</b> means nobody
+    touched it at all.</p>
+    <ol>
+      <li><b>Tap the badge</b> to open the work order and see what is missing.</li>
+      <li><b>Talk to the runner.</b> They can still submit it themselves, even the next day.
+      If they cannot, get the facts and fix the work order yourself, then Mark reviewed.</li>
+      <li><b>Tick the round check</b> on the badge. It turns grey; hover it to see
+      "Handled" and who ticked it. Everyone in the office sees the same tick.</li>
+    </ol>
+    <div class="why"><b>What happens to the badge afterwards</b>If the <i>runner</i> submits
+    late, the badge goes away. If the <i>office</i> fixes it (Mark reviewed, which submits
+    it in your name, or Complete WO), the badge stays on that night's card as the record
+    that it was missed and who had it, and your tick is what says it was dealt with.</div>
+  </div>
+
+  <div class="pane">
+    <h3>Flags</h3>
+    <p>The second title on the same page. A flag is anything that needs doing, and a task is
+    simply a flag somebody typed. Each has a <b>kind</b>, and the kind decides who gets it:</p>
+    <div class="crow"><span class="h">Facility · Gear</span><span class="b">Go to <b>Tech</b>.</span></div>
+    <div class="crow"><span class="h">Clients &amp; billing · Office</span><span class="b">Go to <b>Admin</b>, which includes you.</span></div>
+    <p style="margin-top:8px"><b>Add a flag…</b> at the top: one line saying what needs doing,
+    the kind, the studio, optionally who it is for and a due date. <b>Mine</b> shows what is
+    assigned to you; <b>I assigned</b> shows what you handed out.</p>
+    <p>The round button on an Admin flag marks it done at once. The only alarm is age: a flag
+    open more than <b>72 hours</b> shows its age in red.</p>
+  </div>
+  <div class="nextbar"><button onclick="go('flo')">← Flo</button><button onclick="go('rhythm')">Next · The rhythm →</button></div>
+</section>
+
+<!-- ════════ 10 · RHYTHM ════════ -->
+<section class="section" id="s-rhythm">
+  <div class="hbar">
+    <div class="kicker">Chapter 10</div>
+    <h1>The rhythm</h1>
+    <p class="lede">The whole job, by when it comes around. Your list on the dashboard carries
+    the recurring duties Eli has set; this is the pipeline's own beat underneath them.</p>
+  </div>
+  <div class="pane">
+    <div class="rr"><span class="when arch">Every morning</span><span class="what">Dashboard: read Flo's red lines and Your list. → Daily Ops: every <b>WO not submitted</b> badge chased and ticked. → Hub, In progress: clear <b>Needs review</b> (review, Mark reviewed, Complete WO). → <b>Needs invoice</b>: QuickBooks invoice made and dropped on the row. → COD: <b>Balance due</b> is empty, or you know why not.<small>In that order. The first two decide what is in the third.</small></span></div>
+    <div class="rr"><span class="when arch">Through the day</span><span class="what"><b>Ready to send</b>: Download, email, Mark sent the same day. <b>Not approved</b>: fix and re-drop. <b>Mark paid</b> the day money lands. A note in ✎ every time you chase someone.<small>A red count on the In progress tab means a package was built two or more days ago and never marked sent.</small></span></div>
+    <div class="rr"><span class="when arch">Every week</span><span class="what"><b>Awaiting payment</b>, oldest first: chase anything getting old, and everything <b>over 31 days</b>. <b>Awaiting PO</b>: chase each label for its PO.<small>Use the AP chip for who to write to and how they want it.</small></span></div>
+    <div class="rr"><span class="when arch">The 1st</span><span class="what"><b>SRS</b>: pay what is in Owed and mark each one paid.</span></div>
+    <div class="rr"><span class="when arch">Month-end</span><span class="what"><b>Petty cash</b>: for each studio, check the month, read "Nights the box didn't match", then Print or Download CSV.</span></div>
+    <div class="rr"><span class="when arch">Rent</span><span class="what"><b>Tenants</b>: each tenant on their own period. Send by the date on the row, Mark sent, Mark paid with the amount and date, In QB.<small>A red row is rent that is late.</small></span></div>
+    <div class="rr"><span class="when arch">31+ days</span><span class="what">A sent invoice at 31 days is past due.<small>Not a calendar date: a clock on every invoice, running from the day it was SENT.</small></span></div>
+  </div>
+  <div class="nextbar"><button onclick="go('ops')">← Daily Ops &amp; Flags</button><button onclick="go('help')">Next · Help &amp; words →</button></div>
+</section>
+
+<!-- ════════ 11 · HELP ════════ -->
+<section class="section" id="s-help">
+  <div class="hbar">
+    <div class="kicker">Chapter 11</div>
     <h1>Help &amp; words</h1>
   </div>
   <div class="pane">
     <h3>When something looks wrong</h3>
     <p><b>A number that can't be right</b> — open the work order and read the rows. Every
-    total is computed from them, so the answer is always in the rows.</p>
+    total is worked out from them.</p>
+    <p><b>"Paid" is more than the total, or the balance is negative</b> — almost always a card
+    payment where the terminal amount was typed into Toward balance. Open the work order; the
+    red line under the payment offers the fix.</p>
+    <p><b>A row will not open</b> — the message says why. If it says the session was deleted,
+    look in the page ⋯ → Deleted work orders before doing anything else.</p>
+    <p><b>A work order has vanished</b> — check Deleted work orders first, then tell Eli.
+    Gaps in the WO numbers do not mean anything was deleted; numbers are sometimes skipped.</p>
+    <p><b>You pressed Mark sent or Mark paid by mistake</b> — the only undo is ⋯ → Pull it
+    back, which also removes the invoice and the approval. If it says only an owner can,
+    ask Eli or Adam-Mike.</p>
+    <p><b>You dropped a PDF on the wrong row</b> — that row's ⋯ → Remove the attached
+    invoice. Then drop it where it belongs.</p>
     <p><b>A red "NOT saved" message</b> — the save failed and the app is telling you
-    honestly. Try again; if it keeps happening, tell Eli — errors are logged and he can
-    see them.</p>
-    <p><b>The manual doesn't match the screen</b> — the app changed and the manual
-    didn't. Say so; this document is meant to be corrected, and the version history
-    (bottom of the rail) says what changed in each release.</p>
+    honestly. Try again; if it keeps happening, tell Eli. Errors are logged and he can see
+    them.</p>
+    <p><b>The manual doesn't match the screen</b> — the app changed and the manual didn't.
+    Say so. What changed in each release is under Training → App guide (SOP) → Version History.</p>
   </div>
   <div class="pane">
     <h3>Words this manual uses</h3>
-    <p><b>Work order (WO)</b> — one session's billable paperwork; born with the booking; numbered.
-    · <b>COD</b> — paid at the desk. <b>Billing</b> — invoiced after.
-    · <b>Complete / Reviewed</b> — you checked the WO; it's accurate.
-    · <b>Approve a day</b> — locking a runner's day sheet after verifying it.
-    · <b>Approve an invoice</b> — an owner signing off the package. Owners only.
-    · <b>Package</b> — the merged invoice + work order PDF that goes to the client.
-    · <b>Drift</b> — the WO changed after invoicing; billed ≠ owed.
-    · <b>Duty</b> — a recurring My Day item. <b>Backlog</b> — its missed prior days.
-    · <b>Queue</b> — a computed list (needs-WO, balances); empties itself.
-    · <b>Flo</b> — the briefing; computed, rule-based, no AI.</p>
+    <p><b>Work order (WO)</b> — one session's billable paperwork; born with the booking; numbered.<br>
+    <b>COD</b> — paid at the desk. <b>Billing</b> — invoiced after.<br>
+    <b>Submit</b> — the runner turning a night in. <b>Not submitted</b> — a past night nobody turned in.<br>
+    <b>Mark reviewed</b> — your check on one day; it locks the day.<br>
+    <b>Complete WO</b> — your check on the whole work order; it sends it to Needs invoice.<br>
+    <b>Approve</b> — an owner signing off the package. Owners only.<br>
+    <b>Package</b> — the invoice and the work order merged into one PDF for the client.<br>
+    <b>Not approved</b> — the owner returned it with a note.<br>
+    <b>Ready to send</b> — approved, PO settled. <b>Awaiting PO</b> — approved, PO missing.<br>
+    <b>Changed since invoiced</b> — the work order's total no longer matches its invoice.<br>
+    <b>Pull it back</b> — strip the invoice and approval and start that row again.<br>
+    <b>Close</b> — write off or void an invoice, with a reason.<br>
+    <b>Balance due</b> — a COD session with money still owed.<br>
+    <b>COLLECT</b> — the two amounts to quote a COD client: cash, and card with the fee.<br>
+    <b>Toward balance</b> — a payment's amount before the 3% card fee.<br>
+    <b>Hours included</b> — the hours a day rate covers before overtime; 12 unless set.<br>
+    <b>Blanket rate</b> — one price for all of a day's rooms.<br>
+    <b>Discount</b> — off studio time and engineering, with a reason; how a kill fee is done.<br>
+    <b>No show</b> — the artist never came. A record; the bill does not change.<br>
+    <b>Times TBD</b> — the times are deliberately not decided yet.<br>
+    <b>AP</b> — a label's procedure for paying an invoice.<br>
+    <b>SRS</b> — a referral fee on a session's room charges.<br>
+    <b>Duty</b> — a recurring item on Your list. <b>Backlog</b> — its missed earlier days.<br>
+    <b>Flag</b> — anything that needs doing; a task is a flag somebody typed.<br>
+    <b>Flo</b> — the lines on the dashboard (computed) and the written briefing (written).</p>
   </div>
   <div class="nextbar"><button onclick="go('rhythm')">← The rhythm</button><span></span></div>
 </section>
@@ -1139,87 +1161,28 @@ body.hints .hint{display:inline-flex}
 </div>
 
 <script>
-/* ── WO walkthrough ── */
-const WSTEPS=[
- {all:true,t:[],h:'One document per session',
-  b:'<p>This is the work order, exactly as it looks in PRSFlo: <b>words on the left</b> (who, what kind, the notes), <b>numbers on the right</b> (days, rentals, money). The calendar card, the runner\'s phone, the hub row and the PDF the client receives are all windows onto <b>this same document</b>. There is no separate booking — change a date here and the calendar follows by itself. Click Next and each part lights up as it\'s explained.</p>'},
- {t:['brand'],h:'The letterhead and the WO number',
-  b:'<p>Top-left is who we are; top-right is <b>which work order</b> — the WO number at size with the <b>invoice number</b> right under it, because that number exists from the moment the session confirmed (chapter 02) and every document about this session carries it. The status pill and the ✓ Complete button live up here too — Complete is the act that starts your pipeline.</p>'},
- {t:['meta'],h:'Status, type, and the reference wells',
-  b:'<p>The status pills say what this event <i>is</i> — Confirmed and Tentative are sessions; Tour, Tech and Open Hours are blocks with no billing. Below: session type, then the slim wells billing lives by — <b>Inv #</b>, <b>PO #</b> with its <b>No-PO</b> switch (approval waits until one or the other is answered), and the food budget. <b>Booking Notes are internal only</b> — they never print.</p>'},
- {t:['client'],h:'The client card',
-  b:'<p>Who the session is for — and for a label session, <b>the label is the hero</b> (Hitline Records, not the person). The artist sits in their well; the <b>A&amp;R and their Admin sit side by side</b> with email and phone each — the two people billing actually writes to. Search by client, A&amp;R or artist and it all fills itself from the CRM. The <b>COD / Label-Billing</b> switch is the big one for you: it decides which pipeline this work order takes through the hub.</p>'},
- {t:['st'],h:'Studio Time — the heart of it',
-  b:'<p>One card per day, and the <b>only</b> place schedule and staffing live. Each card reads like a sentence: the room and date, the times at size, the staff underneath, the day\'s song note in the middle, the <b>day total</b> on the right with OT touching it. Per-day <b>Day/Hr</b> pricing — Day is a flat lockout, Hr is rate × hours, and a run can mix both (this one does). On long runs the days <b>scroll in their own bin</b> — the money below never moves. The <b>List / Cards</b> toggle: Cards to read a session, List for the slim audit table when you\'re checking a long multi-day run.</p>'},
- {t:['staff'],h:'Staff lines',
-  b:'<p>Inside each day card: <b>1ST</b> (engineer) and <b>2ND</b> (assistant), with their own window and hours. Staff times follow the studio times until someone edits them. Rates are <b>office-set</b> — runners see them read-only. "Engineer, TBD" is valid; the name can come later. The little <b>×</b> removes a staff line, and each card has one too — office only, with a confirm before a whole day goes.</p>'},
- {t:['dots'],h:'The life of a day — the dot and the lock',
-  b:'<p>On each card\'s header: <span style="color:var(--st-booked)">●</span> <b>Approved</b> — checked by the office, locked (Friday, note the 🔒). <span style="color:var(--st-warm)">●</span> <b>Submitted</b> — the runner says it\'s done (Saturday). No dot — still <b>in progress</b> (Sunday, mid-session, no end time yet).</p><p><b>Submitted is a signal, not a seal</b> — the runner can keep correcting until you approve. <b>Approval is the only lock</b>, your act, reversible from the same 🔒 toggle.</p>'},
- {t:['equip'],h:'The equipment pills',
-  b:'<p>Each day card carries its equipment check — the runner taps each pill: green = OK, red = a problem, with a note and photo behind the dot (Saturday\'s mic). <b>Internal only, never prints</b> — the client never sees it, but you\'ll read it when a session note mentions gear.</p>'},
- {t:['rent','notes','pay'],h:'Rentals, notes, payments',
-  b:'<p><b>Rentals</b> — equipment charged to the session; runners can add these at the desk, because an 11 PM rental is a real event, and a long list scrolls in its own bin. <b>Notes live in two places now:</b> each day\'s song/story sits <i>on that day\'s card</i>; the whole-session note and the internal Needs-attention strip live in the left column. <b>Payments</b> — every dollar taken, with type and memo; COD money recorded here is what makes the COD side of the hub true.</p>'},
- {t:['tot'],h:'The totals — computed, never typed',
-  b:'<p>Two money blocks, both <b>computed from the rows above</b>. Under the days: the itemized studio total — Studio, then a line per engineer and assistant, the OT note, the big number. Bottom right: the session\'s ledger — Studio + Rentals = Grand Total; minus payments = Balance Due. Nothing is ever typed as a total — so these numbers, the hub row, and the balances queue can never disagree. If a number looks wrong, don\'t argue with the total: <b>read the rows</b>.</p>'},
-];
-const WNESTED=['staff','dots','equip','tot'];
-let wi=0;
-function wrender(scroll){
-  const s=WSTEPS[wi];
-  document.getElementById('wk').textContent='Step '+(wi+1)+' of '+WSTEPS.length;
-  document.getElementById('wt').textContent=s.h;
-  document.getElementById('wb').innerHTML=s.b;
-  document.getElementById('wprev').style.visibility=wi===0?'hidden':'visible';
-  document.getElementById('wnext').textContent=wi===WSTEPS.length-1?'Start over ↺':'Next →';
-  const doc=document.getElementById('wodoc');
-  // Step 1 shows the WHOLE document plainly — ringing every section at once
-  // turned the page into a grid of green boxes (Eli, 2026-08-20). `all` steps
-  // just lift the touring dim; no rings.
-  doc.classList.toggle('touring',!s.all);
-  const nested=s.t.some(t=>WNESTED.includes(t));
-  doc.querySelectorAll('[data-sec]').forEach(el=>{
-    el.classList.remove('hl','open','subdim');
-    const secs=el.dataset.sec.split(' ');
-    if(s.t.some(t=>secs.includes(t))) el.classList.add('hl');
-  });
-  if(nested){ // open + fade-siblings on every ancestor section of a lit row
-    doc.querySelectorAll('[data-sec].hl').forEach(el=>{
-      let p=el.parentElement;
-      while(p&&p!==doc){
-        if(p.classList.contains('wsec')){p.classList.remove('hl');p.classList.add('open','subdim')}
-        p=p.parentElement;
-      }
-    });
-  }
-  const dots=document.getElementById('wdots');
-  dots.innerHTML=WSTEPS.map((_,i)=>'<span class="'+(i===wi?'on':'')+'" onclick="wset('+i+')"></span>').join('');
-  if(scroll){
-    const first=wi===0?doc:doc.querySelector('[data-sec].hl');
-    if(first) first.scrollIntoView({behavior:'smooth',block:wi===0?'start':'center'});
-  }
-}
-function wgo(d){wi=(wi+d+WSTEPS.length)%WSTEPS.length;wrender(true)}
-function wset(i){wi=i;wrender(true)}
-wrender(false);
-
-/* ── helpful hints toggle ── */
 function hints(){
-  const on=document.body.classList.toggle('hints');
+  var on=document.body.classList.toggle('hints');
   document.getElementById('hintBtn').textContent='💡 Hints: '+(on?'On':'Off');
 }
-
 function go(s){
-  document.querySelectorAll('.section').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.section').forEach(function(x){x.classList.remove('on')});
   document.getElementById('s-'+s).classList.add('on');
-  document.querySelectorAll('.ch').forEach(x=>x.classList.toggle('on',x.dataset.s===s));
+  document.querySelectorAll('.ch').forEach(function(x){x.classList.toggle('on',x.dataset.s===s)});
   window.scrollTo({top:0,behavior:'instant'});
 }
 function flip(){
-  const h=document.documentElement;
-  const d=h.getAttribute('data-theme')==='dark';
+  var h=document.documentElement;
+  var d=h.getAttribute('data-theme')==='dark';
   h.setAttribute('data-theme',d?'light':'dark');
   document.getElementById('themeBtn').textContent=d?'View dark':'View light';
 }
+/* tap-to-open hints on touch screens */
+document.addEventListener('click',function(e){
+  var t=e.target.closest?e.target.closest('.hint'):null;
+  document.querySelectorAll('.hint.open').forEach(function(x){if(x!==t)x.classList.remove('open')});
+  if(t)t.classList.toggle('open');
+});
 </script>
 </body>
 </html>

@@ -252,6 +252,11 @@ type StRow = {
    *  handleRunnerSubmit with status; NOT in the save payload, same as status. */
   submitted_by_name: string | null
   submitted_at: string | null
+  /** True when the OFFICE submitted this row for a runner who never did (the
+   *  review rescue, migration 20261006120000). Status says the night is dealt
+   *  with; this says the runner was not the one who dealt with it - Daily Ops
+   *  reads it so the miss stays on the record. Not in the save payload. */
+  submitted_for_runner: boolean
   /** The TBD button on the day's times (migration 20260919120000) — an explicit
    *  "not decided yet", cleared when a time is typed. Part of the save payload. */
   times_tbd: boolean
@@ -585,6 +590,7 @@ function normalizeStRow(d: any): StRow {
     status: d.status ?? 'in_progress',
     submitted_by_name: d.submitted_by_name ?? null,
     submitted_at: d.submitted_at ?? null,
+    submitted_for_runner: d.submitted_for_runner === true,
     times_tbd: d.times_tbd === true,
     day_status: d.day_status === 'confirmed' || d.day_status === 'tentative' || d.day_status === 'cancelled' ? d.day_status : null,
     // Assistant is the default role everywhere — an engineer is the exception.
@@ -658,6 +664,7 @@ export function WorkOrderPopup({
   onFormSync,
   onSaved,
   onDelete,
+  onDirtyChange,
   leadId,
   inline,
   mode = 'admin',
@@ -671,6 +678,12 @@ export function WorkOrderPopup({
   onFormSync?: (updates: Partial<WOFormSync>) => void
   onSaved?: () => void
   onDelete?: () => void
+  /** Told whenever "has unsaved edits" flips. For a host that can close this
+   *  work order from OUTSIDE it — the billing hub's package window renders it
+   *  inline and has its own Close, backdrop and tabs, none of which go through
+   *  handleCloseButton, so edits made there were dropped without a word
+   *  (2026-10-06). The host asks before leaving; see PackageModal. */
+  onDirtyChange?: (dirty: boolean) => void
   // Set only when this WO was opened from a CRM lead's "Start Booking". The lead
   // is marked booked once the session is actually SAVED — not when the WO opens —
   // so backing out of a Work Order leaves the lead in the pipeline.
@@ -975,7 +988,7 @@ export function WorkOrderPopup({
         eng_visible: monthlyStaff,
         eng_role: 'assistant' as const,
         bundle_id: null,
-        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null,
+        status: 'in_progress' as const, submitted_by_name: null, submitted_at: null, submitted_for_runner: false, times_tbd: false, day_status: null,
       }
     })
 
@@ -2567,7 +2580,7 @@ export function WorkOrderPopup({
       // Follow the row above (so a session staffed with an engineer keeps adding
       // engineers), otherwise fall back to assistant.
       eng_role: last?.eng_role || 'assistant',
-      status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null,
+      status: 'in_progress', submitted_by_name: null, submitted_at: null, submitted_for_runner: false, times_tbd: false, day_status: null,
     }))
 
     setStRows(prev => [...prev, ...rows])
@@ -2703,7 +2716,7 @@ export function WorkOrderPopup({
       eng_hours: null, eng_charge: null,
       actual_from_time: '', actual_to_time: '', no_show: false,
       admin_checked: false, admin_locked: false, eng_visible: true,
-      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, times_tbd: false, day_status: null, bundle_id: null,
+      eng_role: role, status: 'in_progress', submitted_by_name: null, submitted_at: null, submitted_for_runner: false, times_tbd: false, day_status: null, bundle_id: null,
     }
     setStRows(prev => [...prev, newRow])
   }
@@ -2718,8 +2731,13 @@ export function WorkOrderPopup({
    */
 
   async function deleteStRow(id: string) {
-    const row = stRows.find(r => r.id === id)
-    if (row) deletedRowsRef.current = [...deletedRowsRef.current, row]
+    // Park the SAVED copy, taken NOW (2026-10-06). Not the on-screen row (it
+    // may carry unsaved edits), and not looked up later at Cancel: the popup
+    // refreshes its baseline from the database whenever anything on this work
+    // order changes or the window regains focus, and by then the deleted row
+    // is no longer in it. A row that was never saved has nothing to put back.
+    const saved = originalStRowsRef.current.find(o => o.id === id)
+    if (saved) deletedRowsRef.current = [...deletedRowsRef.current, saved]
     await supabase.from('studio_time_rows').delete().eq('id', id)
     setStRows(prev => prev.filter(r => r.id !== id))
     setConfirmDeleteRowId(null)
@@ -2732,9 +2750,13 @@ export function WorkOrderPopup({
   // a silent failed delete here would leave the card on screen after reload.
   async function deleteDayRows(rows: StRow[]) {
     const ids = rows.map(r => r.id)
+    // The SAVED copies, taken before the delete — see deleteStRow.
+    const savedCopies = ids
+      .map(id => originalStRowsRef.current.find(o => o.id === id))
+      .filter((r): r is StRow => !!r)
     const { error } = await supabase.from('studio_time_rows').delete().in('id', ids)
     if (!dbResult('Deleting day', error)) return
-    deletedRowsRef.current = [...deletedRowsRef.current, ...rows]
+    deletedRowsRef.current = [...deletedRowsRef.current, ...savedCopies]
     setStRows(prev => prev.filter(r => !ids.includes(r.id)))
     setConfirmDeleteDay(null)
   }
@@ -2778,6 +2800,54 @@ export function WorkOrderPopup({
 
   // ── Per-row admin lock ────────────────────────────────────────────────────
 
+  // ── REVIEWING A NIGHT THE RUNNER NEVER SENT SUBMITS IT IN YOUR NAME ───────
+  // (v1.39.4, 2026-09-23 — and RESTORED 2026-10-06. The changelog, the SOP and
+  // the list-view tooltip all said it; the code had lost it, so a rescued night
+  // stayed "Not submitted" beside "✓ Reviewed" with nobody's name on it.)
+  //
+  // After the night has passed the duty is the office's (ruling 2026-09-22),
+  // and the person pressing ✓ is the one discharging it. So a row that was
+  // never sent, on a day already over, is stamped submitted — status, name,
+  // time — alongside the lock. Rules, all deliberate:
+  //   · only rows NEVER sent: a night the runner did submit keeps the runner's
+  //     name; the review is a second act on top of it, not a replacement;
+  //   · only days BEFORE the operational day (opsToday, the 8:50 boundary):
+  //     tonight's session is still the runner's to submit;
+  //   · reopening the review does NOT un-submit — once the office has taken a
+  //     night on, that fact stays on the record.
+  //   · decided from the SAVED rows (the baseline), never from what is typed
+  //     on screen: an unsaved row is not in the database to stamp, and an
+  //     unsaved date change must not make tonight look like last night;
+  //   · decided per DAY: if the runner turned that night in, a row added the
+  //     next morning (an extra assistant) is not a missed night, and must not
+  //     put the office's name over the runner's;
+  //   · only a CONFIRMED night on a session that has a nightly submit — not a
+  //     tentative or cancelled day, and never a lockout;
+  //   · written with a guard: only rows the database still holds as unsent.
+  //     The runner may have submitted on their phone a second ago.
+  function rescueIdsForDay(date: string | null | undefined): string[] {
+    if (!date || date >= opsToday()) return []
+    if (!wo || wo.session_status === 'lockout') return []
+    const saved = originalStRowsRef.current.filter(r => r.date === date)
+    const rooms = saved.filter(r => (r.studio ?? '').trim())
+    if (rooms.length === 0) return []
+    if (rooms.some(r => SENT_STATUSES.has(r.status ?? 'in_progress') && !r.submitted_for_runner)) return []
+    if (!rooms.some(r => effDayStatus(r) === 'confirmed')) return []
+    return saved.filter(r => !SENT_STATUSES.has(r.status ?? 'in_progress')).map(r => r.id)
+  }
+  /** Stamp them. Returns the stamp and the ids the database actually changed,
+   *  or null if nothing was (or it failed). */
+  async function submitForRunner(ids: string[]): Promise<{ ids: string[]; stamp: { status: 'submitted'; submitted_by_name: string; submitted_at: string; submitted_for_runner: true } } | null> {
+    // submitted_for_runner: the office did this, not the runner. Daily Ops
+    // keeps its "WO not submitted" badge on the strength of it.
+    const stamp = { status: 'submitted' as const, submitted_by_name: profile?.display_name || 'Office', submitted_at: new Date().toISOString(), submitted_for_runner: true as const }
+    const { data, error } = await supabase.from('studio_time_rows').update(stamp)
+      .in('id', ids).or('status.is.null,status.eq.in_progress').select('id')
+    if (!dbResult('Submitting the day for the runner', error)) return null
+    const done = (data ?? []).map(d => String((d as { id: string }).id))
+    return done.length ? { ids: done, stamp } : null
+  }
+
   async function handleToggleLock(rowId: string, currentLocked: boolean) {
     const newLocked = !currentLocked
     const { error: lockErr } = await supabase.from('studio_time_rows').update({
@@ -2787,6 +2857,9 @@ export function WorkOrderPopup({
     // Was a silent write (the audited defect class) — found while adding the
     // history call below; checked now like every important write.
     if (!dbResult('Saving day review', lockErr)) return
+    const savedRow = originalStRowsRef.current.find(r => r.id === rowId)
+    const rowRescue = newLocked ? rescueIdsForDay(savedRow?.date).filter(id => id === rowId) : []
+    const rowStamp = rowRescue.length ? await submitForRunner(rowRescue) : null
     // History: the lock IS the admin review (house convention, 2026-09-01 —
     // runner submits, admin reviews, owner approves). Unlocking is history
     // too: a reopened day is exactly the kind of thing to see who did.
@@ -2799,13 +2872,16 @@ export function WorkOrderPopup({
         source: 'office',
         kind: 'reviewed',
         afterInvoice: hadInvoiceRef.current,
-        changes: [{ what: newLocked ? 'Reviewed the day' : 'Review reopened', day: lockedRow?.date || null }],
+        changes: [{ what: !newLocked ? 'Review reopened' : rowStamp ? 'Submitted for the runner and reviewed the day' : 'Reviewed the day', day: lockedRow?.date || null }],
       })
     }
-    setStRows(prev => prev.map(r => r.id === rowId
-      ? { ...r, admin_checked: newLocked, admin_locked: newLocked }
-      : r
-    ))
+    const applyRow = (rows: StRow[]) => rows.map(r => r.id === rowId
+      ? { ...r, admin_checked: newLocked, admin_locked: newLocked, ...(rowStamp && rowStamp.ids.includes(r.id) ? rowStamp.stamp : {}) }
+      : r)
+    setStRows(applyRow)
+    // The baseline moves too: these writes are already in the database, so
+    // they are not "unsaved edits" and Cancel must not appear to undo them.
+    originalStRowsRef.current = applyRow(originalStRowsRef.current)
     if (!newLocked) {
       setPendingLockedEdits(p => { const n = { ...p }; delete n[rowId]; return n })
     }
@@ -2832,6 +2908,9 @@ export function WorkOrderPopup({
       admin_locked: newLocked,
     }).in('id', ids)
     if (!dbResult('Saving day review', lockErr)) return
+    // A night nobody sent, now over: submitted in the reviewer's name (above).
+    const dayRescue = newLocked ? rescueIdsForDay(date).filter(id => ids.includes(id)) : []
+    const dayStamp = dayRescue.length ? await submitForRunner(dayRescue) : null
     if (woIdRef.current) {
       void logWoActivity({
         workOrderId: woIdRef.current,
@@ -2840,11 +2919,14 @@ export function WorkOrderPopup({
         source: 'office',
         kind: 'reviewed',
         afterInvoice: hadInvoiceRef.current,
-        changes: [{ what: newLocked ? 'Reviewed the day' : 'Review reopened', day: date }],
+        changes: [{ what: !newLocked ? 'Review reopened' : dayStamp ? 'Submitted for the runner and reviewed the day' : 'Reviewed the day', day: date }],
       })
     }
+    originalStRowsRef.current = originalStRowsRef.current.map(r => ids.includes(r.id)
+      ? { ...r, admin_checked: newLocked, admin_locked: newLocked, ...(dayStamp && dayStamp.ids.includes(r.id) ? dayStamp.stamp : {}) }
+      : r)
     setStRows(prev => prev.map(r => ids.includes(r.id)
-      ? { ...r, admin_checked: newLocked, admin_locked: newLocked }
+      ? { ...r, admin_checked: newLocked, admin_locked: newLocked, ...(dayStamp && dayStamp.ids.includes(r.id) ? dayStamp.stamp : {}) }
       : r
     ))
     if (!newLocked) {
@@ -3740,6 +3822,26 @@ export function WorkOrderPopup({
     if (isDirty()) { setConfirmClose(true); return }
     handleClose()
   }
+  // Report the dirty flag to a host that asked for it (see the prop). Runs
+  // after every render ON PURPOSE — isDirty reads refs as well as state, so no
+  // dependency list can describe it — and only speaks when the answer changes.
+  const lastDirtyRef = useRef(false)
+  useEffect(() => {
+    if (!onDirtyChange) return
+    // isDirty() deliberately ignores payments and rentals — it is fail-safe
+    // only because a "clean" Close still SAVES. A host that unmounts this
+    // work order does not save, so for the host those rows count too. Blank
+    // placeholder rows are ignored on both sides, like refreshFromDb does.
+    const meaningful = (json: string, keep: (r: any) => boolean) => {
+      try { return JSON.stringify((JSON.parse(json || '[]') as any[]).filter(keep)) } catch { return '[]' }
+    }
+    const payKeep = (p: any) => !!(p.payment_type || p.amount)
+    const rentKeep = (r: any) => !!(r.item || r.charge)
+    const payDirty = JSON.stringify(payRows.filter(payKeep)) !== meaningful(paySnapRef.current, payKeep)
+    const rentDirty = JSON.stringify(rentRows.filter(rentKeep)) !== meaningful(rentSnapRef.current, rentKeep)
+    const d = isDirty() || payDirty || rentDirty
+    if (d !== lastDirtyRef.current) { lastDirtyRef.current = d; onDirtyChange(d) }
+  })
 
   async function handleCancel() {
     const originalIds = new Set(originalStRowsRef.current.map(r => r.id))
@@ -3748,8 +3850,27 @@ export function WorkOrderPopup({
       await supabase.from('studio_time_rows').delete().in('id', added.map(r => r.id))
     }
     if (deletedRowsRef.current.length > 0) {
-      await Promise.all(deletedRowsRef.current.map(r =>
-        supabase.from('studio_time_rows').insert({
+      // PUT BACK WHAT WAS SAVED (2026-10-06). "Delete day" removes rows from
+      // the database at once and Cancel re-inserts them. Three things were
+      // wrong with how:
+      //   · it re-inserted the row as it stood ON SCREEN at deletion, unsaved
+      //     edits included, and from a field list that had fallen behind the
+      //     table — a submitted night came back "Not submitted", with no
+      //     Arrived / Left. Now it restores the SAVED copy, whole (parked by
+      //     deleteStRow / deleteDayRows at the moment of the delete);
+      //   · a row added and deleted in the same sitting was "restored" too:
+      //     a phantom billable day on the work order. Only rows that were in
+      //     the database when this opened go back;
+      //   · the insert was unchecked, so a day that failed to come back was
+      //     simply gone. Now it says so and STAYS OPEN — and because it is an
+      //     upsert that ignores rows already there, pressing Cancel again is
+      //     safe.
+      // deletedRowsRef already holds the saved copies (parked at delete time,
+      // before any refresh could drop them from the baseline). One per id.
+      const seen = new Set<string>()
+      const toRestore = deletedRowsRef.current.filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+      const restored = await Promise.all(toRestore.map(r =>
+        supabase.from('studio_time_rows').upsert({
           id: r.id,
           work_order_id: woIdRef.current!,
           studio: r.studio, location: r.location || null, eng_name: r.eng_name || null, eng_role: r.eng_role, date: r.date, session_info: oneLine(r.session_info),
@@ -3772,8 +3893,20 @@ export function WorkOrderPopup({
           admin_checked: r.admin_checked,
           admin_locked: r.admin_locked,
           eng_visible: r.eng_visible,
-        })
+          status: r.status ?? 'in_progress',
+          submitted_by_name: r.submitted_by_name ?? null,
+          submitted_at: r.submitted_at ?? null,
+          submitted_for_runner: r.submitted_for_runner === true,
+          actual_from_time: r.actual_from_time || null,
+          actual_to_time: r.actual_to_time || null,
+          no_show: r.no_show === true,
+          // The SAVED row's bundle: it exists in the database (bundles are
+          // only created or removed on Save), so the link is safe to restore.
+          bundle_id: r.bundle_id ?? null,
+        }, { onConflict: 'id', ignoreDuplicates: true })
       ))
+      const failed = restored.find(x => x.error)
+      if (failed) { dbResult('Putting a deleted day back', failed.error); return }
       deletedRowsRef.current = []
     }
     setStRows(originalStRowsRef.current)
@@ -3871,6 +4004,14 @@ export function WorkOrderPopup({
     studioRows: stRows,
     rentalRows: rentRows,
     paymentRows: payRows,
+    // FOOD IS OWED TOO (2026-10-06). The totals block learned this on
+    // 2026-09-28 (WO-1253); this block and collectBaseExcluding below did not,
+    // so on a COD work order with a food budget COLLECT quoted less than
+    // Balance Due, the method pick pre-filled the smaller number, and the
+    // card-amount warning called the correct payment an overpayment. COD
+    // sessions rarely carry food — which is exactly when nobody would notice.
+    expenseRows: expenses,
+    foodFeePct: wo?.food_fee_pct,
     discount: collectDiscount,
   })
   /** What the client owes now, by cash / Zelle / check. */
@@ -3882,7 +4023,7 @@ export function WorkOrderPopup({
   /** The balance with ONE row taken out — what that row should be pre-filled
    *  with, and what its dropdown labels quote. */
   function collectBaseExcluding(rowId: string): number {
-    const t = computeWoTotals({ studioRows: stRows, rentalRows: rentRows, paymentRows: payRows.filter(p => p.id !== rowId), discount: collectDiscount })
+    const t = computeWoTotals({ studioRows: stRows, rentalRows: rentRows, paymentRows: payRows.filter(p => p.id !== rowId), expenseRows: expenses, foodFeePct: wo?.food_fee_pct, discount: collectDiscount })
     return t.balance > 0 ? parseFloat(t.balance.toFixed(2)) : 0
   }
   /** The amount a method pick would collect for a given row: card methods get
@@ -4043,7 +4184,7 @@ export function WorkOrderPopup({
         ? new Date(sub.submitted_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' })
         : ''
       return (
-        <span title={`Submitted${whoFull ? ` by ${whoFull}` : ''}${full ? ` · ${full}` : ''}`}
+        <span title={`Submitted${whoFull ? ` by ${whoFull}` : ''}${sub.submitted_for_runner ? ' (the office, for the runner)' : ''}${full ? ` · ${full}` : ''}`}
           style={{ ...pill, background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', maxWidth: small ? 190 : 230, overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>
           Submitted{who ? ` · ${who}` : ''}{when ? ` · ${when}` : ''}
         </span>
@@ -4094,7 +4235,7 @@ export function WorkOrderPopup({
       return (
         <button type="button"
           onClick={e => { e.stopPropagation(); void handleToggleDayReview(date, locked) }}
-          title={locked ? 'Reviewed by the office — tap to reopen the day' : 'Mark this day reviewed'}
+          title={locked ? 'Reviewed by the office — tap to reopen the day' : rescueIdsForDay(date).length ? 'The runner never submitted this day — reviewing it submits it in your name' : 'Mark this day reviewed'}
           style={{
             flex: 1.4, minHeight: 46, borderRadius: 12, cursor: 'pointer', font: 'inherit', fontSize: 12.5, fontWeight: 800,
             background: locked ? 'var(--c-st-booked)' : 'var(--c-wash2)',
@@ -4108,7 +4249,7 @@ export function WorkOrderPopup({
     return (
       <button type="button"
         onClick={e => { e.stopPropagation(); void handleToggleDayReview(date, locked) }}
-        title={locked ? 'Reviewed by the office — tap to reopen the day' : 'Mark this day reviewed'}
+        title={locked ? 'Reviewed by the office — tap to reopen the day' : rescueIdsForDay(date).length ? 'The runner never submitted this day — reviewing it submits it in your name' : 'Mark this day reviewed'}
         style={{
           flexShrink: 0, borderRadius: 99, padding: small ? '3px 8px' : '4px 10px', cursor: 'pointer', font: 'inherit',
           fontSize: small ? 8 : 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
@@ -6704,9 +6845,9 @@ export function WorkOrderPopup({
                             }}
                             title={r.admin_locked
                               ? 'Reviewed. Click to reopen this day.'
-                              : SENT_STATUSES.has(r.status ?? 'in_progress')
-                                ? 'Mark this day reviewed'
-                                : 'The runner never submitted this day — reviewing it submits it in your name'}
+                              : rescueIdsForDay(r.date).includes(r.id)
+                                ? 'The runner never submitted this day — reviewing it submits it in your name'
+                                : 'Mark this day reviewed'}
                           >{r.admin_locked ? '🔒' : '✓'}</button>
                         </div>
                         {/* Delete row — confirm pops open to the LEFT of the ×, next
