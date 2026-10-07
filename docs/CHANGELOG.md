@@ -20,6 +20,40 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.7 — Remove hold; Removed holds tab; the approval strip on every tab — Oct 7, 2026
+
+**Why.** v1.43.2 took Delete off every session's work order (WO-1240). Right for real work, wrong for a hold: holds are dropped several times a week and the only way left was the billing hub's typed-confirm delete. Eli: *"how do we delete holds? … instead of 'delete' it should be 'remove hold' and when you click it a window pops up, delete all days or just one… select which days to delete or keep. this solves the problem of people trying to delete just one day and accidentally deleting all. and then i want on the billing hub a 'removed holds' where they will all live. put beside closed."* And: *"approval bin should always be there."* Mock: `docs/design-refs/remove-hold-mock.html`.
+
+**Migration (run by hand, BEFORE the push):** `20261007120000_remove_hold.sql`. Needs `20261005180000` and `20261006120000` first. Idempotent.
+- `deleted_work_orders.kind` gains `'hold'` and `'hold_days'`.
+- `delete_with_archive()`'s body moved, unchanged, to `app_private.archive_and_delete(p_wo_id, p_booking_id, p_kind)` (not callable from the app; carries its own role guard anyway). `delete_with_archive` is now role check + that call, and logs a TENTATIVE session as `'hold'`.
+- **`remove_hold(p_wo_id, p_dates text[], p_whole boolean)`** — SECURITY DEFINER; owner / manager / billing / **asst_manager**. Tentative only; refuses a completed, invoiced or paid work order and any day that is confirmed, submitted or reviewed. `p_whole` → `archive_and_delete(..., 'hold')`. Otherwise snapshots the days' `studio_time_rows`, any `wo_rate_bundles` on those dates and the hold's cards (`cards_before`) as kind `'hold_days'`, deletes the rows and bundles, and writes a `wo_activity` line.
+- `recover_deleted_work_order()` gains a `'hold_days'` branch: restores the rows (strict) and a one-day card per recovered day per room, cloned from `cards_before`. Refuses if the hold is gone, if the work order has been invoiced since, or if a day is on it again; marks returning days tentative if the session was confirmed meanwhile.
+
+**What changed.**
+1. **Work order card: "Remove hold"** in the old Delete slot — `!readOnly && !runner && !isBlock`, the four roles, on-screen status tentative, desktop only (like the block Delete). `openRemoveHold` **saves first if anything is unsaved** (the database works from the saved work order), then freezes the day list into `holdDayList` and opens `components/calendar/RemoveHoldModal.tsx`.
+2. **The pop-up** opens with nothing ticked. Some days ticked → those days; every day ticked → the button and the line above it turn to "Remove whole hold" in red; one-day hold → a plain confirm. Confirmed / submitted / reviewed days show greyed and cannot be ticked. Fixed-height list.
+3. **`doRemoveHold`**: whole → toast, `onSaved()`, `onClose()` with no save (nothing left to save to). Some days → drops them from `stRows`, `originalStRowsRef`, `deletedRowsRef` and `bundles`, marks the work order unsaved (`dirtyFields` `'hold_redraw'`), and an effect on the next render runs `handleClose(false)` so the projection re-draws the calendar cards.
+4. **Billing hub: "Removed holds" tab** after Closed on both pipelines (`holdsView` — not a `BucketKey`; a removed hold has no row). `components/billing/RemovedHolds.tsx`, fed by `fetchDeleted('holds')`. Recover per entry. The ⋯ → Deleted work orders modal now lists work orders and blocks only (`fetchDeleted('deleted')`).
+5. **The "Ready for your approval" strip shows on every tab** — it was pinned to In progress on the billing side. Only a search hides it.
+6. One realtime channel on `deleted_work_orders` per page: the hub's `billing-removed-holds`. `DeletedLogModal` lost its own channel and takes a `version` prop.
+
+**Watch-outs.**
+- **"Whole" is never inferred.** The card always sends the dates it was showing plus `p_whole`; `remove_hold` refuses with "This hold changed while you had it open" if they do not match the hold as it is now (a day added or removed by someone else). Do not "simplify" this back to `p_dates null = everything` — the first draft had exactly that and a review reproduced a one-day request deleting the work order.
+- **The card re-draw is a second step.** `remove_hold` commits, then the client's save re-projects the cards. If that save stops (venue guard, connection), the days are gone but the bar is stale: the user gets a toast and the work order stays dirty until a save lands. Don't run that save from `doRemoveHold` itself — its closure still holds the removed rows and `save_work_order_atomic` upserts whatever it is handed.
+- `refreshFromDb` now has a generation guard (`refreshGenRef`): a read that started before a removal landed is discarded.
+- **Recovered days come back as separate one-day cards** until the work order is next saved. Deliberate: cards are a TS projection and recovery happens with no work order open. The cards are the saved ones narrowed to a day — nothing is computed in SQL.
+- A hold deleted from the hub's row ⋯ lands under **Removed holds**, not Deleted work orders.
+- An assistant manager can remove holds but cannot **recover** them (the log is owner / manager / billing, as before) and cannot see the tab.
+- Not removed with a day: dated `equipment_condition_*` rows and expenses. A hold should have none.
+- Saving first means a hold that cannot currently be saved (e.g. a day with no venue) must be fixed before days can be removed from it — but only when it has unsaved edits.
+
+**Verified.** `tsc` + `scripts/selftest.mjs` pass. The SQL was run on a local Postgres 16 against a synthetic schema, with `date`-typed and `text`-typed date columns, twice (idempotent): role refusals, every refusal above, the changed-while-open cases, some-days remove → recover (rows, staff line, blanket rate, cards), whole remove → recover, recover order (whole then days). An independent review pass found 3 should-fix and 9 minor issues; all 3 and 7 of the minor ones are fixed in this version. **Not seen against the live app.**
+
+**Files.** `supabase/migrations/20261007120000_remove_hold.sql` · `components/calendar/RemoveHoldModal.tsx` (new) · `components/billing/RemovedHolds.tsx` (new) · `components/calendar/WorkOrderPopup.tsx` · `app/(main)/billing/page.tsx` · `components/billing/DeletedLog.tsx` · `lib/deleteSession.ts` · `docs/design-refs/remove-hold-mock.html`
+
+---
+
 ## v1.43.6 — The gaps the SOP rewrite turned up: nine fixes — Oct 6, 2026
 
 **Why.** Writing the Billing SOP from the code (v1.43.5) and fact-checking it surfaced nine places where the app did not do what its own comments, changelog or screen said. Eli: *"we should fix all of them."* Every fix was then reviewed by a second pass, twice; that review found a laundering hole in the first draft of #3 and a silent-loss regression in the first draft of #2, both closed before this shipped.

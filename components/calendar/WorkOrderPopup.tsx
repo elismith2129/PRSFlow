@@ -29,6 +29,8 @@ import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
 import { allocateBundleShares, bundleReadout, proRataShares, type WoRateBundle } from '@/lib/woBundles'
 import { fetchRoomRates, dayRateFor, hourlyFromDay, type RoomRate } from '@/lib/roomRates'
 import { WoHistoryModal } from '@/components/calendar/WoHistoryModal'
+import { RemoveHoldModal, type HoldDay } from '@/components/calendar/RemoveHoldModal'
+import { removeHold } from '@/lib/deleteSession'
 import { woAuditView, diffWoForSave, buildWoSnapshot, logWoActivity } from '@/lib/woActivity'
 
 // Convert a studio_time_rows studio value (bare letter 'X', or 'North'/'South')
@@ -1045,6 +1047,20 @@ export function WorkOrderPopup({
   })
   const [confirmDeleteRowId, setConfirmDeleteRowId] = useState<string | null>(null)
   const [confirmDeleteSession, setConfirmDeleteSession] = useState(false)
+  // REMOVE HOLD (2026-10-07) — the pop-up, its in-flight flags, and the
+  // "re-draw the calendar cards once the days are gone" latch. See
+  // openRemoveHold / doRemoveHold.
+  // `holdDayList` is the pop-up's list, FROZEN when it opens: the live-merge
+  // keeps running underneath, and a list that shifted under someone's ticks
+  // is how "these two days" becomes "every day". Non-null = the pop-up is up.
+  const [holdDayList, setHoldDayList] = useState<HoldDay[] | null>(null)
+  const [holdBusy, setHoldBusy] = useState(false)
+  const holdBusyRef = useRef(false)
+  const [holdOpening, setHoldOpening] = useState(false)
+  const reprojectAfterHoldRef = useRef(false)
+  // Bumped around remove_hold so a refreshFromDb whose read started BEFORE
+  // the removal landed is thrown away instead of putting the days back.
+  const refreshGenRef = useRef(0)
   // Non-session block (Tour/Tech/Open Hours) simple date fields
   const [blockStart, setBlockStart] = useState(booking.start_date || '')
   const [blockEnd, setBlockEnd] = useState(booking.end_date || booking.start_date || '')
@@ -1340,6 +1356,25 @@ export function WorkOrderPopup({
       }
     })()
   }, [liveForm?.start_date, liveForm?.end_date]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // REMOVE HOLD, second half (2026-10-07). doRemoveHold() drops the removed
+  // days from stRows and sets the latch; this runs on the render AFTER that,
+  // so the save below sees the days gone. The save is what re-draws the
+  // calendar cards (buildBookingProjection → save_work_order_atomic) — without
+  // it the bar would keep covering days the hold no longer has. It must not
+  // run from doRemoveHold itself: that closure still holds the old rows, and
+  // the save upserts every row it is handed — it would put the days back.
+  useEffect(() => {
+    if (!reprojectAfterHoldRef.current) return
+    reprojectAfterHoldRef.current = false
+    // The days are already gone and on the record; this only re-draws the
+    // bar. If the save stops (a missing venue, a dropped connection) the work
+    // order stays marked unsaved — doRemoveHold set that — so Close asks and
+    // Save retries, and the person is told why the calendar still looks old.
+    void handleClose(false).then(ok => {
+      if (!ok) toast('The days are removed, but the calendar bar has not been redrawn yet. Fix what is flagged here and press Save.')
+    })
+  }, [stRows]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-show eng sub-rows when any row already has eng data
   useEffect(() => {
@@ -1702,6 +1737,7 @@ export function WorkOrderPopup({
   async function refreshFromDb() {
     const id = woIdRef.current
     if (!id || loadingRef.current) return
+    const gen = refreshGenRef.current
     const [{ data: woRow }, { data: st }, { data: eq }, { data: eqNotes }, { data: rent }, { data: pay }, { data: exp }] = await Promise.all([
       supabase.from('work_orders').select('*').eq('id', id).maybeSingle(),
       supabase.from('studio_time_rows').select('*').eq('work_order_id', id).order('sort_order'),
@@ -1711,6 +1747,10 @@ export function WorkOrderPopup({
       supabase.from('payment_rows').select('*').eq('work_order_id', id).order('recorded_at'),
       supabase.from('wo_expenses').select('*').eq('work_order_id', id).order('sort_order'),
     ])
+    // A Remove hold landed while this read was in the air (2026-10-07): what
+    // came back may still hold the removed days. Drop it — the removal's own
+    // change event queues a fresh read.
+    if (gen !== refreshGenRef.current) return
     setExpenses((exp ?? []) as WoExpense[])
 
     // Blanket rates: adopt remote unless this screen has touched them.
@@ -2759,6 +2799,107 @@ export function WorkOrderPopup({
     deletedRowsRef.current = [...deletedRowsRef.current, ...savedCopies]
     setStRows(prev => prev.filter(r => !ids.includes(r.id)))
     setConfirmDeleteDay(null)
+  }
+
+  // ── REMOVE HOLD (Eli, 2026-10-07) ─────────────────────────────────────────
+  // "How do we delete holds? Since we removed the delete button we can't do
+  // that anymore from the cal. We need to be able to do that." Then: "instead
+  // of 'delete' it should be 'remove hold'… a window pops up… select which
+  // days to delete or keep. This solves the problem of people trying to
+  // delete just one day and accidentally deleting all."
+  //
+  // The Oct 5 rule stands for everything that is real work: a confirmed or
+  // cancelled session is deleted from the billing hub and nowhere else. A
+  // TENTATIVE session gets this instead. All the deciding is in the database
+  // (remove_hold, migration 20261007120000): tentative only, no invoice, no
+  // payment, no confirmed / submitted / reviewed day — and everything removed
+  // is kept (billing hub → Removed holds) and can be put back. What is here
+  // only mirrors those rules so the pop-up can say them before the click.
+  //
+  // NOT the day card's ×: that is an edit to a work order (undone by Cancel,
+  // gone on Save, no record). This is the act of dropping a hold — immediate,
+  // on the record, recoverable.
+  const canRemoveHold = !!profile?.role && ['owner', 'manager', 'billing', 'asst_manager'].includes(profile.role)
+
+  async function openRemoveHold() {
+    if (!wo || !woIdRef.current || holdOpening) return
+    // SAVE FIRST when anything is unsaved. The database works from the SAVED
+    // work order — a day added a minute ago and not saved does not exist to
+    // it, and a status flipped on screen is not the status it will check. So
+    // the list in the pop-up has to be the saved one. Same save as the Save
+    // button, in place; if it stops on something (a missing venue…), it says
+    // so in its usual banner and the pop-up does not open.
+    if (isDirty()) {
+      setHoldOpening(true)
+      const saved = await handleClose(false)
+      setHoldOpening(false)
+      if (!saved) return
+    }
+    setHoldDayList(holdDays())
+  }
+
+  /** The hold's days for the pop-up: one per date that has a room on it. */
+  function holdDays(): HoldDay[] {
+    const dates = Array.from(new Set(stRows.filter(r => r.date && r.studio !== '').map(r => r.date))).sort()
+    return dates.map(date => {
+      const all = stRows.filter(r => r.date === date)
+      const rooms = all.filter(r => r.studio !== '')
+      const codes = Array.from(new Set(rooms.map(r => roomCode(toStudioLetter(r.studio), r.location || booking.location)).filter(Boolean)))
+      const first = rooms[0]
+      const times = first?.times_tbd ? 'Times TBD'
+        : (first?.from_time || first?.to_time) ? `${first?.from_time || '—'} – ${first?.to_time || '—'}` : ''
+      // Mirrors remove_hold's own refusal, row for row.
+      const locked = all.some(r => SENT_STATUSES.has(r.status ?? '')) ? 'Submitted'
+        : all.some(r => r.admin_locked || r.admin_checked) ? 'Reviewed'
+        : all.some(r => r.day_status === 'confirmed') ? 'Confirmed'
+        : undefined
+      return { date, label: weekdayDate(date), sub: [codes.join(' + '), times].filter(Boolean).join(' · '), locked }
+    })
+  }
+
+  /** Why nothing on this hold can be removed from the card, or null. */
+  function holdBlocked(): string | null {
+    if (hadInvoiceRef.current) return 'It has an invoice attached. Delete it from the billing hub.'
+    if (payRows.some(p => /[1-9]/.test(String(p.amount ?? '')))) return 'It has a payment on it. Delete it from the billing hub.'
+    return null
+  }
+
+  /** `whole` = the person chose the whole hold; `dates` is then every day listed. */
+  async function doRemoveHold(dates: string[], whole: boolean) {
+    if (!woIdRef.current || holdBusyRef.current) return
+    holdBusyRef.current = true
+    setHoldBusy(true)
+    refreshGenRef.current += 1
+    const res = await removeHold(woIdRef.current, dates, whole)
+    refreshGenRef.current += 1
+    holdBusyRef.current = false
+    setHoldBusy(false)
+    if (!res.ok) { toast(`Could not remove — ${res.reason ?? 'unknown error'}`); return }
+    setHoldDayList(null)
+    if (res.whole) {
+      // The work order itself is gone. Close WITHOUT saving — there is nothing
+      // left to save to — and let the host reload its calendar.
+      toast('Hold removed — it’s kept under Removed holds in the billing hub')
+      onSaved?.()
+      onClose()
+      return
+    }
+    // Some days. Drop them from the screen AND from both baselines (so they
+    // are neither an unsaved edit nor something Cancel would put back), then
+    // let the effect above re-draw the calendar cards.
+    const gone = new Set(res.days ?? dates)
+    const keep = (rows: StRow[]) => rows.filter(r => !gone.has(r.date))
+    originalStRowsRef.current = keep(originalStRowsRef.current)
+    deletedRowsRef.current = keep(deletedRowsRef.current)
+    reprojectAfterHoldRef.current = true
+    setStRows(keep)
+    // A blanket rate on a removed day went with it (and is kept with it) —
+    // drop it here too, or the re-draw save would write it straight back.
+    setBundles(prev => prev.filter(b => !gone.has(b.date)))
+    // Unsaved until the re-draw save lands (it clears this). If that save
+    // stops, Close still asks and Save still retries.
+    setDirtyFields(prev => new Set(prev).add('hold_redraw'))
+    toast(`${gone.size} ${gone.size === 1 ? 'day' : 'days'} removed — kept under Removed holds in the billing hub`)
   }
 
   async function clearEngRow(id: string) {
@@ -4919,6 +5060,17 @@ export function WorkOrderPopup({
         {/* WHO'S THIS SESSION FOR? (2026-09-18) — the confirmed-needs-a-client
             stop, same banner slot as the times error. One button, which
             scrolls the client block into view. */}
+        {holdDayList && wo && (
+          <RemoveHoldModal
+            woNumber={wo.wo_number || ''}
+            title={[wo.label || wo.client, wo.artist].filter(Boolean).join(' · ')}
+            days={holdDayList}
+            blocked={holdBlocked()}
+            busy={holdBusy}
+            onClose={() => { if (!holdBusy) setHoldDayList(null) }}
+            onRemove={doRemoveHold}
+          />
+        )}
         {clientStop && (
           <div
             data-no-print=""
@@ -5068,7 +5220,9 @@ export function WorkOrderPopup({
               was open — it is how WO-1240, a week of invoiced sessions, went.
               A session is now deleted from the billing hub and nowhere else.
               Tour / Tech / Open hours / Tenant never reach the hub, so they
-              keep this. Do not widen it back to sessions. */}
+              keep this. Do not widen it back to sessions.
+              A TENTATIVE session has "Remove hold" instead (2026-10-07), just
+              below — a different act with its own pop-up, not this button. */}
           {!readOnly && onDelete && isBlock && (
             confirmDeleteSession ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 'auto' }}>
@@ -5090,6 +5244,23 @@ export function WorkOrderPopup({
                 Delete
               </button>
             )
+          )}
+          {/* REMOVE HOLD (Eli, 2026-10-07) — tentative sessions only, in the
+              slot the old Delete sat in. It never deletes on the click: it
+              opens a pop-up with nothing ticked, and the whole hold only goes
+              when every day was ticked on purpose. Confirmed and cancelled
+              sessions never show it; the database refuses them regardless.
+              Desktop only, like the block's Delete beside it. */}
+          {!readOnly && !runner && !isBlock && canRemoveHold && wo.session_status === 'tentative' && !!woIdRef.current && (
+            <button
+              onClick={() => openRemoveHold()}
+              disabled={saving || holdOpening}
+              className="c-soft c-control c-raised"
+              title="Take this hold off the calendar — all of it, or just the days you pick"
+              style={{ marginRight: 'auto', color: 'var(--c-st-hot)', cursor: (saving || holdOpening) ? 'default' : 'pointer', ...(isMobile ? { display: 'none' } : {}) }}
+            >
+              {holdOpening ? 'Saving…' : 'Remove hold'}
+            </button>
           )}
           {!readOnly && (
           <>

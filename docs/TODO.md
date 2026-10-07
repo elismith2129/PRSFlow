@@ -5,8 +5,17 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Parked from Remove hold (Oct 7)
+
+- [ ] **Remove hold is desktop only** - hidden on the phone layout, like the block Delete. Say so if holds need dropping from a phone. *(Oct 7)*
+- [ ] **Recovering a removed day does not check the room is still free.** A day is often removed so someone else can have it, and the entry stays recoverable. Same for a whole hold. *(Oct 7)*
+- [ ] **A lead that became a hold stays "booked"** after the hold is removed (pre-existing: the hub Delete does the same). *(Oct 7)*
+- [ ] **The Billing SOP rebuild must cover** Remove hold, the Removed holds tab, and the approval strip on every tab. *(Oct 7)*
+
 ## Eli's hands (settings, SQL, data — not code)
 
+- [ ] **Run `20261007120000_remove_hold.sql` BEFORE the v1.43.7 push** - Remove hold and the Removed holds tab call it; the hub's own Delete is replaced by it too. Needs the Oct 5 and Oct 6 files run first. *(Oct 7)*
+- [ ] **Try Remove hold on a throwaway hold** (Testing → the Oct 5 batch, the four "hold" items). The SQL has only run on a local copy with a made-up schema, never against the live tables. *(Oct 7)*
 - [ ] **Run `20261006120000_st_rows_submitted_for_runner.sql` BEFORE the v1.43.6 push** - Mark reviewed's rescue and Cancel's restore both name the new column; it also replaces `recover_deleted_work_order`. *(Oct 6)*
 - [ ] **Can Lori pull an invoice back?** The repo's `enforce_invoice_approver` lets only an owner change the approval stamps, which Pull it back does. If that is what is live, Pull it back is owners-only in practice (it now fails cleanly and says so). Decide: leave it, or let billing clear an approval. *(Oct 6)*
 - [ ] **Run `20261005190000_st_rows_no_show.sql` BEFORE the No show push** - every work order save sends the new column and fails without it. *(Oct 5)*

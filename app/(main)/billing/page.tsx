@@ -61,8 +61,9 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
-import { deleteWorkOrderEverywhere } from '@/lib/deleteSession'
+import { deleteWorkOrderEverywhere, fetchDeleted, type DeletedEntry } from '@/lib/deleteSession'
 import { DeletedLogModal } from '@/components/billing/DeletedLog'
+import { RemovedHoldsPanel } from '@/components/billing/RemovedHolds'
 import { Hint } from '@/components/ui/Hint'
 import { FinancialsView } from '@/components/billing/FinancialsView'
 import { TenantsView } from '@/components/billing/TenantsView'
@@ -156,7 +157,13 @@ export default function BillingPage() {
     setBusy(r.workOrderId)
     const res = await deleteWorkOrderEverywhere(r.workOrderId)
     setBusy(null)
-    if (res.ok) { toast(`${r.woNumber || 'Work order'} deleted — kept under ⋯ → Deleted work orders`); setDeleting(null); setDeleteTyped(''); await load() }
+    if (res.ok) {
+      // A tentative session is a hold: it is listed under the Removed holds tab.
+      toast(res.kind === 'hold'
+        ? `${r.woNumber || 'Hold'} removed — kept under the Removed holds tab`
+        : `${r.woNumber || 'Work order'} deleted — kept under ⋯ → Deleted work orders`)
+      setDeleting(null); setDeleteTyped(''); await load(); await loadHolds()
+    }
     else toast(`Could not delete — ${res.reason ?? 'unknown error'}`)
   }
   const [moreFor, setMoreFor] = useState<InvoiceRow | null>(null)
@@ -217,6 +224,35 @@ export default function BillingPage() {
   // screen locks and missed events are never replayed. Same fix as the runner
   // pages and the WO popup: reload on return to the foreground.
   useReloadOnReturn(load)
+
+  // REMOVED HOLDS (Eli, 2026-10-07: "I want on the billing hub a 'removed
+  // holds' where they will all live. Put beside closed."). Not a bucket: a
+  // removed hold has no work order left to be a row, so it is its own little
+  // list (the deleted log, holds only) with its own switch — `holdsView` —
+  // drawn as one more tab after Closed on both pipelines. Loaded by the page
+  // because the tab needs its count before anyone opens it. Its own channel:
+  // nothing else on this page watches that table.
+  const [holdsView, setHoldsView] = useState(false)
+  const [holds, setHolds] = useState<DeletedEntry[]>([])
+  const [holdsLoading, setHoldsLoading] = useState(true)
+  // The one channel on deleted_work_orders also feeds the ⋯ modal (it has no
+  // channel of its own — one per table per page).
+  const [deletedVersion, setDeletedVersion] = useState(0)
+  const loadHolds = useCallback(async () => {
+    if (!canDelete) { setHolds([]); setHoldsLoading(false); return }
+    setHolds(await fetchDeleted('holds'))
+    setHoldsLoading(false)
+  }, [canDelete])
+  useEffect(() => {
+    loadHolds()
+    if (!canDelete) return
+    const ch = supabase
+      .channel('billing-removed-holds')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deleted_work_orders' }, () => { loadHolds(); setDeletedVersion(v => v + 1) })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [loadHolds, canDelete])
+  useReloadOnReturn(loadHolds)
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -303,6 +339,7 @@ export default function BillingPage() {
   // Switching pipeline lands on that side's FIRST tab — for COD that is Balance
   // due, which is the whole reason it leads.
   function switchPipeline(p: Pipeline) {
+    setHoldsView(false)
     setPipeline(p)
     setTab(tabsFor(p)[0].key)
   }
@@ -655,6 +692,7 @@ export default function BillingPage() {
             onClick={() => {
               if (!s.goto) return
               setQuery('')
+              setHoldsView(false)
               // On COD a stat jump FOCUSES that bin (latches it alone) —
               // "the numbers ARE the filters" only holds if the click shows
               // exactly what was counted.
@@ -680,9 +718,15 @@ export default function BillingPage() {
           a missing PO blocks sending, not approval. Empty queue = no strip,
           and billing staff never see it (they can't approve). */}
       {/* Shown on BOTH pipelines since 2026-09-01 (COD sessions need the
-          owner's sign-off too — the queue mixes both, chip marks COD). On the
-          billing side it stays pinned to In progress, where its rows live. */}
-      {isOwner && !searching && approvals.length > 0 && (pipeline === 'cod' || tab === 'progress') && (
+          owner's sign-off too — the queue mixes both, chip marks COD).
+          ON EVERY TAB since 2026-10-07 (Eli: "when you select other categories
+          such as awaiting payment it doesn't show the approval bin anymore.
+          approval bin should always be there"). It used to be pinned to In
+          progress on the billing side, on the reasoning that its rows live
+          there — but the strip is the owner's to-do, not a view of a tab, and
+          hiding it on Awaiting payment made it look like nothing was waiting.
+          Only a search hides it now. */}
+      {isOwner && !searching && approvals.length > 0 && (
         <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3 }}>
             <span style={{
@@ -757,8 +801,17 @@ export default function BillingPage() {
         {tabs.map(b => (
           <span
             key={b.key}
-            className={`c-btab${(pipeline === 'cod' ? codBins.has(b.key) : tab === b.key) ? ' c-on' : ''}`}
+            className={`c-btab${!holdsView && (pipeline === 'cod' ? codBins.has(b.key) : tab === b.key) ? ' c-on' : ''}`}
             onClick={() => {
+              // Coming back from Removed holds: the click just returns to the
+              // invoices. On COD it also makes sure the clicked bin is on,
+              // rather than toggling it off — nobody leaves a list to hide one.
+              if (holdsView) {
+                setHoldsView(false)
+                if (pipeline === 'cod') setCodBins(prev => prev.has(b.key) ? prev : new Set([...prev, b.key]))
+                else setTab(b.key)
+                return
+              }
               if (pipeline === 'cod') {
                 // Latch: toggle on/off; the LAST latched bin refuses to turn
                 // off — a zero-bin list means nothing. (Built by filter, not
@@ -784,9 +837,32 @@ export default function BillingPage() {
             </span>
           </span>
         ))}
+        {/* REMOVED HOLDS — after Closed, on both pipelines (a hold is not yet
+            Billing or COD in any way that matters once it is gone). Only for
+            the roles that can read the log. The count is holds still removed;
+            a recovered one stays in the list, greyed, and stops counting. */}
+        {canDelete && (
+          <span
+            className={`c-btab${holdsView ? ' c-on' : ''}`}
+            onClick={() => setHoldsView(true)}
+          >
+            Removed holds{' '}
+            <span className="c-bn">{holds.filter(h => !h.recovered_at).length}</span>
+          </span>
+        )}
       </div>
 
-      <div className={`c-panel${showAge ? "" : " c-bage-off"}${staged && !isMobile ? ' c-bstaged' : ''}`}>
+      {holdsView && !searching && (
+        <RemovedHoldsPanel rows={holds} loading={holdsLoading} onRecovered={() => { loadHolds(); load() }} />
+      )}
+
+      <div
+        className={`c-panel${showAge ? "" : " c-bage-off"}${staged && !isMobile ? ' c-bstaged' : ''}`}
+        // Hidden, not unmounted, under Removed holds — the invoice list keeps
+        // its page and sort for when you click back. A search outranks the
+        // tabs (it always has), so results show even from Removed holds.
+        style={holdsView && !searching ? { display: 'none' } : undefined}
+      >
         <div className="c-lozenge">
           <b>{searching
             ? 'Search results'
@@ -1111,7 +1187,7 @@ export default function BillingPage() {
       )}
 
       {deletedLog && (
-        <DeletedLogModal onClose={() => setDeletedLog(false)} onRecovered={() => { load() }} />
+        <DeletedLogModal version={deletedVersion} onClose={() => setDeletedLog(false)} onRecovered={() => { load() }} />
       )}
 
       {deleting && (
@@ -1122,7 +1198,7 @@ export default function BillingPage() {
             <div style={{ fontSize: 11.5, color: 'var(--c-fg-2)', lineHeight: 1.55, marginBottom: 12 }}>
               This removes the WHOLE work order — every day on it and every calendar card that belongs to it, with its studio time, staff, equipment, rentals, payments and history. To remove one day, open the work order and delete that day instead.
               <br /><br />
-              A full copy is kept with your name on it. It can be put back from ⋯ → Deleted work orders.
+              A full copy is kept with your name on it. It can be put back from ⋯ → Deleted work orders — or, for a tentative hold, from the Removed holds tab.
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginBottom: 6 }}>Type <b style={{ color: 'var(--c-fg)', fontFamily: "'DM Mono', ui-monospace, monospace" }}>{deleting.woNumber || 'DELETE'}</b> to confirm.</div>
             <input

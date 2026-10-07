@@ -148,9 +148,29 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'On a phone, as a runner, open Petty cash. Below tonight there is a box listing earlier days (up to 14). Each day shows the opening amount, what went in and out, what was counted and any over or short. The box scrolls inside itself. Nothing in it can be edited.',
       },
       {
+        id: 'v143-hold-some-days', area: 'Calendar',
+        what: 'Remove hold takes off only the days you tick',
+        how: 'Make a THROWAWAY tentative hold of 3 days and save it. Open it: a red "Remove hold" button is at the bottom left. Press it. A window lists the 3 days with nothing ticked and the Remove button greyed out. Tick the middle day: the button reads "Remove 1 day". Press it. The window closes, the work order now shows 2 days, and on the calendar the hold is two separate bars with the middle day empty.',
+      },
+      {
+        id: 'v143-hold-whole', area: 'Calendar',
+        what: 'The whole hold only goes when every day is ticked',
+        how: 'Open the same throwaway hold and press Remove hold. Press "Select all": a red line says the whole hold comes off, and the button reads "Remove whole hold". Press it. The work order closes and the hold is gone from the calendar. Also try a ONE-day throwaway hold: the window just asks to remove it, with no ticking.',
+      },
+      {
+        id: 'v143-hold-tab', area: 'Billing',
+        what: 'Removed holds are listed in the billing hub and can be recovered',
+        how: 'In the billing hub click the "Removed holds" tab, after Closed. Both removals are there: one says "1 day", one says "Whole hold", each with your name and the time. Press Recover on the whole hold, then "Put it back": it is back on the calendar. Then Recover the 1 day: the middle day is back on the calendar as its own bar.',
+      },
+      {
+        id: 'v143-approval-every-tab', area: 'Billing', device: 'desktop',
+        what: 'The approval strip stays put on every tab',
+        how: 'As an owner, with at least one invoice waiting for approval, open the billing hub. The green "Ready for your approval" strip is at the top. Click Awaiting payment, Paid, Closed and Removed holds in turn: the strip stays on all of them.',
+      },
+      {
         id: 'v143-wo-no-delete', area: 'Calendar',
         what: 'A session work order has no Delete button',
-        how: 'Open any normal session from the calendar. Look along the bottom of the work order. There should be NO Delete button. Do the same from the dashboard.',
+        how: 'Open any CONFIRMED session from the calendar. Look along the bottom of the work order. There should be NO Delete button and NO Remove hold button. Do the same from the dashboard.',
       },
       {
         id: 'v143-block-delete', area: 'Calendar',

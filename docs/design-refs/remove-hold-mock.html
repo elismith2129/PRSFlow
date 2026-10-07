@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remove hold — mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --c-bg: #0b0a09; --c-fg: #f2efe7;
+    --c-wash: rgba(242,239,231,.06); --c-wash2: rgba(242,239,231,.12);
+    --c-fg-2: rgba(242,239,231,.72); --c-fg-3: rgba(242,239,231,.45);
+    --c-st-hot: #ff5a4d; --c-st-warm: #ffa94d; --c-st-booked: #43dfae;
+    --c-ivory: #d5d0c2; --c-hot-text: #fff4f2; --c-chip-ink: #1c2626;
+    --c-srf: #151412;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--c-bg); color: var(--c-fg); font-family: 'Inter', -apple-system, sans-serif; font-size: 14.5px; line-height: 1.5; }
+  button { font: inherit; border: none; cursor: pointer; color: inherit; }
+  .arch { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; }
+  .mono { font-family: 'DM Mono', ui-monospace, monospace; }
+  .label { font-size: 10.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; opacity: .45; }
+  .page { max-width: 980px; margin: 0 auto; padding: 28px 16px 60px; }
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .wordmark { font-size: 18px; letter-spacing: -.02em; }
+  .wordmark i { font-style: normal; opacity: .45; }
+  .note { font-size: 12px; color: var(--c-fg-3); margin: 0 0 22px; }
+  .seg { margin-left: auto; display: inline-flex; background: var(--c-wash); border-radius: 99px; padding: 3px; gap: 2px; }
+  .seg button { background: none; border-radius: 99px; padding: 6px 13px; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-fg-2); }
+  .seg button.on { background: var(--c-ivory); color: #1b1a17; }
+
+  .step { display: flex; align-items: baseline; gap: 10px; margin: 26px 0 10px; }
+  .step b { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; font-size: 13px; }
+  .step > span:not(.num) { font-size: 12px; color: var(--c-fg-3); }
+  .num { width: 20px; height: 20px; border-radius: 99px; background: var(--c-fg); color: var(--c-bg); font-size: 10.5px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; transform: translateY(3px); }
+
+  .panel { background: var(--c-bg); border-radius: 16px; padding: 12px; box-shadow: inset 5px 5px 15px rgba(0,0,0,.4), inset -5px -5px 15px rgba(255,255,255,.03); outline: 1px solid rgba(242,239,231,.05); }
+
+  /* the work order's footer */
+  .wofoot { display: flex; align-items: center; gap: 10px; padding: 12px 14px; flex-wrap: wrap; }
+  .wofoot .ghost { font-size: 11px; color: var(--c-fg-3); }
+  .soft { display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; padding: 12px 22px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: var(--c-wash); color: var(--c-fg); }
+  .soft.sm { padding: 7px 14px; font-size: 10.5px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; padding: 12px 22px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: var(--c-ivory); color: #1b1a17; }
+  .booked { background: var(--c-st-booked); color: var(--c-chip-ink); }
+  .hotbtn { background: var(--c-st-hot); color: var(--c-hot-text); }
+  .hottext { color: var(--c-st-hot); }
+  .pulse { box-shadow: 0 0 0 0 rgba(255,90,77,.5); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,90,77,.45); } 70% { box-shadow: 0 0 0 9px rgba(255,90,77,0); } 100% { box-shadow: 0 0 0 0 rgba(255,90,77,0); } }
+  @media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+  /* the pop-up */
+  .stage { background: rgba(0,0,0,.5); border-radius: 16px; padding: 26px 14px; display: flex; justify-content: center; outline: 1px solid rgba(242,239,231,.05); }
+  .modal { background: var(--c-srf); border-radius: 14px; padding: 16px; width: 100%; max-width: 460px; box-shadow: 0 18px 50px rgba(0,0,0,.55); display: flex; flex-direction: column; gap: 12px; }
+  .mhead { display: flex; align-items: flex-start; gap: 10px; }
+  .mhead .x { margin-left: auto; background: none; font-size: 17px; color: var(--c-fg-3); line-height: 1; padding: 2px 4px; }
+  .mtitle { font-size: 16px; line-height: 1.25; }
+  .msub { font-size: 11.5px; color: var(--c-fg-2); margin-top: 2px; }
+  .ask { display: flex; align-items: center; gap: 10px; }
+  .ask span { font-size: 12.5px; color: var(--c-fg-2); }
+  .link { margin-left: auto; background: none; font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-fg-2); padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; flex-shrink: 0; }
+  .days { height: 316px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }
+  .day { flex-shrink: 0; display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; background: var(--c-wash); cursor: pointer; text-align: left; width: 100%; }
+  .day.on { background: rgba(255,90,77,.14); }
+  .day.lock { cursor: default; opacity: .5; }
+  .box { width: 19px; height: 19px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 0 0 0 1.6px var(--c-fg-3); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: transparent; }
+  .day.on .box { background: var(--c-st-hot); box-shadow: none; color: var(--c-hot-text); }
+  .day.lock .box { box-shadow: inset 0 0 0 1.6px var(--c-wash2); }
+  .dmain { flex: 1; min-width: 0; }
+  .dmain b { font-size: 13px; display: block; }
+  .dmain span { font-size: 11px; color: var(--c-fg-2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dstate { font-size: 9.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-fg-3); flex-shrink: 0; }
+  .day.on .dstate { color: var(--c-st-hot); }
+  .tally { min-height: 36px; font-size: 12px; color: var(--c-fg-2); display: flex; align-items: center; }
+  .tally.all { color: var(--c-st-hot); font-weight: 700; }
+  .mfoot { display: flex; gap: 8px; }
+  .mfoot button { flex: 1 1 0; padding: 12px 10px; }
+  .mfoot button:disabled { opacity: .35; cursor: default; }
+  .kept { font-size: 10.5px; color: var(--c-fg-3); text-align: center; }
+  .one { height: 351px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+  .one .day { cursor: default; }
+
+  /* billing hub */
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tab { padding: 7px 13px; border-radius: 99px; background: var(--c-wash); font-size: 11px; font-weight: 700; color: var(--c-fg-2); white-space: nowrap; }
+  .tab u { text-decoration: none; opacity: .5; margin-left: 4px; font-weight: 800; }
+  .tab.on { background: var(--c-ivory); color: #1b1a17; }
+  .lozenge { display: flex; justify-content: space-between; padding: 0 3px 7px; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; opacity: .45; }
+  .list { height: 196px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .hrow { flex-shrink: 0; display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 12px; background: var(--c-wash); }
+  .hrow.rec { opacity: .55; }
+  .hrow .m { flex: 1; min-width: 0; }
+  .hrow .m > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip { font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; background: var(--c-wash2); padding: 3px 8px; border-radius: 99px; flex-shrink: 0; }
+  .how { margin: 26px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+  .how li { background: var(--c-wash); border-radius: 12px; padding: 11px 13px; font-size: 12px; color: var(--c-fg-2); }
+  .how li b { display: block; color: var(--c-fg); font-size: 12.5px; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div class="arch wordmark">PRS<i>Flo</i></div>
+    <span class="label">Mock · Remove hold</span>
+    <div class="seg" role="tablist" aria-label="Example">
+      <button id="ex5" class="on" onclick="setEx(5)">5-day hold</button>
+      <button id="ex1" onclick="setEx(1)">1-day hold</button>
+    </div>
+  </div>
+  <p class="note">Click the days in the pop-up — it works. Nothing here is live.</p>
+
+  <div class="step"><span class="num">1</span><b>On the work order</b><span>Only shows on a Tentative session. Confirmed sessions never get this button.</span></div>
+  <div class="panel wofoot">
+    <button class="soft hottext pulse" onclick="reset()">Remove hold</button>
+    <span class="ghost">← replaces the old Delete</span>
+    <span style="margin-left:auto"></span>
+    <span class="soft">Cancel</span>
+    <span class="btn booked">Complete WO</span>
+    <span class="btn">Save</span>
+  </div>
+
+  <div class="step"><span class="num">2</span><b>The pop-up</b><span>Nothing is picked when it opens. You choose what goes.</span></div>
+  <div class="stage">
+    <div class="modal" role="dialog" aria-label="Remove hold">
+      <div class="mhead">
+        <div style="min-width:0">
+          <div class="label" style="margin-bottom:2px"><span class="mono" style="letter-spacing:.04em">WO-1262</span> · Tentative</div>
+          <div class="arch mtitle">Remove hold</div>
+          <div class="msub">Interscope · Olivia Dean</div>
+        </div>
+        <button class="x" aria-label="Close" onclick="reset()">×</button>
+      </div>
+
+      <div id="multi">
+        <div class="ask" style="margin-bottom:10px">
+          <span>Which days come off the calendar?</span>
+          <button class="link" id="allBtn" onclick="toggleAll()">Select all</button>
+        </div>
+        <div class="days" id="days"></div>
+      </div>
+
+      <div id="single" class="one" style="display:none">
+        <div class="ask"><span>This hold is one day. Take it off the calendar?</span></div>
+        <div class="day on" style="background:var(--c-wash)">
+          <div class="dmain"><b>Mon, Oct 12</b><span>PRS A · 12:00 PM – 12:00 AM</span></div>
+        </div>
+      </div>
+
+      <div class="tally" id="tally"></div>
+      <div class="mfoot">
+        <button class="soft" onclick="reset()">Keep it</button>
+        <button class="btn hotbtn" id="go" disabled>Remove</button>
+      </div>
+      <div class="kept">Kept under Billing → Removed holds. Can be put back.</div>
+    </div>
+  </div>
+
+  <div class="step"><span class="num">3</span><b>Billing hub</b><span>A new tab beside Closed. Every removed hold lives here.</span></div>
+  <div class="tabs">
+    <span class="tab">In progress <u>14</u></span>
+    <span class="tab">Not started <u>9</u></span>
+    <span class="tab">Awaiting PO <u>3</u></span>
+    <span class="tab">Awaiting payment <u>21</u></span>
+    <span class="tab">Paid <u>112</u></span>
+    <span class="tab">Closed <u>6</u></span>
+    <span class="tab on">Removed holds <u>3</u></span>
+  </div>
+  <div class="panel">
+    <div class="lozenge"><b>Removed holds</b><span>3</span></div>
+    <div class="list">
+      <div class="hrow">
+        <div class="m">
+          <div><span class="mono" style="font-size:10.5px;color:var(--c-fg-2);margin-right:8px">WO-1262</span><b style="font-size:12.5px">Interscope · Olivia Dean</b></div>
+          <div style="font-size:11px;color:var(--c-fg-2);margin-top:2px">PRS A · Oct 13, Oct 15 · 2 of 5 days</div>
+          <div style="font-size:10.5px;color:var(--c-fg-3);margin-top:3px">Removed by Lori · Oct 7, 12:14 PM</div>
+        </div>
+        <span class="chip">2 days</span>
+        <button class="soft sm">Recover</button>
+      </div>
+      <div class="hrow">
+        <div class="m">
+          <div><span class="mono" style="font-size:10.5px;color:var(--c-fg-2);margin-right:8px">WO-1258</span><b style="font-size:12.5px">Republic · Stephen Sanchez</b></div>
+          <div style="font-size:11px;color:var(--c-fg-2);margin-top:2px">Ameraycan B · Oct 20 – Oct 22 · 3 days</div>
+          <div style="font-size:10.5px;color:var(--c-fg-3);margin-top:3px">Removed by Fernando · Oct 6, 4:40 PM</div>
+        </div>
+        <span class="chip">Whole hold</span>
+        <button class="soft sm">Recover</button>
+      </div>
+      <div class="hrow rec">
+        <div class="m">
+          <div><span class="mono" style="font-size:10.5px;color:var(--c-fg-2);margin-right:8px">WO-1251</span><b style="font-size:12.5px">Jordan Ward</b></div>
+          <div style="font-size:11px;color:var(--c-fg-2);margin-top:2px">PRS C · Oct 9 · 1 day</div>
+          <div style="font-size:10.5px;color:var(--c-fg-3);margin-top:3px">Removed by Lori · Oct 5, 10:02 AM · recovered by Eli Oct 5, 10:30 AM</div>
+        </div>
+        <span style="font-size:10.5px;color:var(--c-fg-3)">Recovered</span>
+      </div>
+    </div>
+  </div>
+
+  <ul class="how">
+    <li><b>Some days picked</b>Those days come off. The hold and its other days stay.</li>
+    <li><b>Every day picked</b>The button turns into “Remove whole hold” and says so in red first.</li>
+    <li><b>Who can</b>Owners, managers, billing and assistant managers. Holds only.</li>
+    <li><b>Not removable here</b>A confirmed or submitted day shows greyed out and can’t be ticked.</li>
+  </ul>
+</div>
+
+<script>
+  var DAYS = [
+    ['Mon, Oct 12', 'PRS A · 12:00 PM – 12:00 AM'],
+    ['Tue, Oct 13', 'PRS A · 12:00 PM – 12:00 AM'],
+    ['Wed, Oct 14', 'PRS A · 12:00 PM – 12:00 AM'],
+    ['Thu, Oct 15', 'PRS A · 2:00 PM – 2:00 AM'],
+    ['Fri, Oct 16', 'PRS A + PRS B · 12:00 PM – 12:00 AM']
+  ];
+  var picked = {}, ex = 5;
+  function count() { return Object.keys(picked).filter(function (k) { return picked[k]; }).length; }
+  function draw() {
+    var multi = ex === 5;
+    document.getElementById('multi').style.display = multi ? '' : 'none';
+    document.getElementById('single').style.display = multi ? 'none' : '';
+    document.getElementById('ex5').className = multi ? 'on' : '';
+    document.getElementById('ex1').className = multi ? '' : 'on';
+    var go = document.getElementById('go'), tally = document.getElementById('tally');
+    if (!multi) {
+      tally.className = 'tally'; tally.textContent = '';
+      go.disabled = false; go.textContent = 'Remove hold';
+      return;
+    }
+    var box = document.getElementById('days'); box.innerHTML = '';
+    DAYS.forEach(function (d, i) {
+      var b = document.createElement('button');
+      b.className = 'day' + (picked[i] ? ' on' : '');
+      b.setAttribute('role', 'checkbox'); b.setAttribute('aria-checked', picked[i] ? 'true' : 'false');
+      b.innerHTML = '<span class="box">✓</span><span class="dmain"><b>' + d[0] + '</b><span>' + d[1] + '</span></span><span class="dstate">' + (picked[i] ? 'Remove' : 'Stays') + '</span>';
+      b.onclick = function () { picked[i] = !picked[i]; draw(); };
+      box.appendChild(b);
+    });
+    var n = count(), all = n === DAYS.length;
+    document.getElementById('allBtn').textContent = all ? 'Clear' : 'Select all';
+    go.disabled = n === 0;
+    go.textContent = n === 0 ? 'Remove' : all ? 'Remove whole hold' : 'Remove ' + n + (n === 1 ? ' day' : ' days');
+    tally.className = 'tally' + (all ? ' all' : '');
+    tally.textContent = n === 0 ? 'Tick the days to remove. The rest stay on the calendar.'
+      : all ? 'That’s every day — the whole hold comes off the calendar.'
+      : n + ' of ' + DAYS.length + (n === 1 ? ' day comes off · ' : ' days come off · ') + (DAYS.length - n) + (DAYS.length - n === 1 ? ' stays' : ' stay');
+  }
+  function toggleAll() { var all = count() === DAYS.length; picked = {}; if (!all) DAYS.forEach(function (_d, i) { picked[i] = true; }); draw(); }
+  function reset() { picked = {}; draw(); }
+  function setEx(n) { ex = n; picked = {}; draw(); }
+  draw();
+</script>
+</body>
+</html>

@@ -16,11 +16,15 @@
 // has no write policy, so nothing here (or anywhere in the app) can edit or
 // empty the log.
 //
+// HOLDS ARE NOT HERE (2026-10-07). A removed hold — whole, or some of its
+// days — is the same table but its own shelf: the hub's "Removed holds" tab,
+// beside Closed (components/billing/RemovedHolds). fetchDeleted() defaults to
+// this modal's shelf: work orders and blocks.
+//
 // FIXED SIZE (house rule): the list is one height and scrolls inside; the
 // modal is the same size with one entry or a hundred.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { toast } from '@/components/ui/Toaster'
 import { fetchDeleted, recoverDeleted, type DeletedEntry } from '@/lib/deleteSession'
 
@@ -28,20 +32,22 @@ const LIST_H = 380
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function fmtWhen(iso: string): string {
+export function fmtWhen(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 /** The database writes the detail line with plain dates ("2026-09-23 to
  *  2026-10-03") — shown here the way the rest of the hub shows them. */
-function prettyDetail(detail: string): string {
+export function prettyDetail(detail: string): string {
   return detail
     .replace(/(\d{4})-(\d{2})-(\d{2})/g, (_m, _y, mo, d) => `${MONTHS[Number(mo) - 1] ?? mo} ${Number(d)}`)
     .replace(/ to /g, ' – ')
 }
 
-export function DeletedLogModal({ onClose, onRecovered }: {
+export function DeletedLogModal({ onClose, onRecovered, version }: {
   onClose: () => void
+  /** Bumped by the hub whenever the deleted log changes — reload. */
+  version: number
   /** The hub reloads — the recovered work order is back in its bucket. */
   onRecovered: () => void
 }) {
@@ -55,14 +61,10 @@ export function DeletedLogModal({ onClose, onRecovered }: {
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    load()
-    const ch = supabase
-      .channel('billing-deleted-log')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deleted_work_orders' }, () => load())
-      .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [load])
+  // No channel of its own any more (2026-10-07): the hub page already watches
+  // deleted_work_orders for its Removed holds tab, and the standing rule is
+  // one channel per table per page. The page bumps `version` on every change.
+  useEffect(() => { load() }, [load, version])
 
   async function recover(r: DeletedEntry) {
     if (busyId) return
@@ -84,7 +86,7 @@ export function DeletedLogModal({ onClose, onRecovered }: {
             <div className="c-label" style={{ marginBottom: 2 }}>Billing</div>
             <div className="c-arch" style={{ fontSize: 15, lineHeight: 1.25 }}>Deleted work orders</div>
             <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginTop: 2 }}>
-              Everything deleted is kept here. Recover puts it back exactly as it was.
+              Everything deleted is kept here. Recover puts it back exactly as it was. Removed holds have their own tab.
             </div>
           </div>
           <button type="button" className="c-x" onClick={onClose} style={{ marginLeft: 'auto', fontSize: 16, flexShrink: 0 }} aria-label="Close">×</button>
