@@ -617,7 +617,17 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
     for (let i = 0; i < 10; i++) stRows.push(new Array(stCols.length).fill(''))
   } else {
     const emittedBundles = new Set<string>()
-    studioRows.forEach(r => {
+    // DATE ORDER (Eli, 2026-10-07: "dates are showing up out of order"). The
+    // rows arrive in sort_order, which is the order they were ADDED — a day
+    // added later printed at the bottom. Sort by date, then the order added,
+    // then id, so equal keys never reshuffle (total order). PDF only: the
+    // screen keeps its own order.
+    const orderedRows = [...studioRows].sort((a, b) =>
+      String(a.date || '').localeCompare(String(b.date || ''))
+      || (num(a.sort_order) - num(b.sort_order))
+      || String(a.id ?? '').localeCompare(String(b.id ?? '')),
+    )
+    orderedRows.forEach(r => {
       // A standalone staff row carries no studio — on screen it renders as the
       // engineer sub-row ALONE, with no studio line above it. Same here.
       const isEngOnly = !String(r.studio || '').trim()
@@ -635,7 +645,7 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
         // a room that ran over gets its own line under the day.
         if (!emittedBundles.has(bundle.id)) {
           emittedBundles.add(bundle.id)
-          const members = studioRows.filter(m => m.bundle_id === bundle.id && String(m.studio || '').trim())
+          const members = orderedRows.filter(m => m.bundle_id === bundle.id && String(m.studio || '').trim())
           const venue = String(r.location || wo.location || '').trim()
           const rooms = members.map(m => String(m.studio).trim()).join(', ')
           const same = (k: string) => new Set(members.map(m => String(m[k] ?? ''))).size === 1 ? String(members[0][k] ?? '') : ''
@@ -686,7 +696,12 @@ export async function renderWorkOrderPdf(input: WoPdfInput): Promise<Uint8Array>
 
       // Engineer / assistant sub-row — visible unless explicitly hidden, which
       // is what `eng_visible: false` means on screen (staff_mode 'none').
-      const hasEng = r.eng_visible !== false && (r.eng_name || r.eng_rate || r.eng_hours)
+      // ASSISTANTS DO NOT PRINT (Eli, 2026-10-07): they are not a charge, and
+      // the no-charge lines made the page hard to read — their name goes on
+      // the invoice. Engineers still print (they are a charge). PDF only: the
+      // screen and computeWoTotals are untouched.
+      const hasEng = r.eng_role !== 'assistant'
+        && r.eng_visible !== false && (r.eng_name || r.eng_rate || r.eng_hours)
       if (hasEng) {
         // engChargeForRow is the SAME function the screen's per-row figure and
         // computeWoTotals both use — including its clock-over-stored-hours
