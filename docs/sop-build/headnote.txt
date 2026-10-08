@@ -1,4 +1,4 @@
-  BILLING SOP — WALKTHROUGH EDITION (2026-10-07, app v1.43.7).
+  BILLING SOP — WALKTHROUGH EDITION (2026-10-07; last rebuilt for app v1.43.9).
 
   Eli, on the Oct 6 rewrite (which was right on the facts but all text):
     "i did like it where it shows the actual app pages and highlights the

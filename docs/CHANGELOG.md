@@ -20,6 +20,28 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.9 — Four things the SOP drawing turned up — Oct 8, 2026
+
+**Why.** Drawing every billing screen from the code for the walkthrough SOP (v1.43.8) surfaced four places where the screen was wrong or a button could not do its job. Eli: *"lets fix those things you found."* No migration.
+
+1. **Undo Mark sent / Undo Mark paid** (`undoSent`, `undoPaid` in lib/billing; two new items in the row ⋯). Mark sent and Mark paid are one press with no question, and their only undo was Pull it back - which also clears the approval stamps, and `enforce_invoice_approver` lets only an owner change those. So the person who presses Mark sent (billing) could never undo it. The light undo takes back only the stamp: `sent → approved` (sent_at cleared) and `paid → sent` (paid_at cleared, original sent date kept). Invoice, package and approval untouched; conditional on the row still being in that state. Billing rows only. Eli chose this over letting billing strip approvals.
+2. **Pull it back is offered to owners only** (`isOwner` on `MoreModal`). For everyone else it could only ever answer "ask an owner".
+3. **A paid invoice stops aging and owes nothing on screen.** `ageDays` is frozen at sent → paid once the state is `paid` (it kept counting from sent for ever). The hub's Balance cell on a paid billing row shows the amount paid, dimmed, with "Paid in full" on hover - Mark paid writes no payment row, so the cell used to show the full amount as if still owed. Display only: `row.balance`, the stats and the sort are unchanged.
+4. **Tenant incidentals keep their own clock** (`StampCell` in TenantsView). The line borrowed the rent late rule against its own month, which is the month BEFORE the board's - so it read LATE in red from the moment it appeared until paid, even right after Mark sent. Now: not sent → "send by" the 3rd of the board month, red "was due" once past it; sent → Late only at 31 days unpaid.
+5. **Petty Cash buttons are visible.** The studio picker, Download CSV and Print were `c-pill` - a status chip with dark ink and no fill of its own, so near-black on the near-black page, with no selected look. Now `c-soft c-control c-raised`, the chosen studio `c-on`.
+
+**Watch-outs.**
+- `undoSent` returns the row to `approved` even if it has no PO (a row cannot normally be sent without one). `awaitingPo` is derived from the PO field, so such a row would simply show in Awaiting PO.
+- After Undo Mark sent the row's button is **Mark sent** again (the package was already built), and "Built, not sent" will show if that download is two or more days old. That is accurate.
+- None of the hub's state buttons write History, and neither do the undos.
+- The Billing SOP was rebuilt for this: `docs/sop-build/screens/more.html` + `content.py` (Undo steps, Pull it back as owners-only, incidentals wording). 198 steps.
+
+**Verified.** `tsc` + `selftest` pass; the SOP's step test passes (198 steps). **Not seen against the live app.**
+
+**Files.** `lib/billing.ts` · `app/(main)/billing/page.tsx` · `components/billing/TenantsView.tsx` · `components/billing/PettyCashSection.tsx` · `public/billing-sop.html` · `docs/sop-build/{content.py,build.py,headnote.txt,screens/more.html}` · `lib/testBatches.ts` · `public/sop.html` · `docs/TODO.md`
+
+---
+
 ## v1.43.8 — Billing SOP, walkthrough edition — Oct 7, 2026
 
 **Why.** The Oct 6 rewrite was right on the facts but all text. Eli: *"i did like it where it shows the actual app pages and highlights the boxes and then explains it. i think thats how we should do all SOPs. and keep the copy tight as when its long they just check out."* This is that pattern, and the pattern for every SOP from here.

@@ -510,6 +510,14 @@ function daysSince(iso: string | null): number | null {
   return Math.max(0, Math.floor((Date.now() - then) / 86400000))
 }
 
+/** Whole days from one stamp to another — how long a paid invoice took. */
+function daysBetween(fromIso: string | null, toIso: string | null): number | null {
+  if (!fromIso || !toIso) return null
+  const a = new Date(fromIso).getTime(), b = new Date(toIso).getTime()
+  if (isNaN(a) || isNaN(b)) return null
+  return Math.max(0, Math.floor((b - a) / 86400000))
+}
+
 /**
  * How far along the assembly line a work order is.
  *
@@ -851,7 +859,12 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       balance: totals.balance,
       total: totals.grand,
       paid: totals.paid,
-      ageDays: daysSince(w.invoice_sent_at ?? null),
+      // A PAID INVOICE STOPS AGING (2026-10-08). Age is "days since sent",
+      // and it kept counting after Mark paid — a row paid in 12 days read
+      // 40d a month later. Once paid, Age is frozen at how long it took.
+      ageDays: state === 'paid' && w.invoice_paid_at
+        ? daysBetween(w.invoice_sent_at ?? null, w.invoice_paid_at) ?? daysSince(w.invoice_sent_at ?? null)
+        : daysSince(w.invoice_sent_at ?? null),
       downloadedAt: w.invoice_downloaded_at ?? null,
       hasPackage: !!(w as any).invoice_package_path,
       // BILLING ONLY (2026-10-06). The flag means "you built it and never
@@ -1546,6 +1559,56 @@ export async function markSent(row: InvoiceRow): Promise<boolean> {
  * matters as much as the state: a stale timestamp would age an invoice that was
  * never actually sent.
  */
+/**
+ * UNDO MARK SENT / UNDO MARK PAID (Eli, 2026-10-08).
+ *
+ * Mark sent and Mark paid are one press with no question, and their only undo
+ * was Pull it back — which also strips the invoice AND the owner's approval,
+ * and so is refused for everyone but an owner (enforce_invoice_approver: any
+ * change to the approval stamps is owners-only). The person who presses Mark
+ * sent is billing. So a slip on the commonest button in the hub could only be
+ * fixed by an owner, by throwing away an approval nobody had questioned.
+ *
+ * These are the light undo: they take back ONLY the stamp that was pressed.
+ * The invoice, the saved package and the approval are not touched, so no
+ * owner is needed and nothing has to be re-approved.
+ *   · undoSent → back to Ready to send (the row's button is Mark sent again;
+ *     the package was already built). Clears sent_at, so it stops aging.
+ *   · undoPaid → back to Awaiting payment with its ORIGINAL sent date, and
+ *     out of "Received this month".
+ * Both only act on a row that is still in the state being undone (the
+ * conditional update), so two people pressing at once cannot step it twice.
+ * Pull it back remains the full reset, and is the owner's.
+ */
+export async function undoSent(row: InvoiceRow): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('work_orders')
+    .update({ invoice_state: 'approved', invoice_sent_at: null })
+    .eq('id', row.workOrderId)
+    .eq('invoice_state', 'sent')
+    .select('id')
+  if (!error && (data ?? []).length === 0) {
+    return dbResult('Undoing Mark sent', { message: 'This invoice is no longer marked sent — refresh and look again.' })
+  }
+  return dbResult('Undoing Mark sent', error)
+}
+
+export async function undoPaid(row: InvoiceRow): Promise<boolean> {
+  if (row.isCod) {
+    return dbResult('Undoing Mark paid', { message: 'COD settles from its payments — remove the payment on the work order instead.' })
+  }
+  const { data, error } = await supabase
+    .from('work_orders')
+    .update({ invoice_state: 'sent', invoice_paid_at: null })
+    .eq('id', row.workOrderId)
+    .eq('invoice_state', 'paid')
+    .select('id')
+  if (!error && (data ?? []).length === 0) {
+    return dbResult('Undoing Mark paid', { message: 'This invoice is no longer marked paid — refresh and look again.' })
+  }
+  return dbResult('Undoing Mark paid', error)
+}
+
 /** Record that the package was built. Not a claim that anyone sent it. */
 export async function markDownloaded(row: InvoiceRow): Promise<boolean> {
   const { error } = await supabase

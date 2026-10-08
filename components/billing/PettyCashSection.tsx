@@ -181,7 +181,11 @@ export function PettyCashSection() {
           <button
             key={s.key}
             onClick={() => setStudio(s.key)}
-            className={`c-pill c-control${studio === s.key ? ' c-on' : ''}`}
+            // c-soft, NOT c-pill (2026-10-08): a c-pill is a STATUS chip — dark ink
+            // meant to sit on a colour fill it never had here, so these read as
+            // near-black words on a near-black page, and the chosen studio
+            // looked like the other three (c-pill has no c-on state).
+            className={`c-soft c-control c-raised${studio === s.key ? ' c-on' : ''}`}
             style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}
           >{s.label}</button>
         ))}
@@ -193,8 +197,8 @@ export function PettyCashSection() {
           className="c-control c-mono"
           style={{ background: 'var(--c-wash)', border: 'none', borderRadius: 10, padding: '8px 11px', color: 'var(--c-fg)', font: 'inherit', fontSize: 12.5, minHeight: 34 }}
         />
-        <button onClick={downloadCsv} className="c-pill c-control" style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}>Download CSV</button>
-        <button onClick={() => window.print()} className="c-pill c-control" style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}>Print</button>
+        <button onClick={downloadCsv} className="c-soft c-control c-raised" style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}>Download CSV</button>
+        <button onClick={() => window.print()} className="c-soft c-control c-raised" style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}>Print</button>
       </div>
 
       <div className="c-pcsheet" style={{ background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: 16 }}>

@@ -71,7 +71,7 @@ import {
   fetchInvoices, searchRows, rowsInBucket, bucketCounts, paginate,
   pageCount, summarise, isPastDue, bucketLabel, tabsFor, hasCodAlert, nextAction,
   approveInvoice, rejectInvoice, previewPackageUrl,
-  markSent, markPaid, closeInvoice, reopenInvoice,
+  markSent, markPaid, undoSent, undoPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, detachInvoice, canDetachInvoice, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
   pipelineCount, recordPoNumber, setNoPoNeeded, billingStage, sortByColumn,
   downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
@@ -725,8 +725,10 @@ export default function BillingPage() {
           progress on the billing side, on the reasoning that its rows live
           there — but the strip is the owner's to-do, not a view of a tab, and
           hiding it on Awaiting payment made it look like nothing was waiting.
-          Only a search hides it now. */}
-      {isOwner && !searching && approvals.length > 0 && (
+          NOT EVEN A SEARCH hides it (Eli, 2026-10-07: "I don't want the
+          approval bin to ever disappear"). Its rows come from the full list,
+          never the search, so typing changes nothing in it. */}
+      {isOwner && approvals.length > 0 && (
         <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3 }}>
             <span style={{
@@ -1103,6 +1105,25 @@ export default function BillingPage() {
             const r = moreFor
             setMoreFor(null)
             run(r.workOrderId, () => pullBack(r))
+          }}
+          isOwner={isOwner}
+          onUndoSent={() => {
+            const r = moreFor
+            setMoreFor(null)
+            run(r.workOrderId, async () => {
+              const ok = await undoSent(r)
+              if (ok) toast(`${r.woNumber || 'Invoice'} is back in Ready to send`)
+              return ok
+            })
+          }}
+          onUndoPaid={() => {
+            const r = moreFor
+            setMoreFor(null)
+            run(r.workOrderId, async () => {
+              const ok = await undoPaid(r)
+              if (ok) toast(`${r.woNumber || 'Invoice'} is back in Awaiting payment`)
+              return ok
+            })
           }}
         />
       )}
@@ -1590,8 +1611,20 @@ function Row({
           no cell for it (the badge replaced it, 2026-09-03). */}
       {!inStaged && <span>{showLights && <Lights row={row} />}</span>}
 
-      <span className="c-bamt">{row.balance > 0 ? formatCurrency(String(row.balance)) : '—'}</span>
-      {showAge && <span className="c-bage">{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>}
+      {/* A PAID INVOICE OWES NOTHING (2026-10-08). Mark paid only stamps the
+          state — it writes no payment row — so a paid billing row kept showing
+          its full amount under "Balance" as if it were still owed. It now
+          shows what was paid, dimmed, and its Age is frozen at how long the
+          client took (lib/billing ageDays). */}
+      {!row.isCod && row.state === 'paid'
+        ? <span className="c-bamt" style={{ opacity: 0.45 }} title="Paid in full — nothing owed">{formatCurrency(String(row.total))}</span>
+        : <span className="c-bamt">{row.balance > 0 ? formatCurrency(String(row.balance)) : '—'}</span>}
+      {showAge && (
+        <span
+          className="c-bage"
+          title={!row.isCod && row.state === 'paid' && row.ageDays != null ? `Paid ${row.ageDays} day${row.ageDays === 1 ? '' : 's'} after it was sent` : undefined}
+        >{row.ageDays != null ? `${row.ageDays}d` : '—'}</span>
+      )}
 
       {/* ONE ACTION PER ROW: whatever comes next. A row with five buttons is a
           row nobody reads.
@@ -1642,8 +1675,12 @@ function Row({
  * "Close" here means close the INVOICE — write it off or void it — and the
  * modal it opens says so again before anything happens.
  */
-function MoreModal({ row, onCancel, onOpenDoc, onDetach, onClose, onPullBack, onRedownload, onExportWo, onNoPo, onAddPo, onAp, onDelete }: {
+function MoreModal({ row, isOwner, onCancel, onOpenDoc, onDetach, onClose, onPullBack, onUndoSent, onUndoPaid, onRedownload, onExportWo, onNoPo, onAddPo, onAp, onDelete }: {
   row: InvoiceRow
+  /** Pull it back strips an owner's approval, so only an owner is offered it. */
+  isOwner: boolean
+  onUndoSent: () => void
+  onUndoPaid: () => void
   onCancel: () => void
   onDetach: () => void
   /** Eli only — absent for everyone else, so the button never renders. */
@@ -1726,7 +1763,25 @@ function MoreModal({ row, onCancel, onOpenDoc, onDetach, onClose, onPullBack, on
             Not two undos to choose between. And it is the only way back out of
             Awaiting payment, which is what stops a misclicked send becoming a
             permanent lie about when the client was billed. */}
-        {(row.step >= 3 || row.state === 'approved' || row.state === 'awaiting_po') && row.bucket !== 'closed' && (
+        {/* THE LIGHT UNDO (Eli, 2026-10-08) — see undoSent / undoPaid in
+            lib/billing. Takes back only the press: the invoice and the
+            approval stay, so billing can fix their own slip without an owner.
+            Billing rows only — COD has no Mark sent or Mark paid. */}
+        {!row.isCod && row.state === 'sent' && (
+          <button className="c-bact c-bblock" onClick={onUndoSent}>
+            Undo Mark sent — it hasn&rsquo;t gone out yet
+          </button>
+        )}
+        {!row.isCod && row.state === 'paid' && (
+          <button className="c-bact c-bblock" onClick={onUndoPaid}>
+            Undo Mark paid — the money hasn&rsquo;t landed
+          </button>
+        )}
+        {/* OWNERS ONLY since 2026-10-08. It clears the approval stamps, and the
+            database lets only an owner change those — so for everyone else
+            this button could only ever answer "ask Eli or Adam-Mike". They now
+            have the light undo above for the slip they can actually make. */}
+        {isOwner && (row.step >= 3 || row.state === 'approved' || row.state === 'awaiting_po') && row.bucket !== 'closed' && (
           <button className="c-bact c-bblock" onClick={onPullBack}>
             Pull it back — removes the invoice and the approval, back to the start
           </button>

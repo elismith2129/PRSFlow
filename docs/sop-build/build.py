@@ -101,7 +101,7 @@ page = '''<!DOCTYPE html>
 </head>
 <body>
 <div class="sop-bar">
-  <span class="sop-bartitle"><b>Billing SOP</b><span class="sop-barsub"> · Paramount Recording Studios · as of Oct 7, 2026</span></span>
+  <span class="sop-bartitle"><b>Billing SOP</b><span class="sop-barsub"> · Paramount Recording Studios · as of Oct 8, 2026</span></span>
   <span class="sop-grow"></span>
   <button class="sop-ctl" type="button" id="themeBtn">View light</button>
 </div>

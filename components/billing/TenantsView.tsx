@@ -139,9 +139,23 @@ export function TenantsView() {
     const key = stampKey(lease.id, month, kind)
     const st = stamps.get(key)
     const p = periodFor(lease, month)
-    const late = isRentLate(st, p)
+    // INCIDENTALS KEEP THEIR OWN CLOCK (2026-10-08). This line borrowed the
+    // RENT late rule against its own month — and its month is the one BEFORE
+    // the board's (October's board carries September's incidentals), so the
+    // "period" had started five weeks earlier and the line read LATE in red
+    // from the moment it appeared until it was marked paid, even one second
+    // after Mark sent. Incidentals are an invoice that goes out on the
+    // 2nd-3rd of the board month, so:
+    //   · not sent → "send by" the 3rd of the board month, red once past it;
+    //   · sent     → Late only at 31 days unpaid, the hub's own overdue rule.
+    const inc = kind === 'incidentals'
+    const incSendBy = `${shiftMonth(month, 1)}-03`
+    const incSentDays = inc && st?.sentAt ? Math.max(0, Math.floor((Date.now() - Date.parse(st.sentAt)) / 86400000)) : 0
+    const incOverdueSend = inc && !st?.sentAt && !st?.paidAt && getLocalToday() > incSendBy
+    const late = inc ? (!st?.paidAt && !!st?.sentAt && incSentDays >= 31) : isRentLate(st, p)
     const partial = kind === 'rent' && isRentPartial(st)
-    const daysLate = late ? Math.max(1, Math.round((Date.parse(getLocalToday() + 'T12:00:00') - Date.parse(p.start + 'T12:00:00')) / 86400000)) : 0
+    const daysLate = !late ? 0 : inc ? incSentDays
+      : Math.max(1, Math.round((Date.parse(getLocalToday() + 'T12:00:00') - Date.parse(p.start + 'T12:00:00')) / 86400000))
     const amt = st?.amount ?? lease.amount
 
     let word: string, sub: string, color: string | undefined, dim = false
@@ -150,7 +164,8 @@ export function TenantsView() {
     else if (partial) { word = late ? 'Partial · late' : 'Partial'; sub = `${money(st!.paidAmount!)} in · ${money(amt - st!.paidAmount!)} open`; color = late ? 'var(--c-st-hot)' : 'var(--c-st-warm)' }
     else if (late) { word = 'Late'; sub = `${daysLate} days · ${st?.sentAt ? `sent ${fmtStampDay(st.sentAt)}` : 'not sent'}`; color = 'var(--c-st-hot)' }
     else if (st?.sentAt) { word = 'Sent'; sub = fmtStampDay(st.sentAt); dim = true }
-    else { word = 'Not sent'; sub = `send by ${fmtStampDay(p.sendBy + 'T12:00:00')}`; dim = true }
+    else if (incOverdueSend) { word = 'Not sent'; sub = `was due ${fmtStampDay(incSendBy + 'T12:00:00')}`; color = 'var(--c-st-hot)' }
+    else { word = 'Not sent'; sub = `send by ${fmtStampDay((inc ? incSendBy : p.sendBy) + 'T12:00:00')}`; dim = true }
 
     const undoable = !!(st?.qbAt || st?.paidAt || st?.sentAt || partial)
     const undo = () => run(key, () => st?.qbAt

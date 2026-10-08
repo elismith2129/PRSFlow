@@ -8,9 +8,9 @@ Newest at the top of each group.*
 ## SOPs: walkthrough editions (Oct 7)
 
 - [ ] **Runner guide, Studio Manager SOP, Owner's page, then the main App guide** - same pattern as the Billing SOP: `docs/sop-build/` (drawn screens from the code, step copy in a content file, same engine), then an independent fact-check before Eli sees it. *(Oct 7)*
-- [ ] **Tenants: the Incidentals line reads "Late" in red until it is marked paid**, even right after Mark sent - it borrows the previous month's rent-late rule (`TenantsView`). Found while drawing the screen. Looks like a bug; not fixed. *(Oct 7)*
-- [ ] **Paid rows in the hub keep showing a Balance and a growing Age** - Mark paid only stamps the state. Found while drawing the screen; confirm it is intended. *(Oct 7)*
-- [ ] **Petty Cash page: studio / CSV / Print buttons may be near-invisible in dark** (no fill, dark ink in the stylesheet). Found while drawing the screen; check the live page. *(Oct 7)*
+- [x] ~~Tenants: the Incidentals line reads "Late" in red until it is marked paid~~ Fixed in v1.43.9.
+- [x] ~~Paid rows in the hub keep showing a Balance and a growing Age~~ Fixed in v1.43.9.
+- [x] ~~Petty Cash page: studio / CSV / Print buttons may be near-invisible in dark~~ Fixed in v1.43.9.
 - [ ] **Billing SOP on a phone**: the drawn screens scroll sideways inside themselves. Readable, not great. Billing works on a desktop, so left as is. *(Oct 7)*
 
 ## Parked from Remove hold (Oct 7)
@@ -25,7 +25,7 @@ Newest at the top of each group.*
 - [ ] **Run `20261007120000_remove_hold.sql` BEFORE the v1.43.7 push** - Remove hold and the Removed holds tab call it; the hub's own Delete is replaced by it too. Needs the Oct 5 and Oct 6 files run first. *(Oct 7)*
 - [ ] **Try Remove hold on a throwaway hold** (Testing → the Oct 5 batch, the four "hold" items). The SQL has only run on a local copy with a made-up schema, never against the live tables. *(Oct 7)*
 - [ ] **Run `20261006120000_st_rows_submitted_for_runner.sql` BEFORE the v1.43.6 push** - Mark reviewed's rescue and Cancel's restore both name the new column; it also replaces `recover_deleted_work_order`. *(Oct 6)*
-- [ ] **Can Lori pull an invoice back?** The repo's `enforce_invoice_approver` lets only an owner change the approval stamps, which Pull it back does. If that is what is live, Pull it back is owners-only in practice (it now fails cleanly and says so). Decide: leave it, or let billing clear an approval. *(Oct 6)*
+- [x] ~~Can Lori pull an invoice back?~~ Answered Oct 8: Pull it back stays owners-only and is hidden from everyone else; billing got Undo Mark sent / Undo Mark paid instead (v1.43.9).
 - [ ] **Run `20261005190000_st_rows_no_show.sql` BEFORE the No show push** - every work order save sends the new column and fails without it. *(Oct 5)*
 - [ ] **Confirm WO-1240 is back** (Epic / Molly Santana, Ameraycan B, Sep 23–29) in the billing hub and on the calendar — restored from the Oct 2 backup with `restore-WO-1240.sql`. **Bill Oct 3 once:** QuickBooks invoice 34828 lists it, and that night now lives on the newer October work order. *(Oct 5)*
 - [ ] **Test delete → recover on a throwaway work order** as Lori or Fernando (Testing → the Oct 5 batch, last four items). The SQL was only ever run against a copy of the Oct 2 backup. *(Oct 5)*

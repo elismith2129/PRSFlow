@@ -168,6 +168,31 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'As an owner, with at least one invoice waiting for approval, open the billing hub. The green "Ready for your approval" strip is at the top. Click Awaiting payment, Paid, Closed and Removed holds in turn: the strip stays on all of them.',
       },
       {
+        id: 'v143-undo-sent', area: 'Billing',
+        what: 'Undo Mark sent puts the row back without an owner',
+        how: 'Signed in as Lori or Fernando, on a THROWAWAY row in Ready to send that has been downloaded, press Mark sent. It moves to Awaiting payment. Press the three dots on it, then "Undo Mark sent". The row is back in In progress as Ready to send, its button says Mark sent, and the invoice is still attached. There should be NO "Pull it back" in that menu for you.',
+      },
+      {
+        id: 'v143-undo-paid', area: 'Billing',
+        what: 'Undo Mark paid, and a paid row stops aging',
+        how: 'On a THROWAWAY row in Awaiting payment press Mark paid. In the Paid tab its amount is dimmed (hover: "Paid in full") and Age is the days between sent and paid, not a number that keeps growing. Press the three dots, then "Undo Mark paid": it is back in Awaiting payment with the same Age it had before.',
+      },
+      {
+        id: 'v143-owner-pullback', area: 'Billing',
+        what: 'Owners still have Pull it back',
+        how: 'Signed in as Eli or Adam-Mike, open the three dots on an approved or sent THROWAWAY row. "Pull it back" is there. Do not press it unless the row is a throwaway: it removes the invoice and the approval.',
+      },
+      {
+        id: 'v143-incidentals-clock', area: 'Billing',
+        what: 'Tenant incidentals are not Late the moment they appear',
+        how: 'Billing hub, Tenants. Find the Incidentals line under the tenant marked "WO + incidentals". If it has not been sent it reads "Not sent" with "send by" the 3rd (red "was due" if the 3rd has passed). Press Mark sent: it reads "Sent", not "Late". Tap the word Sent to undo.',
+      },
+      {
+        id: 'v143-petty-buttons', area: 'Billing',
+        what: 'Petty Cash buttons can be read in dark mode',
+        how: 'In dark mode open Billing, Petty Cash. The four studio buttons, Download CSV and Print are all readable, and the studio you are looking at is highlighted. Click another studio: the highlight moves.',
+      },
+      {
         id: 'v143-sop-walkthrough', area: 'Training',
         what: 'The Billing SOP is a click-through walkthrough',
         how: 'Open Training, then Billing SOP. Each chapter shows a drawn copy of the real screen with a step box above it. Press Next: one part of the screen lights up and the rest dims, with a line or two explaining it. Press Back. Click any part of a picture: it jumps to the step about that part. Try chapter 03 (the work order) and chapter 07 (Holds). Switch "View light" at the top right and check it still reads.',
