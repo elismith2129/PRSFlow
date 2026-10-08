@@ -1,0 +1,70 @@
+<style>.scr-lastnight{font:400 14px/1.5 'Inter',system-ui,-apple-system,sans-serif;color:var(--c-fg);-webkit-font-smoothing:antialiased;text-align:left}
+.scr-lastnight *{box-sizing:border-box}
+.scr-lastnight .rib{display:inline-block;flex-shrink:0}
+.scr-lastnight .rib path{fill:var(--c-st-booked)}
+
+.scr-lastnight .scrim{background:rgba(6,5,4,.72);border-radius:16px;padding:28px 20px 32px;display:flex;justify-content:center}
+.scr-lastnight .bmodal{background:var(--c-srf);border-radius:14px;padding:22px 26px 18px;width:min(640px,100%);color:var(--c-fg)}
+.scr-lastnight .bmhead{display:flex;align-items:center;gap:9px;padding-bottom:12px}
+.scr-lastnight .bmhead b{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:15px;letter-spacing:-.01em}
+.scr-lastnight .bmdate{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-lastnight .bmx{margin-left:auto;color:var(--c-fg-3);font-size:13px;padding:2px 6px;display:inline-block}
+.scr-lastnight .bmln{margin:0 0 9px;font-size:14px;line-height:1.55;font-weight:500}
+.scr-lastnight .bmgo{display:inline-block;margin-left:10px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-lastnight .bmseat{margin-top:14px;padding-top:12px;border-top:1px solid var(--c-wash)}
+.scr-lastnight .bmseathd{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3);padding-bottom:7px}
+.scr-lastnight .bmfoot{margin-top:16px;padding-top:10px;border-top:1px solid var(--c-wash);font-size:10px;line-height:1.5;color:var(--c-fg-3)}
+
+.scr-lastnight{container-type:inline-size}
+.scr-lastnight .bmodal{width:min(520px,100%)}
+.scr-lastnight .bang{width:22px;height:22px;border-radius:99px;background:var(--c-st-hot);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:13px;flex-shrink:0}
+.scr-lastnight .lead{margin:0 0 9px;font-size:13.5px;line-height:1.55;font-weight:500;opacity:.8}
+.scr-lastnight .rows{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.scr-lastnight .row{display:flex;align-items:center;gap:10px;background:var(--c-wash);border-radius:12px;padding:9px 12px}
+.scr-lastnight .row .dt{font-family:'DM Mono',ui-monospace,monospace;font-size:11.5px;font-weight:600;color:var(--c-st-hot);width:92px;flex-shrink:0}
+.scr-lastnight .row .mid{flex:1;min-width:0}
+.scr-lastnight .row .t{display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-lastnight .row .s{display:block;font-size:11px;opacity:.6}
+.scr-lastnight .row .open{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.6;flex-shrink:0}
+.scr-lastnight .btns{display:flex;gap:10px;margin-top:14px}
+.scr-lastnight .b1{flex:1;min-height:44px;border-radius:12px;background:var(--c-fg);color:var(--c-bg);font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:13px;letter-spacing:.03em;display:flex;align-items:center;justify-content:center}
+.scr-lastnight .b2{min-height:44px;padding:0 18px;border-radius:12px;background:var(--c-wash);color:var(--c-fg-2);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.scr-lastnight[data-state="one"] .x-two{display:none}
+.scr-lastnight:not([data-state="one"]) .x-one{display:none}
+@container (max-width:480px){
+ .scr-lastnight .scrim{padding:16px 8px 18px}
+ .scr-lastnight .bmodal{padding:18px 14px 14px}
+ .scr-lastnight .row .dt{width:78px;font-size:10.5px}
+ .scr-lastnight .row .t{white-space:normal}
+}
+</style>
+<div class="scr scr-lastnight">
+ <div class="scrim">
+  <div class="bmodal" data-k="ln-modal">
+   <div class="bmhead" data-k="ln-head">
+    <span class="bang">!</span>
+    <b class="x-two">Last night: 2 work orders were never submitted</b>
+    <b class="x-one">Last night: a work order was never submitted</b>
+    <span class="bmx" data-k="ln-dismiss ln-x">✕</span>
+   </div>
+   <p class="lead x-two" data-k="ln-lead">Nobody has said what happened in those rooms. Fix them today — they won’t appear here again, only as a red flag in the billing hub.</p>
+   <p class="lead x-one" data-k="ln-lead">Nobody has said what happened in that room. Fix it today — it won’t appear here again, only as a red flag in the billing hub.</p>
+   <div class="rows">
+    <div class="row" data-k="ln-row">
+     <span class="dt">Mon, Oct 5</span>
+     <span class="mid"><span class="t">PRS Studio C · Vantage Music Group</span><span class="s">WO-1307 · closed by Terren L.</span></span>
+     <span class="open" data-k="ln-open">Open →</span>
+    </div>
+    <div class="row x-two" data-k="ln-row">
+     <span class="dt">Mon, Oct 5</span>
+     <span class="mid"><span class="t">ERS Studio A · Dante Hollis</span><span class="s">WO-1312 · nobody closed out in the app</span></span>
+     <span class="open" data-k="ln-open">Open →</span>
+    </div>
+   </div>
+   <div class="btns">
+    <div class="b1" data-k="ln-hub">Billing hub →</div>
+    <div class="b2" data-k="ln-dismiss">Later today</div>
+   </div>
+  </div>
+ </div>
+</div>

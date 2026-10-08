@@ -1,0 +1,187 @@
+<style>
+/* Work order → PAYMENTS + totals, admin desktop, COD client.
+   components/calendar/WorkOrderPopup.tsx ("COLLECT", payRows, totals block). */
+.scr-collect{overflow-x:auto;color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.scr-collect *{box-sizing:border-box}
+.scr-collect button{font-family:inherit;margin:0;border:none}
+.scr-collect .inner{min-width:620px;max-width:720px;margin:0 auto;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:16px}
+.scr-collect .sechd{padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45;line-height:1.6}
+
+/* COLLECT block */
+.scr-collect .collect{background:var(--c-wash);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.scr-collect .collect .cap{display:flex;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:4px;line-height:1.6}
+.scr-collect .cline{display:flex;align-items:baseline;gap:10px;padding:4px 6px;margin:0 -6px;border-radius:9px}
+.scr-collect .cline .amt{font-family:'Archivo Black',system-ui,sans-serif;font-size:20px;letter-spacing:-.02em;min-width:100px;color:var(--c-st-hot);line-height:1.6}
+.scr-collect .cline .how{font-size:11px;color:var(--c-fg-2)}
+.scr-collect .cline .how b{color:var(--c-fg)}
+.scr-collect .chist{font-size:10px;color:var(--c-fg-3);margin-top:6px;padding-top:6px;border-top:1px solid var(--c-wash2);line-height:1.6}
+
+/* payment row */
+.scr-collect .payrow{display:grid;grid-template-columns:118px 96px minmax(150px,1.2fr) minmax(70px,1fr) 24px;align-items:center;background:var(--c-wash);border-radius:12px;margin-bottom:6px;min-height:46px}
+.scr-collect .payrow.card{grid-template-columns:118px 96px minmax(150px,1.2fr) minmax(70px,1fr) 64px 24px}
+.scr-collect .cellS{padding:3px 6px;font-size:11px;font-weight:500;color:var(--c-fg);display:flex;align-items:center;min-width:0}
+.scr-collect .cellIn{padding:3px 0;font-size:11px;font-weight:500;color:var(--c-fg);display:flex;align-items:center;min-width:0}
+.scr-collect .cellIn.col{flex-direction:column;align-items:stretch;gap:1px;padding:4px 0}
+.scr-collect .tin{display:block;width:100%;min-width:0;background:var(--c-wash2);border-radius:6px;padding:3px 6px;font-size:11px;font-weight:500;line-height:1.4;color:var(--c-fg);white-space:nowrap;overflow:hidden}
+.scr-collect .tin.mono{font-family:'DM Mono',ui-monospace,monospace}
+.scr-collect .tin.ph{color:var(--c-fg-3);font-weight:400}
+.scr-collect .tin.sel{position:relative;padding-right:18px}
+.scr-collect .tin.sel::after{content:'';position:absolute;right:6px;top:50%;width:5px;height:5px;margin-top:-4px;border-right:1.5px solid var(--c-fg);border-bottom:1.5px solid var(--c-fg);transform:rotate(45deg);opacity:.7}
+.scr-collect .tblbl{font-size:7.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--c-fg-3);padding:0 6px;white-space:nowrap;line-height:1.6}
+.scr-collect .sum{gap:6px;align-items:baseline;flex-wrap:wrap;row-gap:0}
+.scr-collect .feetxt{font-size:9.5px;color:var(--c-fg-2);white-space:nowrap;display:inline-flex;align-items:baseline}
+.scr-collect .waive{display:inline-block;color:var(--c-fg-3);font-size:9.5px;margin-left:5px;text-decoration:underline}
+.scr-collect .eq{margin-left:6px;color:var(--c-fg-3)}
+.scr-collect .payamt{display:inline-block;font-family:'Archivo Black',system-ui,sans-serif;font-size:17px;letter-spacing:-.02em;white-space:nowrap;line-height:1.6}
+.scr-collect .payamt.zero{color:var(--c-fg-3);opacity:.35}
+.scr-collect .payamt.run{color:var(--c-st-hot)}
+.scr-collect .del{justify-content:center;padding-top:6px;padding-bottom:6px;color:var(--c-fg-3);font-size:14px;line-height:1}
+.scr-collect .warn{grid-column:1 / -1;padding:0 12px 8px;font-size:10.5px;line-height:1.45;color:var(--c-st-hot)}
+.scr-collect .warnfix{display:inline-block;color:var(--c-fg);font-size:10.5px;font-weight:700;margin-left:8px;text-decoration:underline;white-space:nowrap}
+.scr-collect .addwrap{padding:9px 4px 0;line-height:1.2}
+.scr-collect .add{display:inline-block;font-size:10px;color:var(--c-fg-2);background:none;padding:0}
+
+/* the open payment-type list (a native <select>, drawn open) */
+.scr-collect .typewrap{position:relative;width:100%}
+.scr-collect .types{position:absolute;left:0;top:100%;margin-top:3px;z-index:5;width:196px;background:var(--c-srf);box-shadow:var(--c-softsh),0 0 0 1px var(--c-wash2);border-radius:8px;padding:4px}
+.scr-collect .types div{font-size:12px;line-height:1.4;padding:4px 8px 4px 22px;border-radius:5px;white-space:nowrap;position:relative}
+.scr-collect .types div.cur{background:var(--c-wash2)}
+.scr-collect .types div.cur::before{content:'✓';position:absolute;left:7px;font-size:10px;top:5px}
+
+/* totals block */
+.scr-collect .totals{border-radius:12px;overflow:hidden;background:var(--c-wash);padding:0 6px 6px}
+.scr-collect .tline{display:flex;justify-content:space-between;align-items:center;padding:8px 14px}
+.scr-collect .tline .l{font-size:10px;color:var(--c-fg-2)}
+.scr-collect .tline .v{font-size:11px;font-weight:400}
+.scr-collect .tline.bold .v{font-size:13px;font-weight:700}
+.scr-collect .tline .v.paid{color:var(--c-st-booked)}
+.scr-collect .tline .v.due{color:var(--c-st-hot)}
+.scr-collect .disc{padding:8px 14px;border-top:1px solid var(--c-wash2);border-bottom:1px solid var(--c-wash2);display:flex;align-items:center;gap:8px}
+.scr-collect .disc .l{font-size:10px;color:var(--c-fg-2);flex-shrink:0}
+.scr-collect .disc .tog{display:inline-flex;border-radius:99px;overflow:hidden;background:var(--c-wash2);flex-shrink:0}
+.scr-collect .disc .tog span{padding:3px 10px;font-size:10px;font-weight:700;color:var(--c-fg-2);line-height:1.6}
+.scr-collect .disc .inp{height:32px;border-radius:12px;padding:0 10px;background:var(--c-wash);display:flex;align-items:center;color:var(--c-fg-3);white-space:nowrap;overflow:hidden}
+.scr-collect .disc .inp.num{width:74px;font-family:'DM Mono',ui-monospace,monospace;font-size:12px}
+.scr-collect .disc .inp.why{flex:1;min-width:120px;font-size:11px}
+.scr-collect .disc .dash{margin-left:auto;font-size:11px;color:var(--c-fg-3)}
+
+/* states: default (empty row) · picking · card · warn */
+.scr-collect .s-card,.scr-collect .s-warn,.scr-collect .s-pick,.scr-collect .s-paid{display:none}
+.scr-collect[data-state="picking"] .s-pick{display:block}
+.scr-collect[data-state="card"] .s-empty,.scr-collect[data-state="warn"] .s-empty{display:none}
+.scr-collect[data-state="card"] .payrow.s-card{display:grid}
+.scr-collect[data-state="warn"] .payrow.s-warn{display:grid}
+.scr-collect[data-state="card"] .cline.s-card,.scr-collect[data-state="warn"] .cline.s-warn{display:flex}
+.scr-collect[data-state="card"] .chist.s-card,.scr-collect[data-state="warn"] .chist.s-warn{display:block}
+.scr-collect[data-state="card"] .tline.s-card,.scr-collect[data-state="warn"] .tline.s-warn{display:flex}
+</style>
+<div class="scr scr-collect">
+ <div class="inner">
+
+  <div data-k="payments">
+    <div class="sechd">Payments</div>
+
+    <div class="collect" data-k="collect">
+      <div class="cap"><span>Collect</span><span data-k="collect-kind">COD</span></div>
+
+      <!-- nothing paid yet -->
+      <div class="cline s-empty" data-k="collect-cash"><span class="amt">$410.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+      <div class="cline s-empty" data-k="collect-card"><span class="amt">$422.30</span><span class="how"><b>card</b> · incl. 3% fee $12.30</span></div>
+
+      <!-- after a $123.00 part payment on a card -->
+      <div class="cline s-card" data-k="collect-cash"><span class="amt">$287.00</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+      <div class="cline s-card" data-k="collect-card"><span class="amt">$295.61</span><span class="how"><b>card</b> · incl. 3% fee $8.61</span></div>
+      <div class="chist s-card" data-k="collect-history">Collected: $126.69 across 1 payment · card fees $3.69</div>
+
+      <!-- $126.69 typed into Toward balance by mistake -->
+      <div class="cline s-warn" data-k="collect-cash"><span class="amt">$283.31</span><span class="how"><b>cash</b> · Zelle · check</span></div>
+      <div class="cline s-warn" data-k="collect-card"><span class="amt">$291.81</span><span class="how"><b>card</b> · incl. 3% fee $8.50</span></div>
+      <div class="chist s-warn" data-k="collect-history">Collected: $130.49 across 1 payment · card fees $3.80</div>
+    </div>
+
+    <div>
+      <!-- the empty row a work order with no payments opens with -->
+      <div class="payrow s-empty" data-k="payrow">
+        <div class="cellS">
+          <div class="typewrap">
+            <span class="tin sel" data-k="types">— type —</span>
+            <div class="types s-pick" data-k="types">
+              <div class="cur">— type —</div>
+              <div>Cash · $410.00</div>
+              <div>Zelle · $410.00</div>
+              <div>Venmo · $410.00</div>
+              <div>Wire · $410.00</div>
+              <div>ACH · $410.00</div>
+              <div>Credit Card · $422.30</div>
+              <div>Debit Card · $422.30</div>
+              <div>Check · $410.00</div>
+              <div>Other · $410.00</div>
+            </div>
+          </div>
+        </div>
+        <div class="cellIn col" data-k="toward"><span class="tblbl">Toward balance</span><span class="tin mono ph">0.00</span></div>
+        <div class="cellS sum"><span class="payamt zero">$0.00</span></div>
+        <div class="cellIn"><span class="tin ph">memo</span></div>
+        <div class="cellS del">×</div>
+      </div>
+
+      <!-- card, part payment -->
+      <div class="payrow card s-card" data-k="payrow">
+        <div class="cellS"><span class="tin sel" data-k="types">Credit Card</span></div>
+        <div class="cellIn col" data-k="toward"><span class="tblbl">Toward balance</span><span class="tin mono">$123.00</span></div>
+        <div class="cellS sum">
+          <span class="feetxt" data-k="fee">+ $3.69 fee<span class="waive" data-k="waive">waive</span><span class="eq">=</span></span>
+          <span class="payamt run" data-k="run">$126.69</span>
+        </div>
+        <div class="cellIn"><span class="tin">deposit</span></div>
+        <div class="cellIn" data-k="last4"><span class="tin mono">4417</span></div>
+        <div class="cellS del">×</div>
+      </div>
+
+      <!-- card, the terminal amount typed into Toward balance -->
+      <div class="payrow card s-warn" data-k="payrow">
+        <div class="cellS"><span class="tin sel" data-k="types">Credit Card</span></div>
+        <div class="cellIn col" data-k="toward"><span class="tblbl">Toward balance</span><span class="tin mono">$126.69</span></div>
+        <div class="cellS sum">
+          <span class="feetxt" data-k="fee">+ $3.80 fee<span class="waive" data-k="waive">waive</span><span class="eq">=</span></span>
+          <span class="payamt run" data-k="run">$130.49</span>
+        </div>
+        <div class="cellIn"><span class="tin">deposit</span></div>
+        <div class="cellIn" data-k="last4"><span class="tin mono">4417</span></div>
+        <div class="cellS del">×</div>
+        <div class="warn" data-k="warn">Is $126.69 what ran on the card? Then the amount before the 3% is $123.00 - the fee is added for you.<span class="warnfix" data-k="warn-fix">Use $123.00</span></div>
+      </div>
+
+      <div class="addwrap"><span class="add" data-k="add">+ Add payment</span></div>
+    </div>
+  </div>
+
+  <div class="totals" data-k="totals">
+    <div class="tline"><span class="l">Studio Total</span><span class="v">$410.00</span></div>
+    <div class="tline"><span class="l">Rentals Total</span><span class="v">$0.00</span></div>
+    <div class="disc" data-k="discount">
+      <span class="l">Discount</span>
+      <span class="tog"><span>%</span><span>$</span></span>
+      <span class="inp num">0</span>
+      <span class="inp why">Reason on the invoice</span>
+      <span class="dash">—</span>
+    </div>
+
+    <div class="tline s-paid s-card" data-k="t-fees"><span class="l">Card Fees (3%)</span><span class="v">$3.69</span></div>
+    <div class="tline s-paid s-warn" data-k="t-fees"><span class="l">Card Fees (3%)</span><span class="v">$3.80</span></div>
+
+    <div class="tline bold s-empty" data-k="t-grand"><span class="l">Grand Total</span><span class="v">$410.00</span></div>
+    <div class="tline bold s-paid s-card" data-k="t-grand"><span class="l">Grand Total</span><span class="v">$413.69</span></div>
+    <div class="tline bold s-paid s-warn" data-k="t-grand"><span class="l">Grand Total</span><span class="v">$413.80</span></div>
+
+    <div class="tline s-empty" data-k="t-paid"><span class="l">Total Paid</span><span class="v paid">$0.00</span></div>
+    <div class="tline s-paid s-card" data-k="t-paid"><span class="l">Total Paid</span><span class="v paid">$126.69</span></div>
+    <div class="tline s-paid s-warn" data-k="t-paid"><span class="l">Total Paid</span><span class="v paid">$130.49</span></div>
+
+    <div class="tline bold s-empty" data-k="t-balance"><span class="l">Balance Due</span><span class="v due">$410.00</span></div>
+    <div class="tline bold s-paid s-card" data-k="t-balance"><span class="l">Balance Due</span><span class="v due">$287.00</span></div>
+    <div class="tline bold s-paid s-warn" data-k="t-balance"><span class="l">Balance Due</span><span class="v due">$283.31</span></div>
+  </div>
+
+ </div>
+</div>

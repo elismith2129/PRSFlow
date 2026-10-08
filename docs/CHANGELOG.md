@@ -20,6 +20,33 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.8 — Billing SOP, walkthrough edition — Oct 7, 2026
+
+**Why.** The Oct 6 rewrite was right on the facts but all text. Eli: *"i did like it where it shows the actual app pages and highlights the boxes and then explains it. i think thats how we should do all SOPs. and keep the copy tight as when its long they just check out."* This is that pattern, and the pattern for every SOP from here.
+
+**What it is.** `public/billing-sop.html`: 14 chapters, 24 walkthroughs, 197 steps over 24 drawn screens. Each walkthrough is a static HTML drawing of the real screen, a sticky step box above it, and Next / Back. A step names `data-k` keys on the drawing; the engine cuts holes in a dimming layer over the screen and rings them. A step can also set `data-state` on the screen (`owner`, `tentative`, `paid`, `warn`...) to show the same screen in another condition. Clicking any part of a picture jumps to its step; arrow keys step; it follows the app's light/dark when it can read it.
+
+**It is BUILT - sources in `docs/sop-build/`.**
+- `content.py` - chapters, walks, and every step's words (keys, title, body, optional state).
+- `screens/NAME.html` - one drawn screen each; all CSS scoped under `.scr-NAME`.
+- `shell.css`, `engine.js`, `headnote.txt`; `build.py` (`python3 docs/sop-build/build.py public/billing-sop.html`) asserts every key a step names exists on its screen.
+- `test.py` steps through every step in a headless browser and fails if nothing lights up or the lit part is off-screen (needs Playwright; not part of `selftest`).
+- `BRIEF.md`, `render.py`, `harness_head.html` - how a screen is drawn and checked.
+
+**How it was made (do the next SOP the same way).** Seven parallel passes each read the code that renders a set of screens and drew them, reporting per key what the code says it does. The step copy was written from those reports plus the fact-checked Oct 6 text. A separate fact-check pass then read all 197 steps against the code: 6 wrong, 11 misleading, 10 picture mismatches, 7 label notes - all applied.
+
+**Watch-outs.**
+- **Shell classes are all `sop-*`.** The drawn screens bring their own class names (`.bar`, `.row`, `.btn`); the first build had a shell `.bar{position:sticky}` leak into the work order drawing. Do not add an un-prefixed class or a bare element reset to `shell.css`.
+- **Facts the Oct 6 text had wrong, now corrected:** the work order's Cancel / Complete WO / Save (and Remove hold, and a block's Delete) are at the TOP of the work order, not the bottom; Arrived / Left / No show, the HR/DAY switch and the 1ST/2ND chip live in the day sheet, not on the card; a Paid COD row has no Download button; a COD "Needs approval" row sits under the Paid latch; the package window's tab order is Package (owner), Previously saved / As sent, Work order, Invoice; the Closed tab is Billing-side only (closed COD rows land there); a drop on a row that already has an invoice asks "Replace it"; a Flo "missed yesterday" line does not clear on a tick; Your list's backlog count includes today.
+- Sample data is fictional throughout. No real client, invoice or amount is drawn.
+- Not seen inside the app's iframe; verified as a standalone page in dark, light and at phone width.
+
+**Also.** Test items and the v1.43 release note said Remove hold and the block Delete are "bottom left"; they are top left, beside Cancel. Fixed. One new test item (`v143-sop-walkthrough`).
+
+**Files.** `public/billing-sop.html` · `docs/sop-build/**` (new) · `app/(main)/sop/billing/page.tsx` (comment) · `lib/testBatches.ts` · `public/sop.html` · `docs/TODO.md`
+
+---
+
 ## v1.43.7 — Remove hold; Removed holds tab; the approval strip on every tab — Oct 7, 2026
 
 **Why.** v1.43.2 took Delete off every session's work order (WO-1240). Right for real work, wrong for a hold: holds are dropped several times a week and the only way left was the billing hub's typed-confirm delete. Eli: *"how do we delete holds? … instead of 'delete' it should be 'remove hold' and when you click it a window pops up, delete all days or just one… select which days to delete or keep. this solves the problem of people trying to delete just one day and accidentally deleting all. and then i want on the billing hub a 'removed holds' where they will all live. put beside closed."* And: *"approval bin should always be there."* Mock: `docs/design-refs/remove-hold-mock.html`.

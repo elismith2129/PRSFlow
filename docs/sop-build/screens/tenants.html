@@ -1,0 +1,284 @@
+<style>
+.scr-tenants{overflow-x:auto;font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);background:var(--c-bg);-webkit-text-size-adjust:100%}
+.scr-tenants *{box-sizing:border-box}
+.scr-tenants .in{min-width:900px;padding:4px 2px 6px}
+.scr-tenants .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-tenants .mono{font-family:'DM Mono',ui-monospace,monospace}
+
+/* heading: the hub's title words */
+.scr-tenants .head{display:flex;align-items:flex-start;gap:16px;padding:2px 4px 14px}
+.scr-tenants .lab{display:block;margin-bottom:3px;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--c-fg)}
+.scr-tenants .lab > span{opacity:.45}
+.scr-tenants .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0}
+.scr-tenants .btitle{display:flex;align-items:baseline;gap:18px;font-size:26px}
+.scr-tenants .btitle > span{display:flex;align-items:baseline;gap:8px;letter-spacing:-.03em;line-height:1.05;color:var(--c-fg);opacity:.28}
+.scr-tenants .btitle > span.on{opacity:1}
+.scr-tenants .btitlen{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-tenants .btitlen.hot{background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;opacity:1}
+
+/* small controls */
+.scr-tenants .bact{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-size:9.5px;font-weight:700;line-height:1.6;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.scr-tenants .bact.w96{width:96px;flex-shrink:0}
+.scr-tenants .bact.faint{opacity:.45}
+.scr-tenants .bact.dimmer{opacity:.7}
+
+.scr-tenants .bar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.scr-tenants .month{display:flex;align-items:center;gap:8px;margin-left:auto;font-weight:700;font-size:12px}
+
+.scr-tenants .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.scr-tenants .bstat{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-tenants .bstat .v{font-size:20px;letter-spacing:-.02em;line-height:1.6}
+.scr-tenants .bstat .v.hot{color:var(--c-st-hot)}
+.scr-tenants .bstat .l{font-size:10px;opacity:.55;margin-top:1px}
+
+/* venue group + rows */
+.scr-tenants .group{margin-bottom:4px}
+.scr-tenants .ghead{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin:14px 2px 4px}
+.scr-tenants .trow{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:5px;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-tenants .room{font-weight:800;font-size:11.5px;min-width:92px;flex-shrink:0}
+.scr-tenants .tname{font-weight:700;font-size:12.5px;display:inline-flex;align-items:center}
+.scr-tenants .wochip{margin-left:6px;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--c-wash2);padding:3px 8px;border-radius:99px;opacity:.8;white-space:nowrap}
+.scr-tenants .period{font-size:11px;opacity:.6;white-space:nowrap}
+.scr-tenants .period small{display:block;font-size:9.5px;opacity:.7}
+.scr-tenants .amt{font-weight:700;font-size:12px;opacity:.85;margin-left:6px;white-space:nowrap}
+.scr-tenants .amt small{display:block;font-size:9.5px;font-weight:400;opacity:.6}
+.scr-tenants .stamp{display:inline-grid;grid-template-columns:150px 96px;gap:10px;align-items:center;margin-left:auto;flex-shrink:0}
+.scr-tenants .status{display:block;text-align:right;color:var(--c-fg)}
+.scr-tenants .status.dim{opacity:.5}
+.scr-tenants .status b{display:block;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.scr-tenants .status i{display:block;font-style:normal;font-family:'DM Mono',ui-monospace,monospace;font-size:9px;opacity:.6;white-space:nowrap}
+.scr-tenants .status.green{color:var(--c-st-booked)}
+.scr-tenants .status.warm{color:var(--c-st-warm)}
+.scr-tenants .status.hot{color:var(--c-st-hot)}
+
+.scr-tenants .inc{display:flex;align-items:center;gap:12px;padding:7px 12px 7px 26px;font-size:11.5px}
+.scr-tenants .inc .what{font-weight:700}
+.scr-tenants .inc .what small{display:block;font-size:9.5px;font-weight:400;opacity:.55}
+.scr-tenants .inc .hrs{opacity:.7;white-space:nowrap}
+
+.scr-tenants .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5;margin-top:14px}
+
+/* pop-ups, drawn open below the board */
+.scr-tenants .pops{margin-top:18px;padding:22px 16px;border-radius:16px;background:var(--c-wash);display:flex;flex-direction:column;align-items:center;gap:20px}
+.scr-tenants .modal{width:100%;background:var(--c-srf);border-radius:16px;padding:24px;box-shadow:var(--c-softsh),0 18px 50px rgba(0,0,0,.3)}
+.scr-tenants .modal.pay{max-width:400px}
+.scr-tenants .modal.led{max-width:620px}
+.scr-tenants .mtitle{font-size:15px;margin-bottom:2px}
+.scr-tenants .msub{font-size:11.5px;opacity:.6;margin-bottom:14px}
+.scr-tenants .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.scr-tenants .flab{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;display:block;margin-bottom:3px}
+.scr-tenants .input{display:flex;align-items:center;justify-content:space-between;width:100%;height:32px;border-radius:12px;padding:0 10px;background:var(--c-wash);color:var(--c-fg);font-weight:700}
+.scr-tenants .input.big{font-size:15px}
+.scr-tenants .input.date{font-size:13px}
+.scr-tenants .input svg{width:13px;height:13px;opacity:.7;flex-shrink:0}
+.scr-tenants .partialmsg{font-size:11px;margin-top:8px;color:var(--c-st-warm);font-weight:700}
+.scr-tenants .mfoot{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+
+.scr-tenants .lhead{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.scr-tenants .lhead .t{font-size:15px}
+.scr-tenants .lhead .m{font-size:11px;opacity:.55}
+.scr-tenants .lhead .bal{margin-left:auto;font-weight:800;font-size:12px;color:var(--c-st-hot)}
+.scr-tenants .lcols,.scr-tenants .lrow{display:grid;grid-template-columns:1fr 80px 80px 80px 96px;gap:8px}
+.scr-tenants .lcols{padding:0 8px 4px;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45}
+.scr-tenants .lcols span:nth-child(n+2){text-align:right}
+.scr-tenants .lrow{align-items:center;padding:7px 8px;margin-top:4px;font-size:11.5px;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-tenants .lrow small{display:block;font-size:9.5px;opacity:.5}
+.scr-tenants .lrow .n{text-align:right;font-weight:700}
+.scr-tenants .lrow .n.zero{opacity:.4}
+.scr-tenants .lrow .n.owed{color:var(--c-st-hot)}
+.scr-tenants .lrow .c{justify-self:end}
+.scr-tenants .chip{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:5px 11px;border-radius:99px;white-space:nowrap;line-height:1.6}
+.scr-tenants .chip.paid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-tenants .chip.partial{background:var(--c-st-warm);color:var(--c-chip-ink)}
+
+/* states */
+.scr-tenants:not([data-state="inc-late"]) .only-inc-late{display:none}
+.scr-tenants[data-state="inc-late"] .not-inc-late{display:none}
+.scr-tenants:not([data-state="partial"]) .only-partial{display:none}
+.scr-tenants[data-state="partial"] .not-partial{display:none}
+</style>
+<div class="scr scr-tenants">
+ <div class="in">
+
+  <div class="head" data-k="heading">
+   <div>
+    <span class="lab"><span>Rent</span><span class="hint" style="opacity:1">?</span></span>
+    <div class="btitle">
+     <span class="arch">Billing <span class="btitlen">21</span></span>
+     <span class="arch">COD <span class="btitlen hot">3</span></span>
+     <span class="arch on" data-k="tab-tenants">Tenants</span>
+    </div>
+   </div>
+  </div>
+
+  <div class="bar">
+   <span class="bact dimmer" data-k="past">Past tenants (1)</span>
+   <span class="month" data-k="month">
+    <span class="bact">‹</span>
+    October 2026
+    <span class="bact">›</span>
+   </span>
+  </div>
+
+  <div class="stats" data-k="stats">
+   <div class="bstat"><div class="v arch">$25,650.00</div><div class="l">Rent roll / mo</div></div>
+   <div class="bstat"><div class="v arch">$13,900.00</div><div class="l">Collected · Oct</div></div>
+   <div class="bstat"><div class="v arch hot">$11,750.00</div><div class="l">Still open</div></div>
+   <div class="bstat"><div class="v arch">6</div><div class="l">Tenants</div></div>
+  </div>
+
+  <div class="group" data-k="group">
+   <div class="ghead">Paramount</div>
+
+   <div class="trow" data-k="t-row done">
+    <span class="room">Studio D</span>
+    <span class="tname" data-k="t-name">Marlow Sound</span>
+    <span class="period" data-k="period">Oct 1 – 31<small>due Oct 1</small></span>
+    <span class="amt">$6,500.00</span>
+    <span class="stamp">
+     <span class="status green" data-k="status"><b>In QB</b><i>paid Oct 1</i></span>
+     <span class="bact w96 faint" data-k="b-done">Done ↩</span>
+    </span>
+   </div>
+
+   <div class="trow" data-k="t-row">
+    <span class="room">Suite 4</span>
+    <span class="tname" data-k="t-name">Odile Prod.</span>
+    <span class="period" data-k="period">Oct 1 – 31<small>due Oct 1</small></span>
+    <span class="amt">$2,400.00</span>
+    <span class="stamp">
+     <span class="status green" data-k="status"><b>Paid</b><i>Oct 5</i></span>
+     <span class="bact w96" data-k="b-qb">In QB</span>
+    </span>
+   </div>
+
+   <div class="trow" data-k="t-row late">
+    <span class="room">Suite 2</span>
+    <span class="tname" data-k="t-name">Halden Audio</span>
+    <span class="period" data-k="period">Oct 1 – 31<small>due Oct 1</small></span>
+    <span class="amt">$3,200.00</span>
+    <span class="stamp">
+     <span class="status hot" data-k="status"><b>Late</b><i>6 days · sent Sep 25</i></span>
+     <span class="bact w96" data-k="b-paid">Mark paid</span>
+    </span>
+   </div>
+  </div>
+
+  <div class="group" data-k="group">
+   <div class="ghead">Encore</div>
+
+   <div data-k="t-row-wo">
+    <div class="trow" data-k="t-row partial">
+     <span class="room">Lockout C</span>
+     <span class="tname" data-k="t-name">Tenant M<span class="wochip" data-k="wochip">WO + incidentals</span></span>
+     <span class="period" data-k="period">Oct 5 – Nov 4<small>due Oct 5</small></span>
+     <span class="amt">$9,000.00<small>paid $5,000.00</small></span>
+     <span class="stamp">
+      <span class="status warm" data-k="status"><b>Partial</b><i>$5,000.00 in · $4,000.00 open</i></span>
+      <span class="bact w96" data-k="b-paid">Mark paid</span>
+     </span>
+    </div>
+    <div class="inc" data-k="incidentals">
+     <span class="what">Incidentals — September 2026<small>goes out the 2nd–3rd · shared runner ½ vs ERS·A · OT on the work order</small></span>
+     <span class="hrs" data-k="inc-hours">41.5 hrs</span>
+     <span class="bact" data-k="monthsheet">Month sheet →</span>
+     <span class="stamp not-inc-late">
+      <span class="status green" data-k="status"><b>Paid</b><i>Oct 6</i></span>
+      <span class="bact w96" data-k="b-qb">In QB</span>
+     </span>
+     <span class="stamp only-inc-late">
+      <span class="status hot" data-k="status"><b>Late</b><i>32 days · sent Oct 2</i></span>
+      <span class="bact w96" data-k="b-paid">Mark paid</span>
+     </span>
+    </div>
+   </div>
+
+   <div class="trow" data-k="t-row">
+    <span class="room">Room 2</span>
+    <span class="tname" data-k="t-name">Pine &amp; Ash</span>
+    <span class="period" data-k="period">Oct 16 – Nov 15<small>due Oct 16</small></span>
+    <span class="amt">$1,800.00</span>
+    <span class="stamp">
+     <span class="status dim" data-k="status"><b>Sent</b><i>Oct 6</i></span>
+     <span class="bact w96" data-k="b-paid">Mark paid</span>
+    </span>
+   </div>
+
+   <div class="trow" data-k="t-row">
+    <span class="room">Loft</span>
+    <span class="tname" data-k="t-name">Brightwell Music</span>
+    <span class="period" data-k="period">Oct 16 – Nov 15<small>due Oct 16</small></span>
+    <span class="amt">$2,750.00</span>
+    <span class="stamp">
+     <span class="status dim" data-k="status sendby"><b>Not sent</b><i>send by Oct 10</i></span>
+     <span class="bact w96" data-k="b-sent">Mark sent</span>
+    </span>
+   </div>
+  </div>
+
+  <div class="bnote" data-k="footnote">
+   One button per row, always the next act: Mark sent (the rent email went out) → Mark paid
+   (asks how much — less than the full amount is a Partial) → In QB (entered in QuickBooks,
+   manual for now). ↩ undoes a misclick. Each row shows its period; unpaid five days past the
+   period start goes hot. Tap a name for that tenant’s ledger. Tenants don’t have work orders —
+   except a lease marked “has a work order” (Mustard), whose overtime and shared-runner hours
+   bill through Billing like any other WO.
+  </div>
+
+  <div class="pops">
+
+   <div class="modal pay" data-k="payprompt">
+    <div class="mtitle arch">Tenant M — paid</div>
+    <div class="msub">Oct 5 – Nov 4 · $9,000.00 due · $5,000.00 already in</div>
+    <div class="two">
+     <div data-k="pay-amount">
+      <span class="flab">Amount received (total)</span>
+      <div class="input big"><span class="not-partial">9000</span><span class="only-partial">7000</span></div>
+     </div>
+     <div data-k="pay-date">
+      <span class="flab">Date received</span>
+      <div class="input date"><span>10/07/2026</span>
+       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/></svg>
+      </div>
+     </div>
+    </div>
+    <div class="partialmsg only-partial" data-k="pay-partial">Partial — $2,000.00 still open.</div>
+    <div class="mfoot">
+     <span class="bact">Cancel</span>
+     <span class="bact" data-k="pay-save"><span class="not-partial">Paid in full</span><span class="only-partial">Record partial</span></span>
+    </div>
+   </div>
+
+   <div class="modal led" data-k="ledger">
+    <div class="lhead">
+     <span class="t arch">Tenant M — Lockout C</span>
+     <span class="m">$9,000.00 / mo · starts the 5th · since Mar 5</span>
+     <span class="bal" data-k="ledger-balance">Balance $4,000.00</span>
+    </div>
+    <div class="lcols"><span>Period</span><span>Invoiced</span><span>Paid</span><span>Balance</span><span></span></div>
+    <div class="lrow" data-k="l-row">
+     <span>Oct 5 – Nov 4, 2026<small>sent Sep 29</small></span>
+     <span class="n">$9,000.00</span><span class="n">$5,000.00</span><span class="n owed">$4,000.00</span>
+     <span class="c"><span class="chip partial">Partial</span></span>
+    </div>
+    <div class="lrow" data-k="l-row">
+     <span>Sep 5 – Oct 4, 2026<small>sent Aug 30 · paid Sep 5 · QB Sep 8</small></span>
+     <span class="n">$9,000.00</span><span class="n">$9,000.00</span><span class="n zero">$0.00</span>
+     <span class="c"><span class="chip paid">In QB</span></span>
+    </div>
+    <div class="lrow" data-k="l-row">
+     <span>Aug 5 – Sep 4, 2026<small>sent Jul 30 · paid Aug 6 · QB Aug 11</small></span>
+     <span class="n">$9,000.00</span><span class="n">$9,000.00</span><span class="n zero">$0.00</span>
+     <span class="c"><span class="chip paid">In QB</span></span>
+    </div>
+    <div class="lrow" data-k="l-row">
+     <span>Jul 5 – Aug 4, 2026<small>sent Jun 29 · paid Jul 7</small></span>
+     <span class="n">$9,000.00</span><span class="n">$9,000.00</span><span class="n zero">$0.00</span>
+     <span class="c"><span class="chip paid">Paid</span></span>
+    </div>
+    <div class="mfoot" style="margin-top:14px"><span class="bact">Close</span></div>
+   </div>
+
+  </div>
+ </div>
+</div>

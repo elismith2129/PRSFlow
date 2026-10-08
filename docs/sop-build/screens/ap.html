@@ -1,0 +1,134 @@
+<style>
+/* "How to send this invoice" — components/billing/ApCard.tsx.
+   A right-side panel (max 460px, full height) over a dimmed page. */
+.scr-ap{color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased;background:rgba(0,0,0,.5);display:flex;justify-content:flex-end;border-radius:8px;overflow:hidden}
+.scr-ap *{box-sizing:border-box}
+.scr-ap .panel{width:100%;max-width:460px;background:var(--c-bg);display:flex;flex-direction:column}
+.scr-ap .c-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-ap .seclabel{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:10px}
+.scr-ap .sec{padding:15px 18px;border-bottom:1px solid var(--c-wash2)}
+
+.scr-ap .head{padding:16px 18px 14px;border-bottom:1px solid var(--c-wash2);position:relative}
+.scr-ap .head .seclabel{margin-bottom:5px}
+.scr-ap .head .who{font-size:21px;letter-spacing:-.01em}
+.scr-ap .head .proc{font-size:12.5px;color:var(--c-fg-3);margin-top:3px}
+.scr-ap .head .x{position:absolute;top:12px;right:12px;color:var(--c-fg-3);font-size:20px;line-height:1;padding:4px}
+
+.scr-ap .pills{display:flex;gap:8px;flex-wrap:wrap;padding:13px 18px;border-bottom:1px solid var(--c-wash2)}
+.scr-ap .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;font-size:11.5px;font-weight:800;letter-spacing:.02em;background:var(--c-wash2);color:var(--c-fg-2)}
+.scr-ap .pill.po{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-ap .pill.pay{background:var(--c-st-booked);color:var(--c-chip-ink)}
+
+.scr-ap ol{list-style:none;margin:0;padding:0}
+.scr-ap li{display:flex;gap:11px;padding:8px 0;border-top:1px solid var(--c-wash2)}
+.scr-ap li:first-child{border-top:none;padding-top:0}
+.scr-ap .num{flex:0 0 21px;height:21px;border-radius:50%;background:var(--c-fg);color:var(--c-chip-ink);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.scr-ap:is([data-theme="light"] *) .num:not(.on){color:var(--c-bg)}
+.scr-ap .num.on{background:var(--c-st-booked)}
+.scr-ap .stitle{font-size:13.5px;font-weight:700;line-height:1.35}
+.scr-ap .stitle.on{opacity:.5;text-decoration:line-through}
+.scr-ap .by{font-size:10.5px;color:var(--c-fg-3);margin-top:1px}
+.scr-ap .detail{display:inline-block;font-size:11px;font-weight:700;color:var(--c-fg-3);margin-top:3px;letter-spacing:.02em}
+
+.scr-ap .tick{display:flex;align-items:flex-start;gap:9px;padding:6px 0;font-size:12.5px}
+.scr-ap .box{flex:0 0 15px;height:15px;border-radius:4px;margin-top:2px;border:1.5px solid var(--c-fg-3);color:var(--c-chip-ink);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;line-height:1}
+.scr-ap .box.on{border-color:var(--c-st-booked);background:var(--c-st-booked)}
+.scr-ap .tick .t.on{opacity:.55}
+
+.scr-ap .row{display:flex;gap:12px;padding:6px 0;font-size:12.5px}
+.scr-ap .row .k{flex:0 0 92px;color:var(--c-fg-3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+.scr-ap .row .v{flex:1;min-width:0;word-break:break-word}
+.scr-ap .row .v.link{color:var(--c-st-cold)}
+.scr-ap .row .v.hint{color:var(--c-fg-3);font-style:italic}
+
+.scr-ap .watch{display:flex;gap:9px;padding:11px 12px;border-radius:10px;background:rgba(255,169,77,.14);font-size:12.5px;line-height:1.5}
+.scr-ap .watch + .watch{margin-top:8px}
+.scr-ap .watch b{color:var(--c-st-warm)}
+.scr-ap .foot{padding:13px 18px}
+.scr-ap .foot .sum{display:inline-block;font-size:11.5px;font-weight:700;color:var(--c-fg-3)}
+</style>
+<div class="scr scr-ap">
+  <div class="panel" data-k="ap-panel">
+
+    <div class="head" data-k="ap-head">
+      <div class="seclabel">How to send this invoice</div>
+      <div class="c-arch who">Hitline Records</div>
+      <div class="proc">Hitline Records (VendorGate) · WO-1310</div>
+      <span class="x">×</span>
+    </div>
+
+    <div class="pills" data-k="ap-glance">
+      <span class="pill" data-k="ap-where">VendorGate submission</span>
+      <span class="pill po" data-k="ap-po">PO required</span>
+      <span class="pill pay" data-k="ap-pays">Pays ACH</span>
+    </div>
+
+    <div class="sec" data-k="ap-steps">
+      <div class="seclabel">Steps</div>
+      <ol>
+        <li>
+          <div class="num on" data-k="ap-tick">✓</div>
+          <div>
+            <div class="stitle on">Get the PO number from the label's A&amp;R admin</div>
+            <div class="by">Lori · Oct 6</div>
+          </div>
+        </li>
+        <li>
+          <div class="num on" data-k="ap-tick">✓</div>
+          <div>
+            <div class="stitle on">Make the QuickBooks invoice with the PO number on it</div>
+            <div class="by">Lori · 9:42 AM</div>
+            <span class="detail" data-k="ap-detail">Show detail ▾</span>
+          </div>
+        </li>
+        <li>
+          <div class="num">3</div>
+          <div>
+            <div class="stitle">Log in to VendorGate and start a new invoice against that PO</div>
+            <span class="detail" data-k="ap-detail">Show detail ▾</span>
+          </div>
+        </li>
+        <li>
+          <div class="num">4</div>
+          <div>
+            <div class="stitle">Upload the package PDF and submit</div>
+          </div>
+        </li>
+        <li>
+          <div class="num">5</div>
+          <div>
+            <div class="stitle">Save the confirmation number in the collection notes</div>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="sec" data-k="ap-pkg">
+      <div class="seclabel">Package</div>
+      <div class="tick"><div class="box on" data-k="ap-tick">✓</div><div><div class="t on">Invoice PDF from QuickBooks</div><div class="by">Lori · 9:44 AM</div></div></div>
+      <div class="tick"><div class="box on" data-k="ap-tick">✓</div><div><div class="t on">Work order</div><div class="by">Lori · 9:44 AM</div></div></div>
+      <div class="tick"><div class="box" data-k="ap-tick"></div><div><div class="t">Receipts, if there were rentals or a food budget</div></div></div>
+      <div class="tick"><div class="box" data-k="ap-tick"></div><div><div class="t">Session info filled in — some labels will not pay without it</div></div></div>
+    </div>
+
+    <div class="sec" data-k="ap-where">
+      <div class="seclabel">Access</div>
+      <div class="row"><div class="k">Portal</div><div class="v">VendorGate</div></div>
+      <div class="row"><div class="k">URL</div><div class="v link">https://vendorgate.example/hitline</div></div>
+      <div class="row"><div class="k">Login</div><div class="v">billing@studio.example</div></div>
+      <div class="row" data-k="ap-password"><div class="k">Password</div><div class="v hint">In the office password manager</div></div>
+      <div class="row" data-k="ap-po"><div class="k">PO</div><div class="v">A PO on every invoice. Ask the A&amp;R admin for it before the session ends.</div></div>
+    </div>
+
+    <div class="sec" data-k="ap-watch">
+      <div class="seclabel">Watch out</div>
+      <div class="watch"><div>⚠︎</div><div>An invoice without the PO in the portal's PO field is rejected automatically. Submit it again; do not email it.</div></div>
+      <div class="watch"><div>⚠︎</div><div><b>Hitline Records:</b> Put the artist name in the invoice memo.</div></div>
+    </div>
+
+    <div class="foot" data-k="ap-foot">
+      <span class="sum">General AP reference ▾</span>
+    </div>
+
+  </div>
+</div>

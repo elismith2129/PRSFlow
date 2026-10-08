@@ -1,0 +1,223 @@
+<style>
+/* Billing hub — COD side (app/(main)/billing/page.tsx, pipeline === 'cod').
+   Rules copied from styles/globals.css (c-b*), re-scoped under .scr-cod. */
+.scr-cod{overflow-x:auto;color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.scr-cod *{box-sizing:border-box}
+.scr-cod .inner{min-width:920px;padding:4px 2px 6px}
+.scr-cod button{font-family:inherit;margin:0}
+.scr-cod .c-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-cod .c-label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+
+/* heading — the pipeline is the title */
+.scr-cod .hdr{display:flex;align-items:flex-start;gap:16px;padding:2px 4px 14px}
+.scr-cod .c-btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px}
+.scr-cod .c-btitle > button{display:flex;align-items:baseline;gap:8px;font-size:inherit;letter-spacing:-.03em;line-height:1.05;background:none;border:none;padding:0;color:var(--c-fg);opacity:.28}
+.scr-cod .c-btitle > button.c-on{opacity:1}
+.scr-cod .c-btitlen{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-cod .c-btitlen.c-hot{background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;opacity:1}
+.scr-cod .pgmore{margin-left:auto;font-size:15px;line-height:1;padding:4px 6px;border:none;background:none;color:var(--c-fg);opacity:.3}
+
+.scr-cod .c-hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+/* summary tiles */
+.scr-cod .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.scr-cod .c-bstat{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-cod .c-bstat .v{font-size:20px;letter-spacing:-.02em;line-height:1.6}
+.scr-cod .c-bstat .v.alert{color:var(--c-st-hot)}
+.scr-cod .c-bstat .l{font-size:10px;opacity:.55;margin-top:1px;line-height:1.6}
+
+/* search */
+.scr-cod .c-bsearch{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--c-wash);border-radius:12px;padding:0 10px;height:32px}
+.scr-cod .c-bsearch .g{opacity:.4;font-size:12px}
+.scr-cod .c-bsearch .ph{flex:1;font-size:12.5px;opacity:.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* tabs — latches on COD */
+.scr-cod .c-btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scr-cod .c-btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;box-shadow:var(--c-ctlsh);color:var(--c-fg);line-height:1.6}
+.scr-cod .c-btab.c-on{background:var(--c-ivory);color:#1b1a17}
+.scr-cod:is([data-theme="light"] *) .c-btab.c-on{background:var(--c-fg);color:var(--c-bg)}
+.scr-cod .c-bn{font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;opacity:.65}
+.scr-cod .c-bn.hot{color:var(--c-st-hot);opacity:1}
+.scr-cod[data-state="paid"] .tab-paid{background:var(--c-ivory);color:#1b1a17}
+.scr-cod[data-state="paid"]:is([data-theme="light"] *) .tab-paid{background:var(--c-fg);color:var(--c-bg)}
+
+/* list panel */
+.scr-cod .c-panel{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:12px}
+.scr-cod .c-lozenge{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-cod .c-ct{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0}
+.scr-cod .c-brow,.scr-cod .c-browhd{display:grid;grid-template-columns:100px 76px minmax(0,1fr) 234px 84px 120px 48px;align-items:center;gap:10px}
+.scr-cod[data-state="paid"] .c-brow,.scr-cod[data-state="paid"] .c-browhd{grid-template-columns:100px 76px minmax(0,1fr) 234px 84px 46px 120px 48px}
+.scr-cod .c-brow{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px}
+.scr-cod .c-browhd{padding:2px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.scr-cod .c-browhd .c-r{text-align:right}
+.scr-cod .c-browhd .c-bacthd{text-align:center}
+.scr-cod .c-bday{display:flex;align-items:center;gap:9px;margin:12px 2px 2px}
+.scr-cod .c-bday b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.scr-cod .c-bday i{flex:1;height:1px;background:var(--c-wash2)}
+.scr-cod .c-bday u{font-size:9px;opacity:.3;text-decoration:none;white-space:nowrap}
+.scr-cod .c-bbin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6}
+/* STAGE_STYLE (page.tsx) */
+.scr-cod .st-balance{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-cod .st-review{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-cod .st-invoice{background:var(--c-st-warm);color:var(--c-chip-ink);opacity:.75}
+.scr-cod .st-approval{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-cod .st-paid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-cod .c-binv{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;opacity:.6}
+.scr-cod .c-bwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-cod .c-bwho span{opacity:.5;font-size:11px}
+.scr-cod .c-bamt{font-family:'DM Mono',ui-monospace,monospace;font-size:11.5px;text-align:right}
+.scr-cod .c-bage{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.45;text-align:right}
+.scr-cod .c-bflagcell{display:flex;justify-content:flex-end;min-width:0}
+.scr-cod .c-bactcell{display:flex;justify-content:center;gap:6px;min-height:20px}
+.scr-cod .c-bmorecell{display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.scr-cod .c-bnoteg{position:relative;font-size:11px;line-height:1;padding:4px 3px;border:none;background:none;color:var(--c-fg);opacity:.25;border-radius:5px}
+.scr-cod .c-bnoteg.c-has{opacity:.8}
+.scr-cod .c-bnoteg.c-has::after{content:'';position:absolute;top:1px;right:0;width:6px;height:6px;border-radius:99px;background:var(--c-st-warm)}
+.scr-cod .c-bmore{font-size:12px;line-height:1;padding:4px 2px;border:none;background:none;color:var(--c-fg);opacity:.3}
+.scr-cod .c-bflag{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-cod .c-bflag.c-bsub{color:var(--c-st-warm)}
+.scr-cod .c-bflag.c-bsub .c-bsubat{font-family:'DM Mono',ui-monospace,monospace;font-weight:600;letter-spacing:0;text-transform:none;opacity:.75}
+.scr-cod .c-bhint{font-size:9.5px;opacity:.4;font-style:italic;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-cod .c-bdrift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-hot);flex-shrink:0}
+.scr-cod .c-bpager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.scr-cod .c-binfo{margin-right:auto;opacity:.45;font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px}
+.scr-cod .c-bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+
+/* the Paid latch — off by default, on in data-state="paid" */
+.scr-cod:not([data-state="paid"]) .only-paid{display:none}
+.scr-cod[data-state="paid"] .only-default{display:none}
+</style>
+<div class="scr scr-cod">
+ <div class="inner">
+
+  <div class="hdr">
+    <div>
+      <span class="c-label" style="display:block;margin-bottom:3px">Work orders &amp; invoices<span class="c-hint" data-k="hint">?</span></span>
+      <div class="c-btitle" data-k="title">
+        <button class="c-arch" data-k="title-billing">Billing <span class="c-btitlen">11</span></button>
+        <button class="c-arch c-on" data-k="title-cod">COD <span class="c-btitlen c-hot" data-k="cod-count">4</span></button>
+        <button class="c-arch" data-k="title-tenants">Tenants</button>
+      </div>
+    </div>
+    <button class="pgmore" data-k="page-more">⋯</button>
+  </div>
+
+  <div class="stats" data-k="stats">
+    <div class="c-bstat" data-k="stat-balance"><div class="c-arch v alert">$410.00</div><div class="l">Balance due</div></div>
+    <div class="c-bstat" data-k="stat-collected"><div class="c-arch v">$6,870.00</div><div class="l">Collected this month</div></div>
+    <div class="c-bstat" data-k="stat-review"><div class="c-arch v">3</div><div class="l">Needs review</div></div>
+    <div class="c-bstat" data-k="stat-open"><div class="c-arch v alert">1</div><div class="l">Balances open</div></div>
+  </div>
+
+  <div class="c-bsearch" data-k="search">
+    <span class="g">⌕</span>
+    <span class="ph">Search everything — client, artist, invoice #, WO #, PO…</span>
+    <span class="c-hint" data-k="hint">?</span>
+  </div>
+
+  <div class="c-btabs" data-k="tabs">
+    <span class="c-btab c-on" data-k="tab-balance">Balance due <span class="c-bn hot">1</span></span>
+    <span class="c-btab" data-k="tab-progress">In progress <span class="c-bn">0</span></span>
+    <span class="c-btab c-on" data-k="tab-review">Needs review <span class="c-bn">3</span></span>
+    <span class="c-btab tab-paid" data-k="tab-paid">Paid <span class="c-bn">2</span></span>
+    <span class="c-btab" data-k="tab-notstarted">Not started <span class="c-bn">3</span></span>
+    <span class="c-btab" data-k="tab-holds">Removed holds <span class="c-bn">1</span></span>
+  </div>
+
+  <div class="c-panel" data-k="list">
+    <div class="c-lozenge" data-k="list-head">
+      <b class="only-default">Balance due + Needs review</b>
+      <b class="only-paid">Balance due + Needs review + Paid</b>
+      <span class="c-ct only-default">4</span>
+      <span class="c-ct only-paid">6</span>
+    </div>
+
+    <div class="c-browhd" data-k="cols">
+      <span>Status</span>
+      <span>WO</span>
+      <span>Client &amp; session</span>
+      <span class="c-r">Flag</span>
+      <span class="c-r">Balance</span>
+      <span class="c-r only-paid" data-k="age">Age</span>
+      <span class="c-bacthd" data-k="btn">Next</span>
+      <span></span>
+    </div>
+
+    <div class="c-bday" data-k="divider"><b>Balance due</b><i></i><u>1 invoice</u></div>
+    <div class="c-brow" data-k="r-balance">
+      <span class="c-bbin st-balance" data-k="badge">Balance due</span>
+      <span class="c-binv">WO-1312</span>
+      <span class="c-bwho"><b>Dante Hollis</b><span> · Oct 5</span><span> · PRS A</span></span>
+      <span class="c-bflagcell" data-k="flag"><span class="c-bhint">Record payment on the WO</span></span>
+      <span class="c-bamt" data-k="balance">$410.00</span>
+      <span class="c-bage only-paid">—</span>
+      <span class="c-bactcell"></span>
+      <span class="c-bmorecell"><button class="c-bnoteg c-has" data-k="notes">✎</button><button class="c-bmore" data-k="more">⋯</button></span>
+    </div>
+
+    <div class="c-bday" data-k="divider"><b>Needs review</b><i></i><u>2 invoices</u></div>
+    <div class="c-brow" data-k="r-review">
+      <span class="c-bbin st-review" data-k="badge">Needs review</span>
+      <span class="c-binv">WO-1309</span>
+      <span class="c-bwho"><b>Lena Ortiz</b><span> · Oct 4</span><span> · PRS C</span></span>
+      <span class="c-bflagcell" data-k="flag"><span class="c-bflag c-bsub">Submitted by Terren L.<span class="c-bsubat"> 12:14 AM</span></span></span>
+      <span class="c-bamt">—</span>
+      <span class="c-bage only-paid">—</span>
+      <span class="c-bactcell"></span>
+      <span class="c-bmorecell"><button class="c-bnoteg" data-k="notes">✎</button><button class="c-bmore" data-k="more">⋯</button></span>
+    </div>
+    <div class="c-brow" data-k="r-review">
+      <span class="c-bbin st-review" data-k="badge">Needs review</span>
+      <span class="c-binv">WO-1306</span>
+      <span class="c-bwho"><b>Marcus Vale</b><span> · Oct 3</span><span> · ARS A</span></span>
+      <span class="c-bflagcell" data-k="flag"><span class="c-bdrift">Never submitted · Terren L.</span></span>
+      <span class="c-bamt">—</span>
+      <span class="c-bage only-paid">—</span>
+      <span class="c-bactcell"></span>
+      <span class="c-bmorecell"><button class="c-bnoteg" data-k="notes">✎</button><button class="c-bmore" data-k="more">⋯</button></span>
+    </div>
+
+    <div class="c-bday" data-k="divider"><b>Needs invoice</b><i></i><u>1 invoice</u></div>
+    <div class="c-brow" data-k="r-invoice">
+      <span class="c-bbin st-invoice" data-k="badge">Needs invoice</span>
+      <span class="c-binv">WO-1303</span>
+      <span class="c-bwho"><b>Priya Anand</b><span> · Oct 2</span><span> · ERS A</span></span>
+      <span class="c-bflagcell" data-k="flag"><span class="c-bhint">Drop invoice here · or click</span></span>
+      <span class="c-bamt">—</span>
+      <span class="c-bage only-paid">—</span>
+      <span class="c-bactcell"></span>
+      <span class="c-bmorecell"><button class="c-bnoteg" data-k="notes">✎</button><button class="c-bmore" data-k="more">⋯</button></span>
+    </div>
+
+    <div class="c-bday only-paid" data-k="divider"><b>Needs approval</b><i></i><u>1 invoice</u></div>
+    <div class="c-brow only-paid" data-k="r-approval">
+      <span class="c-bbin st-approval" data-k="badge">Needs approval</span>
+      <span class="c-binv">WO-1300</span>
+      <span class="c-bwho"><b>Theo Banks</b><span> · Oct 1</span><span> · PRS A</span></span>
+      <span class="c-bflagcell"></span>
+      <span class="c-bamt">—</span>
+      <span class="c-bage">—</span>
+      <span class="c-bactcell"></span>
+      <span class="c-bmorecell"><button class="c-bnoteg" data-k="notes">✎</button><button class="c-bmore" data-k="more">⋯</button></span>
+    </div>
+
+    <div class="c-bday only-paid" data-k="divider"><b>Paid</b><i></i><u>1 invoice</u></div>
+    <div class="c-brow only-paid" data-k="r-paid">
+      <span class="c-bbin st-paid" data-k="badge">Paid</span>
+      <span class="c-binv">WO-1294</span>
+      <span class="c-bwho"><b>Dante Hollis</b><span> · Sep 27</span><span> · PRS B</span></span>
+      <span class="c-bflagcell"></span>
+      <span class="c-bamt">—</span>
+      <span class="c-bage">—</span>
+      <span class="c-bactcell"></span>
+      <span class="c-bmorecell"><button class="c-bnoteg" data-k="notes">✎</button><button class="c-bmore" data-k="more">⋯</button></span>
+    </div>
+
+    <div class="c-bpager" data-k="pager">
+      <span class="c-binfo only-default">4 of 4</span>
+      <span class="c-binfo only-paid">6 of 6</span>
+    </div>
+    <div class="c-bnote" data-k="footnote">COD is paid at the top of the session. Check the work order is accurate, drop the QuickBooks invoice on it, done. A balance means collection was missed — the only way COD goes wrong.</div>
+  </div>
+
+ </div>
+</div>

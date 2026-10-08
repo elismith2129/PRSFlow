@@ -1,0 +1,44 @@
+  BILLING SOP — WALKTHROUGH EDITION (2026-10-07, app v1.43.7).
+
+  Eli, on the Oct 6 rewrite (which was right on the facts but all text):
+    "i did like it where it shows the actual app pages and highlights the
+     boxes and then explains it. i think thats how we should do all SOPs.
+     and keep the copy tight as when its long they just check out."
+
+  SO THIS IS THE PATTERN FOR EVERY SOP FROM HERE:
+    · Each chapter is one or more WALKTHROUGHS: a drawn copy of the real
+      screen, a step panel above it, and Next / Back. Each step lights up one
+      part of the screen and says what it is in a sentence or two.
+    · Copy stays short. A step title is a few words; a step body is one or
+      two short sentences. If it needs a paragraph, it needs another step.
+    · The drawn screens are static HTML written FROM THE CODE that renders
+      the real page (same regions, same wording on every label), with
+      fictional sample data. Every part a step can point at carries
+      data-k="key". A step names keys; the engine finds them, cuts a hole in
+      a dimming layer over the screen, and rings them.
+    · A step may also set data-state on the screen (e.g. "owner", "tentative")
+      to show the same screen in another condition.
+
+  THIS FILE IS BUILT. The sources are in docs/sop-build/:
+      content.py        chapters, walkthroughs and every step's words
+      screens/NAME.html one drawn screen each (CSS scoped under .scr-NAME)
+      shell.css · engine.js · headnote.txt (this comment)
+      build.py          python3 docs/sop-build/build.py public/billing-sop.html
+      test.py           steps through every step and checks something lights up
+      BRIEF.md · render.py · harness_head.html   how a screen is drawn + checked
+  HOW TO UPDATE IT WHEN THE APP CHANGES:
+    · Wording only → the step in content.py (keys, title, body[, state]).
+    · A screen changed → that screen's file in screens/.
+    · A new part to explain → give it a data-k and add a step that names it.
+    Then rebuild. (A one-word fix straight in this file is fine too — make the
+    same fix in content.py or the next build puts the old word back.)
+    The other SOPs are made the same way: new content file, same engine.
+    The facts come from the code, not from the changelog: where a comment and
+    the code disagree, the code wins.
+
+  NOT DRAWN, ON PURPOSE: real client names, real invoices, real money. Sample
+  data only (Hitline Records, Vantage Music Group, Northside Ent., Crest Label
+  Group, Dante Hollis…).
+
+  Served as-is from /public by app/(main)/sop/billing/page.tsx (an iframe).
+  It follows the app's light/dark setting when it can read it.

@@ -1,0 +1,157 @@
+<style>
+.scr-pkg{font:400 14.5px/1.6 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);overflow-x:auto;-webkit-font-smoothing:antialiased;text-align:left}
+.scr-pkg *{box-sizing:border-box}
+.scr-pkg b{font-weight:700}
+.scr-pkg .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-pkg .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px}
+.scr-pkg .label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+/* .c-bmodal-wrap — the dimmed page behind a pop-up (the app hard-codes this black). */
+.scr-pkg .wrap{background:rgba(0,0,0,.5);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.scr-pkg .row{display:flex;align-items:flex-start;justify-content:center;gap:16px;width:100%}
+.scr-pkg .row > .bmodal{flex:1 1 0}
+/* .c-bmodal */
+.scr-pkg .bmodal{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px;width:100%;max-width:420px;min-width:0}
+/* .c-lozenge */
+.scr-pkg .lz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-pkg .lz b{font-weight:800}
+.scr-pkg .ct{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0;font-weight:400}
+/* .c-bact (+ .c-bmuted, .c-bblock) */
+.scr-pkg .bact{display:inline-block;font-size:9.5px;font-weight:700;line-height:1.6;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.scr-pkg .bact.bmuted{background:transparent;opacity:.45}
+.scr-pkg .bact.bblock{display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;font-size:12px;white-space:normal}
+.scr-pkg .bact.hot{color:var(--c-st-hot)}
+/* .c-btn / .c-soft */
+.scr-pkg .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:7px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;white-space:nowrap;line-height:1.6}
+.scr-pkg .soft{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:6px 13px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-bg);color:var(--c-fg);white-space:nowrap;line-height:1.6}
+/* .c-x */
+.scr-pkg .x{color:var(--c-fg);opacity:.4;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;margin-left:auto}
+/* .c-input (soft skin: flat wash) */
+.scr-pkg .input{display:block;width:100%;border-radius:12px;padding:0 10px;height:32px;line-height:32px;background:var(--c-wash);color:var(--c-fg);font-size:12.5px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.scr-pkg .input .ph{opacity:.35}
+/* a textarea wearing .c-input keeps the 32px height; its text sits at the top */
+.scr-pkg .input.ta{line-height:1.3;padding-top:2px;white-space:normal}
+.scr-pkg .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+/* the log / removed-holds entry row (inline styles in DeletedLog.tsx / RemovedHolds.tsx) */
+.scr-pkg .erow{flex-shrink:0;display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:var(--c-wash)}
+.scr-pkg .erow.confirming{background:var(--c-wash2)}
+.scr-pkg .erow.rec{opacity:.55}
+.scr-pkg .erow .m{flex:1;min-width:0}
+.scr-pkg .erow .l1{display:flex;align-items:baseline;gap:8px;min-width:0}
+.scr-pkg .erow .l1 .mono{font-size:10.5px;color:var(--c-fg-2);flex-shrink:0}
+.scr-pkg .erow .l1 b{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-pkg .erow .l2{font-size:11px;color:var(--c-fg-2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-pkg .erow .l3{font-size:10.5px;color:var(--c-fg-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-pkg .erow .pair{display:flex;gap:6px;flex-shrink:0}
+.scr-pkg .erow .done{font-size:10.5px;color:var(--c-fg-3);flex-shrink:0}
+@media (max-width:520px){
+  .scr-pkg .wrap{padding:10px}
+  .scr-pkg .row{flex-direction:column;align-items:center}
+  .scr-pkg .row > .bmodal{flex:none}
+  .scr-pkg .erow{flex-wrap:wrap;justify-content:flex-end}
+  .scr-pkg .erow .m{flex:1 1 100%}
+}
+
+
+.scr-pkg .wrap{padding:16px}
+/* .c-bpkg / .c-bpkghd / .c-bpkgbody */
+.scr-pkg .bpkg{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;width:100%;max-width:1120px;height:560px;display:flex;flex-direction:column;overflow:hidden}
+.scr-pkg .bpkghd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;flex-shrink:0}
+.scr-pkg .bpkghd .who{min-width:0}
+.scr-pkg .bpkghd .who .label{display:block;margin-bottom:2px}
+.scr-pkg .bpkghd .who b{font-size:14px}
+.scr-pkg .bpkghd .who .amt{opacity:.5;font-size:12px}
+.scr-pkg .sp{flex:1}
+/* .c-seg */
+.scr-pkg .seg{display:inline-flex;background:var(--c-bg);border-radius:99px;padding:4px;gap:2px;box-shadow:var(--c-ctlsh)}
+.scr-pkg .segb{display:inline-block;border-radius:99px;padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;color:var(--c-fg);white-space:nowrap;line-height:1.6}
+.scr-pkg .segb.on{opacity:1;background:var(--c-ivory);color:#1b1a17}
+.scr-pkg .bpkg > .bnote{padding:0 14px 6px;flex-shrink:0}
+.scr-pkg .bpkg > .bnote.hot{color:var(--c-st-hot)}
+.scr-pkg .bpkgbody{flex:1;min-height:0;overflow:hidden;padding:0 14px 14px}
+/* stand-in for the <iframe> that shows the stored PDF */
+.scr-pkg .pdf{width:100%;height:100%;border-radius:12px;background:var(--c-wash);display:flex;align-items:flex-start;justify-content:center;padding:18px 18px 0;overflow:hidden}
+.scr-pkg .page{width:100%;max-width:430px;height:120%;background:var(--c-wash2);border-radius:3px;padding:30px 34px;display:flex;flex-direction:column;gap:9px}
+.scr-pkg .page .cap{font-size:13px;font-weight:700;color:var(--c-fg-2);margin-bottom:2px}
+.scr-pkg .page .sub{font-size:10.5px;color:var(--c-fg-3);margin-bottom:12px}
+.scr-pkg .page i{display:block;height:7px;border-radius:4px;background:var(--c-wash2)}
+.scr-pkg .page i.s{width:38%}
+.scr-pkg .page i.m{width:62%}
+.scr-pkg .page i.gap{background:none;height:8px}
+.scr-pkg .page .tot{align-self:flex-end;width:34%;height:9px;border-radius:4px;background:var(--c-fg-3);opacity:.5;margin-top:6px}
+/* the owner's footer (inline styles in PackageModal) */
+.scr-pkg .ofoot{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--c-wash2);flex-shrink:0}
+.scr-pkg .ofoot .hint{font-size:10.5px;opacity:.55}
+.scr-pkg .ofoot .bact.first{margin-left:auto}
+.scr-pkg .orej{padding:10px 14px;border-top:1px solid var(--c-wash2);flex-shrink:0}
+.scr-pkg .orej .ask{font-size:10.5px;opacity:.55;margin-bottom:6px}
+.scr-pkg .orej .btns{display:flex;gap:8px;margin-top:7px;justify-content:flex-end}
+.scr-pkg .orej .dim{opacity:.5}
+
+/* ── states ── default = billing staff, a row with a package already built */
+.scr-pkg .t-sent, .scr-pkg .s-north, .scr-pkg .only-owner, .scr-pkg .only-bar, .scr-pkg .only-rej, .scr-pkg .only-returned, .scr-pkg .p-pkg{display:none}
+.scr-pkg[data-state="sent"] .t-prev{display:none}
+.scr-pkg[data-state="sent"] .t-sent{display:inline}
+.scr-pkg[data-state="owner"] .s-crest, .scr-pkg[data-state="owner-reject"] .s-crest, .scr-pkg[data-state="returned"] .s-crest{display:none}
+.scr-pkg[data-state="owner"] .s-north, .scr-pkg[data-state="owner-reject"] .s-north, .scr-pkg[data-state="returned"] .s-north{display:inline}
+.scr-pkg[data-state="owner"] .only-saved, .scr-pkg[data-state="owner-reject"] .only-saved, .scr-pkg[data-state="returned"] .only-saved{display:none}
+.scr-pkg[data-state="owner"] .segb.only-owner, .scr-pkg[data-state="owner-reject"] .segb.only-owner{display:inline-block}
+.scr-pkg[data-state="owner"] .segb.inv, .scr-pkg[data-state="owner-reject"] .segb.inv{opacity:.5;background:none;color:var(--c-fg)}
+.scr-pkg[data-state="owner"] .p-inv, .scr-pkg[data-state="owner-reject"] .p-inv{display:none}
+.scr-pkg[data-state="owner"] .p-pkg, .scr-pkg[data-state="owner-reject"] .p-pkg{display:block}
+.scr-pkg[data-state="owner"] .only-bar{display:flex}
+.scr-pkg[data-state="owner-reject"] .only-rej{display:block}
+.scr-pkg[data-state="returned"] .only-returned{display:block}
+@media (max-width:520px){
+  .scr-pkg .bpkg{height:auto}
+  .scr-pkg .bpkgbody{height:300px;flex:none}
+  .scr-pkg .seg{flex-wrap:wrap}
+  .scr-pkg .ofoot{flex-wrap:wrap}
+}
+</style>
+<div class="scr scr-pkg">
+<div class="wrap">
+  <div class="bpkg" data-k="window">
+    <div class="bpkghd" data-k="head">
+      <div class="who">
+        <span class="label"><span class="s-crest">WO-1298 · PO 4500-7731</span><span class="s-north">WO-1302</span></span>
+        <b><span class="s-crest">Crest Label Group</span><span class="s-north">Northside Ent.</span></b><span class="amt"> · <span class="s-crest">$1,950.00</span><span class="s-north">$6,240.00</span></span>
+      </div>
+      <div class="sp"></div>
+      <div class="seg" data-k="tabs">
+        <span class="segb on only-owner" data-k="tab-package">Package</span>
+        <span class="segb only-saved" data-k="tab-saved"><span class="t-prev">Previously saved</span><span class="t-sent">As sent</span></span>
+        <span class="segb" data-k="tab-wo">Work order</span>
+        <span class="segb on inv" data-k="tab-invoice">Invoice</span>
+      </div>
+      <div class="sp"></div>
+      <span class="bact bmuted" data-k="close">Close</span>
+    </div>
+    <div class="bnote hot only-returned" data-k="owner-note">Returned by the owner — “Sep 30 OT is missing — should be 2h at $195”. Fix the work order, then drop the corrected invoice on the row — that puts it back in the approval queue.</div>
+    <div class="bpkgbody" data-k="body">
+      <div class="pdf">
+        <div class="page">
+          <div class="cap"><span class="p-inv">QuickBooks invoice PDF</span><span class="p-pkg">Package preview</span></div>
+          <div class="sub"><span class="p-inv">The file that was dropped on the row</span><span class="p-pkg">The invoice and the work order, as the client will receive them</span></div>
+          <i class="s"></i><i class="m"></i><i class="gap"></i>
+          <i></i><i></i><i class="m"></i><i></i><i class="s"></i><i class="gap"></i>
+          <i></i><i class="m"></i><i></i>
+          <span class="tot"></span>
+        </div>
+      </div>
+    </div>
+    <div class="ofoot only-bar" data-k="owner-bar">
+      <span class="hint">This is what the client receives.</span>
+      <span class="bact first" data-k="reject">Don't approve…</span>
+      <span class="bact" data-k="approve">Approve $6,240.00</span>
+    </div>
+    <div class="orej only-rej" data-k="reject-form">
+      <div class="ask">What needs fixing? Billing sees this note on the row.</div>
+      <div class="input ta" data-k="reject-note"><span class="ph">e.g. Aug 28 OT is missing — should be 2h at $195</span></div>
+      <div class="btns">
+        <span class="bact bmuted" data-k="reject-back">Back</span>
+        <span class="bact dim" data-k="reject-send">Return to billing</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>

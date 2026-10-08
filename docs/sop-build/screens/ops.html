@@ -1,0 +1,254 @@
+<style>
+.scr-ops{container-type:inline-size;overflow-x:auto;font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg)}
+.scr-ops *{box-sizing:border-box}
+.scr-ops .in{display:flex;flex-direction:column;gap:14px;min-width:332px}
+.scr-ops .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-ops .mono{font-family:'DM Mono',ui-monospace,monospace}
+
+/* titles — .c-btitle */
+.scr-ops .btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px;padding:2px 4px 0}
+.scr-ops .btitle .t{display:flex;align-items:baseline;gap:8px;letter-spacing:-.03em;line-height:1.05;color:var(--c-fg);opacity:.28}
+.scr-ops .btitle .t.on{opacity:1}
+.scr-ops .btitle .n{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+
+/* date bar */
+.scr-ops .datebar{display:flex;align-items:center;gap:12px;margin:0 4px -2px}
+.scr-ops .datebar .when{min-width:0;display:flex;align-items:center;flex-wrap:wrap}
+.scr-ops .datebar .day{font-size:16px;font-weight:700}
+.scr-ops .datebar .full{font-size:12px;color:var(--c-fg-3);margin-left:10px}
+.scr-ops .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;margin-left:6px;line-height:1}
+.scr-ops .stepper{margin-left:auto;display:flex;gap:6px}
+.scr-ops .stepper .pg{background:var(--c-wash);border-radius:10px;padding:7px 14px;color:var(--c-fg);font-size:12.5px;font-weight:700;line-height:1.6}
+
+/* the four cards */
+.scr-ops .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.scr-ops .card{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:18px;padding:16px 18px 0;min-width:0;height:312px;display:flex;flex-direction:column;overflow:hidden}
+.scr-ops .card.dormant{opacity:.45}
+.scr-ops .head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;height:28px;flex-shrink:0}
+.scr-ops .head .name{font-size:17px;letter-spacing:-.02em;line-height:1.6}
+.scr-ops .head .who{font-size:11px;color:var(--c-fg-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .body{flex:1;min-height:0;padding:6px 0 10px;display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:22px}
+.scr-ops .dutycol{min-width:0;flex-shrink:0}
+.scr-ops .grp + .grp{margin-top:8px}
+.scr-ops .glabel{display:flex;justify-content:space-between;align-items:center;gap:8px;height:20px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-ops .glabel .w{letter-spacing:.04em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .glabel .w.none{opacity:.6}
+.scr-ops .duty{display:flex;align-items:center;gap:9px;height:26px;font-size:12.5px}
+.scr-ops .duty .dot{width:7px;height:7px;border-radius:99px;flex-shrink:0;background:var(--c-wash2)}
+.scr-ops .duty.done .dot{background:var(--c-st-booked)}
+.scr-ops .duty.flagged .dot{background:var(--c-st-warm)}
+.scr-ops .duty.missing .dot{background:var(--c-st-hot)}
+.scr-ops .duty .lb{flex-shrink:0;font-weight:500;white-space:nowrap}
+.scr-ops .duty .dt{flex:1;min-width:0;text-align:right;font-size:10.5px;color:var(--c-fg-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .duty.missing .lb{font-weight:700}
+.scr-ops .duty.missing .dt{color:var(--c-st-hot)}
+.scr-ops .duty.handled .lb{color:var(--c-fg-3)}
+.scr-ops .duty .chk{width:13px;height:13px;margin:0 -3px;border-radius:99px;flex-shrink:0;box-shadow:inset 0 0 0 1.5px var(--c-fg-3);color:var(--c-fg-3);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;line-height:1}
+
+/* the lane */
+.scr-ops .lane{min-width:0;min-height:0;display:flex;flex-direction:column;box-shadow:-1px 0 0 var(--c-wash);padding:0 0 0 20px}
+.scr-ops .lane .glabel{flex-shrink:0}
+.scr-ops .plus{width:18px;height:18px;border-radius:99px;flex-shrink:0;background:var(--c-wash2);color:var(--c-fg-2);font-size:13px;font-weight:800;line-height:18px;letter-spacing:0;display:flex;align-items:center;justify-content:center}
+.scr-ops .lanelist{flex:1;min-height:0;padding-bottom:14px;margin-top:2px;position:relative}
+.scr-ops .empty{height:100%;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:var(--c-fg-3);opacity:.6}
+
+/* "WO not submitted" badge */
+.scr-ops .wob{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:8px;align-items:center;height:42px;margin-bottom:5px;border-radius:10px;padding:0 7px 0 11px;background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-ops .wob .tx{min-width:0}
+.scr-ops .wob .l1{font-size:11.5px;font-weight:800;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .wob .l2{font-size:11px;font-weight:600;line-height:1.25;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .wob .ini{min-width:28px;height:22px;padding:0 7px;border-radius:99px;font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.2)}
+.scr-ops .wob .tick{width:22px;height:22px;border-radius:99px;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.2);color:transparent}
+.scr-ops .wob.handled{background:var(--c-wash);color:var(--c-fg-3)}
+.scr-ops .wob.handled .ini{background:var(--c-wash2)}
+.scr-ops .wob.handled .tick{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-ops .tip{position:absolute;top:calc(100% - 3px);right:2px;z-index:3;background:var(--c-fg);color:var(--c-bg);border-radius:6px;padding:4px 9px;font-size:11px;font-weight:500;line-height:1.5;white-space:nowrap;box-shadow:var(--c-softsh)}
+.scr-ops .tip::before{content:"";position:absolute;top:-4px;right:12px;width:9px;height:9px;background:var(--c-fg);transform:rotate(45deg)}
+
+/* studio tasks */
+.scr-ops .task{display:flex;align-items:center;gap:9px;height:26px;font-size:12.5px}
+.scr-ops .task .tk{width:17px;height:17px;border-radius:99px;flex-shrink:0;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1.5px var(--c-fg-3);color:transparent}
+.scr-ops .task .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .task .due{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--c-st-warm);flex-shrink:0}
+.scr-ops .task.done .tk{background:var(--c-st-booked);box-shadow:none;color:var(--c-chip-ink)}
+.scr-ops .task.done .tt{opacity:.45;text-decoration:line-through}
+.scr-ops .task .by{font-family:'DM Mono',ui-monospace,monospace;font-size:9.5px;color:var(--c-fg-3);flex-shrink:0;white-space:nowrap}
+
+/* foot */
+.scr-ops .foot{height:38px;flex-shrink:0;margin:0 -18px;padding:0 18px;display:flex;align-items:center;gap:10px;box-shadow:0 -1px 0 var(--c-wash);font-size:11.5px;color:var(--c-fg-3)}
+.scr-ops .foot .fl{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+.scr-ops .foot .fn{flex:1;min-width:0;color:var(--c-fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-ops .foot .fn.none{font-style:italic;opacity:.7;color:var(--c-fg-3)}
+.scr-ops .foot .fv{font-weight:700;white-space:nowrap}
+
+/* state: handled — Card 1's badge ticked, its hover text open */
+.scr-ops:not([data-state="handled"]) .only-handled{display:none}
+.scr-ops[data-state="handled"] .not-handled{display:none}
+
+/* narrower stage: the lane drops under the duties (the app's phone card, 490 tall) */
+@container (max-width: 930px){
+  .scr-ops .card{height:490px}
+  .scr-ops .body{display:flex;flex-direction:column;gap:12px;padding:6px 0 10px}
+  .scr-ops .lane{height:176px;flex-shrink:0;box-shadow:0 -1px 0 var(--c-wash);padding:8px 0 0}
+}
+@container (max-width: 620px){
+  .scr-ops .grid{grid-template-columns:minmax(0,1fr)}
+  .scr-ops .btitle{font-size:20px}
+}
+</style>
+<div class="scr scr-ops">
+ <div class="in">
+
+  <div class="btitle" data-k="titles">
+    <div class="t on arch" data-k="t-ops">Daily Ops</div>
+    <div class="t arch" data-k="t-flags">Flags <span class="n">5</span></div>
+  </div>
+
+  <div class="datebar" data-k="date">
+    <div class="when">
+      <span class="day">Yesterday</span>
+      <span class="full">Sun, Oct 4</span>
+      <span class="hint" data-k="hint">?</span>
+    </div>
+    <div class="stepper" data-k="stepper">
+      <div class="pg">&#8249;</div>
+      <div class="pg">&#8250;</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+   <!-- 1 · PARAMOUNT -->
+   <div class="card" data-k="card">
+    <div class="head"><span class="name arch">Paramount</span><span class="who" data-k="card-who">MR, TL</span></div>
+    <div class="body">
+     <div class="dutycol" data-k="duties">
+      <div class="grp">
+       <div class="glabel"><span>Opener</span><span class="w" data-k="shift-who">MR</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Opening</span><span class="dt">8:52 AM</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">2 entries · -$38</span></div>
+       <div class="duty flagged" data-k="dot-amber"><span class="dot"></span><span class="lb">Stock</span><span class="dt">3 low</span></div>
+      </div>
+      <div class="grp">
+       <div class="glabel"><span>Closer</span><span class="w" data-k="shift-who">TL</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Closing</span><span class="dt">2:14 AM</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">counted $162 · 2 entries · -$38</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Mic inventory</span><span class="dt">14 checked</span></div>
+      </div>
+     </div>
+     <div class="lane" data-k="lane">
+      <div class="glabel"><span>Tasks</span><span class="plus" data-k="task-add">+</span></div>
+      <div class="lanelist">
+       <div class="wob not-handled" data-k="badge">
+        <div class="tx"><div class="l1">WO not submitted</div><div class="l2">Studio B · Hitline Records</div></div>
+        <span class="ini" data-k="badge-who">TL</span>
+        <span class="tick" data-k="badge-tick">&#10003;</span>
+       </div>
+       <div class="wob handled only-handled" data-k="badge badge-handled">
+        <div class="tx"><div class="l1">WO not submitted</div><div class="l2">Studio B · Hitline Records</div></div>
+        <span class="ini" data-k="badge-who">TL</span>
+        <span class="tick" data-k="badge-tick">&#10003;</span>
+        <div class="tip" data-k="tip">Handled · Lori — tap to undo</div>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="foot" data-k="notes"><span class="fl">Notes · 2</span><span class="fn">TL: B room patchbay normalled, lounge restocked, client out 1:50</span><span class="fv">View &rarr;</span></div>
+   </div>
+
+   <!-- 2 · AMERAYCAN -->
+   <div class="card" data-k="card">
+    <div class="head"><span class="name arch">Ameraycan</span><span class="who" data-k="card-who">DK, JS</span></div>
+    <div class="body">
+     <div class="dutycol" data-k="duties">
+      <div class="grp">
+       <div class="glabel"><span>Opener</span><span class="w" data-k="shift-who">DK</span></div>
+       <div class="duty flagged" data-k="dot-amber"><span class="dot"></span><span class="lb">Opening</span><span class="dt">9:05 AM</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">3 entries · -$45</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Stock</span><span class="dt">OK</span></div>
+      </div>
+      <div class="grp">
+       <div class="glabel"><span>Closer</span><span class="w" data-k="shift-who">JS</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Closing</span><span class="dt">1:40 AM</span></div>
+       <div class="duty missing" data-k="dot-red"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">no closing count</span></div>
+       <div class="duty flagged" data-k="dot-amber"><span class="dot"></span><span class="lb">Mic inventory</span><span class="dt">1 missing</span></div>
+      </div>
+     </div>
+     <div class="lane" data-k="lane">
+      <div class="glabel"><span>Tasks</span><span class="plus" data-k="task-add">+</span></div>
+      <div class="lanelist">
+       <div class="wob handled" data-k="badge badge-handled">
+        <div class="tx"><div class="l1">WO not submitted</div><div class="l2">Studio A · Vantage Music Group</div></div>
+        <span class="ini" data-k="badge-who">JS</span>
+        <span class="tick" data-k="badge-tick">&#10003;</span>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="foot" data-k="notes"><span class="fl">Notes · 1</span><span class="fn">JS: A room 414 pair back from repair, logged in mic inventory</span><span class="fv">View &rarr;</span></div>
+   </div>
+
+   <!-- 3 · ENCORE -->
+   <div class="card" data-k="card">
+    <div class="head"><span class="name arch">Encore</span><span class="who" data-k="card-who">AP</span></div>
+    <div class="body">
+     <div class="dutycol" data-k="duties">
+      <div class="grp">
+       <div class="glabel"><span>Opener</span><span class="w" data-k="shift-who">AP</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Opening</span><span class="dt">8:47 AM</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">0 entries · +$0</span></div>
+       <div class="duty done" data-k="dot-green"><span class="dot"></span><span class="lb">Stock</span><span class="dt">OK</span></div>
+      </div>
+      <div class="grp">
+       <div class="glabel"><span>Closer</span><span class="w none">&mdash;</span></div>
+       <div class="duty missing" data-k="dot-red"><span class="dot"></span><span class="lb">Closing</span><span class="dt">never submitted</span></div>
+       <div class="duty handled" data-k="duty-handled"><span class="chk">&#10003;</span><span class="lb">Petty cash</span><span class="dt">no closing count</span></div>
+       <div class="duty missing" data-k="dot-red"><span class="dot"></span><span class="lb">Mic inventory</span><span class="dt">not done</span></div>
+      </div>
+     </div>
+     <div class="lane" data-k="lane">
+      <div class="glabel"><span>Tasks</span><span class="plus" data-k="task-add">+</span></div>
+      <div class="lanelist" data-k="tasks">
+       <div class="task" data-k="task-open"><span class="tk">&#10003;</span><span class="tt">Label the new XLR bin</span></div>
+       <div class="task done" data-k="task-done"><span class="tk">&#10003;</span><span class="tt">Restock printer paper</span><span class="by">AP 9:12 AM</span></div>
+      </div>
+     </div>
+    </div>
+    <div class="foot" data-k="notes"><span class="fl">Notes</span><span class="fn none">No shift notes</span></div>
+   </div>
+
+   <!-- 4 · TRACK (not staffed) -->
+   <div class="card dormant" data-k="card card-dormant">
+    <div class="head"><span class="name arch">Track</span><span class="who">Long-term lease · not staffed</span></div>
+    <div class="body">
+     <div class="dutycol" data-k="duties">
+      <div class="grp">
+       <div class="glabel"><span>Opener</span><span class="w none">&mdash;</span></div>
+       <div class="duty" data-k="dot-grey"><span class="dot"></span><span class="lb">Opening</span><span class="dt">not staffed</span></div>
+       <div class="duty" data-k="dot-grey"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">not staffed</span></div>
+       <div class="duty" data-k="dot-grey"><span class="dot"></span><span class="lb">Stock</span><span class="dt">not staffed</span></div>
+      </div>
+      <div class="grp">
+       <div class="glabel"><span>Closer</span><span class="w none">&mdash;</span></div>
+       <div class="duty" data-k="dot-grey"><span class="dot"></span><span class="lb">Closing</span><span class="dt">not staffed</span></div>
+       <div class="duty" data-k="dot-grey"><span class="dot"></span><span class="lb">Petty cash</span><span class="dt">not staffed</span></div>
+       <div class="duty" data-k="dot-grey"><span class="dot"></span><span class="lb">Mic inventory</span><span class="dt">not staffed</span></div>
+      </div>
+     </div>
+     <div class="lane" data-k="lane">
+      <div class="glabel"><span>Tasks</span></div>
+      <div class="lanelist">
+       <div class="wob" data-k="badge">
+        <div class="tx"><div class="l1">WO not submitted</div><div class="l2">North · Lena Ortiz</div></div>
+        <span class="ini" data-k="badge-who badge-unknown">?</span>
+        <span class="tick" data-k="badge-tick">&#10003;</span>
+       </div>
+      </div>
+     </div>
+    </div>
+    <div class="foot" data-k="notes"><span class="fl">Notes</span><span class="fn none">No shift notes</span></div>
+   </div>
+
+  </div>
+ </div>
+</div>

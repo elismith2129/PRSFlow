@@ -1,0 +1,128 @@
+<style>
+.scr-life{overflow-x:auto;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);-webkit-text-size-adjust:100%}
+.scr-life *{box-sizing:border-box}
+.scr-life .in{min-width:944px}
+.scr-life button{font-family:inherit;margin:0}
+.scr-life .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-life .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+/* header - the pipeline IS the title */
+.scr-life .hdr{display:flex;align-items:flex-start;gap:16px;padding:2px 4px 14px;flex-wrap:wrap}
+.scr-life .label{display:block;margin-bottom:3px;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-life .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+.scr-life .label .hint{opacity:1}
+.scr-life .btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px}
+.scr-life .btitle > button{display:flex;align-items:baseline;gap:8px;font-size:inherit;letter-spacing:-.03em;line-height:1.05;background:none;border:none;padding:0;cursor:pointer;color:var(--c-fg);opacity:.28}
+.scr-life .btitle > button.on{opacity:1}
+.scr-life .btitlen{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-life .btitle > button.on .btitlen{opacity:.6}
+.scr-life .grow{flex:1}
+/* stats */
+.scr-life .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.scr-life .bstat{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-life .bstat .v{font-size:20px;letter-spacing:-.02em;line-height:1.6}
+.scr-life .bstat .v.alert{color:var(--c-st-hot)}
+.scr-life .bstat .l{font-size:10px;opacity:.55;margin-top:1px}
+/* approvals strip (owners) */
+.scr-life .appr{border-radius:14px;background:var(--c-wash);padding:12px 14px;margin-bottom:12px}
+.scr-life .appr-hd{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.scr-life .appr-n{min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-life .appr-t{font-size:12px}
+.scr-life .appr-tip{margin-left:auto;font-size:10px;opacity:.45}
+.scr-life .appr-row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;cursor:pointer;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-life .appr-who{font-weight:700;font-size:12.5px;min-width:150px}
+.scr-life .appr-meta{font-size:11px;opacity:.55}
+.scr-life .appr-amt{margin-left:auto;font-weight:800;font-size:12.5px;white-space:nowrap}
+/* search */
+.scr-life .bsearch{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--c-wash);border-radius:12px;padding:0 10px;height:32px}
+.scr-life .bsearch .g{opacity:.4;font-size:12px}
+.scr-life .bsearch .ph{flex:1;font-size:12.5px;color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* tabs */
+.scr-life .btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scr-life .btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--c-ctlsh);color:var(--c-fg);line-height:1.6}
+.scr-life .btab.on{background:var(--c-ivory);color:#1b1a17}
+.scr-life:is([data-theme="light"] *) .btab.on{background:var(--c-fg);color:var(--c-bg)}
+.scr-life .bn{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;opacity:.65}
+/* list panel */
+.scr-life .panel{background:var(--c-srf);border-radius:16px;padding:12px;box-shadow:var(--c-softsh)}
+.scr-life .panel + .panel{margin-top:14px}
+.scr-life .lozenge{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-life .ct{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0}
+/* the locked grid. App: 100px 76px 1fr 234px 84px [46px] 120px 48px, gap 10 -
+   tightened here so the row reads at a 1000px stage. */
+.scr-life .brow,.scr-life .browhd{display:grid;grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 82px 40px;align-items:center;gap:8px}
+.scr-life .age .brow,.scr-life .age .browhd{grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 44px 82px 40px}
+.scr-life .brow{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px;cursor:pointer}
+.scr-life .browhd{padding:2px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.scr-life .browhd .r{text-align:right}
+.scr-life .browhd .c{text-align:center}
+.scr-life .browhd .on{opacity:1;color:var(--c-fg)}
+.scr-life .bday{display:flex;align-items:center;gap:9px;margin:12px 2px 2px}
+.scr-life .bday b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.scr-life .bday i{flex:1;height:1px;background:var(--c-wash2)}
+.scr-life .bday u{font-size:9px;opacity:.3;text-decoration:none;white-space:nowrap}
+.scr-life .bbin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6}
+.scr-life .bbin.two{white-space:normal;line-height:1.25;padding:2px 6px}
+.scr-life .bbin.two small{display:block;font-size:7px;font-weight:700;letter-spacing:.03em;text-transform:none;opacity:.8}
+.scr-life .st-progress{background:var(--c-wash2);color:var(--c-fg)}
+.scr-life .st-progress_reviewed{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-life .st-not_started{background:var(--c-wash2);color:var(--c-fg);opacity:.55}
+.scr-life .st-review{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-life .st-invoice{background:var(--c-st-warm);color:var(--c-chip-ink);opacity:.75}
+.scr-life .st-approval{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-life .st-po{background:#b9d5f1;color:var(--c-chip-ink)}
+.scr-life .st-approved{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-life .st-not_approved{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-life .st-sent{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-life .st-paid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-life .st-closed{background:var(--c-wash2);opacity:.65}
+.scr-life .binv{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.6}
+.scr-life .bwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-life .bwho span{opacity:.5;font-size:11px}
+.scr-life .ap{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:99px;border:1px solid var(--c-fg-3);background:none;color:var(--c-fg-2);font-size:9.5px;font-weight:800;letter-spacing:.08em;line-height:1.5;cursor:pointer;vertical-align:middle}
+.scr-life .bamt{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;text-align:right}
+.scr-life .bage{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.45;text-align:right}
+.scr-life .brow.od .bamt{color:var(--c-st-hot);font-weight:700}
+.scr-life .bflagcell{display:flex;justify-content:flex-end;align-items:center;align-self:stretch;min-width:0}
+.scr-life .bflag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-life .bflag.bsub{color:var(--c-st-warm)}
+.scr-life .bflag.bsub .bsubat{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;letter-spacing:0;text-transform:none;opacity:.75}
+.scr-life .bflag.brev{color:var(--c-st-booked)}
+.scr-life .bflag.soon{opacity:.4}
+.scr-life .bhint{display:inline-block;font-size:9.5px;opacity:.4;font-style:italic;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-life .bdrift{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-hot);flex-shrink:0;white-space:nowrap}
+.scr-life .bdone{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-booked);flex-shrink:0;white-space:nowrap}
+.scr-life .bactcell{display:flex;justify-content:center;gap:6px}
+.scr-life .bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);border:none;cursor:pointer;opacity:.8;line-height:1.2;white-space:nowrap}
+.scr-life .appr-row .bact{line-height:1.6}
+.scr-life .bact.muted{background:transparent;opacity:.45}
+.scr-life .bmorecell{display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.scr-life .bnoteg{position:relative;font-size:11px;line-height:1;padding:4px 3px;border:none;background:none;color:var(--c-fg);opacity:.25;cursor:pointer;border-radius:5px}
+.scr-life .bnoteg.has{opacity:.8}
+.scr-life .bnoteg.has::after{content:'';position:absolute;top:1px;right:0;width:6px;height:6px;border-radius:99px;background:var(--c-st-warm)}
+.scr-life .bmore{font-size:12px;line-height:1;padding:4px 2px;border:none;background:none;color:var(--c-fg);opacity:.3;cursor:pointer}
+.scr-life .bmore.pagemore{font-size:15px;padding:4px 6px}
+/* Add PO strip - a fold under the row */
+.scr-life .bpostrip{background:var(--c-wash);border-radius:0 0 12px 12px;margin:-2px 6px 6px;padding:11px 13px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.scr-life .bpostrip .f{display:block}
+.scr-life .bpostrip .f.wide{flex:1;min-width:220px}
+.scr-life .bpolbl{display:block;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.5;margin-bottom:4px;line-height:1.6}
+.scr-life .bpoin{display:block;background:var(--c-srf);border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.3;color:var(--c-fg);width:160px;box-shadow:var(--c-softsh)}
+.scr-life .bpoin .caret{display:inline-block;width:1px;height:13px;background:var(--c-fg);vertical-align:-2px;margin-left:1px;opacity:.7}
+.scr-life .bpofile{display:block;border:1.5px dashed var(--c-wash2);border-radius:9px;padding:7px 12px;font-size:11px;opacity:.65;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;line-height:1.6}
+.scr-life .bpostrip .bact{line-height:1.6}
+/* pager + note */
+.scr-life .bpager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.scr-life .binfo{margin-right:auto;opacity:.45;font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}
+.scr-life .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+.scr-life .gap{height:14px}
+.scr-life:not([data-state="owner"]) .only-owner{display:none}
+/* life.html captions (manual annotation, not app UI) */
+.scr-life .cap{display:flex;align-items:center;gap:8px;margin:11px 2px 1px;font-size:10px;line-height:1.4}
+.scr-life .cap:first-of-type{margin-top:4px}
+.scr-life .cap .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:99px;background:var(--c-wash2);font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;flex-shrink:0}
+.scr-life .cap .who{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:9px;opacity:.75;white-space:nowrap}
+.scr-life .cap .what{color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<div class="scr scr-life"><div class="in">
+<div class="panel age life" data-k="list"><div class="browhd" data-k="colhead"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="r">Flag</span><span class="r">Balance</span><span class="r">Age</span><span class="c">Next</span><span></span></div><div class="cap"><span class="n">1</span><span class="who">Front desk</span><span class="what">Booked — first day still ahead · Not started tab</span></div><div class="brow" data-k="s1"><span class="bbin st-not_started" data-k="badge">Not started</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">2</span><span class="who">Runner</span><span class="what">The session is running — the runner submits each night · In progress tab</span></div><div class="brow" data-k="s2"><span class="bbin st-progress" data-k="badge">In progress</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">3</span><span class="who">You</span><span class="what">The night is in — review it, then Complete WO</span></div><div class="brow" data-k="s3"><span class="bbin st-review" data-k="badge">Needs review</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"><span class="bflag bsub">Submitted by Terren L.<span class="bsubat"> 12:14 AM</span></span></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">4</span><span class="who">You</span><span class="what">Completed — make the invoice in QuickBooks and drop the PDF on the row</span></div><div class="brow" data-k="s4"><span class="bbin st-invoice" data-k="badge">Needs invoice</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"><span class="bhint" data-k="drop">Drop invoice here · or click</span></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">5</span><span class="who">Owner</span><span class="what">Invoice attached — an owner reads the package and approves</span></div><div class="brow" data-k="s5"><span class="bbin st-approval" data-k="badge">Needs approval</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">6</span><span class="who">You</span><span class="what">Sent back with a note — fix it, drop the corrected invoice</span></div><div class="brow" data-k="s6"><span class="bbin st-not_approved" data-k="badge">Not approved</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"><span class="bdrift">See note · drop the corrected invoice</span></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">7</span><span class="who">You</span><span class="what">Approved, PO in — Download, email it, then Mark sent</span></div><div class="brow" data-k="s7"><span class="bbin st-approved" data-k="badge">Ready to send</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"><button class="bact" data-k="btn">Download</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">8</span><span class="who">Client</span><span class="what">Approved but no PO yet — Add PO when the label sends it · Awaiting PO tab</span></div><div class="brow" data-k="s8"><span class="bbin st-po" data-k="badge">Awaiting PO</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"><span class="bhint">Approved Tue, Oct 6</span></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage"></span><span class="bactcell"><button class="bact" data-k="btn">Add PO</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">9</span><span class="who">Client</span><span class="what">Sent — aging from Mark sent; Mark paid the day the money lands · Awaiting payment tab</span></div><div class="brow" data-k="s9"><span class="bbin st-sent" data-k="badge">Sent</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage" data-k="age">12d</span><span class="bactcell"><button class="bact" data-k="btn">Mark paid</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="cap"><span class="n">10</span><span class="who">Done</span><span class="what">Paid tab</span></div><div class="brow" data-k="s10"><span class="bbin st-paid" data-k="badge">Paid</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bage" data-k="age">26d</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div></div>
+</div></div>

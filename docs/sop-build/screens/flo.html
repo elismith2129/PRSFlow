@@ -1,0 +1,86 @@
+<style>.scr-flo{font:400 14px/1.5 'Inter',system-ui,-apple-system,sans-serif;color:var(--c-fg);-webkit-font-smoothing:antialiased;text-align:left}
+.scr-flo *{box-sizing:border-box}
+.scr-flo .rib{display:inline-block;flex-shrink:0}
+.scr-flo .rib path{fill:var(--c-st-booked)}
+
+.scr-flo .label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-flo .statement{padding:8px 0 26px;max-width:920px}
+.scr-flo .fhead{display:flex;align-items:center;gap:9px;padding-bottom:8px}
+.scr-flo .fname{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:14px}
+.scr-flo .ln{display:block;font-family:'Inter',system-ui,sans-serif;font-size:16.5px;font-weight:600;line-height:1.5;padding:1.5px 0;width:fit-content;max-width:100%;color:var(--c-fg-2)}
+.scr-flo .ln.red{color:var(--c-st-hot)}
+.scr-flo .ln.warmln{color:var(--c-st-warm)}
+.scr-flo .ln.dim{color:var(--c-fg-2);font-size:17px}
+.scr-flo .grad{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;background:linear-gradient(100deg,var(--c-st-booked),var(--c-st-cold) 60%,var(--c-st-uncon));-webkit-background-clip:text;background-clip:text;color:transparent}
+.scr-flo .asks{display:flex;gap:18px;align-items:baseline}
+.scr-flo .askflo{display:inline-block;margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-fg-3)}
+
+.scr-flo .scrim{background:rgba(6,5,4,.72);border-radius:16px;padding:28px 20px 32px;display:flex;justify-content:center}
+.scr-flo .bmodal{background:var(--c-srf);border-radius:14px;padding:22px 26px 18px;width:min(640px,100%);color:var(--c-fg)}
+.scr-flo .bmhead{display:flex;align-items:center;gap:9px;padding-bottom:12px}
+.scr-flo .bmhead b{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:15px;letter-spacing:-.01em}
+.scr-flo .bmdate{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-flo .bmx{margin-left:auto;color:var(--c-fg-3);font-size:13px;padding:2px 6px;display:inline-block}
+.scr-flo .bmln{margin:0 0 9px;font-size:14px;line-height:1.55;font-weight:500}
+.scr-flo .bmgo{display:inline-block;margin-left:10px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-flo .bmseat{margin-top:14px;padding-top:12px;border-top:1px solid var(--c-wash)}
+.scr-flo .bmseathd{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3);padding-bottom:7px}
+.scr-flo .bmfoot{margin-top:16px;padding-top:10px;border-top:1px solid var(--c-wash);font-size:10px;line-height:1.5;color:var(--c-fg-3)}
+
+.scr-flo{container-type:inline-size}
+.scr-flo .statement{padding:6px 4px 26px;max-width:none}
+.scr-flo .fname{font-size:17px}
+.scr-flo .label{font-size:10.5px}
+.scr-flo .ln{font-size:20px;padding:3px 0}
+.scr-flo .ln.dim{font-size:20.5px}
+.scr-flo .askflo{font-size:10.5px;margin-top:12px}
+.scr-flo[data-state="calm"] .x-busy{display:none}
+.scr-flo:not([data-state="calm"]) .x-calm{display:none}
+.scr-flo[data-state="nobrief"] .x-brief{display:none}
+.scr-flo:not([data-state="nobrief"]) .x-nobrief{display:none}
+@container (max-width:640px){
+ .scr-flo .ln{font-size:17px}
+ .scr-flo .ln.dim{font-size:17px}
+ .scr-flo .scrim{padding:16px 10px 18px}
+ .scr-flo .bmodal{padding:18px 16px 14px}
+}
+</style>
+<div class="scr scr-flo">
+ <div class="statement" data-k="flo">
+  <div class="fhead"><svg class="rib" width="30" height="30" viewBox="0 0 200 200" aria-hidden="true"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z"/></svg><span class="fname">Flo</span><span class="label">· Your briefing · Oct 6</span></div>
+  <span class="ln red x-busy" data-k="f-red">2 sessions missing a work order — auto-create failed, open each one to retry</span>
+  <span class="ln red x-busy" data-k="f-duty">Lori missed COD follow-up yesterday</span>
+  <span class="ln red x-busy" data-k="f-money">2 COD balances outstanding · $1,840</span>
+  <span class="ln warmln x-busy" data-k="f-amber">4 work orders need review — get them ready for approval.</span>
+  <span class="ln x-busy" data-k="f-landed">We landed <span class="grad">Hitline Records</span> today.</span>
+  <span class="ln x-calm" data-k="f-calm">Lori cleared all 6 duties yesterday</span>
+  <span class="ln dim x-busy" data-k="f-last">Quiet day — one thing needs you: Lori missed COD follow-up yesterday.</span>
+  <span class="ln dim x-calm" data-k="f-last">All clear.</span>
+  <div class="asks">
+   <span class="askflo x-brief" data-k="f-full">Full briefing →</span>
+   <span class="askflo x-brief" data-k="b-rebrief">Re-brief ↻</span>
+   <span class="askflo x-nobrief" data-k="b-rebrief b-briefnow">Brief me now →</span>
+  </div>
+ </div>
+
+ <div class="x-brief x-busy">
+  <div class="scrim">
+   <div class="bmodal" data-k="brief">
+    <div class="bmhead" data-k="b-head"><svg class="rib" width="22" height="22" viewBox="0 0 200 200" aria-hidden="true"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z"/></svg><b>The 8:50 briefing</b><span class="bmdate">Tue, Oct 6</span><span class="bmx" data-k="b-close">✕</span></div>
+    <div data-k="b-shared">
+     <p class="bmln">Quiet night across the buildings. PRS C ran late with DECOY.<span class="bmgo" data-k="b-links">notes →</span></p>
+     <p class="bmln">Two flags are still open at Encore, both in ERS B.<span class="bmgo" data-k="b-links">flags →</span></p>
+     <p class="bmln">Three holds this week need a yes or a no. MARA in ARS A is tonight.<span class="bmgo" data-k="b-links">calendar →</span></p>
+     <p class="bmln">Two web inquiries came in since yesterday and nobody has answered them.<span class="bmgo" data-k="b-links">crm →</span></p>
+    </div>
+    <div class="bmseat" data-k="b-you">
+     <div class="bmseathd">For you</div>
+     <p class="bmln">Month-end statements are four days late. Clear that one first.</p>
+     <p class="bmln">COD follow-up was skipped yesterday, and two COD balances are still out.</p>
+     <p class="bmln">Eli left you one task: email Crest the corrected W-9.<span class="bmgo" data-k="b-links">tasks →</span></p>
+    </div>
+    <div class="bmfoot" data-k="b-foot">Written by Flo from last night's notes, the open flags, this week's holds, and the duty record. The numbers above the fold are computed live — this is the reading.</div>
+   </div>
+  </div>
+ </div>
+</div>

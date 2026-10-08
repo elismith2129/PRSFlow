@@ -1,0 +1,204 @@
+<style>.scr-dash{font:400 14px/1.5 'Inter',system-ui,-apple-system,sans-serif;color:var(--c-fg);-webkit-font-smoothing:antialiased;text-align:left}
+.scr-dash *{box-sizing:border-box}
+.scr-dash .rib{display:inline-block;flex-shrink:0}
+.scr-dash .rib path{fill:var(--c-st-booked)}
+
+.scr-dash .label{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-dash .statement{padding:8px 0 26px;max-width:920px}
+.scr-dash .fhead{display:flex;align-items:center;gap:9px;padding-bottom:8px}
+.scr-dash .fname{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:14px}
+.scr-dash .ln{display:block;font-family:'Inter',system-ui,sans-serif;font-size:16.5px;font-weight:600;line-height:1.5;padding:1.5px 0;width:fit-content;max-width:100%;color:var(--c-fg-2)}
+.scr-dash .ln.red{color:var(--c-st-hot)}
+.scr-dash .ln.warmln{color:var(--c-st-warm)}
+.scr-dash .ln.dim{color:var(--c-fg-2);font-size:17px}
+.scr-dash .grad{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;background:linear-gradient(100deg,var(--c-st-booked),var(--c-st-cold) 60%,var(--c-st-uncon));-webkit-background-clip:text;background-clip:text;color:transparent}
+.scr-dash .asks{display:flex;gap:18px;align-items:baseline}
+.scr-dash .askflo{display:inline-block;margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-fg-3)}
+
+.scr-dash{container-type:inline-size}
+.scr-dash .hd{display:flex;align-items:center;gap:16px;padding:2px 4px 16px}
+.scr-dash .title{font-family:'Bebas Neue','Avenir Next Condensed','Arial Narrow','Roboto Condensed','Liberation Sans Narrow','DejaVu Sans Condensed',Impact,sans-serif;font-weight:400;font-size:42px;line-height:.95;letter-spacing:.02em;text-transform:uppercase;margin:0}
+.scr-dash .titlesub{font-size:10px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--c-fg-3);margin-top:3px}
+.scr-dash .grow{flex:1}
+.scr-dash .datechip{background:var(--c-fg);color:var(--c-bg);border-radius:13px;padding:8px 15px;font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:13px;text-align:center;flex-shrink:0;line-height:1.5}
+.scr-dash .datechip small{display:block;font-size:9px;opacity:.6;font-family:'Inter',system-ui,sans-serif;font-weight:800;letter-spacing:.1em}
+.scr-dash .row1{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) minmax(0,.8fr);gap:14px}
+.scr-dash .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding-bottom:14px}
+.scr-dash .portal{background:var(--c-srf);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--c-softsh)}
+.scr-dash .row1 .portal{height:356px}
+.scr-dash .row2 .portal{height:140px}
+.scr-dash .pt{display:flex;align-items:baseline;gap:9px;margin-bottom:11px;flex-shrink:0}
+.scr-dash .pt b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--c-fg-2);white-space:nowrap}
+.scr-dash .pt .arrow{margin-left:auto;font-size:13px;color:var(--c-fg-3)}
+/* rooms */
+.scr-dash .rgrid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(78px,1fr);gap:7px;flex:1;min-height:0}
+.scr-dash .rc{border-radius:10px;min-height:78px;padding:7px 9px;background:var(--c-wash);overflow:hidden;position:relative;display:flex;flex-direction:column;min-width:0}
+.scr-dash .rc.empty{opacity:.55}
+.scr-dash .rc .rn{font-size:7px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-dash .rc.on{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-dash .rc.on .rn,.scr-dash .rc.warmc .rn{color:rgba(18,16,14,.6)}
+.scr-dash .rc.warmc{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-dash .rc .a{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-dash .rc .c{font-size:8.5px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-dash .rc .tm{font-size:8px;letter-spacing:-.01em;opacity:.85;margin-top:auto;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-dash .rc .eng{position:absolute;right:7px;bottom:6px;font-family:'DM Mono',ui-monospace,monospace;font-size:7px;opacity:.6}
+.scr-dash .loccount{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+.scr-dash .loccount span{font-size:7.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:99px;padding:2.5px 7px;background:var(--c-wash2);color:var(--c-fg-2);white-space:nowrap}
+.scr-dash .loccount span.live{background:var(--c-st-booked);color:var(--c-chip-ink)}
+/* the queue */
+.scr-dash .qscroll{flex:1;min-height:0}
+.scr-dash .q{display:flex;align-items:center;gap:9px;padding:6px 2px;font-size:12.5px;border-radius:8px}
+.scr-dash .q .bx{width:16px;height:16px;border-radius:5px;flex-shrink:0;background:var(--c-wash2);position:relative}
+.scr-dash .q.done{opacity:.35;text-decoration:line-through}
+.scr-dash .q.done .bx{background:var(--c-st-booked)}
+.scr-dash .q.done .bx::after{content:"\2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--c-chip-ink)}
+.scr-dash .q.redq{color:var(--c-st-hot);font-weight:600}
+.scr-dash .q .tag{font-size:6.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:2px 6px;flex-shrink:0;background:var(--c-wash2);color:var(--c-fg-2)}
+.scr-dash .q .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-dash .q .mn{margin-left:auto;font-family:'DM Mono',ui-monospace,monospace;font-size:9px;color:var(--c-fg-3);flex-shrink:0}
+.scr-dash .q.redq .mn{color:var(--c-st-hot)}
+.scr-dash .prog{font-family:'DM Mono',ui-monospace,monospace;font-size:9px;color:var(--c-fg-3);margin-left:auto}
+/* landed + holds */
+.scr-dash .landblock{display:block}
+.scr-dash .landhead{font-size:8.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--c-fg-3);padding:2px 0 8px}
+.scr-dash .landed{display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px}
+.scr-dash .land{border-radius:99px;padding:6px 13px;background:var(--c-st-booked);color:var(--c-chip-ink);font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:11.5px;line-height:1.5}
+.scr-dash .holdrow{display:flex;align-items:baseline;gap:9px;padding:4.5px 0;font-size:12.5px;color:var(--c-fg-2)}
+.scr-dash .holdrow b{color:var(--c-fg);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.scr-dash .holdrow .d{font-family:'DM Mono',ui-monospace,monospace;font-size:9px;color:var(--c-fg-3);width:56px;flex-shrink:0}
+.scr-dash .chip{display:inline-flex;align-items:center;border-radius:99px;padding:3px 10px;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-chip-ink);flex-shrink:0;margin-left:auto;white-space:nowrap}
+.scr-dash .chip.w{background:var(--c-st-warm)}
+.scr-dash .chip.h{background:var(--c-st-hot);color:var(--c-hot-text);margin-left:0}
+.scr-dash .chip.u{background:var(--c-st-uncon);margin-left:0}
+.scr-dash .chip.wchip{background:var(--c-st-warm);margin-left:0}
+/* CRM portal */
+.scr-dash .pbody{display:flex;gap:16px;align-items:stretch;flex:1;min-height:0}
+.scr-dash .pleft{display:flex;flex-direction:column;justify-content:space-between;flex-shrink:0}
+.scr-dash .pipebig{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:36px;line-height:1;letter-spacing:-.02em}
+.scr-dash .pipesub{font-size:11px;color:var(--c-fg-3);padding-top:2px}
+.scr-dash .pstat{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:5px}
+.scr-dash .inqblock{flex:1;background:color-mix(in srgb,var(--c-st-uncon) 24%,transparent);border-radius:14px;position:relative;padding:12px 16px;display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;box-shadow:0 0 18px 2px color-mix(in srgb,var(--c-st-uncon) 32%,transparent)}
+.scr-dash .inqk{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-st-uncon);display:flex;align-items:center;gap:8px;padding-bottom:5px}
+.scr-dash .pulse{width:8px;height:8px;border-radius:50%;background:var(--c-st-uncon)}
+.scr-dash .who{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:12.5px;line-height:1.3;color:var(--c-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-dash .src{font-size:9.5px;color:var(--c-fg-3);font-family:'Inter',system-ui,sans-serif;font-weight:600}
+/* the money */
+.scr-dash .stagegrid{flex:1;display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:10px;align-items:stretch;min-height:0}
+.scr-dash .stile{border-radius:12px;padding:10px 13px;color:var(--c-chip-ink);display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.scr-dash .stile .bn{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;font-size:23px;line-height:1;white-space:nowrap}
+.scr-dash .stile .bk{font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.8;padding-top:6px;line-height:1.3}
+.scr-dash .stile.hotf{background:transparent;color:var(--c-fg);padding-left:2px}
+.scr-dash .stile.hotf .bn{color:var(--c-st-hot);font-size:25px}
+.scr-dash .stile.hotf .bk{color:var(--c-fg-3);opacity:1}
+.scr-dash .stile.coldt{background:var(--c-st-uncon)}
+.scr-dash .stile.warmt{background:var(--c-st-warm)}
+.scr-dash .stile.okt{background:var(--c-st-booked)}
+/* phone: the app's own n-mobile layout */
+@container (max-width:640px){
+ .scr-dash .hd{flex-wrap:wrap}
+ .scr-dash .title{font-size:30px}
+ .scr-dash .datechip{display:none}
+ .scr-dash .ln,.scr-dash .ln.dim{font-size:17px}
+ .scr-dash .row1,.scr-dash .row2{grid-template-columns:minmax(0,1fr)}
+ .scr-dash .row1 .portal,.scr-dash .row2 .portal{height:auto;min-height:0}
+ .scr-dash .rgrid{grid-template-columns:repeat(2,1fr)}
+ .scr-dash .stagegrid{grid-template-columns:1fr 1fr}
+}
+</style>
+<div class="scr scr-dash">
+ <div class="hd" data-k="head">
+  <div>
+   <div class="title">Paramount Recording Studios</div>
+   <div class="titlesub">Good morning Lori · Hollywood, CA</div>
+  </div>
+  <div class="grow"></div>
+  <div class="datechip" data-k="datechip">TUE, OCT 6<small>09:04 AM</small></div>
+ </div>
+
+ <div class="statement" data-k="flo">
+  <div class="fhead"><svg class="rib" width="26" height="26" viewBox="0 0 200 200" aria-hidden="true"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z"/></svg><span class="fname">Flo</span><span class="label">· Your briefing · Oct 6</span></div>
+  <span class="ln red" data-k="flo-red">Lori: Month-end statements was due Fri 10/2 — 4 days late, needs doing ASAP</span>
+  <span class="ln red" data-k="flo-red">Lori missed COD follow-up yesterday</span>
+  <span class="ln red" data-k="flo-red flo-cod">2 COD balances outstanding · $1,840</span>
+  <span class="ln warmln" data-k="flo-amber">4 work orders need review — get them ready for approval.</span>
+  <span class="ln" data-k="flo-landed">We landed <span class="grad">Hitline Records</span> today.</span>
+  <span class="ln dim" data-k="flo-last">2 things need you today — start with the longest backlog.</span>
+  <div class="asks" data-k="flo-links"><span class="askflo">Full briefing →</span><span class="askflo">Re-brief ↻</span></div>
+ </div>
+
+ <div class="row2">
+  <div class="portal" data-k="crm">
+   <div class="pt"><b>CRM — pipeline</b><span class="arrow">→</span></div>
+   <div class="pbody">
+    <div class="pleft">
+     <div><div class="pipebig">14</div><div class="pipesub">active leads</div></div>
+     <div class="pstat"><span class="chip h">5 hot</span><span class="chip wchip">3 warm</span><span class="chip u">4 uncon</span></div>
+    </div>
+    <div class="inqblock" data-k="crm-inq">
+     <div class="inqk"><span class="pulse"></span>2 new inquiries</div>
+     <div class="who">Marcus Bell <span class="src">· web form · Tue 10/6</span></div>
+     <div class="who">Priya Nair <span class="src">· web form · Mon 10/5</span></div>
+    </div>
+   </div>
+  </div>
+  <div class="portal" data-k="money">
+   <div class="pt"><b>The money — where billing is at</b><span class="arrow">→</span></div>
+   <div class="stagegrid">
+    <div class="stile hotf" data-k="m-cod"><div class="bn">$1,840</div><div class="bk">COD out · worst 5d</div></div>
+    <div class="stile warmt" data-k="m-review"><div class="bn">4</div><div class="bk">WOs need review</div></div>
+    <div class="stile coldt" data-k="m-approval"><div class="bn">3</div><div class="bk">Wait on approval · $6,025.00</div></div>
+    <div class="stile okt" data-k="m-ready"><div class="bn">2</div><div class="bk">Ready to go out</div></div>
+   </div>
+  </div>
+ </div>
+
+ <div class="row1">
+  <div class="portal" data-k="list">
+   <div class="pt"><b>Your list</b><span class="prog" data-k="l-prog">1 of 5</span><span class="arrow" style="margin-left:8px">→</span></div>
+   <div class="qscroll">
+    <div class="q done" data-k="l-done"><span class="bx"></span><span class="tag">duty</span><span class="tx">Check the billing inbox</span></div>
+    <div class="q" data-k="l-todo"><span class="bx"></span><span class="tag">duty</span><span class="tx">Review last night's work orders</span></div>
+    <div class="q redq" data-k="l-backlog"><span class="bx"></span><span class="tag">duty</span><span class="tx">COD follow-up</span><span class="mn">3 DAYS</span></div>
+    <div class="q redq" data-k="l-late"><span class="bx"></span><span class="tag">duty</span><span class="tx">Month-end statements</span><span class="mn">4D LATE</span></div>
+    <div class="q" data-k="l-task"><span class="bx"></span><span class="tag">task</span><span class="tx">Email Crest the corrected W-9</span></div>
+   </div>
+  </div>
+
+  <div class="portal" data-k="today">
+   <div class="pt"><b>Today's sessions</b>
+    <span class="loccount" data-k="loc"><span class="live">PRS 1</span><span>ARS 0</span><span class="live">ERS 1</span><span>TRS 0</span></span>
+    <span class="arrow">→</span>
+   </div>
+   <div class="rgrid">
+    <div class="rc on" data-k="room booked"><span class="rn">PRS · A</span><div class="a">DECOY</div><div class="c">Vantage Music Group</div><div class="tm">1:00 PM–9:00 PM</div></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">PRS · B</span></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">PRS · C</span></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">PRS · E</span></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">PRS · X</span></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">Nadine's</span></div>
+    <div class="rc warmc" data-k="room hold"><span class="rn">ARS · A</span><div class="a">MARA</div><div class="c">Crest Label Group</div><div class="tm">6:00 PM–2:00 AM</div></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">ARS · B</span></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">ERS · A</span></div>
+    <div class="rc on" data-k="room booked"><span class="rn">ERS · B</span><div class="a">J. RIVAS</div><div class="c">Northside Ent.</div><div class="tm">2:00 PM–8:00 PM</div></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">TRS · N</span></div>
+    <div class="rc empty" data-k="room empty"><span class="rn">TRS · S</span></div>
+   </div>
+  </div>
+
+  <div class="portal" data-k="landed">
+   <div class="pt"><b>Landed &amp; in the air</b><span class="arrow">→</span></div>
+   <div class="landblock" data-k="landed-today">
+    <div class="landhead">Landed today</div>
+    <div class="landed"><span class="land">Hitline Records</span></div>
+   </div>
+   <div class="landblock" data-k="holds">
+    <div class="landhead">Holds to check — next 7 days</div>
+    <div class="qscroll">
+     <div class="holdrow"><span class="d">Tue 10/6</span><b>MARA</b><span class="chip w">ARS·A</span></div>
+     <div class="holdrow"><span class="d">Fri 10/9</span><b>KAYA B</b><span class="chip w">PRS·B</span></div>
+     <div class="holdrow"><span class="d">Sat 10/10</span><b>DECOY</b><span class="chip w">PRS·A</span></div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>

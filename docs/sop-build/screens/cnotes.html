@@ -1,0 +1,84 @@
+<style>
+/* ✎ Collection notes — components/billing/CollectNotes.tsx (CollectNotesModal).
+   .c-bmodal at max-width 540 over the hub's dimmed backdrop. */
+.scr-cnotes{color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;border-radius:8px}
+.scr-cnotes *{box-sizing:border-box}
+.scr-cnotes .c-bmodal{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;width:100%;max-width:540px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.scr-cnotes .c-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-cnotes .c-mono{font-family:'DM Mono',ui-monospace,monospace}
+.scr-cnotes .c-label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45;margin-bottom:2px}
+.scr-cnotes .hd{display:flex;align-items:flex-start;gap:10px}
+.scr-cnotes .hd .ttl{font-size:15px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-cnotes .hd .sub{font-size:10.5px;color:var(--c-fg-3);margin-top:2px}
+.scr-cnotes .c-x{margin-left:auto;flex-shrink:0;color:var(--c-fg);opacity:.4;font-size:16px;line-height:1;padding:0 2px}
+.scr-cnotes .ini{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:26px;height:26px;border-radius:99px;font-family:'DM Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:.02em;background:var(--c-wash2);color:var(--c-fg)}
+
+/* composer well (wellStyle — the inset shadow is hard-coded in the component) */
+.scr-cnotes .well{border-radius:14px;padding:10px 12px;background:var(--c-bg);box-shadow:inset 3px 3px 9px rgba(0,0,0,.34),inset -3px -3px 9px rgba(255,255,255,.03);display:flex;gap:10px;align-items:flex-start}
+.scr-cnotes .well .body{flex:1;min-width:0}
+.scr-cnotes .ta{min-height:72px;padding:4px 0;font-size:13px;line-height:1.5;color:var(--c-fg);opacity:.4}
+.scr-cnotes .cfoot{display:flex;align-items:center;gap:10px;margin-top:4px}
+.scr-cnotes .cfoot .hint{font-size:10px;color:var(--c-fg-3)}
+.scr-cnotes .c-btn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;border-radius:99px;padding:7px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;opacity:.4;line-height:1.6}
+.scr-cnotes:is([data-theme="light"] *) .c-btn{background:var(--c-fg);color:var(--c-bg)}
+
+/* log */
+.scr-cnotes .log{display:flex;flex-direction:column;gap:6px}
+.scr-cnotes .note{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:12px;background:var(--c-wash)}
+.scr-cnotes .note .main{flex:1;min-width:0}
+.scr-cnotes .who{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap}
+.scr-cnotes .who b{font-size:11.5px}
+.scr-cnotes .who .when{font-size:10px;color:var(--c-fg-3)}
+.scr-cnotes .who .edited{font-size:9.5px;color:var(--c-fg-3)}
+.scr-cnotes .who .pen{display:inline-block;margin-left:auto;color:var(--c-fg-3);font-size:11px;padding:0 2px;line-height:1.6}
+.scr-cnotes .txt{font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+</style>
+<div class="scr scr-cnotes">
+  <div class="c-bmodal" data-k="cn-modal">
+
+    <div class="hd" data-k="cn-head">
+      <div style="min-width:0">
+        <div class="c-label">Collection notes</div>
+        <div class="c-arch ttl">Crest Label Group · MARA · WO-1298</div>
+        <div class="sub" data-k="cn-internal">Internal — never on the work order, the package, or the runner app.</div>
+      </div>
+      <span class="c-x">×</span>
+    </div>
+
+    <div class="well" data-k="cn-add">
+      <span class="ini">LB</span>
+      <div class="body">
+        <div class="ta">Who you spoke to, what they said, what's next…</div>
+        <div class="cfoot">
+          <span class="hint">⌘↵ posts</span>
+          <span class="c-btn" data-k="cn-post">Post</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="log" data-k="cn-log">
+      <div class="note" data-k="cn-note">
+        <span class="ini">LB</span>
+        <div class="main">
+          <div class="who" data-k="cn-who"><b>Lori</b><span class="c-mono when">Oct 6, 10:12 AM</span><span class="pen" data-k="cn-edit">✎</span></div>
+          <div class="txt">Called AP. Their PO was requested on Friday and should reach us by Wednesday. Check again Thursday.</div>
+        </div>
+      </div>
+      <div class="note" data-k="cn-note">
+        <span class="ini">AM</span>
+        <div class="main">
+          <div class="who" data-k="cn-who"><b>Adam-Mike</b><span class="c-mono when">Oct 2, 4:31 PM</span><span class="pen" data-k="cn-edit">✎</span></div>
+          <div class="txt">Their A&amp;R knows the invoice is open and says to keep going through AP, not through him.</div>
+        </div>
+      </div>
+      <div class="note" data-k="cn-note">
+        <span class="ini">LB</span>
+        <div class="main">
+          <div class="who" data-k="cn-who"><b>Lori</b><span class="c-mono when">Sep 29, 11:05 AM</span><span class="edited" data-k="cn-edited">· edited</span><span class="pen" data-k="cn-edit">✎</span></div>
+          <div class="txt">Package sent through the label's portal. The auto-reply says payment terms are 30 days.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

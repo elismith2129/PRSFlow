@@ -1,0 +1,118 @@
+<style>
+.scr-holds{font:400 14.5px/1.6 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);overflow-x:auto;-webkit-font-smoothing:antialiased;text-align:left}
+.scr-holds *{box-sizing:border-box}
+.scr-holds b{font-weight:700}
+.scr-holds .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-holds .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px}
+.scr-holds .label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+/* .c-bmodal-wrap — the dimmed page behind a pop-up (the app hard-codes this black). */
+.scr-holds .wrap{background:rgba(0,0,0,.5);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.scr-holds .row{display:flex;align-items:flex-start;justify-content:center;gap:16px;width:100%}
+.scr-holds .row > .bmodal{flex:1 1 0}
+/* .c-bmodal */
+.scr-holds .bmodal{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px;width:100%;max-width:420px;min-width:0}
+/* .c-lozenge */
+.scr-holds .lz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-holds .lz b{font-weight:800}
+.scr-holds .ct{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0;font-weight:400}
+/* .c-bact (+ .c-bmuted, .c-bblock) */
+.scr-holds .bact{display:inline-block;font-size:9.5px;font-weight:700;line-height:1.6;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.scr-holds .bact.bmuted{background:transparent;opacity:.45}
+.scr-holds .bact.bblock{display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;font-size:12px;white-space:normal}
+.scr-holds .bact.hot{color:var(--c-st-hot)}
+/* .c-btn / .c-soft */
+.scr-holds .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:7px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;white-space:nowrap;line-height:1.6}
+.scr-holds .soft{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:6px 13px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-bg);color:var(--c-fg);white-space:nowrap;line-height:1.6}
+/* .c-x */
+.scr-holds .x{color:var(--c-fg);opacity:.4;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;margin-left:auto}
+/* .c-input (soft skin: flat wash) */
+.scr-holds .input{display:block;width:100%;border-radius:12px;padding:0 10px;height:32px;line-height:32px;background:var(--c-wash);color:var(--c-fg);font-size:12.5px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.scr-holds .input .ph{opacity:.35}
+/* a textarea wearing .c-input keeps the 32px height; its text sits at the top */
+.scr-holds .input.ta{line-height:1.3;padding-top:2px;white-space:normal}
+.scr-holds .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+/* the log / removed-holds entry row (inline styles in DeletedLog.tsx / RemovedHolds.tsx) */
+.scr-holds .erow{flex-shrink:0;display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:var(--c-wash)}
+.scr-holds .erow.confirming{background:var(--c-wash2)}
+.scr-holds .erow.rec{opacity:.55}
+.scr-holds .erow .m{flex:1;min-width:0}
+.scr-holds .erow .l1{display:flex;align-items:baseline;gap:8px;min-width:0}
+.scr-holds .erow .l1 .mono{font-size:10.5px;color:var(--c-fg-2);flex-shrink:0}
+.scr-holds .erow .l1 b{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-holds .erow .l2{font-size:11px;color:var(--c-fg-2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-holds .erow .l3{font-size:10.5px;color:var(--c-fg-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-holds .erow .pair{display:flex;gap:6px;flex-shrink:0}
+.scr-holds .erow .done{font-size:10.5px;color:var(--c-fg-3);flex-shrink:0}
+@media (max-width:520px){
+  .scr-holds .wrap{padding:10px}
+  .scr-holds .row{flex-direction:column;align-items:center}
+  .scr-holds .row > .bmodal{flex:none}
+  .scr-holds .erow{flex-wrap:wrap;justify-content:flex-end}
+  .scr-holds .erow .m{flex:1 1 100%}
+}
+
+
+/* .c-btabs / .c-btab / .c-bn */
+.scr-holds .btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scr-holds .btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;box-shadow:var(--c-ctlsh);color:var(--c-fg);white-space:nowrap;line-height:1.6}
+.scr-holds .btab.on{background:var(--c-ivory);color:#1b1a17}
+.scr-holds .bn{font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;opacity:.65;font-weight:400}
+/* .c-panel (soft skin) */
+.scr-holds .panel{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:12px}
+.scr-holds .list{height:256px;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.scr-holds .chip{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--c-wash2);padding:3px 8px;border-radius:99px;flex-shrink:0;white-space:nowrap;line-height:1.6}
+/* states: default = the whole-hold entry is asking "Put it back / Cancel"; idle = nothing pressed yet */
+.scr-holds .idle-only{display:none}
+.scr-holds[data-state="idle"] .idle-only{display:inline-flex}
+.scr-holds[data-state="idle"] .chip.idle-only{display:inline-block}
+.scr-holds[data-state="idle"] .conf-only{display:none}
+.scr-holds[data-state="idle"] .erow.confirming{background:var(--c-wash)}
+@media (max-width:520px){
+  .scr-holds .list{height:auto}
+}
+</style>
+<div class="scr scr-holds">
+<div class="btabs" data-k="tabs">
+  <span class="btab">In progress <span class="bn">6</span></span>
+  <span class="btab">Not started <span class="bn">4</span></span>
+  <span class="btab">Awaiting PO <span class="bn">2</span></span>
+  <span class="btab">Awaiting payment <span class="bn">3</span></span>
+  <span class="btab">Paid <span class="bn">18</span></span>
+  <span class="btab">Closed <span class="bn">3</span></span>
+  <span class="btab on" data-k="tab-holds">Removed holds <span class="bn">2</span></span>
+</div>
+<div class="panel" data-k="panel">
+  <div class="lz"><b>Removed holds</b><span class="ct" data-k="h-count">2</span></div>
+  <div class="list">
+    <div class="erow" data-k="h-row">
+      <div class="m">
+        <div class="l1"><span class="mono">WO-1262</span><b>Vantage Music Group · DECOY</b></div>
+        <div class="l2" data-k="h-detail">PRS A · Oct 13, Oct 15 · 2 of 5 days</div>
+        <div class="l3" data-k="h-who">Removed by Lori · Oct 7, 12:14 PM</div>
+      </div>
+      <span class="chip" data-k="h-chip">2 days</span>
+      <span class="soft" data-k="h-recover">Recover</span>
+    </div>
+    <div class="erow confirming" data-k="h-row">
+      <div class="m">
+        <div class="l1"><span class="mono">WO-1258</span><b>Crest Label Group · MARA</b></div>
+        <div class="l2">ARS B · Oct 20 – Oct 22 · 3 days</div>
+        <div class="l3" data-k="h-who">Removed by Fernando · Oct 6, 4:40 PM</div>
+      </div>
+      <span class="chip idle-only" data-k="h-chip">Whole hold</span>
+      <span class="soft idle-only" data-k="h-recover">Recover</span>
+      <div class="pair conf-only" data-k="h-confirm"><span class="btn">Put it back</span><span class="soft">Cancel</span></div>
+    </div>
+    <div class="erow rec" data-k="h-row h-recovered">
+      <div class="m">
+        <div class="l1"><span class="mono">WO-1251</span><b>Lena Ortiz</b></div>
+        <div class="l2">PRS C · Oct 9 · 1 day</div>
+        <div class="l3" data-k="h-who">Removed by Lori · Oct 5, 10:02 AM · recovered by Eli Oct 5, 10:30 AM</div>
+      </div>
+      <span class="chip" data-k="h-chip">Whole hold</span>
+      <span class="done">Recovered</span>
+    </div>
+  </div>
+  <div class="bnote" data-k="h-note">A hold taken off the calendar lands here — the whole hold, or just the days that were removed. Recover puts it back. Real work orders that were deleted are under the page ⋯ → Deleted work orders.</div>
+</div>
+</div>

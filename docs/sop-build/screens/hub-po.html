@@ -1,0 +1,128 @@
+<style>
+.scr-hub-po{overflow-x:auto;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);-webkit-text-size-adjust:100%}
+.scr-hub-po *{box-sizing:border-box}
+.scr-hub-po .in{min-width:944px}
+.scr-hub-po button{font-family:inherit;margin:0}
+.scr-hub-po .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-hub-po .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+/* header - the pipeline IS the title */
+.scr-hub-po .hdr{display:flex;align-items:flex-start;gap:16px;padding:2px 4px 14px;flex-wrap:wrap}
+.scr-hub-po .label{display:block;margin-bottom:3px;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-hub-po .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+.scr-hub-po .label .hint{opacity:1}
+.scr-hub-po .btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px}
+.scr-hub-po .btitle > button{display:flex;align-items:baseline;gap:8px;font-size:inherit;letter-spacing:-.03em;line-height:1.05;background:none;border:none;padding:0;cursor:pointer;color:var(--c-fg);opacity:.28}
+.scr-hub-po .btitle > button.on{opacity:1}
+.scr-hub-po .btitlen{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-hub-po .btitle > button.on .btitlen{opacity:.6}
+.scr-hub-po .grow{flex:1}
+/* stats */
+.scr-hub-po .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.scr-hub-po .bstat{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-hub-po .bstat .v{font-size:20px;letter-spacing:-.02em;line-height:1.6}
+.scr-hub-po .bstat .v.alert{color:var(--c-st-hot)}
+.scr-hub-po .bstat .l{font-size:10px;opacity:.55;margin-top:1px}
+/* approvals strip (owners) */
+.scr-hub-po .appr{border-radius:14px;background:var(--c-wash);padding:12px 14px;margin-bottom:12px}
+.scr-hub-po .appr-hd{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.scr-hub-po .appr-n{min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-po .appr-t{font-size:12px}
+.scr-hub-po .appr-tip{margin-left:auto;font-size:10px;opacity:.45}
+.scr-hub-po .appr-row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;cursor:pointer;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-hub-po .appr-who{font-weight:700;font-size:12.5px;min-width:150px}
+.scr-hub-po .appr-meta{font-size:11px;opacity:.55}
+.scr-hub-po .appr-amt{margin-left:auto;font-weight:800;font-size:12.5px;white-space:nowrap}
+/* search */
+.scr-hub-po .bsearch{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--c-wash);border-radius:12px;padding:0 10px;height:32px}
+.scr-hub-po .bsearch .g{opacity:.4;font-size:12px}
+.scr-hub-po .bsearch .ph{flex:1;font-size:12.5px;color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* tabs */
+.scr-hub-po .btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scr-hub-po .btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--c-ctlsh);color:var(--c-fg);line-height:1.6}
+.scr-hub-po .btab.on{background:var(--c-ivory);color:#1b1a17}
+.scr-hub-po:is([data-theme="light"] *) .btab.on{background:var(--c-fg);color:var(--c-bg)}
+.scr-hub-po .bn{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;opacity:.65}
+/* list panel */
+.scr-hub-po .panel{background:var(--c-srf);border-radius:16px;padding:12px;box-shadow:var(--c-softsh)}
+.scr-hub-po .panel + .panel{margin-top:14px}
+.scr-hub-po .lozenge{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-hub-po .ct{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0}
+/* the locked grid. App: 100px 76px 1fr 234px 84px [46px] 120px 48px, gap 10 -
+   tightened here so the row reads at a 1000px stage. */
+.scr-hub-po .brow,.scr-hub-po .browhd{display:grid;grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 82px 40px;align-items:center;gap:8px}
+.scr-hub-po .age .brow,.scr-hub-po .age .browhd{grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 44px 82px 40px}
+.scr-hub-po .brow{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px;cursor:pointer}
+.scr-hub-po .browhd{padding:2px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.scr-hub-po .browhd .r{text-align:right}
+.scr-hub-po .browhd .c{text-align:center}
+.scr-hub-po .browhd .on{opacity:1;color:var(--c-fg)}
+.scr-hub-po .bday{display:flex;align-items:center;gap:9px;margin:12px 2px 2px}
+.scr-hub-po .bday b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.scr-hub-po .bday i{flex:1;height:1px;background:var(--c-wash2)}
+.scr-hub-po .bday u{font-size:9px;opacity:.3;text-decoration:none;white-space:nowrap}
+.scr-hub-po .bbin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6}
+.scr-hub-po .bbin.two{white-space:normal;line-height:1.25;padding:2px 6px}
+.scr-hub-po .bbin.two small{display:block;font-size:7px;font-weight:700;letter-spacing:.03em;text-transform:none;opacity:.8}
+.scr-hub-po .st-progress{background:var(--c-wash2);color:var(--c-fg)}
+.scr-hub-po .st-progress_reviewed{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-po .st-not_started{background:var(--c-wash2);color:var(--c-fg);opacity:.55}
+.scr-hub-po .st-review{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-hub-po .st-invoice{background:var(--c-st-warm);color:var(--c-chip-ink);opacity:.75}
+.scr-hub-po .st-approval{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-hub-po .st-po{background:#b9d5f1;color:var(--c-chip-ink)}
+.scr-hub-po .st-approved{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-po .st-not_approved{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-hub-po .st-sent{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-hub-po .st-paid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-po .st-closed{background:var(--c-wash2);opacity:.65}
+.scr-hub-po .binv{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.6}
+.scr-hub-po .bwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-hub-po .bwho span{opacity:.5;font-size:11px}
+.scr-hub-po .ap{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:99px;border:1px solid var(--c-fg-3);background:none;color:var(--c-fg-2);font-size:9.5px;font-weight:800;letter-spacing:.08em;line-height:1.5;cursor:pointer;vertical-align:middle}
+.scr-hub-po .bamt{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;text-align:right}
+.scr-hub-po .bage{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.45;text-align:right}
+.scr-hub-po .brow.od .bamt{color:var(--c-st-hot);font-weight:700}
+.scr-hub-po .bflagcell{display:flex;justify-content:flex-end;align-items:center;align-self:stretch;min-width:0}
+.scr-hub-po .bflag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub-po .bflag.bsub{color:var(--c-st-warm)}
+.scr-hub-po .bflag.bsub .bsubat{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;letter-spacing:0;text-transform:none;opacity:.75}
+.scr-hub-po .bflag.brev{color:var(--c-st-booked)}
+.scr-hub-po .bflag.soon{opacity:.4}
+.scr-hub-po .bhint{display:inline-block;font-size:9.5px;opacity:.4;font-style:italic;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub-po .bdrift{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-hot);flex-shrink:0;white-space:nowrap}
+.scr-hub-po .bdone{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-booked);flex-shrink:0;white-space:nowrap}
+.scr-hub-po .bactcell{display:flex;justify-content:center;gap:6px}
+.scr-hub-po .bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);border:none;cursor:pointer;opacity:.8;line-height:1.2;white-space:nowrap}
+.scr-hub-po .appr-row .bact{line-height:1.6}
+.scr-hub-po .bact.muted{background:transparent;opacity:.45}
+.scr-hub-po .bmorecell{display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.scr-hub-po .bnoteg{position:relative;font-size:11px;line-height:1;padding:4px 3px;border:none;background:none;color:var(--c-fg);opacity:.25;cursor:pointer;border-radius:5px}
+.scr-hub-po .bnoteg.has{opacity:.8}
+.scr-hub-po .bnoteg.has::after{content:'';position:absolute;top:1px;right:0;width:6px;height:6px;border-radius:99px;background:var(--c-st-warm)}
+.scr-hub-po .bmore{font-size:12px;line-height:1;padding:4px 2px;border:none;background:none;color:var(--c-fg);opacity:.3;cursor:pointer}
+.scr-hub-po .bmore.pagemore{font-size:15px;padding:4px 6px}
+/* Add PO strip - a fold under the row */
+.scr-hub-po .bpostrip{background:var(--c-wash);border-radius:0 0 12px 12px;margin:-2px 6px 6px;padding:11px 13px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.scr-hub-po .bpostrip .f{display:block}
+.scr-hub-po .bpostrip .f.wide{flex:1;min-width:220px}
+.scr-hub-po .bpolbl{display:block;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.5;margin-bottom:4px;line-height:1.6}
+.scr-hub-po .bpoin{display:block;background:var(--c-srf);border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.3;color:var(--c-fg);width:160px;box-shadow:var(--c-softsh)}
+.scr-hub-po .bpoin .caret{display:inline-block;width:1px;height:13px;background:var(--c-fg);vertical-align:-2px;margin-left:1px;opacity:.7}
+.scr-hub-po .bpofile{display:block;border:1.5px dashed var(--c-wash2);border-radius:9px;padding:7px 12px;font-size:11px;opacity:.65;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;line-height:1.6}
+.scr-hub-po .bpostrip .bact{line-height:1.6}
+/* pager + note */
+.scr-hub-po .bpager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.scr-hub-po .binfo{margin-right:auto;opacity:.45;font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}
+.scr-hub-po .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+.scr-hub-po .gap{height:14px}
+.scr-hub-po:not([data-state="owner"]) .only-owner{display:none}
+/* life.html captions (manual annotation, not app UI) */
+.scr-hub-po .cap{display:flex;align-items:center;gap:8px;margin:11px 2px 1px;font-size:10px;line-height:1.4}
+.scr-hub-po .cap:first-of-type{margin-top:4px}
+.scr-hub-po .cap .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:99px;background:var(--c-wash2);font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;flex-shrink:0}
+.scr-hub-po .cap .who{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:9px;opacity:.75;white-space:nowrap}
+.scr-hub-po .cap .what{color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<div class="scr scr-hub-po"><div class="in">
+<div class="btabs" data-k="tabs"><span class="btab">In progress <span class="bn">6</span></span><span class="btab">Not started <span class="bn">4</span></span><span class="btab on">Awaiting PO <span class="bn">2</span></span><span class="btab">Awaiting payment <span class="bn">3</span></span><span class="btab">Paid <span class="bn">18</span></span><span class="btab">Closed <span class="bn">3</span></span><span class="btab" data-k="tab-holds">Removed holds <span class="bn">1</span></span></div><div class="panel" data-k="list"><div class="lozenge"><b>Awaiting PO</b><span class="ct">2</span></div><div class="browhd" data-k="colhead"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Next</span><span></span></div><div class="bday" data-k="divider"><b>Mon, Sep 21</b><i></i><u>1 session</u></div><div class="brow" data-k="row row-open"><span class="bbin st-po" data-k="badge">Awaiting PO</span><span class="binv">WO-1296</span><span class="bwho" data-k="client"><b>Northside Ent.</b><span> · LUMEN</span><span> · Sep 21–22</span><span> · ARS B</span></span><span class="bflagcell" data-k="flag"><span class="bhint">Approved Fri, Sep 25</span></span><span class="bamt" data-k="balance">$3,850.00</span><span class="bactcell"><button class="bact" data-k="btn">Add PO</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bpostrip" data-k="postrip"><span class="f" data-k="po-number"><span class="bpolbl">PO number</span><span class="bpoin">PO-48213<span class="caret"></span></span></span><span class="f wide" data-k="po-file"><span class="bpolbl">Re-issued invoice (usually re-dated to the PO date)</span><span class="bpofile">Choose the new invoice PDF — replaces the attached one</span></span><button class="bact" data-k="po-save">Save &amp; download</button><button class="bact muted" data-k="po-cancel">Cancel</button></div><div class="bday" data-k="divider"><b>Mon, Sep 28</b><i></i><u>1 session</u></div><div class="brow" data-k="row"><span class="bbin st-po" data-k="badge">Awaiting PO</span><span class="binv">WO-1300</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · TREY VOSS</span><span> · Sep 28</span><span> · PRS A</span></span><span class="bflagcell" data-k="flag"><span class="bhint">Approved Thu, Oct 1</span></span><span class="bamt" data-k="balance">$2,640.00</span><span class="bactcell"><button class="bact" data-k="btn">Add PO</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bpager" data-k="pager"><span class="binfo">2 of 2</span></div></div>
+</div></div>

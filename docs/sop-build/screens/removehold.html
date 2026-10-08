@@ -1,0 +1,154 @@
+<style>
+.scr-removehold{font:400 14.5px/1.6 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);overflow-x:auto;-webkit-font-smoothing:antialiased;text-align:left}
+.scr-removehold *{box-sizing:border-box}
+.scr-removehold b{font-weight:700}
+.scr-removehold .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-removehold .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px}
+.scr-removehold .label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+/* .c-bmodal-wrap — the dimmed page behind a pop-up (the app hard-codes this black). */
+.scr-removehold .wrap{background:rgba(0,0,0,.5);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.scr-removehold .row{display:flex;align-items:flex-start;justify-content:center;gap:16px;width:100%}
+.scr-removehold .row > .bmodal{flex:1 1 0}
+/* .c-bmodal */
+.scr-removehold .bmodal{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px;width:100%;max-width:420px;min-width:0}
+/* .c-lozenge */
+.scr-removehold .lz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-removehold .lz b{font-weight:800}
+.scr-removehold .ct{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0;font-weight:400}
+/* .c-bact (+ .c-bmuted, .c-bblock) */
+.scr-removehold .bact{display:inline-block;font-size:9.5px;font-weight:700;line-height:1.6;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.scr-removehold .bact.bmuted{background:transparent;opacity:.45}
+.scr-removehold .bact.bblock{display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;font-size:12px;white-space:normal}
+.scr-removehold .bact.hot{color:var(--c-st-hot)}
+/* .c-btn / .c-soft */
+.scr-removehold .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:7px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;white-space:nowrap;line-height:1.6}
+.scr-removehold .soft{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:6px 13px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-bg);color:var(--c-fg);white-space:nowrap;line-height:1.6}
+/* .c-x */
+.scr-removehold .x{color:var(--c-fg);opacity:.4;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;margin-left:auto}
+/* .c-input (soft skin: flat wash) */
+.scr-removehold .input{display:block;width:100%;border-radius:12px;padding:0 10px;height:32px;line-height:32px;background:var(--c-wash);color:var(--c-fg);font-size:12.5px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.scr-removehold .input .ph{opacity:.35}
+/* a textarea wearing .c-input keeps the 32px height; its text sits at the top */
+.scr-removehold .input.ta{line-height:1.3;padding-top:2px;white-space:normal}
+.scr-removehold .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+/* the log / removed-holds entry row (inline styles in DeletedLog.tsx / RemovedHolds.tsx) */
+.scr-removehold .erow{flex-shrink:0;display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:var(--c-wash)}
+.scr-removehold .erow.confirming{background:var(--c-wash2)}
+.scr-removehold .erow.rec{opacity:.55}
+.scr-removehold .erow .m{flex:1;min-width:0}
+.scr-removehold .erow .l1{display:flex;align-items:baseline;gap:8px;min-width:0}
+.scr-removehold .erow .l1 .mono{font-size:10.5px;color:var(--c-fg-2);flex-shrink:0}
+.scr-removehold .erow .l1 b{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-removehold .erow .l2{font-size:11px;color:var(--c-fg-2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-removehold .erow .l3{font-size:10.5px;color:var(--c-fg-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-removehold .erow .pair{display:flex;gap:6px;flex-shrink:0}
+.scr-removehold .erow .done{font-size:10.5px;color:var(--c-fg-3);flex-shrink:0}
+@media (max-width:520px){
+  .scr-removehold .wrap{padding:10px}
+  .scr-removehold .row{flex-direction:column;align-items:center}
+  .scr-removehold .row > .bmodal{flex:none}
+  .scr-removehold .erow{flex-wrap:wrap;justify-content:flex-end}
+  .scr-removehold .erow .m{flex:1 1 100%}
+}
+
+
+/* the work order's button row (WorkOrderPopup footer, desktop): flex-end, gap 10, on the sheet's own ground */
+.scr-removehold .wofoot{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:12px 22px 10px;background:var(--c-bg);border-radius:14px;box-shadow:inset 0 0 0 1px var(--c-wash2);margin-bottom:12px;min-width:0}
+.scr-removehold .wofoot .soft.rh{margin-right:auto;color:var(--c-st-hot);box-shadow:var(--c-ctlsh)}
+.scr-removehold .wofoot .big{font-size:12px;padding:12px 26px;border-radius:99px;box-shadow:1.5px 1.5px 4px rgba(0,0,0,.25)}
+.scr-removehold .wofoot .btn.big{padding:12px 32px;box-shadow:1.5px 1.5px 4px rgba(0,0,0,.3)}
+/* .c-pill .c-fill-booked, sized by the inline style */
+.scr-removehold .wofoot .pill{display:inline-flex;align-items:center;flex-shrink:0;border-radius:99px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--c-chip-ink);background:var(--c-st-booked);white-space:nowrap;line-height:1.6}
+/* RemoveHoldModal: backdrop rgba(0,0,0,.55), dialog maxWidth 460 */
+.scr-removehold .wrap{background:rgba(0,0,0,.55);padding:22px 16px}
+.scr-removehold .rhm{width:100%;max-width:460px;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;color:var(--c-fg)}
+.scr-removehold .rhhd{display:flex;align-items:flex-start;gap:10px}
+.scr-removehold .rhhd .t{font-size:16px;line-height:1.25}
+.scr-removehold .rhhd .s{font-size:11.5px;color:var(--c-fg-2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-removehold .ask{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.scr-removehold .ask .q{font-size:12.5px;color:var(--c-fg-2)}
+.scr-removehold .lnk{display:inline-block;margin-left:auto;flex-shrink:0;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-fg-2);text-decoration:underline;text-underline-offset:3px}
+.scr-removehold .days{height:316px;display:flex;flex-direction:column;gap:6px;padding-right:2px;overflow:hidden}
+.scr-removehold .day{flex-shrink:0;display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;background:var(--c-wash)}
+.scr-removehold .box{width:19px;height:19px;border-radius:6px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;line-height:1;background:transparent;color:transparent;box-shadow:inset 0 0 0 1.6px var(--c-fg-3)}
+.scr-removehold .dm{flex:1;min-width:0}
+.scr-removehold .dm b{display:block;font-size:13px}
+.scr-removehold .dm span{display:block;font-size:11px;color:var(--c-fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-removehold .tag{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;flex-shrink:0;color:var(--c-fg-3)}
+.scr-removehold .tag .rm, .scr-removehold .tag .lk{display:none}
+.scr-removehold .tally{min-height:20px;font-size:12px;display:flex;align-items:center;color:var(--c-fg-2)}
+.scr-removehold .tally .t-some, .scr-removehold .tally .t-all{display:none}
+.scr-removehold .btns{display:flex;gap:8px}
+.scr-removehold .btns .soft, .scr-removehold .btns .btn{flex:1 1 0;padding:12px 10px;font-size:12px}
+.scr-removehold .btns .btn{background:var(--c-st-hot);color:var(--c-hot-text);opacity:.35}
+.scr-removehold .go .g-some, .scr-removehold .go .g-all{display:none}
+.scr-removehold .lnk .l-clear{display:none}
+.scr-removehold .kept{font-size:10.5px;color:var(--c-fg-3);text-align:center}
+
+/* ── a ticked day ── */
+.scr-removehold[data-state="some"] .day.pick, .scr-removehold[data-state="all"] .day{background:color-mix(in srgb, var(--c-st-hot) 14%, transparent)}
+.scr-removehold[data-state="some"] .day.pick .box, .scr-removehold[data-state="all"] .day .box{background:var(--c-st-hot);color:var(--c-hot-text);box-shadow:none}
+.scr-removehold[data-state="some"] .day.pick .tag, .scr-removehold[data-state="all"] .day .tag{color:var(--c-st-hot)}
+.scr-removehold[data-state="some"] .day.pick .tag .st, .scr-removehold[data-state="all"] .day .tag .st{display:none}
+.scr-removehold[data-state="some"] .day.pick .tag .rm, .scr-removehold[data-state="all"] .day .tag .rm{display:inline}
+/* ── tally / button / link per state ── */
+.scr-removehold[data-state="some"] .tally .t-none, .scr-removehold[data-state="all"] .tally .t-none{display:none}
+.scr-removehold[data-state="some"] .tally .t-some{display:inline}
+.scr-removehold[data-state="all"] .tally .t-all{display:inline}
+.scr-removehold[data-state="all"] .tally{color:var(--c-st-hot);font-weight:700}
+.scr-removehold[data-state="some"] .btns .btn, .scr-removehold[data-state="all"] .btns .btn{opacity:1}
+.scr-removehold[data-state="some"] .go .g-none, .scr-removehold[data-state="all"] .go .g-none{display:none}
+.scr-removehold[data-state="some"] .go .g-some{display:inline}
+.scr-removehold[data-state="all"] .go .g-all{display:inline}
+.scr-removehold[data-state="all"] .lnk .l-all{display:none}
+.scr-removehold[data-state="all"] .lnk .l-clear{display:inline}
+/* ── a day that is no longer a hold ── */
+.scr-removehold[data-state="locked"] .day.first{opacity:.5}
+.scr-removehold[data-state="locked"] .day.first .box{box-shadow:inset 0 0 0 1.6px var(--c-wash2)}
+.scr-removehold[data-state="locked"] .day.first .tag .st{display:none}
+.scr-removehold[data-state="locked"] .day.first .tag .lk{display:inline}
+@media (max-width:520px){
+  .scr-removehold .wofoot{flex-wrap:wrap;padding:12px;gap:8px}
+  .scr-removehold .wofoot .big{padding:10px 16px}
+  .scr-removehold .wofoot .btn.big{padding:10px 18px}
+}
+</style>
+<div class="scr scr-removehold">
+<div class="wofoot" data-k="wo-buttons">
+  <span class="soft rh" data-k="rh-button">Remove hold</span>
+  <span class="soft big" data-k="wo-cancel">Cancel</span>
+  <span class="pill big" data-k="wo-complete">Complete WO</span>
+  <span class="btn big" data-k="wo-save">Save</span>
+</div>
+<div class="wrap">
+  <div class="rhm" data-k="rh-modal">
+    <div class="rhhd">
+      <div style="min-width:0">
+        <div class="label" style="margin-bottom:2px">WO-1262 · Tentative</div>
+        <div class="arch t">Remove hold</div>
+        <div class="s">Vantage Music Group · DECOY</div>
+      </div>
+      <span class="x">×</span>
+    </div>
+    <div>
+      <div class="ask">
+        <span class="q">Which days come off the calendar?</span>
+        <span class="lnk" data-k="rh-all"><span class="l-all">Select all</span><span class="l-clear">Clear</span></span>
+      </div>
+      <div class="days" data-k="rh-list">
+        <div class="day first" data-k="rh-day rh-locked"><span class="box">✓</span><span class="dm"><b>Mon, Oct 12</b><span>PRS A · 12:00 PM – 12:00 AM</span></span><span class="tag"><span class="st">Stays</span><span class="rm">Remove</span><span class="lk">Confirmed</span></span></div>
+        <div class="day pick" data-k="rh-day"><span class="box">✓</span><span class="dm"><b>Tue, Oct 13</b><span>PRS A · 12:00 PM – 12:00 AM</span></span><span class="tag"><span class="st">Stays</span><span class="rm">Remove</span><span class="lk">Confirmed</span></span></div>
+        <div class="day " data-k="rh-day"><span class="box">✓</span><span class="dm"><b>Wed, Oct 14</b><span>PRS A · 12:00 PM – 12:00 AM</span></span><span class="tag"><span class="st">Stays</span><span class="rm">Remove</span><span class="lk">Confirmed</span></span></div>
+        <div class="day pick" data-k="rh-day"><span class="box">✓</span><span class="dm"><b>Thu, Oct 15</b><span>PRS A · 2:00 PM – 2:00 AM</span></span><span class="tag"><span class="st">Stays</span><span class="rm">Remove</span><span class="lk">Confirmed</span></span></div>
+        <div class="day " data-k="rh-day"><span class="box">✓</span><span class="dm"><b>Fri, Oct 16</b><span>PRS A + PRS B · 12:00 PM – 12:00 AM</span></span><span class="tag"><span class="st">Stays</span><span class="rm">Remove</span><span class="lk">Confirmed</span></span></div>
+      </div>
+    </div>
+    <div class="tally" data-k="rh-tally"><span class="t-none">Tick the days to remove. The rest stay on the calendar.</span><span class="t-some">2 of 5 days come off · 3 stay</span><span class="t-all">That’s every day — the whole hold comes off the calendar.</span></div>
+    <div class="btns">
+      <span class="soft" data-k="rh-keep">Keep it</span>
+      <span class="btn go" data-k="rh-go"><span class="g-none">Remove</span><span class="g-some">Remove 2 days</span><span class="g-all">Remove whole hold</span></span>
+    </div>
+    <div class="kept" data-k="rh-kept">Kept under Billing → Removed holds. Can be put back.</div>
+  </div>
+</div>
+</div>

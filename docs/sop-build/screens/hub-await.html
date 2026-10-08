@@ -1,0 +1,128 @@
+<style>
+.scr-hub-await{overflow-x:auto;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);-webkit-text-size-adjust:100%}
+.scr-hub-await *{box-sizing:border-box}
+.scr-hub-await .in{min-width:944px}
+.scr-hub-await button{font-family:inherit;margin:0}
+.scr-hub-await .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-hub-await .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+/* header - the pipeline IS the title */
+.scr-hub-await .hdr{display:flex;align-items:flex-start;gap:16px;padding:2px 4px 14px;flex-wrap:wrap}
+.scr-hub-await .label{display:block;margin-bottom:3px;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-hub-await .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+.scr-hub-await .label .hint{opacity:1}
+.scr-hub-await .btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px}
+.scr-hub-await .btitle > button{display:flex;align-items:baseline;gap:8px;font-size:inherit;letter-spacing:-.03em;line-height:1.05;background:none;border:none;padding:0;cursor:pointer;color:var(--c-fg);opacity:.28}
+.scr-hub-await .btitle > button.on{opacity:1}
+.scr-hub-await .btitlen{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-hub-await .btitle > button.on .btitlen{opacity:.6}
+.scr-hub-await .grow{flex:1}
+/* stats */
+.scr-hub-await .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.scr-hub-await .bstat{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-hub-await .bstat .v{font-size:20px;letter-spacing:-.02em;line-height:1.6}
+.scr-hub-await .bstat .v.alert{color:var(--c-st-hot)}
+.scr-hub-await .bstat .l{font-size:10px;opacity:.55;margin-top:1px}
+/* approvals strip (owners) */
+.scr-hub-await .appr{border-radius:14px;background:var(--c-wash);padding:12px 14px;margin-bottom:12px}
+.scr-hub-await .appr-hd{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.scr-hub-await .appr-n{min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-await .appr-t{font-size:12px}
+.scr-hub-await .appr-tip{margin-left:auto;font-size:10px;opacity:.45}
+.scr-hub-await .appr-row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;cursor:pointer;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-hub-await .appr-who{font-weight:700;font-size:12.5px;min-width:150px}
+.scr-hub-await .appr-meta{font-size:11px;opacity:.55}
+.scr-hub-await .appr-amt{margin-left:auto;font-weight:800;font-size:12.5px;white-space:nowrap}
+/* search */
+.scr-hub-await .bsearch{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--c-wash);border-radius:12px;padding:0 10px;height:32px}
+.scr-hub-await .bsearch .g{opacity:.4;font-size:12px}
+.scr-hub-await .bsearch .ph{flex:1;font-size:12.5px;color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* tabs */
+.scr-hub-await .btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scr-hub-await .btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--c-ctlsh);color:var(--c-fg);line-height:1.6}
+.scr-hub-await .btab.on{background:var(--c-ivory);color:#1b1a17}
+.scr-hub-await:is([data-theme="light"] *) .btab.on{background:var(--c-fg);color:var(--c-bg)}
+.scr-hub-await .bn{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;opacity:.65}
+/* list panel */
+.scr-hub-await .panel{background:var(--c-srf);border-radius:16px;padding:12px;box-shadow:var(--c-softsh)}
+.scr-hub-await .panel + .panel{margin-top:14px}
+.scr-hub-await .lozenge{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-hub-await .ct{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0}
+/* the locked grid. App: 100px 76px 1fr 234px 84px [46px] 120px 48px, gap 10 -
+   tightened here so the row reads at a 1000px stage. */
+.scr-hub-await .brow,.scr-hub-await .browhd{display:grid;grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 82px 40px;align-items:center;gap:8px}
+.scr-hub-await .age .brow,.scr-hub-await .age .browhd{grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 44px 82px 40px}
+.scr-hub-await .brow{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px;cursor:pointer}
+.scr-hub-await .browhd{padding:2px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.scr-hub-await .browhd .r{text-align:right}
+.scr-hub-await .browhd .c{text-align:center}
+.scr-hub-await .browhd .on{opacity:1;color:var(--c-fg)}
+.scr-hub-await .bday{display:flex;align-items:center;gap:9px;margin:12px 2px 2px}
+.scr-hub-await .bday b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.scr-hub-await .bday i{flex:1;height:1px;background:var(--c-wash2)}
+.scr-hub-await .bday u{font-size:9px;opacity:.3;text-decoration:none;white-space:nowrap}
+.scr-hub-await .bbin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6}
+.scr-hub-await .bbin.two{white-space:normal;line-height:1.25;padding:2px 6px}
+.scr-hub-await .bbin.two small{display:block;font-size:7px;font-weight:700;letter-spacing:.03em;text-transform:none;opacity:.8}
+.scr-hub-await .st-progress{background:var(--c-wash2);color:var(--c-fg)}
+.scr-hub-await .st-progress_reviewed{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-await .st-not_started{background:var(--c-wash2);color:var(--c-fg);opacity:.55}
+.scr-hub-await .st-review{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-hub-await .st-invoice{background:var(--c-st-warm);color:var(--c-chip-ink);opacity:.75}
+.scr-hub-await .st-approval{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-hub-await .st-po{background:#b9d5f1;color:var(--c-chip-ink)}
+.scr-hub-await .st-approved{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-await .st-not_approved{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-hub-await .st-sent{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-hub-await .st-paid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub-await .st-closed{background:var(--c-wash2);opacity:.65}
+.scr-hub-await .binv{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.6}
+.scr-hub-await .bwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-hub-await .bwho span{opacity:.5;font-size:11px}
+.scr-hub-await .ap{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:99px;border:1px solid var(--c-fg-3);background:none;color:var(--c-fg-2);font-size:9.5px;font-weight:800;letter-spacing:.08em;line-height:1.5;cursor:pointer;vertical-align:middle}
+.scr-hub-await .bamt{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;text-align:right}
+.scr-hub-await .bage{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.45;text-align:right}
+.scr-hub-await .brow.od .bamt{color:var(--c-st-hot);font-weight:700}
+.scr-hub-await .bflagcell{display:flex;justify-content:flex-end;align-items:center;align-self:stretch;min-width:0}
+.scr-hub-await .bflag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub-await .bflag.bsub{color:var(--c-st-warm)}
+.scr-hub-await .bflag.bsub .bsubat{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;letter-spacing:0;text-transform:none;opacity:.75}
+.scr-hub-await .bflag.brev{color:var(--c-st-booked)}
+.scr-hub-await .bflag.soon{opacity:.4}
+.scr-hub-await .bhint{display:inline-block;font-size:9.5px;opacity:.4;font-style:italic;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub-await .bdrift{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-hot);flex-shrink:0;white-space:nowrap}
+.scr-hub-await .bdone{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-booked);flex-shrink:0;white-space:nowrap}
+.scr-hub-await .bactcell{display:flex;justify-content:center;gap:6px}
+.scr-hub-await .bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);border:none;cursor:pointer;opacity:.8;line-height:1.2;white-space:nowrap}
+.scr-hub-await .appr-row .bact{line-height:1.6}
+.scr-hub-await .bact.muted{background:transparent;opacity:.45}
+.scr-hub-await .bmorecell{display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.scr-hub-await .bnoteg{position:relative;font-size:11px;line-height:1;padding:4px 3px;border:none;background:none;color:var(--c-fg);opacity:.25;cursor:pointer;border-radius:5px}
+.scr-hub-await .bnoteg.has{opacity:.8}
+.scr-hub-await .bnoteg.has::after{content:'';position:absolute;top:1px;right:0;width:6px;height:6px;border-radius:99px;background:var(--c-st-warm)}
+.scr-hub-await .bmore{font-size:12px;line-height:1;padding:4px 2px;border:none;background:none;color:var(--c-fg);opacity:.3;cursor:pointer}
+.scr-hub-await .bmore.pagemore{font-size:15px;padding:4px 6px}
+/* Add PO strip - a fold under the row */
+.scr-hub-await .bpostrip{background:var(--c-wash);border-radius:0 0 12px 12px;margin:-2px 6px 6px;padding:11px 13px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.scr-hub-await .bpostrip .f{display:block}
+.scr-hub-await .bpostrip .f.wide{flex:1;min-width:220px}
+.scr-hub-await .bpolbl{display:block;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.5;margin-bottom:4px;line-height:1.6}
+.scr-hub-await .bpoin{display:block;background:var(--c-srf);border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.3;color:var(--c-fg);width:160px;box-shadow:var(--c-softsh)}
+.scr-hub-await .bpoin .caret{display:inline-block;width:1px;height:13px;background:var(--c-fg);vertical-align:-2px;margin-left:1px;opacity:.7}
+.scr-hub-await .bpofile{display:block;border:1.5px dashed var(--c-wash2);border-radius:9px;padding:7px 12px;font-size:11px;opacity:.65;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;line-height:1.6}
+.scr-hub-await .bpostrip .bact{line-height:1.6}
+/* pager + note */
+.scr-hub-await .bpager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.scr-hub-await .binfo{margin-right:auto;opacity:.45;font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}
+.scr-hub-await .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+.scr-hub-await .gap{height:14px}
+.scr-hub-await:not([data-state="owner"]) .only-owner{display:none}
+/* life.html captions (manual annotation, not app UI) */
+.scr-hub-await .cap{display:flex;align-items:center;gap:8px;margin:11px 2px 1px;font-size:10px;line-height:1.4}
+.scr-hub-await .cap:first-of-type{margin-top:4px}
+.scr-hub-await .cap .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:99px;background:var(--c-wash2);font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;flex-shrink:0}
+.scr-hub-await .cap .who{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:9px;opacity:.75;white-space:nowrap}
+.scr-hub-await .cap .what{color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<div class="scr scr-hub-await"><div class="in">
+<div class="btabs" data-k="tabs"><span class="btab">In progress <span class="bn">6</span></span><span class="btab">Not started <span class="bn">4</span></span><span class="btab">Awaiting PO <span class="bn">2</span></span><span class="btab on">Awaiting payment <span class="bn">3</span></span><span class="btab">Paid <span class="bn">18</span></span><span class="btab">Closed <span class="bn">3</span></span><span class="btab" data-k="tab-holds">Removed holds <span class="bn">1</span></span></div><div class="panel age" data-k="list"><div class="lozenge"><b>Awaiting payment</b><span class="ct">3</span></div><div class="browhd" data-k="colhead"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="r">Flag</span><span class="r">Balance</span><span class="r on">Age ▼</span><span class="c">Next</span><span></span></div><div class="brow od" data-k="row overdue"><span class="bbin st-sent" data-k="badge">Sent</span><span class="binv">WO-1262</span><span class="bwho" data-k="client"><b>Crest Label Group</b><button class="ap" data-k="ap">AP</button><span> · IVY</span><span> · Aug 28</span><span> · ERS A</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$7,320.00</span><span class="bage" data-k="age">34d</span><span class="bactcell"><button class="bact" data-k="btn-paid">Mark paid</button></span><span class="bmorecell"><button class="bnoteg has" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="brow" data-k="row"><span class="bbin st-sent" data-k="badge">Sent</span><span class="binv">WO-1281</span><span class="bwho" data-k="client"><b>Vantage Music Group</b><span> · DECOY</span><span> · Sep 14</span><span> · PRS A</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$2,480.00</span><span class="bage" data-k="age">19d</span><span class="bactcell"><button class="bact" data-k="btn-paid">Mark paid</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="brow" data-k="row"><span class="bbin st-sent" data-k="badge">Sent</span><span class="binv">WO-1289</span><span class="bwho" data-k="client"><b>Northside Ent.</b><span> · J. RIVAS</span><span> · Sep 21</span><span> · ARS A</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$4,960.00</span><span class="bage" data-k="age">12d</span><span class="bactcell"><button class="bact" data-k="btn-paid">Mark paid</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bpager" data-k="pager"><span class="binfo">3 of 3</span></div></div><div class="gap"></div><div class="panel age" data-k="list-paid"><div class="lozenge"><b>Paid</b><span class="ct">18</span></div><div class="browhd" data-k="colhead"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="r">Flag</span><span class="r">Balance</span><span class="r">Age</span><span class="c">Next</span><span></span></div><div class="bday" data-k="divider"><b>Fri, Sep 11</b><i></i><u>1 session</u></div><div class="brow" data-k="row row-paid"><span class="bbin st-paid" data-k="badge">Paid</span><span class="binv">WO-1270</span><span class="bwho" data-k="client"><b>Crest Label Group</b><button class="ap" data-k="ap">AP</button><span> · MARA</span><span> · Sep 11</span><span> · ERS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$3,120.00</span><span class="bage" data-k="age">22d</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div></div><div class="panel age" data-k="list-closed"><div class="lozenge"><b>Closed</b><span class="ct">3</span></div><div class="browhd" data-k="colhead"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="r">Flag</span><span class="r">Balance</span><span class="r">Age</span><span class="c">Next</span><span></span></div><div class="bday" data-k="divider"><b>Wed, Sep 9</b><i></i><u>1 session</u></div><div class="brow" data-k="row row-closed"><span class="bbin st-closed" data-k="badge">Closed</span><span class="binv">WO-1277</span><span class="bwho" data-k="client"><b>Vantage Music Group</b><span> · DECOY</span><span> · Sep 9</span><span> · PRS C</span></span><span class="bflagcell" data-k="flag"><span class="bflag soon" data-k="reason">Voided — billing error · re-billed</span></span><span class="bamt" data-k="balance">$1,840.00</span><span class="bage" data-k="age">—</span><span class="bactcell"><button class="bact" data-k="btn-reopen">Reopen</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div></div>
+</div></div>

@@ -1,0 +1,232 @@
+<style>
+.scr-flags{container-type:inline-size;overflow-x:auto;font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg)}
+.scr-flags *{box-sizing:border-box}
+.scr-flags .in{display:flex;flex-direction:column;gap:14px;min-width:332px}
+.scr-flags .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-flags .mono{font-family:'DM Mono',ui-monospace,monospace}
+
+/* titles — .c-btitle */
+.scr-flags .btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px;padding:2px 4px 0}
+.scr-flags .btitle .t{display:flex;align-items:baseline;gap:8px;letter-spacing:-.03em;line-height:1.05;color:var(--c-fg);opacity:.28}
+.scr-flags .btitle .t.on{opacity:1}
+.scr-flags .btitle .n{font-family:'DM Mono',ui-monospace,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-flags .btitle .t.on .n{opacity:.6}
+
+/* panels */
+.scr-flags .panel{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;min-width:0}
+.scr-flags .top{padding:14px 18px}
+.scr-flags .hdr{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.scr-flags .hdr .l{display:flex;align-items:baseline;gap:12px}
+.scr-flags .sect{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;padding:0 3px}
+.scr-flags .meta{font-size:10.5px;color:var(--c-fg-3)}
+.scr-flags .meta b{color:var(--c-fg);font-weight:700}
+.scr-flags .meta b.hot{color:var(--c-st-hot)}
+.scr-flags .inp{display:flex;align-items:center;border-radius:12px;padding:0 10px;height:32px;background:var(--c-bg);color:var(--c-fg);font-weight:500;box-shadow:inset 2px 2px 6px var(--c-wash2),inset 0 0 0 1px var(--c-wash);white-space:nowrap}
+.scr-flags .inp.ph{color:var(--c-fg-3)}
+.scr-flags .search{width:200px;font-size:11.5px}
+
+/* composer (open) */
+.scr-flags .composer{background:var(--c-wash);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.scr-flags .composer .what{display:block;font-size:13px;font-weight:600;width:100%;line-height:32px;overflow:hidden;text-overflow:ellipsis}
+.scr-flags .composer .what .caret{display:inline-block;width:1px;height:15px;background:var(--c-fg);margin-left:1px;vertical-align:-2px}
+.scr-flags .fields{display:flex;gap:18px;flex-wrap:wrap}
+.scr-flags .fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.scr-flags .klabel{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);line-height:1.6}
+.scr-flags .chips{display:flex;gap:5px;flex-wrap:wrap}
+.scr-flags .chip{display:inline-flex;align-items:center;padding:4px 11px;border-radius:99px;font-size:10.5px;font-weight:700;letter-spacing:.04em;line-height:1.6;white-space:nowrap;background:var(--c-wash);color:var(--c-fg-2);box-shadow:var(--c-ctlsh)}
+.scr-flags .chip.on{background:var(--c-fg);color:var(--c-bg)}
+.scr-flags .chip .c{font-family:'DM Mono',ui-monospace,monospace;font-weight:500;margin-left:5px;opacity:.7;letter-spacing:0}
+.scr-flags .sel{font-size:11.5px;gap:14px;justify-content:space-between}
+.scr-flags .sel svg{flex-shrink:0;opacity:.6}
+.scr-flags .date{font-size:11.5px;gap:10px}
+.scr-flags .date svg{flex-shrink:0;opacity:.6}
+.scr-flags .soft{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;border-radius:99px;padding:6px 13px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;line-height:1.6;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh)}
+.scr-flags .acts{display:flex;gap:8px;align-items:center}
+.scr-flags .pill{display:inline-flex;align-items:center;border-radius:99px;padding:4px 11px;font-size:11.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;line-height:1.6;color:var(--c-chip-ink);background:var(--c-st-booked);box-shadow:var(--c-ctlsh)}
+.scr-flags .cancel{border-radius:99px;padding:8px 16px;font-size:11px;font-weight:700;letter-spacing:.04em;line-height:1.6;color:var(--c-fg-3);text-decoration:underline;box-shadow:var(--c-ctlsh)}
+
+/* filter chips */
+.scr-flags .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.scr-flags .filters .sep{width:1px;height:14px;background:var(--c-wash2);margin:0 4px}
+.scr-flags .fgrp{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* the two columns */
+.scr-flags .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.scr-flags .col{padding:12px;height:311px;display:flex;flex-direction:column}
+.scr-flags .colhead{height:34px;display:flex;align-items:baseline;gap:8px;padding:0 4px;flex-shrink:0}
+.scr-flags .colhead .ttl{font-family:'Bebas Neue','Archivo Black',system-ui,sans-serif;font-size:20px;letter-spacing:.04em;line-height:1.6}
+.scr-flags .rows{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0}
+.scr-flags .colfoot{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 4px;font-size:10px;color:var(--c-fg-3);flex-shrink:0}
+.scr-flags .colfoot .pg{padding:2px 4px;border-radius:99px;font-weight:700;letter-spacing:.04em;box-shadow:var(--c-ctlsh)}
+
+/* a flag row */
+.scr-flags .row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--c-bg);border-radius:12px;padding:0 12px;height:52px;flex-shrink:0}
+.scr-flags .row .kd{width:8px;height:8px;border-radius:99px;background:var(--c-st-dead)}
+.scr-flags .row .kd.facility{background:var(--c-st-uncon)}
+.scr-flags .row .kd.gear{background:var(--c-st-tech)}
+.scr-flags .row .kd.cb{background:var(--c-st-warm)}
+.scr-flags .row .kd.office{background:var(--c-st-dead)}
+.scr-flags .row .mid{min-width:0}
+.scr-flags .row .tx{font-size:12.5px;font-weight:600;line-height:1.3;color:var(--c-fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-flags .row .mt{font-size:10.5px;color:var(--c-fg-3);margin-top:2px;display:flex;gap:6px;align-items:center;overflow:hidden;white-space:nowrap;line-height:1.6}
+.scr-flags .row .mt .st{font-family:'DM Mono',ui-monospace,monospace;font-weight:600;color:var(--c-fg-2);letter-spacing:.04em}
+.scr-flags .row .mt .src{overflow:hidden;text-overflow:ellipsis}
+.scr-flags .row .mt .ph{display:inline-block;width:14px;height:11px;border-radius:3px;background:var(--c-wash2);flex-shrink:0}
+.scr-flags .row .rt{display:flex;align-items:center;gap:10px;justify-self:end}
+.scr-flags .row .age{display:inline-block;font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;color:var(--c-fg-3);font-weight:400}
+.scr-flags .row .age.hot{color:var(--c-st-hot);font-weight:600}
+.scr-flags .row .who{display:inline-block;font-size:10.5px;font-weight:500;color:var(--c-fg-3);white-space:nowrap}
+.scr-flags .row .who.named{font-weight:600;color:var(--c-fg-2)}
+.scr-flags .row .btn{display:block;width:18px;height:18px;border-radius:99px;border:1.5px solid var(--c-fg-3);background:transparent;box-shadow:var(--c-ctlsh);flex-shrink:0}
+.scr-flags .row.done{opacity:.55}
+.scr-flags .row.done .tx{text-decoration:line-through;text-decoration-color:var(--c-fg-3)}
+.scr-flags .row.done .btn{border-color:var(--c-st-booked);background:var(--c-st-booked)}
+
+/* done this week */
+.scr-flags .donewk{padding:12px 18px}
+.scr-flags .donewk .tog{display:inline-flex;align-items:baseline;gap:8px;border-radius:99px;box-shadow:var(--c-ctlsh)}
+.scr-flags .donelist{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+
+@container (max-width: 700px){
+  .scr-flags .cols{grid-template-columns:minmax(0,1fr)}
+  .scr-flags .col{height:auto}
+  .scr-flags .search{width:100%}
+  .scr-flags .btitle{font-size:20px}
+  .scr-flags .hdr .l{flex-wrap:wrap}
+}
+</style>
+<div class="scr scr-flags">
+ <div class="in">
+
+  <div class="btitle" data-k="titles">
+    <div class="t arch" data-k="t-ops">Daily Ops</div>
+    <div class="t on arch" data-k="t-flags">Flags <span class="n">5</span></div>
+  </div>
+
+  <!-- header · composer · chips -->
+  <div class="panel top">
+   <div class="hdr">
+    <div class="l">
+     <span class="sect">Flags</span>
+     <span class="meta" data-k="counts"><b>5</b> open · <b class="hot">1</b> over 72h · 1 done today</span>
+    </div>
+    <div class="inp ph search" data-k="search">Search flags…</div>
+   </div>
+
+   <div class="composer" data-k="add">
+    <div class="inp what" data-k="add-what">Vantage Music Group — confirm the billing contact for WO-1307<span class="caret"></span></div>
+    <div class="fields">
+     <div class="fld" data-k="kind">
+      <span class="klabel">Kind · goes to Admin</span>
+      <div class="chips">
+       <span class="chip" data-k="k-tech">Facility</span>
+       <span class="chip" data-k="k-tech">Gear</span>
+       <span class="chip on" data-k="k-admin">Clients &amp; billing</span>
+       <span class="chip" data-k="k-admin">Office</span>
+      </div>
+     </div>
+     <div class="fld" data-k="add-studio">
+      <span class="klabel">Studio</span>
+      <div class="chips">
+       <span class="chip">PRS</span><span class="chip on">ARS</span><span class="chip">ERS</span><span class="chip">TRK</span>
+      </div>
+     </div>
+     <div class="fld" data-k="add-assign">
+      <span class="klabel">Assign to</span>
+      <div class="inp sel">Admin (nobody in particular)
+       <svg width="9" height="6" viewBox="0 0 9 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3.5 3.5L8 1"/></svg>
+      </div>
+     </div>
+     <div class="fld" data-k="add-due">
+      <span class="klabel">Due</span>
+      <div class="inp date">10/07/2026
+       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="2" width="10" height="9" rx="1.5"/><path d="M1 5h10M4 .8v2.4M8 .8v2.4"/></svg>
+      </div>
+     </div>
+     <div class="fld" data-k="add-photo">
+      <span class="klabel">Photo</span>
+      <span class="soft">Attach</span>
+     </div>
+    </div>
+    <div class="acts">
+     <span class="pill" data-k="add-btn">Add flag</span>
+     <span class="cancel">Cancel</span>
+    </div>
+   </div>
+
+   <div class="filters" data-k="filters">
+    <div class="fgrp" data-k="f-scope">
+     <span class="chip on" data-k="f-all">All<span class="c">5</span></span>
+     <span class="chip" data-k="f-mine">Mine<span class="c">1</span></span>
+     <span class="chip" data-k="f-assigned">I assigned<span class="c">1</span></span>
+    </div>
+    <span class="sep"></span>
+    <div class="fgrp" data-k="f-kinds">
+     <span class="chip">Facility<span class="c">1</span></span>
+     <span class="chip">Gear<span class="c">1</span></span>
+     <span class="chip">Clients &amp; billing<span class="c">2</span></span>
+     <span class="chip">Office<span class="c">1</span></span>
+    </div>
+    <span class="sep"></span>
+    <div class="fgrp" data-k="f-studios">
+     <span class="chip">PRS</span><span class="chip">ARS</span><span class="chip">ERS</span><span class="chip">TRK</span>
+    </div>
+   </div>
+  </div>
+
+  <!-- Admin | Tech -->
+  <div class="cols">
+   <div class="panel col" data-k="col-admin">
+    <div class="colhead"><span class="ttl">Admin</span><span class="meta">3 open · <b class="hot">1 over 72h</b></span></div>
+    <div class="rows">
+     <div class="row" data-k="flag flag-old">
+      <i class="kd office"></i>
+      <div class="mid"><div class="tx">Order toner for the front office printer</div><div class="mt"><span class="src">Fernando</span></div></div>
+      <div class="rt"><span class="age hot" data-k="f-age">4d</span><span class="who" data-k="f-who">Admin</span><span class="btn" data-k="f-done-btn"></span></div>
+     </div>
+     <div class="row" data-k="flag flag-lori">
+      <i class="kd cb"></i>
+      <div class="mid"><div class="tx">Send Crest Label Group the September statement</div><div class="mt"><span class="src">Eli</span><span>· due Oct 7</span></div></div>
+      <div class="rt"><span class="age" data-k="age">1d</span><span class="who named" data-k="f-who">Lori</span><span class="btn" data-k="f-done-btn"></span></div>
+     </div>
+     <div class="row" data-k="flag flag-admin">
+      <i class="kd cb"></i>
+      <div class="mid"><div class="tx">WO-1310 has no PO — ask Hitline Records</div><div class="mt"><span class="st">PRS</span><span class="src">Lori</span></div></div>
+      <div class="rt"><span class="age" data-k="age">5h</span><span class="who" data-k="f-who">Admin</span><span class="btn" data-k="f-done-btn"></span></div>
+     </div>
+    </div>
+    <div class="colfoot"><span class="pg">&larr; Prev</span><span>1–3 of 3</span><span class="pg">Next &rarr;</span></div>
+   </div>
+
+   <div class="panel col" data-k="col-tech">
+    <div class="colhead"><span class="ttl">Tech</span><span class="meta">2 open</span></div>
+    <div class="rows">
+     <div class="row" data-k="flag flag-tech">
+      <i class="kd gear"></i>
+      <div class="mid"><div class="tx">U87 crackles on phantom power in the B room</div><div class="mt"><span class="st">ARS</span><span class="src">runner checklist · Terren L.</span></div></div>
+      <div class="rt"><span class="age" data-k="age">2d</span><span class="who" data-k="f-who">Tech</span><span class="btn" data-k="f-done-btn-tech"></span></div>
+     </div>
+     <div class="row" data-k="flag flag-tech">
+      <i class="kd facility"></i>
+      <div class="mid"><div class="tx">Lounge AC is dripping onto the carpet</div><div class="mt"><span class="st">PRS</span><span class="src">Fernando</span><span class="ph"></span></div></div>
+      <div class="rt"><span class="age" data-k="age">9h</span><span class="who" data-k="f-who">Tech</span><span class="btn" data-k="f-done-btn-tech"></span></div>
+     </div>
+    </div>
+    <div class="colfoot"><span class="pg">&larr; Prev</span><span>1–2 of 2</span><span class="pg">Next &rarr;</span></div>
+   </div>
+  </div>
+
+  <!-- Done this week (open) -->
+  <div class="panel donewk" data-k="done-week">
+   <span class="tog"><span class="klabel">Done this week</span><span class="meta">1 ▾</span></span>
+   <div class="donelist">
+    <div class="row done" data-k="flag f-done">
+     <i class="kd cb"></i>
+     <div class="mid"><div class="tx">Email Northside Ent. the corrected invoice</div><div class="mt"><span class="src">Lori</span><span>· done Oct 5</span></div></div>
+     <div class="rt"><span class="who" data-k="f-who">Admin</span><span class="btn" data-k="f-reopen-btn"></span></div>
+    </div>
+   </div>
+  </div>
+
+ </div>
+</div>

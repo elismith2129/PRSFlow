@@ -1,0 +1,104 @@
+<style>
+.scr-more{font:400 14.5px/1.6 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);overflow-x:auto;-webkit-font-smoothing:antialiased;text-align:left}
+.scr-more *{box-sizing:border-box}
+.scr-more b{font-weight:700}
+.scr-more .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-more .mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px}
+.scr-more .label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+/* .c-bmodal-wrap — the dimmed page behind a pop-up (the app hard-codes this black). */
+.scr-more .wrap{background:rgba(0,0,0,.5);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.scr-more .row{display:flex;align-items:flex-start;justify-content:center;gap:16px;width:100%}
+.scr-more .row > .bmodal{flex:1 1 0}
+/* .c-bmodal */
+.scr-more .bmodal{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px;width:100%;max-width:420px;min-width:0}
+/* .c-lozenge */
+.scr-more .lz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-more .lz b{font-weight:800}
+.scr-more .ct{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0;font-weight:400}
+/* .c-bact (+ .c-bmuted, .c-bblock) */
+.scr-more .bact{display:inline-block;font-size:9.5px;font-weight:700;line-height:1.6;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.scr-more .bact.bmuted{background:transparent;opacity:.45}
+.scr-more .bact.bblock{display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;font-size:12px;white-space:normal}
+.scr-more .bact.hot{color:var(--c-st-hot)}
+/* .c-btn / .c-soft */
+.scr-more .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:7px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;white-space:nowrap;line-height:1.6}
+.scr-more .soft{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:6px 13px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-bg);color:var(--c-fg);white-space:nowrap;line-height:1.6}
+/* .c-x */
+.scr-more .x{color:var(--c-fg);opacity:.4;font-size:16px;line-height:1;padding:0 2px;flex-shrink:0;margin-left:auto}
+/* .c-input (soft skin: flat wash) */
+.scr-more .input{display:block;width:100%;border-radius:12px;padding:0 10px;height:32px;line-height:32px;background:var(--c-wash);color:var(--c-fg);font-size:12.5px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.scr-more .input .ph{opacity:.35}
+/* a textarea wearing .c-input keeps the 32px height; its text sits at the top */
+.scr-more .input.ta{line-height:1.3;padding-top:2px;white-space:normal}
+.scr-more .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+/* the log / removed-holds entry row (inline styles in DeletedLog.tsx / RemovedHolds.tsx) */
+.scr-more .erow{flex-shrink:0;display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:12px;background:var(--c-wash)}
+.scr-more .erow.confirming{background:var(--c-wash2)}
+.scr-more .erow.rec{opacity:.55}
+.scr-more .erow .m{flex:1;min-width:0}
+.scr-more .erow .l1{display:flex;align-items:baseline;gap:8px;min-width:0}
+.scr-more .erow .l1 .mono{font-size:10.5px;color:var(--c-fg-2);flex-shrink:0}
+.scr-more .erow .l1 b{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-more .erow .l2{font-size:11px;color:var(--c-fg-2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-more .erow .l3{font-size:10.5px;color:var(--c-fg-3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-more .erow .pair{display:flex;gap:6px;flex-shrink:0}
+.scr-more .erow .done{font-size:10.5px;color:var(--c-fg-3);flex-shrink:0}
+@media (max-width:520px){
+  .scr-more .wrap{padding:10px}
+  .scr-more .row{flex-direction:column;align-items:center}
+  .scr-more .row > .bmodal{flex:none}
+  .scr-more .erow{flex-wrap:wrap;justify-content:flex-end}
+  .scr-more .erow .m{flex:1 1 100%}
+}
+
+
+.scr-more .cl{font-size:12.5px;margin-bottom:12px}
+.scr-more .cl.tight{margin-bottom:4px}
+.scr-more .meta{font-size:11.5px;opacity:.6;margin-bottom:12px;line-height:1.6}
+/* <select class="c-input c-inset2">, drawn open */
+.scr-more .sel{position:relative;font-size:12px;line-height:30px;padding:0 26px 0 10px;margin-bottom:4px}
+.scr-more .sel:after{content:'';position:absolute;right:11px;top:13px;border:4px solid transparent;border-top-color:var(--c-fg);opacity:.6}
+.scr-more .opts{background:var(--c-bg);border-radius:8px;box-shadow:var(--c-softsh), inset 0 0 0 1px var(--c-wash2);padding:4px;margin-bottom:8px}
+.scr-more .opts span{display:block;font-size:12px;line-height:1.5;padding:4px 8px;border-radius:5px}
+.scr-more .opts span.cur{background:var(--c-wash2);color:var(--c-fg-2)}
+.scr-more .note{font-size:11.5px;margin-bottom:10px}
+.scr-more .go{opacity:.4}
+</style>
+<div class="scr scr-more">
+<div class="wrap"><div class="row">
+  <div class="bmodal" data-k="more-menu">
+    <div class="lz"><b>WO-1302</b></div>
+    <div class="cl">Northside Ent.</div>
+    <span class="bact bblock" data-k="m-open">Open the attached invoice PDF</span>
+    <span class="bact bblock" data-k="m-detach">Remove the attached invoice — it went on the wrong work order</span>
+    <span class="bact bblock" data-k="m-ap">How to send this to Northside Ent.</span>
+    <span class="bact bblock" data-k="m-nopo">No PO required — this one can go out without it</span>
+    <span class="bact bblock" data-k="m-download">Download the package again</span>
+    <span class="bact bblock" data-k="m-pull">Pull it back — removes the invoice and the approval, back to the start</span>
+    <span class="bact bblock hot" data-k="m-delete">Delete this work order — every day and calendar card on it (kept, recoverable)</span>
+    <span class="bact bblock" data-k="m-close">Close this invoice — write it off or void it</span>
+    <span class="bact bmuted bblock" data-k="m-cancel">Cancel</span>
+  </div>
+  <div class="bmodal" data-k="close-modal">
+    <div class="lz"><b>Close this invoice</b></div>
+    <div class="cl tight">Northside Ent.</div>
+    <div class="meta">$6,240.00 outstanding · It leaves every pipeline and stops counting toward what you're owed. Still searchable.</div>
+    <div data-k="close-reasons">
+      <div class="input sel">Why is it being closed?</div>
+      <div class="opts">
+        <span class="cur">Why is it being closed?</span>
+        <span>Written off — bad debt</span>
+        <span>Written off — client goodwill</span>
+        <span>Voided — session cancelled, no charge</span>
+        <span>Voided — duplicate invoice</span>
+        <span>Voided — billing error</span>
+        <span>Settled at an adjusted amount</span>
+        <span>Other — say why</span>
+      </div>
+    </div>
+    <div class="input ta note" data-k="close-note"><span class="ph">Anything worth knowing later (optional)</span></div>
+    <span class="bact bblock go" data-k="close-go">Pick a reason</span>
+    <span class="bact bmuted bblock" data-k="close-cancel">Cancel</span>
+  </div>
+</div></div>
+</div>

@@ -150,7 +150,7 @@ export const TEST_BATCHES: TestBatch[] = [
       {
         id: 'v143-hold-some-days', area: 'Calendar',
         what: 'Remove hold takes off only the days you tick',
-        how: 'Make a THROWAWAY tentative hold of 3 days and save it. Open it: a red "Remove hold" button is at the bottom left. Press it. A window lists the 3 days with nothing ticked and the Remove button greyed out. Tick the middle day: the button reads "Remove 1 day". Press it. The window closes, the work order now shows 2 days, and on the calendar the hold is two separate bars with the middle day empty.',
+        how: 'Make a THROWAWAY tentative hold of 3 days and save it. Open it: a red "Remove hold" button is at the top left, beside Cancel. Press it. A window lists the 3 days with nothing ticked and the Remove button greyed out. Tick the middle day: the button reads "Remove 1 day". Press it. The window closes, the work order now shows 2 days, and on the calendar the hold is two separate bars with the middle day empty.',
       },
       {
         id: 'v143-hold-whole', area: 'Calendar',
@@ -168,6 +168,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'As an owner, with at least one invoice waiting for approval, open the billing hub. The green "Ready for your approval" strip is at the top. Click Awaiting payment, Paid, Closed and Removed holds in turn: the strip stays on all of them.',
       },
       {
+        id: 'v143-sop-walkthrough', area: 'Training',
+        what: 'The Billing SOP is a click-through walkthrough',
+        how: 'Open Training, then Billing SOP. Each chapter shows a drawn copy of the real screen with a step box above it. Press Next: one part of the screen lights up and the rest dims, with a line or two explaining it. Press Back. Click any part of a picture: it jumps to the step about that part. Try chapter 03 (the work order) and chapter 07 (Holds). Switch "View light" at the top right and check it still reads.',
+      },
+      {
         id: 'v143-wo-no-delete', area: 'Calendar',
         what: 'A session work order has no Delete button',
         how: 'Open any CONFIRMED session from the calendar. Look along the bottom of the work order. There should be NO Delete button and NO Remove hold button. Do the same from the dashboard.',
@@ -175,7 +180,7 @@ export const TEST_BATCHES: TestBatch[] = [
       {
         id: 'v143-block-delete', area: 'Calendar',
         what: 'A Tour / Tech / Open Hours block can still be deleted',
-        how: 'Make a throwaway Tour block on the calendar. Open it: a Delete button is at the bottom left. Press it, then confirm "Delete block?". The block disappears from the calendar.',
+        how: 'Make a throwaway Tour block on the calendar. Open it: a Delete button is at the top left, beside Cancel. Press it, then confirm "Delete block?". The block disappears from the calendar.',
       },
       {
         id: 'v143-hub-delete', area: 'Billing',

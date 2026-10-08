@@ -1,0 +1,128 @@
+<style>
+.scr-hub{overflow-x:auto;font-family:'Inter',system-ui,-apple-system,BlinkMacSystemFont,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);-webkit-text-size-adjust:100%}
+.scr-hub *{box-sizing:border-box}
+.scr-hub .in{min-width:944px}
+.scr-hub button{font-family:inherit;margin:0}
+.scr-hub .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-hub .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+/* header - the pipeline IS the title */
+.scr-hub .hdr{display:flex;align-items:flex-start;gap:16px;padding:2px 4px 14px;flex-wrap:wrap}
+.scr-hub .label{display:block;margin-bottom:3px;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-hub .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+.scr-hub .label .hint{opacity:1}
+.scr-hub .btitle{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;font-size:26px}
+.scr-hub .btitle > button{display:flex;align-items:baseline;gap:8px;font-size:inherit;letter-spacing:-.03em;line-height:1.05;background:none;border:none;padding:0;cursor:pointer;color:var(--c-fg);opacity:.28}
+.scr-hub .btitle > button.on{opacity:1}
+.scr-hub .btitlen{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:400;letter-spacing:0;opacity:.5}
+.scr-hub .btitle > button.on .btitlen{opacity:.6}
+.scr-hub .grow{flex:1}
+/* stats */
+.scr-hub .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.scr-hub .bstat{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-hub .bstat .v{font-size:20px;letter-spacing:-.02em;line-height:1.6}
+.scr-hub .bstat .v.alert{color:var(--c-st-hot)}
+.scr-hub .bstat .l{font-size:10px;opacity:.55;margin-top:1px}
+/* approvals strip (owners) */
+.scr-hub .appr{border-radius:14px;background:var(--c-wash);padding:12px 14px;margin-bottom:12px}
+.scr-hub .appr-hd{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.scr-hub .appr-n{min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub .appr-t{font-size:12px}
+.scr-hub .appr-tip{margin-left:auto;font-size:10px;opacity:.45}
+.scr-hub .appr-row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;cursor:pointer;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-hub .appr-who{font-weight:700;font-size:12.5px;min-width:150px}
+.scr-hub .appr-meta{font-size:11px;opacity:.55}
+.scr-hub .appr-amt{margin-left:auto;font-weight:800;font-size:12.5px;white-space:nowrap}
+/* search */
+.scr-hub .bsearch{display:flex;align-items:center;gap:8px;margin-bottom:10px;background:var(--c-wash);border-radius:12px;padding:0 10px;height:32px}
+.scr-hub .bsearch .g{opacity:.4;font-size:12px}
+.scr-hub .bsearch .ph{flex:1;font-size:12.5px;color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* tabs */
+.scr-hub .btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.scr-hub .btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--c-ctlsh);color:var(--c-fg);line-height:1.6}
+.scr-hub .btab.on{background:var(--c-ivory);color:#1b1a17}
+.scr-hub:is([data-theme="light"] *) .btab.on{background:var(--c-fg);color:var(--c-bg)}
+.scr-hub .bn{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;opacity:.65}
+/* list panel */
+.scr-hub .panel{background:var(--c-srf);border-radius:16px;padding:12px;box-shadow:var(--c-softsh)}
+.scr-hub .panel + .panel{margin-top:14px}
+.scr-hub .lozenge{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+.scr-hub .ct{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.7;letter-spacing:0;flex-shrink:0}
+/* the locked grid. App: 100px 76px 1fr 234px 84px [46px] 120px 48px, gap 10 -
+   tightened here so the row reads at a 1000px stage. */
+.scr-hub .brow,.scr-hub .browhd{display:grid;grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 82px 40px;align-items:center;gap:8px}
+.scr-hub .age .brow,.scr-hub .age .browhd{grid-template-columns:94px 52px minmax(0,1fr) 212px 72px 44px 82px 40px}
+.scr-hub .brow{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px;cursor:pointer}
+.scr-hub .browhd{padding:2px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.scr-hub .browhd .r{text-align:right}
+.scr-hub .browhd .c{text-align:center}
+.scr-hub .browhd .on{opacity:1;color:var(--c-fg)}
+.scr-hub .bday{display:flex;align-items:center;gap:9px;margin:12px 2px 2px}
+.scr-hub .bday b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.scr-hub .bday i{flex:1;height:1px;background:var(--c-wash2)}
+.scr-hub .bday u{font-size:9px;opacity:.3;text-decoration:none;white-space:nowrap}
+.scr-hub .bbin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.6}
+.scr-hub .bbin.two{white-space:normal;line-height:1.25;padding:2px 6px}
+.scr-hub .bbin.two small{display:block;font-size:7px;font-weight:700;letter-spacing:.03em;text-transform:none;opacity:.8}
+.scr-hub .st-progress{background:var(--c-wash2);color:var(--c-fg)}
+.scr-hub .st-progress_reviewed{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub .st-not_started{background:var(--c-wash2);color:var(--c-fg);opacity:.55}
+.scr-hub .st-review{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-hub .st-invoice{background:var(--c-st-warm);color:var(--c-chip-ink);opacity:.75}
+.scr-hub .st-approval{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-hub .st-po{background:#b9d5f1;color:var(--c-chip-ink)}
+.scr-hub .st-approved{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub .st-not_approved{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-hub .st-sent{background:var(--c-st-uncon);color:var(--c-chip-ink)}
+.scr-hub .st-paid{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub .st-closed{background:var(--c-wash2);opacity:.65}
+.scr-hub .binv{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;opacity:.6}
+.scr-hub .bwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-hub .bwho span{opacity:.5;font-size:11px}
+.scr-hub .ap{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:99px;border:1px solid var(--c-fg-3);background:none;color:var(--c-fg-2);font-size:9.5px;font-weight:800;letter-spacing:.08em;line-height:1.5;cursor:pointer;vertical-align:middle}
+.scr-hub .bamt{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;text-align:right}
+.scr-hub .bage{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;opacity:.45;text-align:right}
+.scr-hub .brow.od .bamt{color:var(--c-st-hot);font-weight:700}
+.scr-hub .bflagcell{display:flex;justify-content:flex-end;align-items:center;align-self:stretch;min-width:0}
+.scr-hub .bflag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .bflag.bsub{color:var(--c-st-warm)}
+.scr-hub .bflag.bsub .bsubat{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;letter-spacing:0;text-transform:none;opacity:.75}
+.scr-hub .bflag.brev{color:var(--c-st-booked)}
+.scr-hub .bflag.soon{opacity:.4}
+.scr-hub .bhint{display:inline-block;font-size:9.5px;opacity:.4;font-style:italic;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .bdrift{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-hot);flex-shrink:0;white-space:nowrap}
+.scr-hub .bdone{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-booked);flex-shrink:0;white-space:nowrap}
+.scr-hub .bactcell{display:flex;justify-content:center;gap:6px}
+.scr-hub .bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);border:none;cursor:pointer;opacity:.8;line-height:1.2;white-space:nowrap}
+.scr-hub .appr-row .bact{line-height:1.6}
+.scr-hub .bact.muted{background:transparent;opacity:.45}
+.scr-hub .bmorecell{display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.scr-hub .bnoteg{position:relative;font-size:11px;line-height:1;padding:4px 3px;border:none;background:none;color:var(--c-fg);opacity:.25;cursor:pointer;border-radius:5px}
+.scr-hub .bnoteg.has{opacity:.8}
+.scr-hub .bnoteg.has::after{content:'';position:absolute;top:1px;right:0;width:6px;height:6px;border-radius:99px;background:var(--c-st-warm)}
+.scr-hub .bmore{font-size:12px;line-height:1;padding:4px 2px;border:none;background:none;color:var(--c-fg);opacity:.3;cursor:pointer}
+.scr-hub .bmore.pagemore{font-size:15px;padding:4px 6px}
+/* Add PO strip - a fold under the row */
+.scr-hub .bpostrip{background:var(--c-wash);border-radius:0 0 12px 12px;margin:-2px 6px 6px;padding:11px 13px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.scr-hub .bpostrip .f{display:block}
+.scr-hub .bpostrip .f.wide{flex:1;min-width:220px}
+.scr-hub .bpolbl{display:block;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;opacity:.5;margin-bottom:4px;line-height:1.6}
+.scr-hub .bpoin{display:block;background:var(--c-srf);border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.3;color:var(--c-fg);width:160px;box-shadow:var(--c-softsh)}
+.scr-hub .bpoin .caret{display:inline-block;width:1px;height:13px;background:var(--c-fg);vertical-align:-2px;margin-left:1px;opacity:.7}
+.scr-hub .bpofile{display:block;border:1.5px dashed var(--c-wash2);border-radius:9px;padding:7px 12px;font-size:11px;opacity:.65;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;line-height:1.6}
+.scr-hub .bpostrip .bact{line-height:1.6}
+/* pager + note */
+.scr-hub .bpager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 2px;font-size:11px}
+.scr-hub .binfo{margin-right:auto;opacity:.45;font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px}
+.scr-hub .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+.scr-hub .gap{height:14px}
+.scr-hub:not([data-state="owner"]) .only-owner{display:none}
+/* life.html captions (manual annotation, not app UI) */
+.scr-hub .cap{display:flex;align-items:center;gap:8px;margin:11px 2px 1px;font-size:10px;line-height:1.4}
+.scr-hub .cap:first-of-type{margin-top:4px}
+.scr-hub .cap .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:99px;background:var(--c-wash2);font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:9.5px;flex-shrink:0}
+.scr-hub .cap .who{font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:9px;opacity:.75;white-space:nowrap}
+.scr-hub .cap .what{color:var(--c-fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<div class="scr scr-hub"><div class="in">
+<div class="hdr"><div><span class="label">Work orders &amp; invoices<span class="hint">?</span></span><div class="btitle" data-k="title"><button class="arch on">Billing<span class="btitlen">11</span></button><button class="arch">COD<span class="btitlen">4</span></button><button class="arch">Tenants</button><button class="arch only-owner" data-k="title-financials">Financials</button></div></div><div class="grow"></div><button class="bmore pagemore" data-k="pagemore">⋯</button></div><div class="stats" data-k="stats"><div class="bstat" data-k="stat-outstanding"><div class="arch v">$54,780.00</div><div class="l">Outstanding</div></div><div class="bstat" data-k="stat-received"><div class="arch v">$22,750.00</div><div class="l">Received this month</div></div><div class="bstat" data-k="stat-approval"><div class="arch v">1</div><div class="l">Waiting on approval</div></div><div class="bstat" data-k="stat-overdue"><div class="arch v alert">1</div><div class="l">Over 31 days</div></div></div><div class="appr only-owner" data-k="approvals"><div class="appr-hd"><span class="appr-n">1</span><span class="arch appr-t">Ready for your approval</span><span class="appr-tip">click a row to read the package first</span></div><div class="appr-row" data-k="approvals-row"><span class="appr-who">Northside Ent. — J. RIVAS</span><span class="appr-meta">Sep 29–30 · ARS A</span><span class="appr-amt">$6,240.00</span><button class="bact" data-k="btn-approve">Approve</button></div></div><div class="bsearch" data-k="search"><span class="g">⌕</span><span class="ph">Search everything — client, artist, invoice #, WO #, PO…</span><span class="hint">?</span></div><div class="btabs" data-k="tabs"><span class="btab on">In progress <span class="bn">6</span></span><span class="btab">Not started <span class="bn">4</span></span><span class="btab">Awaiting PO <span class="bn">2</span></span><span class="btab">Awaiting payment <span class="bn">3</span></span><span class="btab">Paid <span class="bn">18</span></span><span class="btab">Closed <span class="bn">3</span></span><span class="btab" data-k="tab-holds">Removed holds <span class="bn">1</span></span></div><div class="panel" data-k="list"><div class="lozenge"><b>In progress</b><span class="ct">6</span></div><div class="browhd" data-k="colhead"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="r">Flag</span><span class="r">Balance</span><span class="c">Next</span><span></span></div><div class="bday" data-k="divider"><b>Needs review</b><i></i><u>1 invoice</u></div><div class="brow" data-k="row r-review"><span class="bbin st-review" data-k="badge">Needs review</span><span class="binv">WO-1310</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · KAYA B</span><span> · Oct 2–4</span><span> · PRS B</span></span><span class="bflagcell" data-k="flag"><span class="bflag bsub">Submitted by Terren L.<span class="bsubat"> 12:14 AM</span></span></span><span class="bamt" data-k="balance">$4,180.00</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bday" data-k="divider"><b>Needs invoice</b><i></i><u>1 invoice</u></div><div class="brow" data-k="row r-invoice"><span class="bbin st-invoice" data-k="badge">Needs invoice</span><span class="binv">WO-1307</span><span class="bwho" data-k="client"><b>Vantage Music Group</b><span> · DECOY</span><span> · Oct 1</span><span> · PRS A</span></span><span class="bflagcell" data-k="flag"><span class="bhint" data-k="drop">Drop invoice here · or click</span></span><span class="bamt" data-k="balance">$2,760.00</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bday" data-k="divider"><b>Needs approval</b><i></i><u>1 invoice</u></div><div class="brow" data-k="row r-approval"><span class="bbin st-approval" data-k="badge">Needs approval</span><span class="binv">WO-1302</span><span class="bwho" data-k="client"><b>Northside Ent.</b><span> · J. RIVAS</span><span> · Sep 29–30</span><span> · ARS A</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$6,240.00</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bday" data-k="divider"><b>Not approved</b><i></i><u>1 invoice</u></div><div class="brow" data-k="row r-rejected"><span class="bbin st-not_approved" data-k="badge">Not approved</span><span class="binv">WO-1304</span><span class="bwho" data-k="client"><b>Vantage Music Group</b><span> · SOLEIL</span><span> · Sep 30</span><span> · PRS C</span></span><span class="bflagcell" data-k="flag"><span class="bdrift">See note · drop the corrected invoice</span></span><span class="bamt" data-k="balance">$3,400.00</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bday" data-k="divider"><b>Ready to send</b><i></i><u>1 invoice</u></div><div class="brow" data-k="row r-ready"><span class="bbin st-approved" data-k="badge">Ready to send</span><span class="binv">WO-1298</span><span class="bwho" data-k="client"><b>Crest Label Group</b><button class="ap" data-k="ap">AP</button><span> · MARA</span><span> · Sep 26</span><span> · ERS B</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$1,950.00</span><span class="bactcell"><button class="bact" data-k="btn">Download</button></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bday" data-k="divider"><b>In progress</b><i></i><u>1 invoice</u></div><div class="brow" data-k="row r-running"><span class="bbin st-progress" data-k="badge">In progress</span><span class="binv">WO-1314</span><span class="bwho" data-k="client"><b>Hitline Records</b><button class="ap" data-k="ap">AP</button><span> · NOVA</span><span> · Oct 7–9</span><span> · PRS C</span></span><span class="bflagcell" data-k="flag"></span><span class="bamt" data-k="balance">$5,400.00</span><span class="bactcell"></span><span class="bmorecell"><button class="bnoteg" data-k="notes">✎</button><button class="bmore" data-k="more">⋯</button></span></div><div class="bpager" data-k="pager"><span class="binfo">6 of 6</span></div><div class="bnote" data-k="note">In progress is a queue: Needs review first, then invoice, approval, then the packages ready to go out. A package waiting on the client’s PO sits in Awaiting PO. The button is only ever the next real act — Add PO, Download, Mark sent, Mark paid. Drop a QuickBooks PDF straight onto a row to attach it (that also re-queues a Not-approved row). Approving happens in the strip above; a missing PO blocks sending, never approval.</div></div>
+</div></div>

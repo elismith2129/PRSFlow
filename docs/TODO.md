@@ -5,12 +5,20 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## SOPs: walkthrough editions (Oct 7)
+
+- [ ] **Runner guide, Studio Manager SOP, Owner's page, then the main App guide** - same pattern as the Billing SOP: `docs/sop-build/` (drawn screens from the code, step copy in a content file, same engine), then an independent fact-check before Eli sees it. *(Oct 7)*
+- [ ] **Tenants: the Incidentals line reads "Late" in red until it is marked paid**, even right after Mark sent - it borrows the previous month's rent-late rule (`TenantsView`). Found while drawing the screen. Looks like a bug; not fixed. *(Oct 7)*
+- [ ] **Paid rows in the hub keep showing a Balance and a growing Age** - Mark paid only stamps the state. Found while drawing the screen; confirm it is intended. *(Oct 7)*
+- [ ] **Petty Cash page: studio / CSV / Print buttons may be near-invisible in dark** (no fill, dark ink in the stylesheet). Found while drawing the screen; check the live page. *(Oct 7)*
+- [ ] **Billing SOP on a phone**: the drawn screens scroll sideways inside themselves. Readable, not great. Billing works on a desktop, so left as is. *(Oct 7)*
+
 ## Parked from Remove hold (Oct 7)
 
 - [ ] **Remove hold is desktop only** - hidden on the phone layout, like the block Delete. Say so if holds need dropping from a phone. *(Oct 7)*
 - [ ] **Recovering a removed day does not check the room is still free.** A day is often removed so someone else can have it, and the entry stays recoverable. Same for a whole hold. *(Oct 7)*
 - [ ] **A lead that became a hold stays "booked"** after the hold is removed (pre-existing: the hub Delete does the same). *(Oct 7)*
-- [ ] **The Billing SOP rebuild must cover** Remove hold, the Removed holds tab, and the approval strip on every tab. *(Oct 7)*
+- [x] ~~The Billing SOP rebuild must cover Remove hold, the Removed holds tab, and the approval strip on every tab.~~ Done in the walkthrough edition (v1.43.8). *(Oct 7)*
 
 ## Eli's hands (settings, SQL, data — not code)
 

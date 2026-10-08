@@ -1,0 +1,131 @@
+:root{
+  --c-bg:#0b0a09; --c-fg:#f2efe7;
+  --c-wash:rgba(242,239,231,.06); --c-wash2:rgba(242,239,231,.12);
+  --c-fg-2:rgba(242,239,231,.72); --c-fg-3:rgba(242,239,231,.45);
+  --c-chip-ink:#1c2626; --c-ivory:#d5d0c2; --c-hot-text:#fff4f2;
+  --c-st-hot:#ff5a4d; --c-st-warm:#ffa94d; --c-st-cold:#5fc9e8; --c-st-booked:#43dfae;
+  --c-st-uncon:#7fb2e5; --c-st-tech:#b5a3ef; --c-st-dead:#cfd6d4; --c-st-tenant:#2ee8fd;
+  --c-srf:#151412;
+  --c-softsh:0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --c-ctlsh:0 1px 4px rgba(0,0,0,.3);
+  --c-flo-ink:242,239,231;
+  --dim:.56; --ring:#43dfae; --barh:44px;
+}
+[data-theme="light"]{
+  --c-bg:#fdfcf9; --c-fg:#1a1712;
+  --c-wash:rgba(26,23,18,.055); --c-wash2:rgba(26,23,18,.105);
+  --c-fg-2:rgba(26,23,18,.72); --c-fg-3:rgba(26,23,18,.46);
+  --c-srf:#f1efe9;
+  --c-softsh:0 1px 2px rgba(26,23,18,.05), 0 4px 12px rgba(26,23,18,.05);
+  --c-ctlsh:0 1px 3px rgba(26,23,18,.12);
+  --c-flo-ink:26,23,18;
+  --dim:.7; --ring:#12a37a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--c-bg);color:var(--c-fg);font:400 14px/1.5 'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+/* Shell classes are all sop-* and the button reset is limited to them: the drawn
+   screens bring their own class names (.bar, .row, .btn…) and must not inherit ours. */
+.sop-ch,.sop-ctl,.sop-wbtn,.sop-cnav{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.sop-grow{flex:1}
+
+/* ── top bar ── */
+.sop-bar{position:sticky;top:0;z-index:30;height:var(--barh);display:flex;align-items:center;gap:10px;padding:0 18px;background:var(--c-bg);box-shadow:0 1px 0 var(--c-wash2)}
+.sop-bartitle{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.sop-bartitle b{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400;letter-spacing:-.01em}
+.sop-barsub{color:var(--c-fg-3)}
+.sop-ctl{padding:6px 13px;border-radius:99px;background:var(--c-wash);font-size:11px;font-weight:700;white-space:nowrap}
+.sop-ctl:hover{background:var(--c-wash2)}
+
+.sop-frame{display:flex;align-items:flex-start}
+
+/* ── chapter rail ── */
+.sop-rail{width:222px;flex-shrink:0;padding:16px 10px 14px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:var(--barh);height:calc(100vh - var(--barh));overflow-y:auto;background:var(--c-wash)}
+.sop-rail .sop-wm{font-family:'Archivo Black',system-ui,sans-serif;letter-spacing:-.02em;font-size:15px;padding:2px 10px}
+.sop-rail .sop-wm .sop-flo{opacity:.45}
+.sop-rail .sop-sub{font-size:10px;color:var(--c-fg-3);padding:0 10px 10px}
+.sop-rail .sop-grp{margin-top:12px;padding:0 10px 4px;font-size:9.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--c-fg-3)}
+.sop-ch{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:11px;font-size:12.5px;font-weight:600;color:var(--c-fg-2);text-align:left;width:100%;flex-shrink:0}
+.sop-ch .sop-n{font-family:'DM Mono',ui-monospace,monospace;font-size:9.5px;opacity:.7;width:16px;flex-shrink:0}
+.sop-ch:hover{background:var(--c-wash);color:var(--c-fg)}
+.sop-ch.on{background:var(--c-ivory);color:#1b1a17}
+[data-theme="light"] .sop-ch.on{background:var(--c-fg);color:var(--c-bg)}
+.sop-railfoot{margin-top:auto;padding:14px 10px 2px;font-size:10px;color:var(--c-fg-3);line-height:1.5}
+
+/* ── main column ── */
+.sop-main{flex:1;min-width:0;padding:20px 28px 70px;max-width:1090px;margin:0 auto}
+.sop-section{display:none}
+.sop-section.on{display:block}
+.sop-hbar{padding:2px 2px 4px}
+.sop-kicker{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:5px}
+.sop-hbar h1{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400;font-size:27px;letter-spacing:-.03em;line-height:1.1;margin:0}
+.sop-lede{font-size:13.5px;color:var(--c-fg-2);max-width:640px;margin:10px 0 0;line-height:1.55}
+.sop-lede b{color:var(--c-fg);font-weight:700}
+
+/* ── a walkthrough ── */
+.sop-walk{margin-top:26px}
+.sop-wtitle{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400;font-size:15px;letter-spacing:-.01em;margin:0 0 8px 2px}
+.sop-wpanel{position:sticky;top:calc(var(--barh) + 6px);z-index:20;background:var(--c-srf);box-shadow:var(--c-softsh), 0 0 0 1px var(--c-wash2);border-radius:16px;padding:11px 14px 12px}
+.sop-wtop{display:flex;align-items:center;gap:10px}
+.sop-wk{font-size:9.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sop-wbar{flex:1;height:3px;border-radius:3px;background:var(--c-wash2);overflow:hidden;min-width:20px}
+.sop-wbar i{display:block;height:100%;width:0;background:var(--ring);border-radius:3px;transition:width .2s ease}
+.sop-wbtn{padding:8px 15px;border-radius:99px;font-size:11.5px;font-weight:800;white-space:nowrap;background:var(--c-wash)}
+.sop-wbtn:hover{background:var(--c-wash2)}
+.sop-wbtn.sop-wnext{background:var(--c-ivory);color:#1b1a17}
+[data-theme="light"] .sop-wbtn.sop-wnext{background:var(--c-fg);color:var(--c-bg)}
+.sop-wbtn.sop-wnext:hover{filter:brightness(1.06)}
+.sop-wbtn[disabled]{opacity:.3;cursor:default}
+.sop-wbtn:focus-visible,.sop-ch:focus-visible,.sop-ctl:focus-visible,.sop-cnav:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.sop-wh{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400;font-size:16px;letter-spacing:-.01em;line-height:1.25;margin-top:8px}
+.sop-wb{font-size:13.5px;line-height:1.5;color:var(--c-fg-2);margin-top:3px;max-width:760px;min-height:3em}
+.sop-wb b{color:var(--c-fg);font-weight:700}
+
+.sop-stage{position:relative;margin-top:10px;border-radius:18px;background:var(--c-bg);box-shadow:inset 0 0 0 1px var(--c-wash2);overflow:hidden;cursor:pointer}
+.sop-stagein{padding:14px}
+.scr{position:relative}
+.sop-stage a,.sop-stage button,.sop-stage input,.sop-stage select,.sop-stage textarea,.sop-stage label{pointer-events:none}
+.sop-spot{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:5}
+.sop-spot .sop-dimr{fill:var(--c-bg);opacity:var(--dim)}
+.sop-spot .sop-ring{fill:none;stroke:var(--ring);stroke-width:2;filter:drop-shadow(0 0 5px var(--ring))}
+@media (prefers-reduced-motion: reduce){.sop-wbar i{transition:none}}
+
+/* ── plain panes ── */
+.sop-pane{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:14px 18px;margin-top:22px;max-width:760px}
+.sop-pane h3{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400;font-size:14px;letter-spacing:-.01em;margin:0 0 6px}
+.sop-pane p{font-size:13px;color:var(--c-fg-2);margin:0 0 6px}
+.sop-pane p:last-child{margin-bottom:0}
+.sop-pane b{color:var(--c-fg);font-weight:700}
+.sop-pane ul{margin:0;padding:0 0 0 17px;font-size:13px;color:var(--c-fg-2)}
+.sop-pane li{margin:0 0 5px}
+.sop-pane li:last-child{margin-bottom:0}
+.sop-rhythm{padding:6px 18px}
+.sop-rrow{display:grid;grid-template-columns:130px 1fr;gap:14px;padding:11px 0;box-shadow:0 1px 0 var(--c-wash)}
+.sop-rrow:last-child{box-shadow:none}
+.sop-rwhen{font-family:'Archivo Black',system-ui,sans-serif;font-size:12.5px;letter-spacing:-.01em;color:var(--c-fg)}
+.sop-drow{display:grid;grid-template-columns:230px 1fr;gap:14px;padding:8px 0;font-size:13px;box-shadow:0 1px 0 var(--c-wash)}
+.sop-drow:last-child{box-shadow:none}
+.sop-drow span{color:var(--c-fg-2)}
+
+.sop-cfoot{display:flex;justify-content:space-between;gap:10px;margin-top:30px}
+.sop-cnav{padding:9px 16px;border-radius:99px;background:var(--c-wash);font-size:11.5px;font-weight:800}
+.sop-cnav:hover{background:var(--c-wash2)}
+.sop-cnav.sop-cnext{background:var(--c-ivory);color:#1b1a17}
+[data-theme="light"] .sop-cnav.sop-cnext{background:var(--c-fg);color:var(--c-bg)}
+
+/* ── phone / narrow ── */
+@media (max-width: 900px){
+  .sop-frame{display:block}
+  .sop-rail{position:static;width:auto;height:auto;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;padding:8px 12px;background:none;box-shadow:0 1px 0 var(--c-wash2)}
+  .sop-rail .sop-wm,.sop-rail .sop-sub,.sop-rail .sop-grp,.sop-railfoot{display:none}
+  .sop-ch{width:auto;white-space:nowrap;padding:7px 12px;background:var(--c-wash)}
+  .sop-main{padding:14px 12px 60px}
+  .sop-hbar h1{font-size:22px}
+  .sop-barsub{display:none}
+  .sop-wpanel{padding:9px 11px 10px;border-radius:14px}
+  .sop-wh{font-size:14.5px;margin-top:7px}
+  .sop-wb{font-size:13px;min-height:3.9em}
+  .sop-wbtn{padding:8px 12px}
+  .sop-stagein{padding:8px}
+  .sop-rrow,.sop-drow{grid-template-columns:1fr;gap:3px}
+}

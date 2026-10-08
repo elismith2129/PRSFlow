@@ -1,0 +1,60 @@
+<style>.scr-rail{font:400 14px/1.5 'Inter',system-ui,-apple-system,sans-serif;color:var(--c-fg);-webkit-font-smoothing:antialiased;text-align:left}
+.scr-rail *{box-sizing:border-box}
+.scr-rail .rib{display:inline-block;flex-shrink:0}
+.scr-rail .rib path{fill:var(--c-st-booked)}
+
+.scr-rail{overflow-x:auto}
+.scr-rail .frame{display:flex;min-width:300px;background:var(--c-bg)}
+.scr-rail .rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;gap:2px;min-height:640px}
+.scr-rail .wm{padding:2px 10px 10px}
+.scr-rail .wm-in{display:inline-flex;align-items:center;gap:4px}
+.scr-rail .wordmark{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;letter-spacing:-.02em;color:var(--c-fg);display:inline-flex;align-items:baseline;line-height:1;white-space:nowrap;font-size:16px}
+.scr-rail .wordmark i{font-style:normal;opacity:.45}
+.scr-rail .grp{margin-top:10px;padding:0 10px 4px;font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-rail .link{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;border-radius:11px;font-size:12.5px;font-weight:600;color:var(--c-fg);opacity:.6}
+.scr-rail .link.on{opacity:1;font-weight:700}
+.scr-rail .ic{width:16px;text-align:center;opacity:.75;flex-shrink:0;font-size:13px;line-height:1.2}
+.scr-rail .caret{margin-left:auto;font-size:9px;opacity:.5}
+.scr-rail .kids{margin-left:18px;display:flex;flex-direction:column;gap:0}
+.scr-rail .kids .link{font-size:12px}
+.scr-rail .badge{margin-left:auto;min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+.scr-rail .badge.dim{background:var(--c-wash2)}
+.scr-rail .badge.ok{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-rail .foot{margin-top:auto;padding-top:12px}
+.scr-rail .page{flex:1;min-width:0;margin:14px 0 14px 14px;border-radius:18px 0 0 18px;background:linear-gradient(90deg,var(--c-wash),transparent 85%)}
+</style>
+<div class="scr scr-rail">
+ <div class="frame">
+  <div class="rail">
+   <div class="wm" data-k="r-wordmark"><span class="wm-in"><svg class="rib" width="26" height="26" viewBox="0 0 200 200" aria-hidden="true"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z"/></svg><span class="wordmark">PRS<i>Flo</i></span></span></div>
+   <div class="link on" data-k="r-dashboard"><span class="ic">▦</span>Dashboard</div>
+   <div class="link" data-k="r-calendar"><span class="ic">▤</span>Calendar</div>
+   <div class="grp" data-k="r-grp">Business</div>
+   <div class="link" data-k="r-crm"><span class="ic">◎</span>CRM<span class="badge dim" data-k="r-badge r-badge-crm">2</span></div>
+   <div data-k="r-billing-group">
+    <div class="link" data-k="r-billing"><span class="ic">▽</span>Billing<span class="caret">▾</span></div>
+    <div class="kids">
+     <div class="link" data-k="r-hub"><span class="ic">·</span>Billing Hub</div>
+     <div class="link" data-k="r-petty"><span class="ic">·</span>Petty Cash</div>
+     <div class="link" data-k="r-srs"><span class="ic">·</span>SRS</div>
+     <div class="link" data-k="r-ap"><span class="ic">·</span>Client AP Protocols</div>
+    </div>
+   </div>
+   <div class="grp" data-k="r-grp">Operations</div>
+   <div class="link" data-k="r-memos"><span class="ic">✉</span>Memos<span class="badge ok" data-k="r-badge r-badge-memos">1</span></div>
+   <div class="link" data-k="r-shiftnotes"><span class="ic">✎</span>Shift Notes</div>
+   <div class="link" data-k="r-dailyops"><span class="ic">◔</span>Daily Ops</div>
+   <div class="link" data-k="r-runner"><span class="ic">▷</span>Runner Hub</div>
+   <div class="link" data-k="r-mics"><span class="ic">◌</span>Mic Inventory</div>
+   <div class="link" data-k="r-engineers"><span class="ic">◈</span>Engineers</div>
+   <div class="grp" data-k="r-grp">HR</div>
+   <div class="link" data-k="r-punches"><span class="ic">◷</span>Punches</div>
+   <div class="link" data-k="r-training"><span class="ic">✦</span>Training</div>
+   <div class="link" data-k="r-admin"><span class="ic">⚙</span>Admin<span class="caret">▸</span></div>
+   <div class="foot">
+    <div class="link" data-k="r-settings"><span class="ic">⚙</span>Settings<span class="caret">▸</span></div>
+   </div>
+  </div>
+  <div class="page"></div>
+ </div>
+</div>

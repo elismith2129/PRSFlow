@@ -1,0 +1,155 @@
+<style>
+.scr-srs{overflow-x:auto;font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);background:var(--c-bg);-webkit-text-size-adjust:100%}
+.scr-srs *{box-sizing:border-box}
+.scr-srs .in{min-width:760px;max-width:860px;padding:4px 2px 6px}
+.scr-srs .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-srs .mono{font-family:'DM Mono',ui-monospace,monospace}
+
+.scr-srs .top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:4px}
+.scr-srs h1{font-size:22px;letter-spacing:-.01em;margin:2px 0 4px;line-height:1.6}
+.scr-srs .default{display:inline-block;font-size:12px;opacity:.6}
+.scr-srs .owedsum{text-align:right}
+.scr-srs .flab{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.5;display:block;margin-bottom:3px}
+.scr-srs .owedsum .v{font-size:22px;color:var(--c-st-warm);font-variant-numeric:tabular-nums;line-height:1.6}
+
+.scr-srs .sec{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.4;margin:16px 2px 4px;display:flex;justify-content:space-between}
+
+.scr-srs .row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:5px;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px}
+.scr-srs .row.ispaid{opacity:.55;box-shadow:none;background:var(--c-wash)}
+.scr-srs .sdate{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;opacity:.6;width:50px;flex-shrink:0}
+.scr-srs .who{flex:1;min-width:0}
+.scr-srs .who b{display:block;font-weight:700;font-size:12.5px}
+.scr-srs .who small{display:block;font-size:10.5px;opacity:.5}
+.scr-srs .pct{display:inline-block;font-size:10px;font-weight:800;padding:4px 9px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);flex-shrink:0;line-height:1.6}
+.scr-srs .pct.set{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-srs .fee{text-align:right;width:108px;flex-shrink:0}
+.scr-srs .fee b{display:block;font-weight:800;font-size:13px;font-variant-numeric:tabular-nums}
+.scr-srs .fee small{display:block;font-size:9.5px;opacity:.45}
+.scr-srs .bact{display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-size:9.5px;font-weight:700;line-height:1.6;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.scr-srs .bact.w96{width:96px;flex-shrink:0}
+.scr-srs .bact.pay{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-srs .bact.paidchip{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-srs .bact.on{background:var(--c-st-warm);color:var(--c-chip-ink)}
+
+.scr-srs .bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5;margin-top:16px}
+
+.scr-srs .pops{margin-top:18px;padding:22px 16px;border-radius:16px;background:var(--c-wash);display:flex;align-items:flex-start;justify-content:center;gap:20px}
+.scr-srs .modal{width:100%;max-width:380px;background:var(--c-srf);border-radius:16px;padding:24px;box-shadow:var(--c-softsh),0 18px 50px rgba(0,0,0,.3)}
+.scr-srs .mtitle{font-size:15px;margin-bottom:2px}
+.scr-srs .msub{font-size:11.5px;opacity:.6;margin-bottom:14px}
+.scr-srs .quick{display:flex;gap:6px;margin-bottom:10px}
+.scr-srs .input{display:flex;align-items:center;justify-content:space-between;width:100%;height:32px;border-radius:12px;padding:0 10px;background:var(--c-wash);color:var(--c-fg);font-weight:700}
+.scr-srs .input.big{font-size:15px}
+.scr-srs .input.date{font-size:13px}
+.scr-srs .input svg{width:13px;height:13px;opacity:.7;flex-shrink:0}
+.scr-srs .feeprev{font-size:11.5px;margin-top:8px;font-weight:700}
+.scr-srs .mfoot{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap}
+.scr-srs .mfoot .left{margin-right:auto}
+</style>
+<div class="scr scr-srs">
+ <div class="in">
+
+  <div class="top">
+   <div>
+    <h1 class="arch">SRS</h1>
+    <div class="default" data-k="default-pct">Default 20% of room charges</div>
+   </div>
+   <div class="owedsum" data-k="owed-total">
+    <span class="flab">Owed · 3 sessions</span>
+    <div class="v arch">$590.00</div>
+   </div>
+  </div>
+
+  <div data-k="owed">
+   <div class="sec"><span>Owed</span><span data-k="roundup">Round up on the 1st</span></div>
+
+   <div class="row" data-k="s-row">
+    <span class="sdate">Sep 26</span>
+    <span class="who" data-k="s-name"><b>Crest Label Group</b><small>WO-1298 · B</small></span>
+    <span class="pct set" data-k="pct pct-set">10%</span>
+    <span class="fee" data-k="fee"><b>$180.00</b><small>of $1,800.00 rooms</small></span>
+    <span class="bact w96 pay" data-k="markpaid">Mark paid</span>
+   </div>
+
+   <div class="row" data-k="s-row">
+    <span class="sdate">Oct 1</span>
+    <span class="who" data-k="s-name"><b>Lena Ortiz</b><small>WO-1309 · A</small></span>
+    <span class="pct" data-k="pct">20%</span>
+    <span class="fee" data-k="fee"><b>$240.00</b><small>of $1,200.00 rooms</small></span>
+    <span class="bact w96 pay" data-k="markpaid">Mark paid</span>
+   </div>
+
+   <div class="row" data-k="s-row">
+    <span class="sdate">Oct 3</span>
+    <span class="who" data-k="s-name"><b>Dante Hollis</b><small>WO-1312 · C</small></span>
+    <span class="pct" data-k="pct">20%</span>
+    <span class="fee" data-k="fee"><b>$170.00</b><small>of $850.00 rooms</small></span>
+    <span class="bact w96 pay" data-k="markpaid">Mark paid</span>
+   </div>
+  </div>
+
+  <div data-k="paid">
+   <div class="sec"><span>Paid</span><span></span></div>
+
+   <div class="row ispaid" data-k="s-row-paid">
+    <span class="sdate">Sep 18</span>
+    <span class="who"><b>Vantage Music Group</b><small>WO-1287 · A</small></span>
+    <span class="pct">20%</span>
+    <span class="fee"><b>$300.00</b><small>of $1,500.00 rooms</small></span>
+    <span class="bact w96 paidchip" data-k="paid-chip">Paid · Oct 1</span>
+   </div>
+
+   <div class="row ispaid" data-k="s-row-paid">
+    <span class="sdate">Sep 9</span>
+    <span class="who"><b>Hitline Records</b><small>WO-1279 · B</small></span>
+    <span class="pct">15%</span>
+    <span class="fee"><b>$337.50</b><small>of $2,250.00 rooms</small></span>
+    <span class="bact w96 paidchip" data-k="paid-chip">Paid · Oct 1</span>
+   </div>
+  </div>
+
+  <div class="bnote" data-k="footnote">
+   Every session with SRS ticked on its work order lands here by itself. The fee is the
+   percent × room charges (studio time and overtime; engineering excluded). Tap a % to set
+   it for that one session — 20% for one-offs, 10% for a low rate or an extended booking.
+   Mark paid asks the date it went out and locks the percent and amount. Tap a green chip
+   to undo. Tap a name to open its work order. Rows marked “from the log” are the SRS
+   spreadsheet from before PRSFlo (Dec 2023 – Jun 2026), entered as recorded.
+  </div>
+
+  <div class="pops">
+
+   <div class="modal" data-k="pct-menu">
+    <div class="mtitle arch">Crest Label Group — this session</div>
+    <div class="msub">$1,800.00 room charges</div>
+    <div class="quick" data-k="pct-quick">
+     <span class="bact">20%</span>
+     <span class="bact">15%</span>
+     <span class="bact on">10%</span>
+    </div>
+    <span class="flab">Percent</span>
+    <div class="input big" data-k="pct-input"><span>10</span></div>
+    <div class="feeprev" data-k="pct-fee">Fee: $180.00</div>
+    <div class="mfoot">
+     <span class="bact left" data-k="pct-reset">Use default (20%)</span>
+     <span class="bact">Cancel</span>
+     <span class="bact">Save</span>
+    </div>
+   </div>
+
+   <div class="modal" data-k="paydate">
+    <div class="mtitle arch">Lena Ortiz — SRS paid</div>
+    <div class="msub">$240.00 · 20% of $1,200.00 · WO-1309</div>
+    <span class="flab">Date paid</span>
+    <div class="input date"><span>10/07/2026</span>
+     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5 1.5v3M11 1.5v3"/></svg>
+    </div>
+    <div class="mfoot">
+     <span class="bact">Cancel</span>
+     <span class="bact">Mark paid</span>
+    </div>
+   </div>
+
+  </div>
+ </div>
+</div>
