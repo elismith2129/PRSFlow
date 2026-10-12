@@ -1,0 +1,179 @@
+<style>
+.scr-close{background:var(--c-bg);color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.5;padding:0 2px;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-close *{box-sizing:border-box}
+.scr-close .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-close .mono{font-family:'DM Mono',ui-monospace,Menlo,monospace}
+/* header */
+.scr-close .hd{display:flex;align-items:center;gap:11px;padding:14px 2px 10px}
+.scr-close .bk{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--c-ctlsh)}
+.scr-close .hd-mid{flex:1;min-width:0}
+.scr-close .hd-t{display:flex;align-items:baseline;gap:8px}
+.scr-close .hd-t .arch{font-size:18px;letter-spacing:-0.02em;line-height:1.15}
+.scr-close .hd-sub{font-size:11.5px;opacity:.5}
+.scr-close .subd{font-size:10.5px;color:var(--c-st-booked);font-weight:700}
+.scr-close .bar{width:56px;height:5px;background:var(--c-wash);border-radius:99px;overflow:hidden;flex-shrink:0}
+.scr-close .bar i{display:block;height:100%;border-radius:99px;background:var(--c-st-booked);width:86%}
+.scr-close[data-state="blocked"] .bar i{width:100%}
+/* body */
+.scr-close .body{padding:4px 0}
+.scr-close .lead{font-size:11px;opacity:.45;line-height:1.5;margin:0 2px 14px}
+.scr-close .sec{margin-bottom:16px}
+.scr-close .lbl{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-close .sec>.lbl{display:block;margin-bottom:7px;padding-left:2px}
+.scr-close .card{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:4px 12px}
+.scr-close .it{display:flex;align-items:flex-start;gap:11px;padding:10px 0;min-height:44px;box-shadow:0 -1px 0 var(--c-wash)}
+.scr-close .it:first-child{box-shadow:none}
+.scr-close .tk{width:22px;height:22px;border-radius:99px;flex-shrink:0;margin-top:1px;background:var(--c-wash2);color:transparent;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1}
+.scr-close .tx{font-size:13px;line-height:1.45;flex:1;min-width:0}
+.scr-close .it.on .tk,.scr-close[data-state="blocked"] .it .tk{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-close .it.on .tx,.scr-close[data-state="blocked"] .it .tx{opacity:.45;text-decoration:line-through}
+/* not app UI — the guide's own "list continues" marker */
+.scr-close .cut{margin:0 0 16px;padding:7px 10px;border-radius:10px;border:1px dashed var(--c-wash2);font-size:10.5px;font-style:italic;color:var(--c-fg-3);text-align:center;line-height:1.4}
+.scr-close .card .cut{margin:6px 0 8px}
+/* raise a flag */
+.scr-close .flag{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:13px 14px;margin-top:4px}
+.scr-close .flag>.lbl{display:block;margin-bottom:12px}
+.scr-close[data-state="__none__"] .flag>.lbl{color:var(--c-st-warm);opacity:1}
+.scr-close .expl{font-size:11px;color:var(--c-fg-2);line-height:1.5;margin-bottom:10px}
+.scr-close .expl b.hot{color:var(--c-st-hot)}
+.scr-close .expl .dim{opacity:.7}
+.scr-close .raise{display:none;align-items:center;gap:10px;background:var(--c-wash);border-radius:12px;padding:10px 13px;margin-bottom:12px}
+.scr-close[data-state="__none__"] .raise{display:flex}
+.scr-close .raise .dot{width:8px;height:8px;border-radius:99px;background:var(--c-st-warm);flex-shrink:0}
+.scr-close .raise .r1{font-size:12px;font-weight:700;color:var(--c-st-warm)}
+.scr-close .raise .r2{font-size:10.5px;opacity:.5;margin-top:1px}
+.scr-close .ta{background:var(--c-wash);border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;min-height:100px;margin-bottom:11px}
+.scr-close .ta .ph{color:var(--c-fg-3)}
+.scr-close .ta .val{display:none}
+.scr-close[data-state="__none__"] .ta .ph{display:none}
+.scr-close[data-state="__none__"] .ta .val{display:block}
+.scr-close .addp{display:inline-flex;align-items:center;background:var(--c-wash);border-radius:99px;padding:9px 16px;min-height:40px;font-size:12px;font-weight:700;color:var(--c-fg)}
+.scr-close .thumbs{display:none;gap:8px;flex-wrap:wrap;margin-top:12px}
+.scr-close[data-state="__none__"] .thumbs{display:flex}
+.scr-close .th{position:relative;width:72px;height:72px}
+.scr-close .th .img{width:72px;height:72px;border-radius:10px;background:linear-gradient(150deg,var(--c-wash2),var(--c-wash));display:flex;align-items:center;justify-content:center;color:var(--c-fg-3);overflow:hidden}
+.scr-close .th .x{position:absolute;top:-5px;right:-5px;width:19px;height:19px;border-radius:99px;background:var(--c-st-hot);color:var(--c-hot-text);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+/* footer (pinned to the bottom of the phone in the app) */
+.scr-close .ft{padding:22px 0 16px;display:flex;gap:9px;align-items:center}
+.scr-close .ini{width:70px;min-height:48px;flex-shrink:0;background:var(--c-wash);border-radius:12px;box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:13px}
+.scr-close .save{flex:0 0 26%;min-height:48px;border-radius:14px;background:var(--c-wash);opacity:.8;box-shadow:var(--c-ctlsh);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.scr-close .sub{flex:1;min-width:0;min-height:48px;border-radius:14px;background:var(--c-wash2);box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;white-space:nowrap}
+.scr-close .ftd{padding:22px 0 16px;display:flex;flex-direction:column;gap:8px}
+.scr-close .ftd .ok{text-align:center;font-size:12px;font-weight:700;color:var(--c-st-booked)}
+.scr-close .ftd .back{width:100%;min-height:52px;border-radius:14px;background:var(--c-wash2);box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+/* state plumbing */
+.scr-close .only-done{display:none}
+.scr-close[data-state="blocked"] .only-done{display:inline}
+.scr-close[data-state="blocked"] .ftd.only-done{display:flex}
+.scr-close[data-state="blocked"] .not-done{display:none}
+
+.scr-close{position:relative}
+.scr-close .only-blk{display:none}
+.scr-close[data-state="blocked"] .only-blk{display:inline}
+.scr-close[data-state="blocked"] .not-blk{display:none}
+/* "Before you close" — the app's bottom sheet over the dimmed page */
+.scr-close .dim-layer{display:none;position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,0.55);align-items:flex-end;padding:12px 10px;border-radius:8px}
+.scr-close[data-state="blocked"] .dim-layer{display:flex}
+.scr-close .sheet{width:100%;background:var(--c-bg);border-radius:20px;padding:16px 14px 14px;box-shadow:var(--c-softsh)}
+.scr-close .sh-t{font-size:17px;letter-spacing:-0.02em;color:var(--c-st-warm);display:flex;align-items:center;gap:8px;line-height:1.3}
+.scr-close .sh-t .bang{width:22px;height:22px;border-radius:99px;background:var(--c-st-warm);color:var(--c-chip-ink);display:inline-flex;align-items:center;justify-content:center;font-family:'Inter',system-ui,sans-serif;font-weight:800;font-size:13px;flex-shrink:0;letter-spacing:0}
+.scr-close .sh-p{font-size:12px;color:var(--c-fg-2);line-height:1.5;margin:6px 0 4px}
+.scr-close .sh-row{display:flex;align-items:center;gap:10px;background:var(--c-wash);border-radius:12px;padding:9px 11px;margin-top:7px}
+.scr-close .sh-row .m{flex:1;min-width:0}
+.scr-close .sh-row .a{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-close .sh-row .b{font-size:10.5px;color:var(--c-fg-3);font-family:'DM Mono',ui-monospace,Menlo,monospace}
+.scr-close .sh-row .go{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-st-warm);color:var(--c-chip-ink);border-radius:99px;padding:6px 10px;flex-shrink:0}
+.scr-close .sh-btns{display:flex;gap:8px;margin-top:12px}
+.scr-close .sh-btns>div{flex:1;min-width:0;min-height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12.5px;font-weight:700;padding:0 6px}
+.scr-close .sh-back{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-close .sh-pass{background:var(--c-wash2);color:var(--c-fg-2)}
+</style>
+<div class="scr scr-close">
+
+  <div class="hd" data-k="c-head">
+    <div class="bk">←</div>
+    <div class="hd-mid">
+      <div class="hd-t">
+        <span class="arch">Closing</span>
+      </div>
+      <div class="hd-sub" data-k="c-progress">Paramount · <span class="not-blk">38</span><span class="only-blk">44</span>/44 checked</div>
+    </div>
+    <div class="bar" data-k="c-progress"><i></i></div>
+  </div>
+
+  <div class="body">
+    <div class="lead">Tap items as you complete them — saves instantly. Only check what's done.</div>
+
+    <div class="sec not-blk">
+      <span class="lbl">Control Rooms / Studios</span>
+      <div class="card">
+        <div class="it on"><div class="tk">✓</div><span class="tx">Check console, racks and interior of studio for spills, burns/ash or damage. Take pictures. Vacuum ash and Windex fader covers.</span></div>
+        <div class="it on"><div class="tk">✓</div><span class="tx">Wipe credenzas with Windex (no Lysol wipes, they streak)</span></div>
+        <div class="cut">… 10 more in Control Rooms / Studios</div>
+      </div>
+    </div>
+
+    <div class="cut not-blk">… then Building · Bathrooms · Kitchen Area — 20 more items</div>
+
+    <div class="sec">
+      <span class="lbl" data-k="c-section">Paperwork</span>
+      <div class="card">
+        <div class="it on" data-k="c-required c-item"><div class="tk" data-k="c-tick">✓</div><span class="tx">Complete microphone inventory — report discrepancies. Email Inventory to Tom.</span></div>
+        <div class="it on" data-k="c-required c-item"><div class="tk">✓</div><span class="tx">Complete closing count for petty cash, report discrepancies</span></div>
+        <div class="it on" data-k="c-item"><div class="tk">✓</div><span class="tx">Upload all run receipts to Ramp and file accordingly</span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <span class="lbl" data-k="c-section">Before you leave</span>
+      <div class="card">
+        <div class="it on"><div class="tk">✓</div><span class="tx">Write/send slack notes</span></div>
+        <div class="it on" data-k="c-lastwalk"><div class="tk">✓</div><span class="tx">Confirm the opener's start time. CHECK WITH MANAGEMENT BEFORE 12AM IF ANY UNCERTAINTY.</span></div>
+        <div class="it on" data-k="c-lastwalk"><div class="tk">✓</div><span class="tx">Studio doors and back door deadbolted</span></div>
+        <div class="it" data-k="c-item"><div class="tk" data-k="c-tick">✓</div><span class="tx">Camera screen, computer screen and office monitors are turned off</span></div>
+        <div class="it" data-k="c-lastwalk"><div class="tk">✓</div><span class="tx">Confirm Studio D &amp; Studio F tenants have left the building</span></div>
+        <div class="it"><div class="tk">✓</div><span class="tx">Had cleaners?</span></div>
+        <div class="it" data-k="c-lastwalk"><div class="tk">✓</div><span class="tx">The alarm is set</span></div>
+        <div class="it" data-k="c-lastwalk"><div class="tk">✓</div><span class="tx">The front door is locked as you leave the building</span></div>
+        <div class="it" data-k="c-lastwalk"><div class="tk">✓</div><span class="tx">The gate is closed and locked (jumble numbers)</span></div>
+      </div>
+    </div>
+
+    <div class="flag not-blk" data-k="c-attention">
+      <span class="lbl">Raise a flag</span>
+      <div class="expl">
+        <b class="hot">Unusual things only.</b> Something broken, missing, damaged or unsafe, a client problem, or a task you couldn't finish. It becomes a flag the office has to act on.
+        <span class="dim">How the shift went, questions, general updates — put those in <b>Notes</b>, not here.</span>
+      </div>
+      <div class="ta">
+        <span class="ph">What's wrong, and where? (Leave empty if nothing needs the office.)</span>
+      </div>
+      <span class="addp">+ Add photos</span>
+    </div>
+  </div>
+
+  <div class="ft" data-k="c-submit">
+    <div class="ini mono">TL</div>
+    <div class="save" data-k="c-save">Save</div>
+    <div class="sub" data-k="c-submit">Submit closing</div>
+  </div>
+
+  <div class="dim-layer">
+    <div class="sheet" data-k="c-blocked">
+      <div class="sh-t arch"><span class="bang">!</span>Before you close</div>
+      <div class="sh-p">A session today hasn’t been submitted. Turn it in if it’s yours — submitted with a problem always beats never submitted.</div>
+      <div class="sh-row" data-k="c-blocked-row">
+        <div class="m">
+          <div class="a">Studio A · Dante Hollis</div>
+          <div class="b">6:00 PM – 2:00 AM · WO-1312</div>
+        </div>
+        <span class="go">Submit</span>
+      </div>
+      <div class="sh-btns">
+        <div class="sh-back" data-k="c-blocked-back">Back to the checklist</div>
+        <div class="sh-pass" data-k="c-blocked-pass">Not mine — close</div>
+      </div>
+    </div>
+  </div>
+
+</div>

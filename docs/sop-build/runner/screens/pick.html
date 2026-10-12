@@ -1,0 +1,113 @@
+<style>
+.scr-pick{font:400 14px/1.5 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);background:var(--c-bg);-webkit-font-smoothing:antialiased;text-align:left;overflow:hidden}
+.scr-pick *{box-sizing:border-box;margin:0;padding:0}
+.scr-pick .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none}
+.scr-pick .lab{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-pick .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+
+/* page: real padding is 30px 16px 44px — the guide's stage already supplies 14px of the side gutter */
+.scr-pick .pg{display:flex;flex-direction:column;align-items:center;padding:30px 2px 44px}
+.scr-pick .top{text-align:center;margin-bottom:26px;max-width:100%}
+.scr-pick .brand{display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:22px}
+.scr-pick .rib{display:block}
+.scr-pick .rib path{fill:var(--c-st-booked)}
+.scr-pick .wordmark{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none;letter-spacing:-.02em;font-size:18px;line-height:1;color:var(--c-fg);white-space:nowrap}
+.scr-pick .wordmark i{font-style:normal;opacity:.45}
+.scr-pick .top .lab{margin-bottom:8px}
+.scr-pick .hello{display:block;font-size:23px;letter-spacing:-.02em;line-height:1.5}
+.scr-pick .who{display:block;font-size:12px;opacity:.5;margin-top:4px}
+
+.scr-pick .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:380px}
+.scr-pick .st{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:18px;padding:24px 14px;display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0}
+.scr-pick .st .ab{width:52px;height:52px;border-radius:14px;background:var(--c-wash);display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:.02em}
+.scr-pick .st .nm{font-size:15px;font-weight:700}
+.scr-pick .st .ct{display:block;font-size:11px;opacity:.45}
+.scr-pick .st .ct.on{color:var(--c-st-booked);opacity:1;font-weight:700}
+
+.scr-pick .blk{width:100%;max-width:380px;margin-top:26px}
+.scr-pick .blk > .lab{margin-bottom:9px}
+.scr-pick .tabs{display:flex;gap:7px;margin-bottom:9px}
+.scr-pick .tab{flex:1;min-width:0;min-height:38px;border-radius:10px;font-size:12px;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center}
+.scr-pick .srf{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:18px;padding:13px 15px}
+.scr-pick .pickmsg{font-size:12px;opacity:.5;text-align:center;padding:18px 15px}
+
+.scr-pick .reg{display:flex;flex-direction:column;gap:9px;width:100%;max-width:380px;margin-top:26px}
+.scr-pick .row{display:flex;align-items:center;gap:11px;min-height:52px}
+.scr-pick .row.soon{opacity:.55}
+.scr-pick .row .tx{flex:1;min-width:0}
+.scr-pick .row .t{font-size:12.5px;font-weight:700}
+.scr-pick .row .s{font-size:10.5px;opacity:.6}
+.scr-pick .row .go{opacity:.35;font-size:16px}
+.scr-pick .out{display:flex;align-items:center;justify-content:center;margin-top:30px;opacity:.5;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:14px 22px;min-height:44px}
+</style>
+<div class="scr scr-pick">
+ <div class="pg">
+
+  <div class="top">
+   <div class="brand">
+    <svg class="rib" width="32" height="32" viewBox="0 0 200 200" aria-hidden="true"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z"/></svg>
+    <span class="wordmark">PRS<i>Flo</i></span>
+   </div>
+   <div class="lab">Paramount Recording Group</div>
+   <div class="arch hello" data-k="p-greeting">Where are you tonight, Terren?</div>
+   <div class="who" data-k="p-who">Thursday, October 8 · signed in as Terren L.</div>
+  </div>
+
+  <div class="grid" data-k="p-studios">
+   <div class="st" data-k="p-studio">
+    <div class="ab arch">PRS</div>
+    <div class="nm">Paramount</div>
+    <div class="ct on" data-k="p-count">2 sessions today</div>
+   </div>
+   <div class="st" data-k="p-studio">
+    <div class="ab arch">ARS</div>
+    <div class="nm">Ameraycan</div>
+    <div class="ct on" data-k="p-count">1 session today</div>
+   </div>
+   <div class="st" data-k="p-studio">
+    <div class="ab arch">ERS</div>
+    <div class="nm">Encore</div>
+    <div class="ct" data-k="p-count">no sessions today</div>
+   </div>
+   <div class="st" data-k="p-studio">
+    <div class="ab arch">TRS</div>
+    <div class="nm">Track</div>
+    <div class="ct" data-k="p-count">no sessions today</div>
+   </div>
+  </div>
+
+  <div class="blk" data-k="p-notes">
+   <div class="lab">Runner notes<span class="hint">?</span></div>
+   <div class="tabs">
+    <div class="tab" data-k="p-notes-tab">PRS</div>
+    <div class="tab" data-k="p-notes-tab">ARS</div>
+    <div class="tab" data-k="p-notes-tab">ERS</div>
+    <div class="tab" data-k="p-notes-tab">TRS</div>
+    <div class="tab" data-k="p-notes-tab">General</div>
+   </div>
+   <div class="srf pickmsg">Pick a studio — or General, which every studio sees.</div>
+  </div>
+
+  <div class="reg">
+   <div class="srf row" data-k="p-punch">
+    <div class="tx"><div class="t">Missed a punch?</div><div class="s">Report it — takes 30 seconds</div></div>
+    <span class="go">›</span>
+   </div>
+   <div class="srf row" data-k="p-guide">
+    <div class="tx"><div class="t">App guide</div><div class="s">How to use PRSFlo — step by step</div></div>
+    <span class="go">›</span>
+   </div>
+   <div class="srf row soon" data-k="p-manual">
+    <div class="tx"><div class="t">Runners manual</div><div class="s">Coming soon</div></div>
+    <span class="go">›</span>
+   </div>
+   <div class="srf row" data-k="p-report">
+    <div class="tx"><div class="t">Report a bug or an idea</div><div class="s">Goes straight to the office</div></div>
+    <span class="go">›</span>
+   </div>
+  </div>
+
+  <div class="out" data-k="p-signout">Sign out</div>
+
+ </div>
+</div>

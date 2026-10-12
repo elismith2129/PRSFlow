@@ -1,0 +1,177 @@
+<style>
+.scr-mics{position:relative;background:var(--c-bg);color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.5;padding:0 2px;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-mics *{box-sizing:border-box}
+.scr-mics .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-mics .mono{font-family:'DM Mono',ui-monospace,Menlo,monospace}
+/* pinned chrome: title + tabs + search + alert */
+.scr-mics .chrome{padding:14px 2px 10px}
+.scr-mics .hd{display:flex;align-items:center;gap:11px;margin-bottom:10px}
+.scr-mics .bk{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--c-ctlsh)}
+.scr-mics .hd .t{font-size:18px;letter-spacing:-0.02em;line-height:1.15}
+.scr-mics .hd .s{font-size:11.5px;opacity:.5}
+.scr-mics .tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.scr-mics .tab{display:inline-flex;align-items:center;background:var(--c-wash);color:var(--c-fg);border-radius:99px;padding:7px 12px;min-height:32px;font-size:10.5px;font-weight:800;letter-spacing:.03em;opacity:.6;white-space:nowrap}
+.scr-mics .tab .n{font-weight:400;opacity:.6;margin-left:5px;font-size:9.5px;letter-spacing:0}
+.scr-mics .tab.t-prs,.scr-mics[data-state="odds"] .tab.t-odds{background:var(--c-wash2);opacity:1;box-shadow:inset 0 0 0 1.5px rgba(217,214,205,0.25)}
+.scr-mics[data-state="odds"] .tab.t-prs{background:var(--c-wash);opacity:.6;box-shadow:none}
+.scr-mics .search{background:var(--c-wash);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--c-fg-3);line-height:1.35}
+.scr-mics .alert{display:flex;align-items:center;gap:8px;margin-top:8px;background:color-mix(in srgb,var(--c-st-hot) 13%,transparent);border-radius:10px;padding:7px 11px;font-size:10.5px;font-weight:600;color:var(--c-st-hot)}
+.scr-mics .alert i{width:6px;height:6px;border-radius:99px;background:var(--c-st-hot);flex-shrink:0}
+.scr-mics .alert span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the sheet */
+.scr-mics .sheet{padding:2px 0}
+.scr-mics .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.scr-mics .cw{position:relative;min-width:0}
+.scr-mics .cell{position:relative;border-radius:9px;padding:7px 9px 6px;min-height:46px;background:var(--c-wash);color:var(--c-fg)}
+.scr-mics .cell .nm{display:block;font-size:11px;font-weight:600;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-mics .cell .bd{position:absolute;top:6px;right:8px;font-size:8px;font-weight:800;letter-spacing:.05em;display:none}
+.scr-mics .cell .rl{display:flex;align-items:center;gap:6px;margin-top:2px}
+.scr-mics .cell .rf{flex:1;min-width:0;font-size:8.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.4}
+.scr-mics .cell .rf.bad{opacity:1;color:var(--c-st-hot);font-weight:700}
+.scr-mics .cell .qty{width:38px;min-height:24px;flex-shrink:0;background:rgba(0,0,0,0.14);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+/* marked cells */
+.scr-mics .cell.here{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-mics .cell.room{background:var(--c-st-cold);color:var(--c-chip-ink)}
+.scr-mics .cell.miss{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-mics .cell.here .nm,.scr-mics .cell.room .nm,.scr-mics .cell.miss .nm{padding-right:34px}
+.scr-mics .cell.here .bd,.scr-mics .cell.room .bd,.scr-mics .cell.miss .bd{display:block}
+.scr-mics .cell.here .rf,.scr-mics .cell.room .rf,.scr-mics .cell.miss .rf{opacity:.55;color:inherit;font-weight:400}
+/* per-state variants of the two story cells */
+.scr-mics .v{display:none}
+.scr-mics:not([data-state]) .v-def,.scr-mics[data-state=""] .v-def{display:block}
+.scr-mics[data-state="pick"] .v-pick{display:block}
+.scr-mics[data-state="missing"] .v-miss,.scr-mics[data-state="odds"] .v-miss,.scr-mics[data-state="done"] .v-miss{display:block}
+/* Room / Missing / Clear popover (opens under the tapped cell) */
+.scr-mics .pop{display:none;position:absolute;left:0;top:100%;margin-top:4px;z-index:5;width:236px;max-width:calc(200% + 5px);background:var(--c-srf);border-radius:12px;box-shadow:var(--c-softsh),0 10px 30px rgba(0,0,0,0.35);padding:8px;gap:5px;flex-wrap:wrap}
+.scr-mics[data-state="pick"] .pop{display:flex}
+.scr-mics .chip{display:inline-flex;align-items:center;border-radius:99px;padding:7px 11px;min-height:32px;font-size:10.5px;font-weight:800;line-height:1}
+.scr-mics .chip.rm{background:var(--c-st-cold);color:var(--c-chip-ink)}
+.scr-mics .chip.ms{background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-mics .chip.cl{background:var(--c-wash2);color:var(--c-fg);font-weight:700}
+/* not app UI — the guide's own "list continues" marker */
+.scr-mics .cut{margin:8px 0 0;padding:7px 10px;border-radius:10px;border:1px dashed var(--c-wash2);font-size:10.5px;font-style:italic;color:var(--c-fg-3);text-align:center;line-height:1.4}
+/* Odds tab: counted rows */
+.scr-mics .odds{display:none}
+.scr-mics[data-state="odds"] .odds{display:block}
+.scr-mics[data-state="odds"] .mictab{display:none}
+.scr-mics .orow{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;gap:8px;background:var(--c-wash);border-radius:9px;margin-bottom:3px}
+.scr-mics .orow .on{font-size:12.5px;font-weight:600;flex:1;min-width:0}
+.scr-mics .orow .oq{width:56px;min-height:34px;flex-shrink:0;background:var(--c-wash2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.scr-mics .orow .oq.ph{color:var(--c-fg-3);font-weight:400}
+/* inventory notes */
+.scr-mics .notes{margin-top:10px;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:11px 12px}
+.scr-mics .notes .nh{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+.scr-mics .notes .nl{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;opacity:.55}
+.scr-mics .notes .ns{margin-left:auto;font-size:9.5px;font-weight:700;opacity:.4}
+.scr-mics .notes .nt{min-height:54px;background:var(--c-wash);border-radius:10px;padding:9px 11px;font-size:12.5px;line-height:1.55}
+.scr-mics .notes .nt .ph{color:var(--c-fg-3)}
+.scr-mics .n-b{display:none}
+.scr-mics[data-state="missing"] .n-b,.scr-mics[data-state="odds"] .n-b{display:inline}
+.scr-mics[data-state="missing"] .n-a,.scr-mics[data-state="odds"] .n-a{display:none}
+.scr-mics .o-b{display:none}
+.scr-mics[data-state="odds"] .o-b{display:inline}
+.scr-mics[data-state="odds"] .o-a{display:none}
+/* footer (pinned to the bottom of the phone in the app) */
+.scr-mics .ft{padding:22px 0 16px;display:flex;gap:9px;align-items:center}
+.scr-mics .ini{width:70px;min-height:48px;flex-shrink:0;background:var(--c-wash);border-radius:12px;box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:13px}
+.scr-mics .save{flex:0 0 26%;min-height:48px;border-radius:14px;background:var(--c-wash);opacity:.8;box-shadow:var(--c-ctlsh);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.scr-mics .sub{flex:1;min-width:0;min-height:48px;border-radius:14px;background:var(--c-wash2);box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+/* done = back on the studio page: the duty tiles */
+.scr-mics .hub{display:none;padding:14px 0 18px}
+.scr-mics[data-state="done"] .hub{display:block}
+.scr-mics[data-state="done"] .page{display:none}
+.scr-mics .hub .cut{margin:0 0 16px}
+.scr-mics .hub .lbl{display:block;font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45;margin-bottom:9px}
+.scr-mics .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.scr-mics .tile{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:18px;padding:13px 14px;min-height:72px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.scr-mics .tile .tl{font-size:12.5px;font-weight:700}
+.scr-mics .tile .ts{font-size:10px;margin-top:4px;opacity:.45}
+.scr-mics .tile .ts.ok{color:var(--c-st-booked);opacity:1;font-weight:700}
+.scr-mics .tile .ts.warm{color:var(--c-st-warm);opacity:1;font-weight:700}
+</style>
+<div class="scr scr-mics">
+
+ <div class="page">
+  <div class="chrome">
+    <div class="hd" data-k="m-head">
+      <div class="bk">←</div>
+      <div>
+        <div class="t arch">Mic inventory</div>
+        <div class="s">Paramount · 2026-10-08</div>
+      </div>
+    </div>
+
+    <div class="tabs" data-k="m-progress">
+      <span class="tab t-prs" data-k="m-tab">PRS<span class="n mono"><span class="n-a">85</span><span class="n-b">86</span>/86</span></span>
+      <span class="tab">ARS<span class="n mono">0/61</span></span>
+      <span class="tab">ERS<span class="n mono">0/58</span></span>
+      <span class="tab">TRK<span class="n mono">0/44</span></span>
+      <span class="tab">Floating<span class="n mono">0/12</span></span>
+      <span class="tab t-odds" data-k="m-tab">Odds<span class="n mono"><span class="o-a">0</span><span class="o-b">3</span>/10</span></span>
+    </div>
+
+    <div class="search" data-k="m-search">Search mics…</div>
+
+    <div class="alert" data-k="m-alert"><i></i><span>U87 #2 — since 10/7</span></div>
+  </div>
+
+  <div class="sheet">
+    <div class="mictab">
+      <div class="grid">
+      <div class="cw"><div class="cell here " data-k="m-mic m-here"><span class="nm">U47 FET</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here " data-k="m-mic"><span class="nm">U67 #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">U67 #2</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">U87 #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell  v v-def" data-k="m-mic m-unanswered"><span class="nm">U87 #2</span><span class="bd"></span><span class="rl"><span class="rf bad">missing since 10/7</span></span></div><div class="cell  v v-pick" data-k="m-mic m-unanswered"><span class="nm">U87 #2</span><span class="bd"></span><span class="rl"><span class="rf bad">missing since 10/7</span></span></div><div class="cell miss v v-miss" data-k="m-mic m-missing"><span class="nm">U87 #2</span><span class="bd">MISS</span><span class="rl"><span class="rf">missing since 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">C12</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">C414 #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">C414 #2</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">KM84 #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">KM84 #2</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell room v v-def" data-k="m-mic m-room"><span class="nm">SM7B #1</span><span class="bd">RM A</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div><div class="cell here v v-pick" data-k="m-mic m-here"><span class="nm">SM7B #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div><div class="cell room v v-miss" data-k="m-mic m-room"><span class="nm">SM7B #1</span><span class="bd">RM A</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div><div class="pop" data-k="m-pop"><span class="chip rm" data-k="m-room">Rm A</span><span class="chip rm" data-k="m-room">Rm B</span><span class="chip rm" data-k="m-room">Rm C</span><span class="chip rm" data-k="m-room">Rm E</span><span class="chip rm" data-k="m-room">Rm X</span><span class="chip ms" data-k="m-missing">MISSING</span><span class="chip cl" data-k="m-clear">Clear</span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">SM7B #2</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">SM57 #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">SM57 #2</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here "><span class="nm">MD421 #1</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: Rm B · 10/7</span></span></div></div>
+      <div class="cw"><div class="cell here " data-k="m-mic"><span class="nm">Genelec 8040</span><span class="bd">HERE</span><span class="rl"><span class="rf">last: HERE · 10/7</span><span class="qty mono" data-k="m-count">2</span></span></div></div>
+      </div>
+      <div class="cut">… 70 more PRS mics, all tapped HERE</div>
+    </div>
+
+    <div class="odds">
+      <div class="orow"><span class="on">Headphones</span><span class="oq mono" data-k="m-count">14</span></div>
+      <div class="orow"><span class="on">Other DI</span><span class="oq mono" data-k="m-count">6</span></div>
+      <div class="orow"><span class="on">Pop filters</span><span class="oq mono" data-k="m-count">5</span></div>
+      <div class="orow"><span class="on">Mic clips</span><span class="oq mono ph">0</span></div>
+      <div class="orow"><span class="on">Shock mounts</span><span class="oq mono ph">0</span></div>
+      <div class="orow"><span class="on">XLR turnarounds</span><span class="oq mono ph">0</span></div>
+      <div class="cut">… 4 more counted items</div>
+    </div>
+
+    <div class="notes" data-k="m-missing-note">
+      <div class="nh"><span class="nl">Inventory notes</span><span class="ns"><span class="n-a">Saves by itself</span><span class="n-b">Saved</span></span></div>
+      <div class="nt"><span class="ph n-a">Anything the office should know about this list…</span><span class="n-b">U87 #2 still not found. Checked the mic locker and Studios A, B, C. Not on tonight's setups.</span></div>
+    </div>
+  </div>
+
+  <div class="ft" data-k="m-submit">
+    <div class="ini mono" data-k="m-initials">TL</div>
+    <div class="save" data-k="m-save">Save</div>
+    <div class="sub" data-k="m-submit">Submit</div>
+  </div>
+ </div>
+
+ <div class="hub">
+  <div class="cut">Submit sends you back to the Paramount page …</div>
+  <span class="lbl">Tonight</span>
+  <div class="tiles">
+    <div class="tile"><span class="tl">Opening checklist</span><span class="ts ok">Submitted</span></div>
+    <div class="tile"><span class="tl">Closing checklist</span><span class="ts">Not started</span></div>
+    <div class="tile" data-k="m-submitted"><span class="tl">Mic inventory</span><span class="ts ok">Submitted</span></div>
+    <div class="tile"><span class="tl">Petty cash</span><span class="ts warm">Opened · count at close</span></div>
+    <div class="tile"><span class="tl">Stock list</span><span class="ts ok">Submitted</span></div>
+    <div class="tile"><span class="tl">Memos</span><span class="ts ok">All read</span></div>
+  </div>
+ </div>
+
+</div>

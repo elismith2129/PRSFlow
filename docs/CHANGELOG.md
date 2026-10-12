@@ -20,6 +20,29 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.10 — Runner guide, walkthrough edition; day arrows on the dashboard — Oct 12, 2026
+
+**Why.** Eli on the runner guide: *"this one needs to be SOOOOO idiot proof. short copy, exact walkthrough and explanation of 'why' we do things."* And on the dashboard: *"i want that dashboard cal to have the little arrows to click between days. very helpful from the dashboard."* No migration.
+
+1. **The Runner App Guide is rebuilt** (`public/runner-sop.html`, served at `/runner/sop`). It replaces the August text guide, which had drifted from the app. 14 chapters, 172 steps, 13 drawn PHONE screens. One step = one thing to tap, type or check; every step that asks for an action carries a **Why** line (taken from the code's own comments and Eli's rulings). Chapters: Start here · Your studio page · The work order · Tonight's times · COD: take the payment · Submit. Every night. · Opening · Closing · Petty cash · Stock · Notes · Memos · Missed a punch · The rules.
+2. **The SOP build system makes more than one guide** (`docs/sop-build/`). `build.py [billing|runner] [out]`; a guide is one content module (`content.py`, `content_runner.py`) with an optional `META` (title, where its screens live, layout). New in the engine: a per-step **why** (`w`), and a **phone layout** (`body.sop-phone`): on a computer the drawn phone stands on the left with the step panel beside it; on a phone the drawing is full width and the step panel is pinned to the bottom with Next under the thumb. `test.py [file] [width] [height]` now knows the three panel positions. Steps may be tuples (Billing) or `S(keys, title, body, why, state)` dicts (Runner). The Billing SOP was rebuilt from the same sources: same 198 steps, same words.
+3. **Day arrows on the dashboard's sessions module** (`app/(main)/page.tsx`, `.n-daynav` in globals.css). `calDate` was always the day that module showed, but nothing could change it. ‹ › step a day; **Today** appears when you are off today and snaps back. The title sits in a fixed-width slot so › does not move under the pointer. The rooms, the PRS/ERS/ARS/TRS counts and an empty room's click (it books on the day being looked at) all already followed `calDate`. The load effect now ignores a day's answer if a newer day was asked for meanwhile.
+4. The runner landing's line under **App guide** reads "step by step" (it said "two minutes").
+
+**Watch-outs.**
+- **The runner guide has not been seen on a real iPhone.** It is tested in a phone-sized Chromium at 360, 375x560 and 390 wide (every step lands on screen, the panel stays pinned). Safari specifics covered in CSS: `viewport-fit=cover`, safe-area padding under the panel, `100dvh` with a `100vh` fallback, no text auto-resize, `touch-action: manipulation`.
+- The guide lives in an iframe that scrolls inside itself (`app/runner/sop/page.tsx` gives it a fixed height). The pinned panel depends on that. If the wrapper ever lets the iframe grow to its content, the panel will stop sticking.
+- One step describes the food-receipts sheet in words; that sheet is not drawn.
+- Mic inventory is still "Coming soon" for runners, so the guide only shows its greyed tile. `runner/screens/mics.html` is drawn and waiting for the day it goes live.
+- Three lines in the guide are POLICY the code cannot confirm: waive the 3% "only if the office told you to"; "leave the room / the food budget / the service fee % alone" (none is locked for runners); last 4 of the card "so the office can match this payment". Eli has seen them.
+- Dashboard arrows: the "→" on that module still opens the calendar on today, not on the day being looked at (the calendar page takes no date in its address).
+
+**Found while fact-checking the guide, not fixed** (all in docs/TODO.md): petty cash "Counted — no change" with an empty count box records "not counted"; the missed-punch page goes by the calendar day and reads "6:00" as AM; a late submit silently leaves out an earlier night with no Arrived/Left; the studio page's date header changes at midnight while the page stays on last night; a red equipment pill raises no flag; the hub hint says "everything here saves as you tap".
+
+**Verified.** `tsc` passes; both guides' step tests pass (runner 172 steps at 360 / 375x560 / 390 / 1320; billing 198 at 1320); an independent fact-check of the runner copy against the code found 7 wrong and about 20 misleading statements, all corrected before it shipped. **Not seen against the live app.**
+
+**Files.** public/runner-sop.html · public/billing-sop.html (rebuilt) · docs/sop-build/{build.py, engine.js, shell.css, test.py, headnote.txt, content_runner.py, runner/**} · app/(main)/page.tsx · styles/globals.css · app/runner/page.tsx
+
 ## v1.43.9 — Four things the SOP drawing turned up — Oct 8, 2026
 
 **Why.** Drawing every billing screen from the code for the walkthrough SOP (v1.43.8) surfaced four places where the screen was wrong or a button could not do its job. Eli: *"lets fix those things you found."* No migration.

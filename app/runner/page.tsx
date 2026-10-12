@@ -322,7 +322,7 @@ export default function RunnerPage() {
         >
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12.5, fontWeight: 700 }}>App guide</div>
-            <div style={{ fontSize: 10.5, opacity: 0.6 }}>How to use PRSFlo — two minutes</div>
+            <div style={{ fontSize: 10.5, opacity: 0.6 }}>How to use PRSFlo — step by step</div>
           </div>
           <span style={{ opacity: 0.35, fontSize: 16 }}>›</span>
         </button>

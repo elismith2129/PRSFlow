@@ -1,0 +1,331 @@
+<style>
+/* Runner · Petty cash — app/runner/[studio]/petty-cash/page.tsx + components/runner/PettyCashHistory.tsx */
+.scr-cash{position:relative;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--c-fg);background:var(--c-bg);overflow:hidden;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-cash *{box-sizing:border-box;margin:0;padding:0}
+.scr-cash .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-cash .mono{font-family:'DM Mono',ui-monospace,'SFMono-Regular',Menlo,monospace}
+.scr-cash b{font-weight:700}
+
+/* ── state switches ── */
+.scr-cash:not([data-state]) [data-in]:not([data-in~="default"]),
+.scr-cash[data-state=""] [data-in]:not([data-in~="default"]),
+.scr-cash[data-state="default"] [data-in]:not([data-in~="default"]),
+.scr-cash[data-state="why"] [data-in]:not([data-in~="why"]),
+.scr-cash[data-state="adding"] [data-in]:not([data-in~="adding"]),
+.scr-cash[data-state="count"] [data-in]:not([data-in~="count"]),
+.scr-cash[data-state="short"] [data-in]:not([data-in~="short"]),
+.scr-cash[data-state="history"] [data-in]:not([data-in~="history"]),
+.scr-cash[data-state="closeout"] [data-in]:not([data-in~="closeout"]),
+.scr-cash[data-state="short-closeout"] [data-in]:not([data-in~="short-closeout"]),
+.scr-cash[data-state="uncounted"] [data-in]:not([data-in~="uncounted"]),
+.scr-cash[data-state="guard-cashin"] [data-in]:not([data-in~="guard-cashin"]),
+.scr-cash[data-state="guard-edit"] [data-in]:not([data-in~="guard-edit"]){display:none !important}
+.scr-cash[data-state="why"] [data-out~="why"],
+.scr-cash[data-state="adding"] [data-out~="adding"],
+.scr-cash[data-state="count"] [data-out~="count"],
+.scr-cash[data-state="short"] [data-out~="short"],
+.scr-cash[data-state="closeout"] [data-out~="closeout"],
+.scr-cash[data-state="short-closeout"] [data-out~="short-closeout"],
+.scr-cash[data-state="uncounted"] [data-out~="uncounted"],
+.scr-cash[data-state="guard-cashin"] [data-out~="guard-cashin"],
+.scr-cash[data-state="guard-edit"] [data-out~="guard-edit"]{display:none !important}
+
+/* ── header ── */
+.scr-cash .head{display:flex;align-items:center;gap:11px;padding:14px 16px 10px;background:var(--c-bg)}
+.scr-cash .back{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1.5;box-shadow:2px 2px 7px rgba(0,0,0,.38),-1px -1px 3px rgba(255,255,255,.03)}
+.scr-cash:is([data-theme="light"] *) .back{box-shadow:2px 2px 6px rgba(42,39,34,.09),-2px -2px 6px rgba(255,255,255,.7)}
+.scr-cash .title{font-size:18px;letter-spacing:-.02em;line-height:1.15}
+.scr-cash .sub{font-size:11.5px;opacity:.5}
+
+/* ── page column ── */
+.scr-cash .col{padding:4px 14px;display:flex;flex-direction:column;gap:14px}
+.scr-cash .surface{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:16px;padding:13px 14px}
+.scr-cash .label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+
+/* balances */
+.scr-cash .opening{display:block;width:100%;margin-bottom:9px}
+.scr-cash .row{display:flex;justify-content:space-between;align-items:center}
+.scr-cash .row .l{font-size:12.5px;opacity:.6}
+.scr-cash .row .v{font-size:13px;font-weight:700}
+.scr-cash .opening .trail{font-size:10.5px;opacity:.45;line-height:1.4;margin-top:2px}
+.scr-cash .why{background:var(--c-wash);border-radius:11px;padding:10px 11px;margin-bottom:10px;font-size:12px}
+.scr-cash .why .wr{display:flex;justify-content:space-between;margin-bottom:4px;gap:10px}
+.scr-cash .why .wr .l{opacity:.6}
+.scr-cash .why .wr .v{font-weight:700;font-size:12.5px}
+.scr-cash .why .tell{opacity:.55;line-height:1.5;margin-top:7px;padding-top:7px;box-shadow:0 -1px 0 var(--c-wash2)}
+.scr-cash .sumrow{display:flex;justify-content:space-between;margin-bottom:5px}
+.scr-cash .sumrow .l{font-size:12.5px;opacity:.6}
+.scr-cash .sumrow .v{font-size:13px;font-weight:700}
+.scr-cash .green{color:var(--c-st-booked)}
+.scr-cash .hot{color:var(--c-st-hot)}
+.scr-cash .warm{color:var(--c-st-warm)}
+.scr-cash .countrow{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--c-wash2)}
+.scr-cash .countrow .l{font-size:12.5px;opacity:.6}
+.scr-cash .diff{margin-top:7px;font-size:11px;font-weight:700;text-align:right}
+
+/* inputs (drawn) — font:inherit in the app, so Inter 14px */
+.scr-cash .inp{display:flex;align-items:center;background:var(--c-wash);border-radius:10px;padding:9px 11px;color:var(--c-fg);font-size:14px;line-height:1.5;min-height:40px;min-width:0;white-space:nowrap;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.scr-cash:is([data-theme="light"] *) .inp{box-shadow:none}
+.scr-cash .inp.ph{color:#9ca3af}
+.scr-cash .inp.count{width:92px;justify-content:flex-end;min-height:36px;padding:6px 10px;flex-shrink:0}
+.scr-cash .inp.amt{width:76px;flex-shrink:0}
+.scr-cash .inp.focus{background:var(--c-wash2)}
+.scr-cash .caret{display:inline-block;width:1.5px;height:17px;background:var(--c-fg);margin-left:1px;flex-shrink:0}
+
+/* entries */
+.scr-cash .ehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.scr-cash .add{display:inline-flex;align-items:center;background:var(--c-wash);border-radius:99px;padding:6px 14px;min-height:32px;color:var(--c-fg);font-size:14px;font-weight:400;line-height:1.5}
+.scr-cash .entry{padding:8px 0}
+.scr-cash .entry + .entry{box-shadow:0 -1px 0 var(--c-wash)}
+.scr-cash .egrid{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}
+.scr-cash .pill{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:99px;padding:4px 11px;min-width:48px;min-height:40px;font-size:14px;font-weight:400;line-height:1.5;letter-spacing:.07em;text-transform:uppercase;color:var(--c-chip-ink);box-shadow:1.5px 1.5px 4px rgba(0,0,0,.35);filter:saturate(.82) brightness(.88)}
+.scr-cash:is([data-theme="light"] *) .pill{box-shadow:1.5px 1.5px 4px rgba(42,39,34,.14);filter:none}
+.scr-cash .pill.in{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-cash .pill.out{background:var(--c-st-hot);color:var(--c-hot-text)}
+
+/* previous days */
+.scr-cash .histwrap{padding:18px 14px 0}
+.scr-cash .hist{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:16px;height:320px;padding:12px 14px 0;display:flex;flex-direction:column;overflow:hidden}
+.scr-cash .hlabel{font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-3);display:flex;justify-content:space-between;flex-shrink:0;height:20px}
+.scr-cash .hlabel .ro{letter-spacing:.04em}
+.scr-cash .hlist{flex:1;min-height:0;overflow:hidden;padding-bottom:16px;-webkit-mask-image:linear-gradient(#000 calc(100% - 16px),transparent);mask-image:linear-gradient(#000 calc(100% - 16px),transparent)}
+.scr-cash .day{padding:10px 0}
+.scr-cash .day + .day{box-shadow:0 -1px 0 var(--c-wash)}
+.scr-cash .dhead{display:flex;align-items:baseline;gap:8px}
+.scr-cash .dhead b{font-size:13px;flex:1;min-width:0}
+.scr-cash .dhead .st{font-size:10.5px}
+.scr-cash .dhead .st.none{color:var(--c-fg-3)}
+.scr-cash .dhead .st.ok{color:var(--c-st-booked);font-weight:700}
+.scr-cash .dhead .st.off{color:var(--c-st-warm);font-weight:800}
+.scr-cash .dl{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;color:var(--c-fg-2);margin-top:2px}
+.scr-cash .dl.first{margin-top:4px}
+.scr-cash .dl .d{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-cash .dl .a{flex-shrink:0}
+.scr-cash .dl.cnt{font-weight:700;color:var(--c-fg)}
+.scr-cash .dnote{font-size:11px;color:var(--c-fg-3);font-style:italic;margin-top:3px}
+
+/* bottom bar (pinned to the viewport bottom in the app) */
+.scr-cash .bar{padding:12px 14px 16px;margin-top:14px;background:linear-gradient(to top,var(--c-bg) 68%,transparent)}
+.scr-cash .nochange{display:block;width:100%;min-height:46px;border-radius:14px;margin-bottom:8px;padding:5px 10px;background:var(--c-srf,var(--c-bg));color:var(--c-fg);font-size:13px;font-weight:700;line-height:1.5;text-align:center;box-shadow:var(--c-softsh)}
+.scr-cash .nochange span{display:block;font-size:10px;font-weight:400;opacity:.55;margin-top:1px}
+.scr-cash .save{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border-radius:14px;background:var(--c-wash2);color:var(--c-fg);font-size:14px;font-weight:800;box-shadow:var(--c-softsh)}
+
+/* confirm sheets (position:fixed overlay in the app) */
+.scr-cash .dim{position:absolute;inset:0;z-index:5;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:20px 14px}
+.scr-cash .sheet{width:100%;max-width:420px;background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:18px;padding:16px}
+.scr-cash .sheet .st{font-size:15px;line-height:1.3;margin-bottom:7px}
+.scr-cash .sheet .st.close{margin-bottom:10px}
+.scr-cash .sheet p{font-size:12.5px;color:var(--c-fg-2);line-height:1.55;margin:0 0 10px}
+.scr-cash .sheet p.tight{margin:0 0 8px}
+.scr-cash .sheet p.last{margin:0 0 4px}
+.scr-cash .sheet p.off{color:var(--c-st-warm);font-weight:700;line-height:1.5;margin:0 0 8px}
+.scr-cash .sheet .tbl{background:var(--c-wash);border-radius:11px;padding:10px 11px;margin-bottom:10px}
+.scr-cash .sheet .tr{display:flex;justify-content:space-between;margin-bottom:4px}
+.scr-cash .sheet .tr .l{font-size:12.5px;opacity:.6}
+.scr-cash .sheet .tr .v{font-size:13px;font-weight:700}
+.scr-cash .sheet .tr .v.none{color:var(--c-fg-3)}
+.scr-cash .sheet .noteinp{width:100%;margin-bottom:10px}
+.scr-cash .sheet .btns{display:flex;gap:8px;margin-top:11px}
+.scr-cash .sheet .btn{flex:1;min-height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12.5px;font-weight:700;line-height:1.5;padding:4px 6px}
+.scr-cash .sheet .btn.quiet{background:var(--c-wash);color:var(--c-fg)}
+.scr-cash .sheet .btn.go{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-cash .sheet .btn.danger{background:var(--c-st-hot);color:var(--c-hot-text)}
+</style>
+<div class="scr scr-cash">
+
+  <!-- header -->
+  <div class="head" data-k="k-head">
+    <div class="back" data-k="k-backbtn">←</div>
+    <div>
+      <div class="title arch">Petty cash</div>
+      <div class="sub">Paramount · Thu, Oct 8</div>
+    </div>
+  </div>
+
+  <div class="col">
+
+    <!-- Balances -->
+    <div class="surface">
+      <div class="label" style="margin-bottom:10px">Balances</div>
+
+      <div class="opening" data-k="k-opening">
+        <div class="row">
+          <span class="l"><span data-out="why">Opening ▸</span><span data-in="why">Opening ▾</span></span>
+          <span class="v mono">$205.50</span>
+        </div>
+        <div class="trail">Carried from Wed, Oct 7's count</div>
+      </div>
+
+      <div class="why" data-in="why" data-k="k-why">
+        <div class="wr"><span class="l">Wed, Oct 7 — counted by Mika S.</span><span class="v mono">$205.50</span></div>
+        <div class="wr"><span class="l">Logged since</span><span class="v mono green">+$0.00</span></div>
+        <div class="tell">Not what’s in the box? Don’t try to change this. Count the box, type it into <b>Counted at close</b>, and the difference goes to the office.</div>
+      </div>
+
+      <div class="sumrow" data-k="k-cashin"><span class="l">Cash in</span>
+        <span class="v mono green" data-out="guard-cashin">+$40.00</span>
+        <span class="v mono green" data-in="guard-cashin">+$245.00</span>
+      </div>
+      <div class="sumrow" data-k="k-cashout"><span class="l">Cash out</span>
+        <span class="v mono hot" data-out="adding">-$28.00</span>
+        <span class="v mono hot" data-in="adding">-$40.50</span>
+      </div>
+      <div class="sumrow" data-k="k-balance"><span class="l">Should be in the box</span>
+        <span class="v mono" data-out="adding guard-cashin">$217.50</span>
+        <span class="v mono" data-in="adding">$205.00</span>
+        <span class="v mono" data-in="guard-cashin">$422.50</span>
+      </div>
+
+      <div class="countrow" data-k="k-count">
+        <span class="l">Counted at close</span>
+        <div class="inp count ph" data-out="count short closeout short-closeout">0.00</div>
+        <div class="inp count focus" data-in="count">217.50<span class="caret"></span></div>
+        <div class="inp count" data-in="closeout">217.50</div>
+        <div class="inp count focus" data-in="short">212.50<span class="caret"></span></div>
+        <div class="inp count" data-in="short-closeout">212.50</div>
+      </div>
+      <div class="diff green" data-in="count closeout" data-k="k-match">Matches the ledger</div>
+      <div class="diff warm" data-in="short short-closeout" data-k="k-short">Short by $5.00 vs the ledger</div>
+    </div>
+
+    <!-- Tonight's entries -->
+    <div class="surface" data-k="k-entries">
+      <div class="ehead">
+        <div class="label">Tonight</div>
+        <div class="add" data-k="k-add">+ Add</div>
+      </div>
+
+      <div class="entry" data-k="k-entry">
+        <div class="egrid">
+          <div class="inp">Coffee filters</div>
+          <div class="inp amt">8</div>
+          <div class="pill out" data-k="k-out">Out</div>
+        </div>
+      </div>
+      <div class="entry" data-k="k-entry">
+        <div class="egrid">
+          <div class="inp">Parking for client</div>
+          <div class="inp amt">20</div>
+          <div class="pill out" data-k="k-out">Out</div>
+        </div>
+      </div>
+      <div class="entry" data-k="k-entry">
+        <div class="egrid">
+          <div class="inp">Top-up from Lori</div>
+          <div class="inp amt">40</div>
+          <div class="pill in" data-k="k-in">In</div>
+        </div>
+      </div>
+
+      <!-- a new, unsaved row: what "+ Add" makes -->
+      <div class="entry" data-in="adding" data-k="k-form">
+        <div class="egrid">
+          <div class="inp" data-k="k-what">Gaffer tape</div>
+          <div class="inp amt focus" data-k="k-amount">12.50<span class="caret"></span></div>
+          <div class="pill out" data-k="k-out">Out</div>
+        </div>
+      </div>
+      <div class="entry" data-in="guard-cashin">
+        <div class="egrid">
+          <div class="inp">Tonight's cash</div>
+          <div class="inp amt">205</div>
+          <div class="pill in">In</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Previous days (always on the page, read only) -->
+  <div class="histwrap" data-out="closeout short-closeout uncounted guard-cashin guard-edit">
+    <div class="hist" data-k="k-history">
+      <div class="hlabel"><span>Previous days</span><span class="ro" data-k="k-readonly">last 14 · read only</span></div>
+      <div class="hlist">
+        <div class="day" data-k="k-day">
+          <div class="dhead"><b>Wed, Oct 7</b><span class="st ok">count matched</span></div>
+          <div class="dl first"><span>Opened at</span><span class="mono">$214.50</span></div>
+          <div class="dl"><span class="d">Ice, 2 bags</span><span class="a mono hot">−$9.00</span></div>
+          <div class="dl"><span>Should have closed at</span><span class="mono">$205.50</span></div>
+          <div class="dl cnt"><span>Counted · Mika S.</span><span class="mono">$205.50</span></div>
+        </div>
+        <div class="day" data-k="k-day k-day-short">
+          <div class="dhead"><b>Tue, Oct 6</b><span class="st off">short $5.00</span></div>
+          <div class="dl first"><span>Opened at</span><span class="mono">$230.50</span></div>
+          <div class="dl"><span class="d">Sharpies + tape</span><span class="a mono hot">−$11.00</span></div>
+          <div class="dl"><span>Should have closed at</span><span class="mono">$219.50</span></div>
+          <div class="dl cnt"><span>Counted · Mika S.</span><span class="mono">$214.50</span></div>
+          <div class="dnote" data-k="k-day-note">“Counted twice, coins too. $5 under.”</div>
+        </div>
+        <div class="day" data-k="k-day">
+          <div class="dhead"><b>Mon, Oct 5</b><span class="st none">not counted</span></div>
+          <div class="dl first"><span>Opened at</span><span class="mono">$245.00</span></div>
+          <div class="dl"><span class="d">Batteries (AA)</span><span class="a mono hot">−$14.50</span></div>
+          <div class="dl"><span>Should have closed at</span><span class="mono">$230.50</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom bar -->
+  <div class="bar">
+    <div class="nochange" data-out="adding guard-cashin" data-k="k-nochange">Counted — no change
+      <span>records tonight’s count with the balance as it stands</span>
+    </div>
+    <div class="save" data-k="k-save">Save</div>
+  </div>
+
+  <!-- ── the confirm sheets ── -->
+  <div class="dim" data-in="closeout short-closeout uncounted">
+    <div class="sheet" data-k="k-sheet">
+      <div class="st close arch">Closing out Thu, Oct 8</div>
+      <div class="tbl">
+        <div class="tr"><span class="l">Opened at</span><span class="v mono">$205.50</span></div>
+        <div class="tr"><span class="l">In</span><span class="v mono green">+$40.00</span></div>
+        <div class="tr"><span class="l">Out</span><span class="v mono hot">-$28.00</span></div>
+        <div class="tr"><span class="l">Should be</span><span class="v mono">$217.50</span></div>
+        <div class="tr" data-k="k-youcounted"><span class="l">You counted</span>
+          <span class="v mono" data-in="closeout">$217.50</span>
+          <span class="v mono" data-in="short-closeout">$212.50</span>
+          <span class="v mono none" data-in="uncounted">not counted</span>
+        </div>
+      </div>
+      <p class="off" data-in="short-closeout" data-k="k-sheet-short">The box is $5.00 short.</p>
+      <p class="tight" data-in="short-closeout">That’s fine to record — the office would rather know. Check the coins, then tell them anything you noticed.</p>
+      <div class="inp noteinp" data-in="short-closeout" data-k="k-note">Counted twice, coins too. $5 under.</div>
+      <p class="last" data-k="k-tomorrow">
+        <span data-in="closeout">Tomorrow opens at <b>$217.50</b>, unless something is logged before then.</span>
+        <span data-in="short-closeout">Tomorrow opens at <b>$212.50</b>, unless something is logged before then.</span>
+        <span data-in="uncounted">Nobody counted the box tonight, so tomorrow opens at <b>$217.50</b> — the ledger’s figure, not a count.</span>
+        Your name goes on this.
+      </p>
+      <div class="btns">
+        <div class="btn quiet" data-k="k-sheet-back">Back</div>
+        <div class="btn go" data-k="k-closeout">Close out the night</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dim" data-in="guard-cashin">
+    <div class="sheet" data-k="k-guard-cashin">
+      <div class="st arch">Is this really money going <i>into</i> the box?</div>
+      <p>You’re adding <b class="green">+$205.00</b> as cash in — almost exactly tonight’s opening balance of $205.50.</p>
+      <p>The opening is carried for you. Only log cash <b>in</b> when someone physically <b>put money into the box</b>.</p>
+      <div class="btns">
+        <div class="btn quiet">That’s not right</div>
+        <div class="btn go">Yes, money went in</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dim" data-in="guard-edit">
+    <div class="sheet" data-k="k-guard-edit">
+      <div class="st arch">This was already recorded</div>
+      <p><b>Parking for client</b> — $20.00 is already saved, and the office can see it.</p>
+      <p>If the money moved again, add a <b>new</b> entry so both are on the record. Change this one only if it was typed wrong.</p>
+      <div class="btns">
+        <div class="btn quiet">Add a new entry</div>
+        <div class="btn danger">It was typed wrong</div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -7,7 +7,21 @@ Newest at the top of each group.*
 
 ## SOPs: walkthrough editions (Oct 7)
 
-- [ ] **Runner guide, Studio Manager SOP, Owner's page, then the main App guide** - same pattern as the Billing SOP: `docs/sop-build/` (drawn screens from the code, step copy in a content file, same engine), then an independent fact-check before Eli sees it. *(Oct 7)*
+- [x] ~~Runner guide~~ Shipped in v1.43.10 (walkthrough edition, phone layout, a Why on every step). *(Oct 12)*
+- [ ] **Studio Manager SOP, Owner's page, then the main App guide** - same pattern: `docs/sop-build/` (drawn screens from the code, step copy in a content file, same engine), then an independent fact-check before Eli sees it. *(Oct 7)*
+- [ ] **Runner guide: check it on a real iPhone in Safari.** Only tested in a phone-sized Chromium. *(Oct 12)*
+- [ ] **Runner guide: the food-receipts sheet is not drawn** - one step describes it in words. *(Oct 12)*
+
+## Found while fact-checking the runner guide (Oct 8) - not fixed, Eli's call
+
+- [ ] **Petty cash "Counted — no change" with an empty count box records "not counted"**, though the button says it "records tonight's count". The hub tile stays "Opened · count at close" and the office sees no closing count.
+- [ ] **Missed punch goes by the calendar day**: at 1 AM "Tonight" files under the new date. The time box needs a colon ("6pm" is refused) and reads "6:00" as AM. It also files with no studio (reads the retired remembered-studio key).
+- [ ] **Late submit leaves a night out silently**: on a session that is also on tonight, an earlier unsent night with no Arrived/Left is skipped by Submit with no message.
+- [ ] **Studio page date header** shows the new calendar date after midnight while the page is still on last night (until 8:50 AM).
+- [ ] **A red equipment pill raises no flag** for the office. Only the Needs Attention box does (and only from its words, on Save/Submit - a photo alone raises nothing).
+- [ ] **The studio page hint says "Everything here saves as you tap — no save button"**, which is not true for petty cash, stock or the work order.
+- [ ] **Not locked for runners**: the room dropdown in the day sheet, the food Budget amount and the food service fee %. The guide says leave them alone.
+- [ ] **"waive" (3% card fee) has no role limit** - any runner can waive it. The guide says only when the office says so.
 - [x] ~~Tenants: the Incidentals line reads "Late" in red until it is marked paid~~ Fixed in v1.43.9.
 - [x] ~~Paid rows in the hub keep showing a Balance and a growing Age~~ Fixed in v1.43.9.
 - [x] ~~Petty Cash page: studio / CSV / Print buttons may be near-invisible in dark~~ Fixed in v1.43.9.

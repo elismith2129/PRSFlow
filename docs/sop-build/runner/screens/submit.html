@@ -1,0 +1,239 @@
+<style>
+/* PRSFlo runner work order — drawn from components/calendar/WorkOrderPopup.tsx (mode="runner", phone layout) */
+.scr-submit{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);background:var(--c-srf);border-radius:12px;overflow:hidden;position:relative;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-submit *{box-sizing:border-box}
+.scr-submit .arch{font-family:'Archivo Black','Inter',system-ui,sans-serif;font-weight:400}
+.scr-submit .mono{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+.scr-submit .ph{color:var(--c-fg);opacity:.3;font-weight:400}
+/* top bar: back arrow + title, then Cancel / Save */
+.scr-submit .hd{background:var(--c-bg);padding:14px 12px;display:flex;align-items:center;gap:12px}
+.scr-submit .back{width:34px;height:34px;border-radius:99px;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh);font-size:15px;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.scr-submit .hd-x{min-width:0}
+.scr-submit .hd-t{font-size:16px;line-height:1.6}
+.scr-submit .hd-s{font-size:13px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-submit .acts{display:flex;align-items:center;gap:8px;padding:4px 12px 12px;background:var(--c-bg)}
+.scr-submit .soft,.scr-submit .btn{display:flex;align-items:center;justify-content:center;border-radius:99px;min-height:48px;padding:6px 13px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:var(--c-ctlsh)}
+.scr-submit .soft{flex:1 1 0;background:var(--c-bg);color:var(--c-fg)}
+.scr-submit .btn{flex:2 1 0;background:var(--c-ivory);color:#1b1a17}
+/* scrolling body + section cards */
+.scr-submit .body{padding:16px 8px;display:flex;flex-direction:column;gap:20px}
+.scr-submit .card{background:var(--c-wash);border-radius:20px;padding:14px 12px;min-width:0}
+.scr-submit .loz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+/* Session Info */
+.scr-submit .si-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.scr-submit .si-t{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-2)}
+.scr-submit .si-lock{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-submit .si-r{display:flex;gap:8px;margin-bottom:5px;align-items:center}
+.scr-submit .si-l{font-size:10px;color:var(--c-fg-2);min-width:60px;flex-shrink:0}
+.scr-submit .si-v{font-size:11px;color:var(--c-fg);min-width:0}
+.scr-submit .due{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.scr-submit .food{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.scr-submit .food-chip{font-size:10px;font-weight:800;letter-spacing:.04em;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:6px 14px;white-space:nowrap}
+.scr-submit .food-chip .mono{font-weight:400;margin-left:7px;font-size:12.5px}
+.scr-submit .food-btn{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 14px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.scr-submit .food-btn .mono{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%);font-size:12.5px;font-weight:400;letter-spacing:0}
+.scr-submit .food-btn i{font-style:normal;opacity:.5}
+.scr-submit .tel{display:inline-flex;align-items:center;gap:4px;background:var(--c-wash2);border-radius:99px;padding:2px 10px;font-size:10.5px;color:var(--c-fg);white-space:nowrap}
+/* Studio Time header + list/cards toggle */
+.scr-submit .st-h{display:flex;align-items:center;gap:10px}
+.scr-submit .st-h .loz{flex:1;min-width:0}
+.scr-submit .seg{display:inline-flex;background:var(--c-wash);border-radius:99px;padding:3px;gap:2px;flex-shrink:0;margin-bottom:12px}
+.scr-submit .seg span{display:flex;align-items:center;padding:4px 10px;border-radius:99px;color:var(--c-fg);opacity:.5;line-height:1}
+.scr-submit .seg span.on{opacity:1;background:var(--c-ivory);color:#1b1a17}
+.scr-submit .seg svg{display:block}
+/* day card */
+.scr-submit .day{background:var(--c-wash);border-radius:14px;padding:13px 12px;margin-bottom:9px;min-width:0}
+.scr-submit .day.lk{opacity:.62}
+.scr-submit .d1{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.scr-submit .d-room{font-size:15px;letter-spacing:-.01em;flex-shrink:0;white-space:nowrap}
+.scr-submit .d-mid{display:flex;align-items:center;gap:7px;min-width:0;flex:1;font-size:11.5px;font-weight:700;color:var(--c-fg-2);overflow:hidden;white-space:nowrap}
+.scr-submit .d-date{flex-shrink:0}
+.scr-submit .tag{display:block;font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:2px 7px;white-space:nowrap;line-height:1.4;background:var(--c-st-warm);color:var(--c-chip-ink);max-width:190px;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:0}
+.scr-submit .edit{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--c-wash2);color:var(--c-fg-2);border-radius:99px;padding:4px 11px;white-space:nowrap}
+.scr-submit .d-times{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--c-fg);margin-bottom:2px}
+.scr-submit .d-times .h{color:var(--c-fg-2)}
+.scr-submit .d-times .ot{color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%)}
+.scr-submit .d-staff{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-fg-2);margin-bottom:3px}
+.scr-submit .role{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--c-wash2);color:var(--c-fg)}
+.scr-submit .role.r2{color:var(--c-st-warm)}
+.scr-submit .pills{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.scr-submit .d-pills{margin:7px 0}
+.scr-submit .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;line-height:1.5;white-space:nowrap;background:var(--c-wash2);color:var(--c-fg);opacity:.45}
+.scr-submit .pill i{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5}
+.scr-submit .pill.ok{opacity:1;color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-submit .pill.ok i{opacity:1}
+.scr-submit .pill.bad{opacity:1;background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-submit .pill.bad i{opacity:1}
+.scr-submit .pill b{font-weight:800;opacity:.75}
+.scr-submit .d-song{font-size:11px;font-style:italic;color:var(--c-fg-3);margin:2px 0 8px}
+.scr-submit .d-song.has{color:var(--c-fg-2)}
+.scr-submit .d-tot{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--c-wash2);border-radius:8px;padding:5px 9px}
+.scr-submit .d-tot-l{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-submit .tnum{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:500;text-align:right;color:var(--c-fg)}
+.scr-submit .d-tot .tnum{font-size:12px;font-weight:700}
+.scr-submit .d-lock{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--c-fg-3);margin-top:6px}
+.scr-submit .sum{display:flex;justify-content:flex-end;padding:5px 4px 0}
+.scr-submit .sum-b{display:flex;flex-direction:column;align-items:flex-end;gap:3px;background:var(--c-wash2);border-radius:14px;padding:6px 12px}
+.scr-submit .sum-b .tot{font-weight:700}
+/* bare table inputs (c-tin c-tin-show) — 44px tall on a phone */
+.scr-submit .cin{padding:3px 0;display:flex;align-items:center;min-width:0}
+.scr-submit .cs{padding:3px 6px;display:flex;align-items:center;min-width:0;font-size:11px;font-weight:500}
+.scr-submit .tin{width:100%;min-width:0;min-height:44px;display:flex;align-items:center;padding:3px 6px;border-radius:6px;font-size:11px;font-weight:500;line-height:1.4;background:var(--c-wash2);color:var(--c-fg);white-space:nowrap;overflow:hidden}
+.scr-submit .tin.r{justify-content:flex-end}
+.scr-submit .tin.sel{justify-content:space-between;gap:6px}
+.scr-submit .tin.sel svg{flex-shrink:0;opacity:.6}
+.scr-submit .xb{font-size:14px;line-height:1;color:var(--c-fg-3)}
+.scr-submit .lnk{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--c-fg-2);display:inline-block}
+/* Rentals — a 540px table inside a card: it scrolls sideways on a phone */
+.scr-submit .rent-clip{overflow:hidden;position:relative}
+.scr-submit .rent-in{min-width:540px}
+.scr-submit .rg{display:grid;grid-template-columns:1fr 120px 110px 44px 65px 80px 24px}
+.scr-submit .th{padding:5px 6px;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45;display:flex;align-items:center;min-width:0;white-space:nowrap}
+.scr-submit .th.r{justify-content:flex-end}
+.scr-submit .rrow{background:var(--c-wash);border-radius:12px;margin-bottom:6px}
+.scr-submit .rent-f{display:flex;justify-content:space-between;align-items:center;padding:9px 4px 0}
+.scr-submit .rent-tot{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:var(--c-fg);background:var(--c-wash2);border-radius:99px;padding:5px 12px;white-space:nowrap}
+/* notes */
+.scr-submit .ta{width:100%;background:var(--c-wash);border-radius:5px;color:var(--c-fg);font-size:11px;padding:8px 10px;line-height:1.6}
+.scr-submit .ta .tph{color:var(--c-fg-3)}
+.scr-submit .na{background:var(--c-wash2);border-radius:20px;padding:14px 12px}
+.scr-submit .na-t{font-size:10px;color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+/* Payments */
+.scr-submit .pay{display:flex;flex-direction:column;gap:16px}
+.scr-submit .collect{background:var(--c-wash);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.scr-submit .col-h{display:flex;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:4px}
+.scr-submit .col-l{display:flex;align-items:baseline;gap:10px;padding:4px 6px;margin:0 -6px;border-radius:9px}
+.scr-submit .col-a{font-size:20px;letter-spacing:-.02em;min-width:100px;color:var(--c-fg);line-height:1.3;white-space:nowrap}
+.scr-submit .col-a.cod{color:var(--c-st-hot)}
+.scr-submit .col-a.zero{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-submit .col-how{font-size:11px;color:var(--c-fg-2);min-width:0}
+.scr-submit .col-how b{color:var(--c-fg)}
+.scr-submit .col-hist{font-size:10px;color:var(--c-fg-3);margin-top:6px;padding-top:6px;border-top:1px solid var(--c-wash2)}
+.scr-submit .prow{display:grid;grid-template-columns:1fr 96px 24px;align-items:center;background:var(--c-wash);border-radius:12px;margin-bottom:6px;min-height:46px;position:relative}
+.scr-submit .p-tw{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:4px 0;min-width:0}
+.scr-submit .p-twl{font-size:7.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--c-fg-3);padding:0 6px;white-space:nowrap}
+.scr-submit .p-x{display:flex;align-items:center;justify-content:center;padding:6px 6px}
+.scr-submit .p-amt{grid-column:1 / -1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;row-gap:0;padding:0 6px 3px;min-width:0}
+.scr-submit .p-fee{font-size:9.5px;color:var(--c-fg-2);white-space:nowrap}
+.scr-submit .p-fee u{color:var(--c-fg-3);font-weight:700;letter-spacing:.04em;margin-left:5px}
+.scr-submit .p-fee s{text-decoration:none;margin-left:6px;color:var(--c-fg-3)}
+.scr-submit .p-run{font-size:17px;letter-spacing:-.02em;white-space:nowrap;color:var(--c-fg)}
+.scr-submit .p-run.hot{color:var(--c-st-hot)}
+.scr-submit .p-run.nil{color:var(--c-fg-3);opacity:.35}
+.scr-submit .p-memo{grid-column:1 / -1}
+.scr-submit .p-memo.half{grid-column:1 / 2}
+.scr-submit .p-l4{grid-column:2 / -1}
+.scr-submit .p-warn{grid-column:1 / -1;padding:0 12px 8px;font-size:10.5px;line-height:1.45;color:var(--c-st-hot)}
+.scr-submit .p-fix{color:var(--c-fg);font-weight:700;letter-spacing:.04em;margin-left:8px;text-decoration:underline;white-space:nowrap;display:inline-block}
+.scr-submit .p-add{padding:9px 4px 0}
+.scr-submit .tots{border-radius:12px;overflow:hidden;background:var(--c-wash);padding:0 6px 6px}
+.scr-submit .trow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px}
+.scr-submit .trow .l{font-size:10px;color:var(--c-fg-2)}
+.scr-submit .trow .v{font-size:11px;color:var(--c-fg);white-space:nowrap}
+.scr-submit .trow.b .v{font-size:13px;font-weight:700}
+.scr-submit .trow .v.ok{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-submit .trow .v.hot{color:var(--c-st-hot)}
+/* pinned Submit bar (last block; in the app it is pinned to the bottom of the screen) */
+.scr-submit .foot{padding:10px 12px 14px;background:var(--c-bg)}
+.scr-submit .go{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 11px;background:var(--c-st-booked);color:var(--c-chip-ink);font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;box-shadow:var(--c-ctlsh);filter:saturate(.82) brightness(.88)}
+.scr-submit .foot-s{text-align:center;font-size:9.5px;color:var(--c-fg-3);margin-top:6px}
+
+.scr-submit .body{padding-top:0}
+.scr-submit .card.cut{border-radius:0 0 20px 20px;padding-top:10px}
+.scr-submit .ovl{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;padding:12px;z-index:6}
+.scr-submit .stop{width:100%;background:var(--c-bg);border-radius:20px;padding:16px 14px 14px;box-shadow:var(--c-softsh)}
+.scr-submit .stop-t{font-size:17px;letter-spacing:-.02em;color:var(--c-st-hot);display:flex;align-items:center;gap:8px;line-height:1.4}
+.scr-submit .stop-t i{width:22px;height:22px;border-radius:99px;background:var(--c-st-hot);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Inter',system-ui,sans-serif;font-style:normal;font-weight:800;font-size:13px;flex-shrink:0;letter-spacing:0}
+.scr-submit .stop-1{font-size:12.5px;color:var(--c-fg-2);line-height:1.55;margin:7px 0 4px}
+.scr-submit .stop-2{font-size:12px;color:var(--c-fg-3);line-height:1.55;margin-bottom:10px}
+.scr-submit .stop .go{min-height:46px;font-size:12.5px}
+
+.scr-submit .v-bloc-defa-late{display:none}
+.scr-submit:not([data-state="done"]):not([data-state="locked"]) .v-bloc-defa-late{display:contents}
+.scr-submit .v-done{display:none}
+.scr-submit[data-state="done"] .v-done{display:contents}
+.scr-submit .v-lock{display:none}
+.scr-submit[data-state="locked"] .v-lock{display:contents}
+.scr-submit .v-bloc{display:none}
+.scr-submit[data-state="blocked"] .v-bloc{display:contents}
+.scr-submit .v-bloc-defa{display:none}
+.scr-submit:not([data-state="done"]):not([data-state="late"]):not([data-state="locked"]) .v-bloc-defa{display:contents}
+.scr-submit .v-late{display:none}
+.scr-submit[data-state="late"] .v-late{display:contents}
+.scr-submit .v-bloc-defa-done{display:none}
+.scr-submit:not([data-state="late"]):not([data-state="locked"]) .v-bloc-defa-done{display:contents}
+.scr-submit .v-bloc-defa-done-late{display:none}
+.scr-submit:not([data-state="locked"]) .v-bloc-defa-done-late{display:contents}
+</style>
+<div class="scr scr-submit">
+<div class="hd" data-k="s-top">
+  <span class="back" data-k="s-back">←</span>
+  <div class="hd-x"><div class="hd-t arch">Work Order · WO-1310</div><div class="hd-s">Jo Marlowe · October 6th, 2026</div></div>
+</div>
+<div class="acts" data-k="s-acts"><span class="soft" data-k="s-cancel">Cancel</span><span class="btn" data-k="s-save">Save</span></div>
+<div class="body">
+  <div class="card cut" data-k="s-days">
+    <div class="v-bloc-defa-done-late"><div class="day" data-k="s-day">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Wed, Oct 7</span><span class="tag">Submitted · Mika S. · 1:14 AM</span></span><span class="edit">✎ Edit</span></div>
+  <div class="d-times">12:00 PM – 1:00 AM<span class="h"> · 13h</span><span class="ot"> · OT 1h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — guitars, keys</div>
+  <div class="d-tot"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2625.00</span></div>
+  
+</div></div>
+    <div class="v-lock"><div class="day lk" data-k="s-day s-locked">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Wed, Oct 7</span><span class="tag">Submitted · Mika S. · 1:14 AM</span></span><span class="edit">👁 View</span></div>
+  <div class="d-times">12:00 PM – 1:00 AM<span class="h"> · 13h</span><span class="ot"> · OT 1h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — guitars, keys</div>
+  <div class="d-tot"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2625.00</span></div>
+  <div class="d-lock">🔒 Approved by the office — locked</div>
+</div></div>
+    <div class="v-bloc-defa-late"><div class="day" data-k="s-day s-tonight">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Thu, Oct 8</span></span><span class="edit">✎ Edit</span></div>
+  <div class="d-times">12:00 PM – 12:30 AM<span class="h"> · 12.5h</span><span class="ot"> · OT 0.5h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — lead vocals, comps</div>
+  <div class="d-tot"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2512.50</span></div>
+  
+</div></div>
+    <div class="v-done"><div class="day" data-k="s-day s-tonight s-done">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Thu, Oct 8</span><span class="tag" data-k="s-tag">Submitted · Terren L. · 12:52 AM</span></span><span class="edit">✎ Edit</span></div>
+  <div class="d-times">12:00 PM – 12:30 AM<span class="h"> · 12.5h</span><span class="ot"> · OT 0.5h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — lead vocals, comps</div>
+  <div class="d-tot"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2512.50</span></div>
+  
+</div></div>
+    <div class="v-lock"><div class="day lk" data-k="s-day s-tonight s-locked">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Thu, Oct 8</span><span class="tag">Submitted · Terren L. · 12:52 AM</span></span><span class="edit" data-k="s-view">👁 View</span></div>
+  <div class="d-times">12:00 PM – 12:30 AM<span class="h"> · 12.5h</span><span class="ot"> · OT 0.5h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — lead vocals, comps</div>
+  <div class="d-tot"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2512.50</span></div>
+  <div class="d-lock" data-k="s-lock-line">🔒 Approved by the office — locked</div>
+</div></div>
+    <div class="sum"><div class="sum-b"><span class="tnum">Studio: $4725.00</span><span class="tnum">Eng: $2812.50</span><span class="tnum tot">Total: $7537.50</span></div></div>
+  </div>
+</div>
+<div class="foot" data-k="s-bar">
+  <div class="v-bloc-defa"><div class="go" data-k="s-submit">Submit today</div></div>
+  <div class="v-late"><div class="go" data-k="s-submit s-late">Submit Thu, Oct 8</div></div>
+  <div class="v-done"><div class="go" data-k="s-submit s-update">Update submission</div></div>
+  <div class="v-lock"><div class="go" data-k="s-submit s-save-only">Save</div></div>
+  <div class="foot-s" data-k="s-sub"><span class="v-bloc-defa-done">Sends today’s times to the office · nothing is invoiced yet</span><span class="v-late">Sends the times to the office · nothing is invoiced yet</span><span class="v-lock">Nothing left to submit — this saves your changes</span></div>
+</div>
+<div class="v-bloc"><div class="ovl">
+  <div class="stop" data-k="s-blocked">
+    <div class="stop-t arch"><i>!</i>Arrived and left first</div>
+    <div class="stop-1">Fill in <b>Client actually here</b> for <b>B</b> before you submit — or tap <b>No show</b> if they never came.</div>
+    <div class="stop-2">It’s the one thing nobody can work out in the morning. The billed times stay exactly as booked — this is only what actually happened.</div>
+    <div class="go" data-k="s-blocked-go">Go fill it in</div>
+  </div>
+</div></div>
+</div>

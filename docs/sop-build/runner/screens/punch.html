@@ -1,0 +1,127 @@
+<style>
+.scr-punch{font:400 14px/1.5 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);background:var(--c-bg);-webkit-font-smoothing:antialiased;text-align:left;overflow:hidden}
+.scr-punch *{box-sizing:border-box;margin:0;padding:0}
+.scr-punch .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none}
+.scr-punch .lab{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-punch .srf{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:18px;padding:13px 14px}
+
+/* header (real padding 14px 16px 10px; the stage supplies 14px of the gutter) */
+.scr-punch .hd{display:flex;align-items:center;gap:11px;padding:14px 2px 10px;background:var(--c-bg)}
+.scr-punch .back{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;box-shadow:2px 2px 7px rgba(0,0,0,.38),-1px -1px 3px rgba(255,255,255,.03)}
+.scr-punch:is([data-theme="light"] *) .back{box-shadow:2px 2px 6px rgba(42,39,34,.09),-2px -2px 6px rgba(255,255,255,.7)}
+.scr-punch .ttl{min-width:0}
+.scr-punch .ttl .nm{font-size:18px;letter-spacing:-.02em;line-height:1.15}
+.scr-punch .ttl .sub{font-size:11.5px;opacity:.5}
+
+.scr-punch .bd{padding:4px 0 28px;display:flex;flex-direction:column;gap:14px}
+.scr-punch .fld{display:block}
+.scr-punch .fld > .lab{margin-bottom:8px}
+.scr-punch .fld.tight > .lab{margin-bottom:6px}
+.scr-punch .segs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+/* the real buttons set `font: inherit` AFTER fontSize/fontWeight, so they render at the page's 14px / 400 */
+.scr-punch .seg{padding:9px 13px;border-radius:99px;font-size:14px;font-weight:400;min-height:38px;background:var(--c-wash);color:var(--c-fg);opacity:.55;display:inline-flex;align-items:center;line-height:1.3;white-space:nowrap}
+.scr-punch .seg.on{background:var(--c-wash2);opacity:1}
+.scr-punch .well{display:flex;align-items:center;gap:7px;background:var(--c-wash);border-radius:12px;padding:0 11px;min-height:44px;margin-bottom:12px}
+.scr-punch .well.tall{min-height:56px;margin-bottom:14px}
+.scr-punch .well .in{flex:1;min-width:0;font-size:14px;color:var(--c-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-punch .well .in.ph{opacity:.4}
+.scr-punch .caret{display:inline-block;width:1.5px;height:17px;background:var(--c-fg);vertical-align:-3px;margin-left:1px}
+.scr-punch .msg{display:block;font-size:12px;font-weight:700;margin-bottom:10px}
+.scr-punch .msg.err{color:var(--c-st-hot)}
+.scr-punch .msg.ok{color:var(--c-st-booked)}
+.scr-punch .send{width:100%;min-height:50px;border-radius:14px;background:var(--c-wash2);color:var(--c-fg);font-size:13.5px;font-weight:800;box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center}
+.scr-punch .fine{display:block;font-size:10.5px;opacity:.45;line-height:1.5;margin-top:9px}
+.scr-punch .fine b{font-weight:700}
+
+.scr-punch .rec > .lab{margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.scr-punch .band{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;text-transform:none;letter-spacing:0}
+.scr-punch .band .dot{width:8px;height:8px;border-radius:99px;background:currentColor}
+.scr-punch .band.clean{color:var(--c-st-booked)}
+.scr-punch .band.warm{color:var(--c-st-warm)}
+.scr-punch .none{font-size:12.5px;opacity:.5}
+.scr-punch .rrow{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:12px}
+.scr-punch .rrow .what{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-punch .rrow .what b{font-weight:700}
+.scr-punch .rrow .what span{opacity:.55}
+.scr-punch .rrow .cls{font-size:10px;opacity:.55;flex-shrink:0}
+.scr-punch .pill{display:inline-flex;align-items:center;flex-shrink:0;border-radius:99px;padding:4px 11px;font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--c-chip-ink);background:var(--c-st-warm);box-shadow:1.5px 1.5px 4px rgba(0,0,0,.35)}
+.scr-punch:is([data-theme="light"] *) .pill{box-shadow:1.5px 1.5px 4px rgba(42,39,34,.14)}
+.scr-punch:not(:is([data-theme="light"] *)) .pill{filter:saturate(.82) brightness(.88)}
+
+/* states: default = being filled in · error = Submit pressed with no time · sent = after sending */
+.scr-punch:not([data-state="sent"]) .only-sent{display:none}
+.scr-punch:not([data-state="error"]) .only-error{display:none}
+.scr-punch[data-state="sent"] .not-sent,
+.scr-punch[data-state="error"] .not-error{display:none}
+.scr-punch:not([data-state="sent"]):not([data-state="error"]) .only-blank{display:none}
+</style>
+<div class="scr scr-punch">
+
+ <div class="hd">
+  <div class="back" data-k="u-back">←</div>
+  <div class="ttl">
+   <div class="nm arch">Missed a punch</div>
+   <div class="sub" data-k="u-who">Filing as Terren L. · goes straight to the manager queue</div>
+  </div>
+ </div>
+
+ <div class="bd">
+
+  <div class="srf">
+   <div class="fld" data-k="u-shift">
+    <div class="lab">Which shift</div>
+    <div class="segs">
+     <span class="seg on">Tonight</span>
+     <span class="seg">Yesterday</span>
+     <span class="seg">Other day</span>
+    </div>
+   </div>
+
+   <div class="fld" data-k="u-kind">
+    <div class="lab">What was missed</div>
+    <div class="segs">
+     <span class="seg on">Clock in</span>
+     <span class="seg">Clock out</span>
+     <span class="seg">Meal out</span>
+     <span class="seg">Meal in</span>
+    </div>
+   </div>
+
+   <div class="fld tight" data-k="u-time">
+    <div class="lab">The time it should say</div>
+    <div class="well">
+     <span class="in not-sent not-error">5:45 PM<i class="caret"></i></span>
+     <span class="in ph only-blank">6:00 PM</span>
+    </div>
+   </div>
+
+   <div class="fld tight" data-k="u-reason">
+    <div class="lab">Note (optional)</div>
+    <div class="well tall">
+     <span class="in not-sent">Went straight into a load-in</span>
+     <span class="in ph only-sent">Got pulled into load-in on the way in</span>
+    </div>
+   </div>
+
+   <span class="msg err only-error" data-k="u-error">Enter the time the punch should say — like 6:00 PM.</span>
+   <span class="msg ok only-sent" data-k="u-sent">Sent 6:12 PM — it's in the manager queue.</span>
+
+   <div class="send" data-k="u-send">Submit as Terren L.</div>
+   <span class="fine" data-k="u-fineprint">This files under <b>Terren L.</b> — if that's not you, sign out on the hub and log in with your own PIN first. It's timestamped and kept. Same-day reports are the good kind: report it the night it happens.</span>
+  </div>
+
+  <div class="srf rec" data-k="u-record">
+   <div class="lab">Your last 90 days
+    <span class="band clean not-sent" data-k="u-band"><span class="dot"></span>Clean</span>
+    <span class="band warm only-sent" data-k="u-band"><span class="dot"></span>1 miss</span>
+   </div>
+   <div class="none not-sent">No missed punches. Keep it that way.</div>
+   <div class="rrow only-sent" data-k="u-record-row">
+    <div class="what"><b>Clock in</b><span> · 2026-10-08 · 5:45 PM</span></div>
+    <span class="cls">Same day</span>
+    <span class="pill">pending</span>
+   </div>
+  </div>
+
+ </div>
+</div>

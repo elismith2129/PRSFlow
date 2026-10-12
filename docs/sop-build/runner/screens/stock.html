@@ -1,0 +1,280 @@
+<style>
+/* Runner · Stock — app/runner/[studio]/stock/page.tsx + components/runner/SectionNotes.tsx
+   (state "done" = the runner hub's tiles, app/runner/[studio]/page.tsx — Save sends you back there) */
+.scr-stock{position:relative;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--c-fg);background:var(--c-bg);overflow:hidden;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-stock *{box-sizing:border-box;margin:0;padding:0}
+.scr-stock .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-stock .mono{font-family:'DM Mono',ui-monospace,'SFMono-Regular',Menlo,monospace}
+
+/* ── state switches ── */
+.scr-stock:not([data-state]) [data-in]:not([data-in~="default"]),
+.scr-stock[data-state=""] [data-in]:not([data-in~="default"]),
+.scr-stock[data-state="default"] [data-in]:not([data-in~="default"]),
+.scr-stock[data-state="low"] [data-in]:not([data-in~="low"]),
+.scr-stock[data-state="done"] [data-in]:not([data-in~="done"]),
+.scr-stock[data-state="landing"] [data-in]:not([data-in~="landing"]){display:none !important}
+.scr-stock[data-state="low"] [data-out~="low"],
+.scr-stock[data-state="done"] [data-out~="done"],
+.scr-stock[data-state="landing"] [data-out~="landing"]{display:none !important}
+
+/* ── header ── */
+.scr-stock .head{padding:14px 16px 10px;background:var(--c-bg)}
+.scr-stock .hrow{display:flex;align-items:center;gap:11px}
+.scr-stock .back{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1.5;box-shadow:2px 2px 7px rgba(0,0,0,.38),-1px -1px 3px rgba(255,255,255,.03)}
+.scr-stock:is([data-theme="light"] *) .back{box-shadow:2px 2px 6px rgba(42,39,34,.09),-2px -2px 6px rgba(255,255,255,.7)}
+.scr-stock .title{font-size:18px;letter-spacing:-.02em;line-height:1.15}
+.scr-stock .sub{font-size:11.5px;opacity:.5}
+.scr-stock .sub .lowc{display:inline-block;color:var(--c-st-warm);font-weight:700}
+.scr-stock .sub .prog{display:inline-block;font-size:12.5px;font-weight:700;color:var(--c-st-warm)}
+.scr-stock .search{display:flex;align-items:center;width:100%;background:var(--c-wash);border-radius:10px;padding:9px 12px;margin-top:10px;font-size:12.5px;line-height:1.5;color:#9ca3af;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.scr-stock:is([data-theme="light"] *) .search{box-shadow:none}
+
+/* ── landing: two big buttons ── */
+.scr-stock .landing{padding:10px 14px 24px;display:flex;flex-direction:column;gap:12px}
+.scr-stock .big{width:100%;min-height:96px;border-radius:18px;padding:18px 20px;color:var(--c-fg);background:var(--c-srf,var(--c-wash2));box-shadow:var(--c-softsh);display:flex;align-items:center;gap:14px}
+.scr-stock .big.dim{opacity:.5}
+.scr-stock .big .tx{flex:1;min-width:0}
+.scr-stock .big .bt{display:block;font-size:20px;letter-spacing:-.02em;line-height:1.2}
+.scr-stock .big .bs{display:block;font-size:11px;opacity:.55;margin-top:3px}
+.scr-stock .big .chev{opacity:.35;font-size:16px;flex-shrink:0}
+
+/* ── group-by toggle ── */
+.scr-stock .groupby{padding:2px 12px 6px;display:flex;align-items:center;gap:7px}
+.scr-stock .groupby .gl{font-size:9.5px;opacity:.4;letter-spacing:.06em;text-transform:uppercase}
+.scr-stock .seg{display:flex;gap:3px;background:var(--c-wash);border-radius:9px;padding:3px}
+.scr-stock .seg span{display:block;border-radius:7px;padding:5px 12px;font-size:11px;line-height:1.5;font-weight:400;color:var(--c-fg);opacity:.55}
+.scr-stock .seg span.on{font-weight:700;background:var(--c-fg);color:var(--c-bg);opacity:1}
+
+/* ── general notes (SectionNotes) ── */
+.scr-stock .noteswrap{padding:2px 12px 8px}
+.scr-stock .notes{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;padding:11px 12px}
+.scr-stock .notes .nh{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+.scr-stock .notes .nl{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;opacity:.55}
+.scr-stock .notes .ns{margin-left:auto;font-size:9.5px;font-weight:700;opacity:.4}
+.scr-stock .notes .ta{width:100%;min-height:54px;background:var(--c-wash);border-radius:10px;padding:9px 11px;color:var(--c-fg);font-size:12.5px;line-height:1.55;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.scr-stock:is([data-theme="light"] *) .notes .ta{box-shadow:none}
+.scr-stock .notes .ta.ph{color:#9ca3af}
+
+/* ── list ── */
+.scr-stock .list{padding:4px 12px}
+.scr-stock .group{margin-bottom:6px;background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;overflow:hidden}
+.scr-stock .ghead{display:flex;align-items:center;gap:8px;padding:11px 12px}
+.scr-stock .ghead .gt{flex:1;min-width:0;font-size:12px;font-weight:800;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-stock .ghead .gc{font-size:10px;opacity:.5;flex-shrink:0}
+.scr-stock .ghead .ga{opacity:.4;font-size:10px;flex-shrink:0}
+.scr-stock .rows{padding:0 6px 8px}
+.scr-stock .item{background:var(--c-wash);border-radius:9px;margin-bottom:2px;padding:6px 8px}
+.scr-stock .irow{display:flex;align-items:center;gap:8px}
+.scr-stock .name{display:block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;font-weight:600}
+.scr-stock .name .tg{font-size:9.5px;opacity:.45;font-weight:400;margin-left:6px}
+.scr-stock .name .pen{font-size:9.5px;opacity:.5;margin-left:6px}
+.scr-stock .last{display:block;flex-shrink:0;text-align:right;line-height:1.1;opacity:.45}
+.scr-stock .last .q{font-size:11.5px;display:block}
+.scr-stock .last .d{font-size:7.5px;letter-spacing:.02em;display:block}
+.scr-stock .qty{display:flex;align-items:center;justify-content:center;width:46px;flex-shrink:0;background:var(--c-wash2);border-radius:8px;padding:6px 4px;font-size:14px;line-height:1.5;color:var(--c-fg);box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.scr-stock:is([data-theme="light"] *) .qty{box-shadow:none}
+.scr-stock .qty.ph{color:#9ca3af}
+.scr-stock .tog{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;min-width:42px;min-height:28px;border-radius:99px;padding:0 8px;font-size:9px;font-weight:800;letter-spacing:.04em;line-height:1.1;text-align:center}
+.scr-stock .tog.ok{background:var(--c-wash2);color:var(--c-fg);opacity:.6}
+.scr-stock .tog.low{background:var(--c-st-warm);color:var(--c-chip-ink)}
+.scr-stock .tog.inh{background:transparent;color:var(--c-st-warm);border:1.5px dashed var(--c-st-warm)}
+.scr-stock .tog.inh span{display:block;font-size:7px;font-weight:600;letter-spacing:0;opacity:.85}
+.scr-stock .more{margin-top:7px;display:flex;flex-direction:column;gap:6px}
+.scr-stock .inote{width:100%;background:var(--c-wash2);border-radius:8px;padding:6px 9px;font-size:14px;line-height:1.5;color:var(--c-fg);box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.scr-stock:is([data-theme="light"] *) .inote{box-shadow:none}
+.scr-stock .inote.ph{color:#9ca3af}
+.scr-stock .past{font-size:10px;opacity:.55;line-height:1.7;padding:0 2px}
+.scr-stock .past span{display:inline-block;margin-right:12px;white-space:nowrap}
+.scr-stock .missing{margin-top:10px;background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px}
+.scr-stock .missing .mb{display:block;color:var(--c-fg);opacity:.6;font-size:12px;font-weight:700;padding:2px;line-height:1.5}
+
+/* ── bottom bar (pinned to the viewport bottom in the app) ── */
+.scr-stock .bar{padding:12px 14px 16px;margin-top:8px;background:linear-gradient(to top,var(--c-bg) 68%,transparent)}
+.scr-stock .save{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border-radius:14px;background:var(--c-wash2);color:var(--c-fg);font-size:14px;font-weight:800;box-shadow:var(--c-softsh)}
+
+/* ── after Save: the runner hub's tiles ── */
+.scr-stock .hub{padding:16px 14px 20px}
+.scr-stock .clabel{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center}
+.scr-stock .clabel .lt{opacity:.45}
+.scr-stock .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none;opacity:.45}
+.scr-stock .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.scr-stock .tile{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:18px;padding:13px 14px;min-height:72px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.scr-stock .tile.soon{opacity:.45;box-shadow:none;background:var(--c-wash)}
+.scr-stock .tile .tl{font-size:12.5px;font-weight:700}
+.scr-stock .tile .ts{font-size:10px;margin-top:4px;opacity:.45}
+.scr-stock .tile .ts.done{color:var(--c-st-booked);opacity:1;font-weight:700}
+.scr-stock .tile .ts.warm{color:var(--c-st-warm);opacity:1;font-weight:700}
+</style>
+<div class="scr scr-stock">
+
+  <!-- ═══ the stock page ═══ -->
+  <div data-out="done">
+
+    <div class="head" data-k="t-head">
+      <div class="hrow">
+        <div class="back">←</div>
+        <div>
+          <div class="title arch"><span data-out="landing">PRS Stock</span><span data-in="landing">Stock</span></div>
+          <div class="sub">Paramount<span class="lowc" data-k="t-lowcount">&nbsp;· <span data-out="low">1 low</span><span data-in="low">2 low</span></span><span class="prog mono" data-out="landing" data-k="t-progress">&nbsp;· <span data-out="low">5/98</span><span data-in="low">6/98</span> counted</span></div>
+        </div>
+      </div>
+      <div class="search" data-out="landing" data-k="t-search">Search stock…</div>
+    </div>
+
+    <!-- landing (Paramount only: it has an Office list too) -->
+    <div class="landing" data-in="landing">
+      <div class="big" data-k="t-landing-stock">
+        <span class="tx">
+          <span class="bt arch">PRS Stock</span>
+          <span class="bs">Nightly · check PRS-X items daily · 0/98 counted · 1 low</span>
+        </span>
+        <span class="chev">›</span>
+      </div>
+      <div class="big dim" data-k="t-landing-office">
+        <span class="tx">
+          <span class="bt arch">Office</span>
+          <span class="bs">Wednesdays only · 0/36 counted</span>
+        </span>
+        <span class="chev">›</span>
+      </div>
+    </div>
+
+    <!-- group by -->
+    <div class="groupby" data-out="landing" data-k="t-groupby">
+      <span class="gl">Group by</span>
+      <div class="seg"><span class="on">Location</span><span>Type</span></div>
+    </div>
+
+    <!-- general notes -->
+    <div class="noteswrap" data-out="landing">
+      <div class="notes" data-k="t-notes">
+        <div class="nh"><span class="nl">General notes</span><span class="ns"><span data-out="low">Saves by itself</span><span data-in="low">Saved</span></span></div>
+        <div class="ta ph" data-out="low">Anything the office should know about this list…</div>
+        <div class="ta" data-in="low">Milk and K-Cups won't last the weekend.</div>
+      </div>
+    </div>
+
+    <!-- the list -->
+    <div class="list" data-out="landing">
+
+      <div class="group">
+        <div class="ghead" data-k="t-group">
+          <span class="gt">Fridge</span>
+          <span class="gc mono"><span data-out="low">4</span><span data-in="low">4 · 1 low</span></span>
+          <span class="ga">▾</span>
+        </div>
+        <div class="rows">
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name" data-k="t-name">Chobani Sweet Cream Creamer<span class="tg">PRS-X</span></span>
+              <span class="last mono" data-k="t-last"><span class="q">2</span><span class="d">10/7</span></span>
+              <div class="qty" data-k="t-qty">2</div>
+              <div class="tog ok" data-k="t-ok">OK</div>
+            </div>
+          </div>
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name">Mini Half n Half<span class="tg">PRS-X</span></span>
+              <span class="last mono"><span class="q">1</span><span class="d">10/7</span></span>
+              <div class="qty" data-k="t-qty">1</div>
+              <div class="tog ok" data-k="t-ok">OK</div>
+            </div>
+          </div>
+          <div class="item" data-k="t-item t-item-open">
+            <div class="irow">
+              <span class="name">1/2 Gallon 2% Milk<span class="tg">PRS-X</span></span>
+              <span class="last mono"><span class="q">1</span><span class="d">10/7</span></span>
+              <div class="qty" data-k="t-qty">0.5</div>
+              <div class="tog ok" data-out="low" data-k="t-ok">OK</div>
+              <div class="tog low" data-in="low" data-k="t-low">LOW</div>
+            </div>
+            <div class="more">
+              <div class="inote ph" data-out="low" data-k="t-note">Notes</div>
+              <div class="inote" data-in="low" data-k="t-note">Half a carton left</div>
+              <div class="past mono" data-k="t-history"><span>10/7: 1</span><span>10/6: 2</span><span>10/5: 1 · LOW</span><span>10/4: 2</span></div>
+            </div>
+          </div>
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name">Bottled Water<span class="tg">2 cases</span></span>
+              <span class="last mono"><span class="q">3</span><span class="d">10/7</span></span>
+              <div class="qty" data-k="t-qty">2</div>
+              <div class="tog ok" data-k="t-ok">OK</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="ghead" data-k="t-group">
+          <span class="gt">Black Bin</span>
+          <span class="gc mono">4 · 1 low</span>
+          <span class="ga">▾</span>
+        </div>
+        <div class="rows">
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name">Plain Bagels</span>
+              <span class="last mono"><span class="q">6</span><span class="d">10/7</span></span>
+              <div class="qty" data-k="t-qty">4</div>
+              <div class="tog ok" data-k="t-ok">OK</div>
+            </div>
+          </div>
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name">Everything Bagels</span>
+              <span class="last mono"><span class="q">4</span><span class="d">10/7</span></span>
+              <div class="qty ph" data-k="t-qty">Qty</div>
+              <div class="tog ok" data-k="t-ok">OK</div>
+            </div>
+          </div>
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name">Cinnamon Bagels</span>
+              <span class="last mono"><span class="q">5</span><span class="d">10/7</span></span>
+              <div class="qty ph" data-k="t-qty">Qty</div>
+              <div class="tog ok" data-k="t-ok">OK</div>
+            </div>
+          </div>
+          <div class="item" data-k="t-item">
+            <div class="irow">
+              <span class="name">Pike Place K-Cups<span class="tg">2 boxes</span></span>
+              <span class="last mono"><span class="q">1</span><span class="d">10/7</span></span>
+              <div class="qty ph" data-out="low" data-k="t-qty">Qty</div>
+              <div class="qty" data-in="low" data-k="t-qty">1</div>
+              <div class="tog inh" data-out="low" data-k="t-inherited">LOW<span>since 10/6</span></div>
+              <div class="tog low" data-in="low" data-k="t-low">LOW</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group"><div class="ghead" data-k="t-group"><span class="gt">Kitchen</span><span class="gc mono">22</span><span class="ga">▸</span></div></div>
+      <div class="group"><div class="ghead" data-k="t-group"><span class="gt">Cleaning Closet</span><span class="gc mono">14</span><span class="ga">▸</span></div></div>
+      <div class="group"><div class="ghead" data-k="t-group"><span class="gt">Lounge</span><span class="gc mono">11</span><span class="ga">▸</span></div></div>
+      <div class="group"><div class="ghead" data-k="t-group"><span class="gt">Bathrooms</span><span class="gc mono">12</span><span class="ga">▸</span></div></div>
+      <div class="group"><div class="ghead" data-k="t-group"><span class="gt">Back Storage</span><span class="gc mono">16</span><span class="ga">▸</span></div></div>
+      <div class="group"><div class="ghead" data-k="t-group"><span class="gt">Front Desk</span><span class="gc mono">15</span><span class="ga">▸</span></div></div>
+
+      <div class="missing" data-k="t-missing"><span class="mb">Missing an item? Tell the office ›</span></div>
+    </div>
+
+    <div class="bar" data-out="landing">
+      <div class="save" data-k="t-submit">Save stock list</div>
+    </div>
+  </div>
+
+  <!-- ═══ after Save: back on the runner hub — the tiles ═══ -->
+  <div class="hub" data-in="done">
+    <div class="clabel"><span class="lt">Tonight</span><span class="hint">?</span></div>
+    <div class="tiles">
+      <div class="tile"><span class="tl">Opening checklist</span><span class="ts done">Submitted</span></div>
+      <div class="tile"><span class="tl">Closing checklist</span><span class="ts">Not started</span></div>
+      <div class="tile soon"><span class="tl">Mic inventory</span><span class="ts">Coming soon</span></div>
+      <div class="tile"><span class="tl">Petty cash</span><span class="ts warm">Opened · count at close</span></div>
+      <div class="tile" data-k="t-submitted"><span class="tl">Stock list</span><span class="ts done">Submitted</span></div>
+      <div class="tile"><span class="tl">Memos</span><span class="ts done">All read</span></div>
+    </div>
+  </div>
+
+</div>

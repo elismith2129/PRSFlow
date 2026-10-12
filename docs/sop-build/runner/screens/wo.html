@@ -1,0 +1,280 @@
+<style>
+/* PRSFlo runner work order — drawn from components/calendar/WorkOrderPopup.tsx (mode="runner", phone layout) */
+.scr-wo{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);background:var(--c-srf);border-radius:12px;overflow:hidden;position:relative;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-wo *{box-sizing:border-box}
+.scr-wo .arch{font-family:'Archivo Black','Inter',system-ui,sans-serif;font-weight:400}
+.scr-wo .mono{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+.scr-wo .ph{color:var(--c-fg);opacity:.3;font-weight:400}
+/* top bar: back arrow + title, then Cancel / Save */
+.scr-wo .hd{background:var(--c-bg);padding:14px 12px;display:flex;align-items:center;gap:12px}
+.scr-wo .back{width:34px;height:34px;border-radius:99px;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh);font-size:15px;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.scr-wo .hd-x{min-width:0}
+.scr-wo .hd-t{font-size:16px;line-height:1.6}
+.scr-wo .hd-s{font-size:13px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-wo .acts{display:flex;align-items:center;gap:8px;padding:4px 12px 12px;background:var(--c-bg)}
+.scr-wo .soft,.scr-wo .btn{display:flex;align-items:center;justify-content:center;border-radius:99px;min-height:48px;padding:6px 13px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:var(--c-ctlsh)}
+.scr-wo .soft{flex:1 1 0;background:var(--c-bg);color:var(--c-fg)}
+.scr-wo .btn{flex:2 1 0;background:var(--c-ivory);color:#1b1a17}
+/* scrolling body + section cards */
+.scr-wo .body{padding:16px 8px;display:flex;flex-direction:column;gap:20px}
+.scr-wo .card{background:var(--c-wash);border-radius:20px;padding:14px 12px;min-width:0}
+.scr-wo .loz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+/* Session Info */
+.scr-wo .si-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.scr-wo .si-t{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-2)}
+.scr-wo .si-lock{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-wo .si-r{display:flex;gap:8px;margin-bottom:5px;align-items:center}
+.scr-wo .si-l{font-size:10px;color:var(--c-fg-2);min-width:60px;flex-shrink:0}
+.scr-wo .si-v{font-size:11px;color:var(--c-fg);min-width:0}
+.scr-wo .due{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.scr-wo .food{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.scr-wo .food-chip{font-size:10px;font-weight:800;letter-spacing:.04em;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:6px 14px;white-space:nowrap}
+.scr-wo .food-chip .mono{font-weight:400;margin-left:7px;font-size:12.5px}
+.scr-wo .food-btn{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 14px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.scr-wo .food-btn .mono{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%);font-size:12.5px;font-weight:400;letter-spacing:0}
+.scr-wo .food-btn i{font-style:normal;opacity:.5}
+.scr-wo .tel{display:inline-flex;align-items:center;gap:4px;background:var(--c-wash2);border-radius:99px;padding:2px 10px;font-size:10.5px;color:var(--c-fg);white-space:nowrap}
+/* Studio Time header + list/cards toggle */
+.scr-wo .st-h{display:flex;align-items:center;gap:10px}
+.scr-wo .st-h .loz{flex:1;min-width:0}
+.scr-wo .seg{display:inline-flex;background:var(--c-wash);border-radius:99px;padding:3px;gap:2px;flex-shrink:0;margin-bottom:12px}
+.scr-wo .seg span{display:flex;align-items:center;padding:4px 10px;border-radius:99px;color:var(--c-fg);opacity:.5;line-height:1}
+.scr-wo .seg span.on{opacity:1;background:var(--c-ivory);color:#1b1a17}
+.scr-wo .seg svg{display:block}
+/* day card */
+.scr-wo .day{background:var(--c-wash);border-radius:14px;padding:13px 12px;margin-bottom:9px;min-width:0}
+.scr-wo .day.lk{opacity:.62}
+.scr-wo .d1{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.scr-wo .d-room{font-size:15px;letter-spacing:-.01em;flex-shrink:0;white-space:nowrap}
+.scr-wo .d-mid{display:flex;align-items:center;gap:7px;min-width:0;flex:1;font-size:11.5px;font-weight:700;color:var(--c-fg-2);overflow:hidden;white-space:nowrap}
+.scr-wo .d-date{flex-shrink:0}
+.scr-wo .tag{display:block;font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:2px 7px;white-space:nowrap;line-height:1.4;background:var(--c-st-warm);color:var(--c-chip-ink);max-width:190px;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:0}
+.scr-wo .edit{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--c-wash2);color:var(--c-fg-2);border-radius:99px;padding:4px 11px;white-space:nowrap}
+.scr-wo .d-times{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--c-fg);margin-bottom:2px}
+.scr-wo .d-times .h{color:var(--c-fg-2)}
+.scr-wo .d-times .ot{color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%)}
+.scr-wo .d-staff{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-fg-2);margin-bottom:3px}
+.scr-wo .role{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--c-wash2);color:var(--c-fg)}
+.scr-wo .role.r2{color:var(--c-st-warm)}
+.scr-wo .pills{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.scr-wo .d-pills{margin:7px 0}
+.scr-wo .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;line-height:1.5;white-space:nowrap;background:var(--c-wash2);color:var(--c-fg);opacity:.45}
+.scr-wo .pill i{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5}
+.scr-wo .pill.ok{opacity:1;color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-wo .pill.ok i{opacity:1}
+.scr-wo .pill.bad{opacity:1;background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-wo .pill.bad i{opacity:1}
+.scr-wo .pill b{font-weight:800;opacity:.75}
+.scr-wo .d-song{font-size:11px;font-style:italic;color:var(--c-fg-3);margin:2px 0 8px}
+.scr-wo .d-song.has{color:var(--c-fg-2)}
+.scr-wo .d-tot{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--c-wash2);border-radius:8px;padding:5px 9px}
+.scr-wo .d-tot-l{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-wo .tnum{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:500;text-align:right;color:var(--c-fg)}
+.scr-wo .d-tot .tnum{font-size:12px;font-weight:700}
+.scr-wo .d-lock{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--c-fg-3);margin-top:6px}
+.scr-wo .sum{display:flex;justify-content:flex-end;padding:5px 4px 0}
+.scr-wo .sum-b{display:flex;flex-direction:column;align-items:flex-end;gap:3px;background:var(--c-wash2);border-radius:14px;padding:6px 12px}
+.scr-wo .sum-b .tot{font-weight:700}
+/* bare table inputs (c-tin c-tin-show) — 44px tall on a phone */
+.scr-wo .cin{padding:3px 0;display:flex;align-items:center;min-width:0}
+.scr-wo .cs{padding:3px 6px;display:flex;align-items:center;min-width:0;font-size:11px;font-weight:500}
+.scr-wo .tin{width:100%;min-width:0;min-height:44px;display:flex;align-items:center;padding:3px 6px;border-radius:6px;font-size:11px;font-weight:500;line-height:1.4;background:var(--c-wash2);color:var(--c-fg);white-space:nowrap;overflow:hidden}
+.scr-wo .tin.r{justify-content:flex-end}
+.scr-wo .tin.sel{justify-content:space-between;gap:6px}
+.scr-wo .tin.sel svg{flex-shrink:0;opacity:.6}
+.scr-wo .xb{font-size:14px;line-height:1;color:var(--c-fg-3)}
+.scr-wo .lnk{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--c-fg-2);display:inline-block}
+/* Rentals — a 540px table inside a card: it scrolls sideways on a phone */
+.scr-wo .rent-clip{overflow:hidden;position:relative}
+.scr-wo .rent-in{min-width:540px}
+.scr-wo .rg{display:grid;grid-template-columns:1fr 120px 110px 44px 65px 80px 24px}
+.scr-wo .th{padding:5px 6px;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45;display:flex;align-items:center;min-width:0;white-space:nowrap}
+.scr-wo .th.r{justify-content:flex-end}
+.scr-wo .rrow{background:var(--c-wash);border-radius:12px;margin-bottom:6px}
+.scr-wo .rent-f{display:flex;justify-content:space-between;align-items:center;padding:9px 4px 0}
+.scr-wo .rent-tot{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:var(--c-fg);background:var(--c-wash2);border-radius:99px;padding:5px 12px;white-space:nowrap}
+/* notes */
+.scr-wo .ta{width:100%;background:var(--c-wash);border-radius:5px;color:var(--c-fg);font-size:11px;padding:8px 10px;line-height:1.6}
+.scr-wo .ta .tph{color:var(--c-fg-3)}
+.scr-wo .na{background:var(--c-wash2);border-radius:20px;padding:14px 12px}
+.scr-wo .na-t{font-size:10px;color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+/* Payments */
+.scr-wo .pay{display:flex;flex-direction:column;gap:16px}
+.scr-wo .collect{background:var(--c-wash);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.scr-wo .col-h{display:flex;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:4px}
+.scr-wo .col-l{display:flex;align-items:baseline;gap:10px;padding:4px 6px;margin:0 -6px;border-radius:9px}
+.scr-wo .col-a{font-size:20px;letter-spacing:-.02em;min-width:100px;color:var(--c-fg);line-height:1.3;white-space:nowrap}
+.scr-wo .col-a.cod{color:var(--c-st-hot)}
+.scr-wo .col-a.zero{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-wo .col-how{font-size:11px;color:var(--c-fg-2);min-width:0}
+.scr-wo .col-how b{color:var(--c-fg)}
+.scr-wo .col-hist{font-size:10px;color:var(--c-fg-3);margin-top:6px;padding-top:6px;border-top:1px solid var(--c-wash2)}
+.scr-wo .prow{display:grid;grid-template-columns:1fr 96px 24px;align-items:center;background:var(--c-wash);border-radius:12px;margin-bottom:6px;min-height:46px;position:relative}
+.scr-wo .p-tw{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:4px 0;min-width:0}
+.scr-wo .p-twl{font-size:7.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--c-fg-3);padding:0 6px;white-space:nowrap}
+.scr-wo .p-x{display:flex;align-items:center;justify-content:center;padding:6px 6px}
+.scr-wo .p-amt{grid-column:1 / -1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;row-gap:0;padding:0 6px 3px;min-width:0}
+.scr-wo .p-fee{font-size:9.5px;color:var(--c-fg-2);white-space:nowrap}
+.scr-wo .p-fee u{color:var(--c-fg-3);font-weight:700;letter-spacing:.04em;margin-left:5px}
+.scr-wo .p-fee s{text-decoration:none;margin-left:6px;color:var(--c-fg-3)}
+.scr-wo .p-run{font-size:17px;letter-spacing:-.02em;white-space:nowrap;color:var(--c-fg)}
+.scr-wo .p-run.hot{color:var(--c-st-hot)}
+.scr-wo .p-run.nil{color:var(--c-fg-3);opacity:.35}
+.scr-wo .p-memo{grid-column:1 / -1}
+.scr-wo .p-memo.half{grid-column:1 / 2}
+.scr-wo .p-l4{grid-column:2 / -1}
+.scr-wo .p-warn{grid-column:1 / -1;padding:0 12px 8px;font-size:10.5px;line-height:1.45;color:var(--c-st-hot)}
+.scr-wo .p-fix{color:var(--c-fg);font-weight:700;letter-spacing:.04em;margin-left:8px;text-decoration:underline;white-space:nowrap;display:inline-block}
+.scr-wo .p-add{padding:9px 4px 0}
+.scr-wo .tots{border-radius:12px;overflow:hidden;background:var(--c-wash);padding:0 6px 6px}
+.scr-wo .trow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px}
+.scr-wo .trow .l{font-size:10px;color:var(--c-fg-2)}
+.scr-wo .trow .v{font-size:11px;color:var(--c-fg);white-space:nowrap}
+.scr-wo .trow.b .v{font-size:13px;font-weight:700}
+.scr-wo .trow .v.ok{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-wo .trow .v.hot{color:var(--c-st-hot)}
+/* pinned Submit bar (last block; in the app it is pinned to the bottom of the screen) */
+.scr-wo .foot{padding:10px 12px 14px;background:var(--c-bg)}
+.scr-wo .go{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 11px;background:var(--c-st-booked);color:var(--c-chip-ink);font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;box-shadow:var(--c-ctlsh);filter:saturate(.82) brightness(.88)}
+.scr-wo .foot-s{text-align:center;font-size:9.5px;color:var(--c-fg-3);margin-top:6px}
+
+.scr-wo[data-state="rentals-end"] .rent-in{margin-left:calc(100% - 540px)}
+
+.scr-wo .v-defa-rent{display:none}
+.scr-wo:not([data-state="submitted"]) .v-defa-rent{display:contents}
+.scr-wo .v-subm{display:none}
+.scr-wo[data-state="submitted"] .v-subm{display:contents}
+</style>
+<div class="scr scr-wo">
+<div class="hd" data-k="w-top">
+  <span class="back" data-k="w-back">←</span>
+  <div class="hd-x"><div class="hd-t arch">Work Order · WO-1310</div><div class="hd-s">Jo Marlowe · October 6th, 2026</div></div>
+</div>
+<div class="acts" data-k="w-acts"><span class="soft" data-k="w-cancel">Cancel</span><span class="btn" data-k="w-save">Save</span></div>
+<div class="body">
+
+  <div class="card" data-k="w-info">
+    <div class="si-h"><span class="si-t">Session Info</span><span class="si-lock" data-k="w-office">🔒 Set by the office</span></div>
+    <div data-k="w-office">
+      <div class="si-r"><span class="si-l">Label / A&amp;R</span><span class="si-v">Hitline Records / Jo Marlowe</span></div>
+      <div class="si-r"><span class="si-l">Artist</span><span class="si-v">KAYA B</span></div>
+      <div class="si-r"><span class="si-l">Engineer</span><span class="si-v">M. Torres</span></div>
+      <div class="si-r"><span class="si-l">Date</span><span class="si-v">October 6th, 2026 – October 8th, 2026</span></div>
+      <div class="si-r"><span class="si-l">Time</span><span class="si-v">12:00 PM – 12:00 AM</span></div>
+      <div class="si-r"><span class="si-l">Studio</span><span class="si-v">Studio B</span></div>
+      <div class="si-r"><span class="si-l">Billing</span><span class="si-v">Billing</span></div>
+    </div>
+    <div class="food" data-k="w-food"><span class="food-chip">Food budget<span class="mono">$150.00</span></span><span class="food-btn" data-k="w-food-open"><span class="mono">$107.50 left</span><i>›</i></span></div>
+    <div class="si-r"><span class="si-l">Phone</span><span class="tel" data-k="w-call">📞 (323) 555-0142</span></div>
+  </div>
+
+  <div class="card" data-k="w-days">
+    <div class="st-h"><div class="loz"><b>Studio Time</b></div><span class="seg" data-k="w-view"><span><svg width="12" height="10" viewBox="0 0 14 12" fill="none"><rect y="0" width="14" height="2" rx="1" fill="currentColor"/><rect y="5" width="14" height="2" rx="1" fill="currentColor"/><rect y="10" width="14" height="2" rx="1" fill="currentColor"/></svg></span><span class="on"><svg width="12" height="10" viewBox="0 0 14 12" fill="none"><rect width="14" height="5" rx="1.5" fill="currentColor"/><rect y="7" width="14" height="5" rx="1.5" fill="currentColor"/></svg></span></span></div>
+    <div class="day lk" data-k="w-day w-locked">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Tue, Oct 6</span><span class="tag" data-k="w-day-state">Submitted · Mika S. · 12:41 AM</span></span><span class="edit">👁 View</span></div>
+  <div class="d-times">12:00 PM – 12:00 AM<span class="h"> · 12h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — drums, bass</div>
+  <div class="d-tot" data-k="w-office"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2400.00</span></div>
+  <div class="d-lock" data-k="w-lock-line">🔒 Approved by the office — locked</div>
+</div>
+    <div class="day" data-k="w-day">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Wed, Oct 7</span><span class="tag" data-k="w-day-state">Submitted · Mika S. · 1:14 AM</span></span><span class="edit">✎ Edit</span></div>
+  <div class="d-times">12:00 PM – 1:00 AM<span class="h"> · 13h</span><span class="ot"> · OT 1h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — guitars, keys</div>
+  <div class="d-tot" data-k="w-office"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2625.00</span></div>
+  
+</div>
+    <div class="v-defa-rent"><div class="day" data-k="w-day w-tonight">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Thu, Oct 8</span></span><span class="edit" data-k="w-edit">✎ Edit</span></div>
+  <div class="d-times">12:00 PM – 12:00 AM<span class="h"> · 12h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills" data-k="w-equip"><span class="pill"><i></i>Speakers</span><span class="pill"><i></i>Microphone</span><span class="pill"><i></i>Console</span></div>
+  <div class="d-song">Song title —</div>
+  <div class="d-tot" data-k="w-office"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2400.00</span></div>
+  
+</div></div>
+    <div class="v-subm"><div class="day" data-k="w-day w-tonight">
+  <div class="d1"><span class="d-room arch">PRS B</span><span class="d-mid"><span class="d-date">Thu, Oct 8</span><span class="tag" data-k="w-day-state">Submitted · Terren L. · 12:52 AM</span></span><span class="edit" data-k="w-edit">✎ Edit</span></div>
+  <div class="d-times">12:00 PM – 12:30 AM<span class="h"> · 12.5h</span><span class="ot"> · OT 0.5h</span></div>
+  <div class="d-staff"><span class="role">1ST</span>M. Torres</div>
+  <div class="pills d-pills" data-k="w-equip"><span class="pill ok"><i></i>Speakers</span><span class="pill ok"><i></i>Microphone</span><span class="pill ok"><i></i>Console</span></div>
+  <div class="d-song has">“Glass Hours” — lead vocals, comps</div>
+  <div class="d-tot" data-k="w-office"><span class="d-tot-l">Day total · set by the office</span><span class="tnum">$2512.50</span></div>
+  
+</div></div>
+    <div class="sum"><div class="sum-b" data-k="w-sum">
+      <span class="v-defa-rent"><span class="tnum">Studio: $4650.00</span><span class="tnum">Eng: $2775.00</span><span class="tnum tot">Total: $7425.00</span></span>
+      <span class="v-subm"><span class="tnum">Studio: $4725.00</span><span class="tnum">Eng: $2812.50</span><span class="tnum tot">Total: $7537.50</span></span>
+    </div></div>
+  </div>
+
+  <div class="card" data-k="w-rentals">
+    <div class="loz"><b>Rentals</b></div>
+    <div class="rent-clip" data-clip="">
+      <div class="rent-in">
+        <div class="rg"><div class="th">Item</div><div class="th">Supplier</div><div class="th">Date(s) Used</div><div class="th r">Qty</div><div class="th r">Rate</div><div class="th r">Charge</div><div class="th"></div></div>
+        <div class="rg rrow" data-k="w-rent-row">
+          <div class="cin"><span class="tin">Neumann U 67</span></div>
+          <div class="cin"><span class="tin">Sunset Backline</span></div>
+          <div class="cin"><span class="tin">10/7 – 10/8</span></div>
+          <div class="cin"><span class="tin r mono">2</span></div>
+          <div class="cin"><span class="tin r mono">60</span></div>
+          <div class="cin"><span class="tin r mono">120.00</span></div>
+          <div class="cs" style="justify-content:center"><span class="xb">×</span></div>
+        </div>
+        <div class="rent-f"><span class="lnk" data-k="w-rent-add">+ Add row</span><span class="rent-tot">Total: $120.00</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-k="w-notes">
+    <div class="loz"><b>Session Notes</b></div>
+    <div class="ta" style="min-height:90px">Label is covering the U 67 rental. Meals go on the food budget.</div>
+  </div>
+
+  <div class="card pay">
+    <div data-k="w-payments">
+      <div class="loz"><b>Payments</b></div>
+      <div class="collect" data-k="w-collect">
+        <div class="col-h"><span>Collect</span><span>Billing</span></div>
+        <div class="col-l"><span class="col-a arch"><span class="v-defa-rent">$7606.63</span><span class="v-subm">$7719.13</span></span><span class="col-how">invoiced — nothing to collect at the desk</span></div>
+      </div>
+      <div class="prow" data-k="w-pay-row">
+        <div class="cs"><span class="tin sel"><span>— type —</span><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 3.5L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="p-tw"><span class="p-twl">Toward balance</span><span class="tin mono"><span class="ph">0.00</span></span></div>
+        <div class="p-x"><span class="xb">×</span></div>
+        <div class="p-amt"><span class="p-run nil arch">$0.00</span></div>
+        <div class="cin p-memo"><span class="tin"><span class="ph">memo</span></span></div>
+      </div>
+      <div class="p-add"><span class="lnk" data-k="w-pay-add">+ Add payment</span></div>
+    </div>
+    <div class="tots" data-k="w-totals">
+      <div class="v-defa-rent"><div class="trow"><span class="l">Studio Total</span><span class="v">$4650.00</span></div><div class="trow"><span class="l">Eng Total</span><span class="v">$2775.00</span></div></div>
+      <div class="v-subm"><div class="trow"><span class="l">Studio Total</span><span class="v">$4725.00</span></div><div class="trow"><span class="l">Eng Total</span><span class="v">$2812.50</span></div></div>
+      <div class="trow"><span class="l">Rentals Total</span><span class="v">$120.00</span></div>
+      <div class="trow"><span class="l">Food (receipts + 45% fee)</span><span class="v">$61.63</span></div>
+      <div class="v-defa-rent"><div class="trow b"><span class="l">Grand Total</span><span class="v">$7606.63</span></div></div>
+      <div class="v-subm"><div class="trow b"><span class="l">Grand Total</span><span class="v">$7719.13</span></div></div>
+      <div class="trow"><span class="l">Total Paid</span><span class="v ok">$0.00</span></div>
+      <div class="v-defa-rent"><div class="trow b"><span class="l">Balance Due</span><span class="v">$7606.63</span></div></div>
+      <div class="v-subm"><div class="trow b"><span class="l">Balance Due</span><span class="v">$7719.13</span></div></div>
+    </div>
+  </div>
+
+  <div class="na" data-k="w-flag">
+    <div class="na-t arch">Needs Attention / Runner Notes</div>
+    <div class="ta" style="min-height:80px"><span class="tph">Raise a flag — only if something's wrong: broken, missing, damaged, unsafe, a client problem. Internal; never on the PDF.</span></div>
+    <div style="margin-top:8px"><span class="lnk" data-k="w-flag-photo">+ Add photo</span></div>
+  </div>
+
+</div>
+<div class="foot" data-k="w-submit">
+  <div class="v-defa-rent"><div class="go" data-k="w-submit-btn">Submit today</div></div>
+  <div class="v-subm"><div class="go" data-k="w-submit-btn w-update">Update submission</div></div>
+  <div class="foot-s">Sends today’s times to the office · nothing is invoiced yet</div>
+</div>
+</div>

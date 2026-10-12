@@ -1,0 +1,328 @@
+<style>
+/* PRSFlo runner work order — drawn from components/calendar/WorkOrderPopup.tsx (mode="runner", phone layout) */
+.scr-day{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);background:var(--c-srf);border-radius:12px;overflow:hidden;position:relative;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-day *{box-sizing:border-box}
+.scr-day .arch{font-family:'Archivo Black','Inter',system-ui,sans-serif;font-weight:400}
+.scr-day .mono{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+.scr-day .ph{color:var(--c-fg);opacity:.3;font-weight:400}
+/* top bar: back arrow + title, then Cancel / Save */
+.scr-day .hd{background:var(--c-bg);padding:14px 12px;display:flex;align-items:center;gap:12px}
+.scr-day .back{width:34px;height:34px;border-radius:99px;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh);font-size:15px;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.scr-day .hd-x{min-width:0}
+.scr-day .hd-t{font-size:16px;line-height:1.6}
+.scr-day .hd-s{font-size:13px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-day .acts{display:flex;align-items:center;gap:8px;padding:4px 12px 12px;background:var(--c-bg)}
+.scr-day .soft,.scr-day .btn{display:flex;align-items:center;justify-content:center;border-radius:99px;min-height:48px;padding:6px 13px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:var(--c-ctlsh)}
+.scr-day .soft{flex:1 1 0;background:var(--c-bg);color:var(--c-fg)}
+.scr-day .btn{flex:2 1 0;background:var(--c-ivory);color:#1b1a17}
+/* scrolling body + section cards */
+.scr-day .body{padding:16px 8px;display:flex;flex-direction:column;gap:20px}
+.scr-day .card{background:var(--c-wash);border-radius:20px;padding:14px 12px;min-width:0}
+.scr-day .loz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+/* Session Info */
+.scr-day .si-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.scr-day .si-t{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-2)}
+.scr-day .si-lock{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-day .si-r{display:flex;gap:8px;margin-bottom:5px;align-items:center}
+.scr-day .si-l{font-size:10px;color:var(--c-fg-2);min-width:60px;flex-shrink:0}
+.scr-day .si-v{font-size:11px;color:var(--c-fg);min-width:0}
+.scr-day .due{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.scr-day .food{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.scr-day .food-chip{font-size:10px;font-weight:800;letter-spacing:.04em;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:6px 14px;white-space:nowrap}
+.scr-day .food-chip .mono{font-weight:400;margin-left:7px;font-size:12.5px}
+.scr-day .food-btn{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 14px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.scr-day .food-btn .mono{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%);font-size:12.5px;font-weight:400;letter-spacing:0}
+.scr-day .food-btn i{font-style:normal;opacity:.5}
+.scr-day .tel{display:inline-flex;align-items:center;gap:4px;background:var(--c-wash2);border-radius:99px;padding:2px 10px;font-size:10.5px;color:var(--c-fg);white-space:nowrap}
+/* Studio Time header + list/cards toggle */
+.scr-day .st-h{display:flex;align-items:center;gap:10px}
+.scr-day .st-h .loz{flex:1;min-width:0}
+.scr-day .seg{display:inline-flex;background:var(--c-wash);border-radius:99px;padding:3px;gap:2px;flex-shrink:0;margin-bottom:12px}
+.scr-day .seg span{display:flex;align-items:center;padding:4px 10px;border-radius:99px;color:var(--c-fg);opacity:.5;line-height:1}
+.scr-day .seg span.on{opacity:1;background:var(--c-ivory);color:#1b1a17}
+.scr-day .seg svg{display:block}
+/* day card */
+.scr-day .day{background:var(--c-wash);border-radius:14px;padding:13px 12px;margin-bottom:9px;min-width:0}
+.scr-day .day.lk{opacity:.62}
+.scr-day .d1{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.scr-day .d-room{font-size:15px;letter-spacing:-.01em;flex-shrink:0;white-space:nowrap}
+.scr-day .d-mid{display:flex;align-items:center;gap:7px;min-width:0;flex:1;font-size:11.5px;font-weight:700;color:var(--c-fg-2);overflow:hidden;white-space:nowrap}
+.scr-day .d-date{flex-shrink:0}
+.scr-day .tag{display:block;font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:2px 7px;white-space:nowrap;line-height:1.4;background:var(--c-st-warm);color:var(--c-chip-ink);max-width:190px;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:0}
+.scr-day .edit{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--c-wash2);color:var(--c-fg-2);border-radius:99px;padding:4px 11px;white-space:nowrap}
+.scr-day .d-times{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--c-fg);margin-bottom:2px}
+.scr-day .d-times .h{color:var(--c-fg-2)}
+.scr-day .d-times .ot{color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%)}
+.scr-day .d-staff{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-fg-2);margin-bottom:3px}
+.scr-day .role{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--c-wash2);color:var(--c-fg)}
+.scr-day .role.r2{color:var(--c-st-warm)}
+.scr-day .pills{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.scr-day .d-pills{margin:7px 0}
+.scr-day .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;line-height:1.5;white-space:nowrap;background:var(--c-wash2);color:var(--c-fg);opacity:.45}
+.scr-day .pill i{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5}
+.scr-day .pill.ok{opacity:1;color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-day .pill.ok i{opacity:1}
+.scr-day .pill.bad{opacity:1;background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-day .pill.bad i{opacity:1}
+.scr-day .pill b{font-weight:800;opacity:.75}
+.scr-day .d-song{font-size:11px;font-style:italic;color:var(--c-fg-3);margin:2px 0 8px}
+.scr-day .d-song.has{color:var(--c-fg-2)}
+.scr-day .d-tot{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--c-wash2);border-radius:8px;padding:5px 9px}
+.scr-day .d-tot-l{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-day .tnum{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:500;text-align:right;color:var(--c-fg)}
+.scr-day .d-tot .tnum{font-size:12px;font-weight:700}
+.scr-day .d-lock{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--c-fg-3);margin-top:6px}
+.scr-day .sum{display:flex;justify-content:flex-end;padding:5px 4px 0}
+.scr-day .sum-b{display:flex;flex-direction:column;align-items:flex-end;gap:3px;background:var(--c-wash2);border-radius:14px;padding:6px 12px}
+.scr-day .sum-b .tot{font-weight:700}
+/* bare table inputs (c-tin c-tin-show) — 44px tall on a phone */
+.scr-day .cin{padding:3px 0;display:flex;align-items:center;min-width:0}
+.scr-day .cs{padding:3px 6px;display:flex;align-items:center;min-width:0;font-size:11px;font-weight:500}
+.scr-day .tin{width:100%;min-width:0;min-height:44px;display:flex;align-items:center;padding:3px 6px;border-radius:6px;font-size:11px;font-weight:500;line-height:1.4;background:var(--c-wash2);color:var(--c-fg);white-space:nowrap;overflow:hidden}
+.scr-day .tin.r{justify-content:flex-end}
+.scr-day .tin.sel{justify-content:space-between;gap:6px}
+.scr-day .tin.sel svg{flex-shrink:0;opacity:.6}
+.scr-day .xb{font-size:14px;line-height:1;color:var(--c-fg-3)}
+.scr-day .lnk{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--c-fg-2);display:inline-block}
+/* Rentals — a 540px table inside a card: it scrolls sideways on a phone */
+.scr-day .rent-clip{overflow:hidden;position:relative}
+.scr-day .rent-in{min-width:540px}
+.scr-day .rg{display:grid;grid-template-columns:1fr 120px 110px 44px 65px 80px 24px}
+.scr-day .th{padding:5px 6px;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45;display:flex;align-items:center;min-width:0;white-space:nowrap}
+.scr-day .th.r{justify-content:flex-end}
+.scr-day .rrow{background:var(--c-wash);border-radius:12px;margin-bottom:6px}
+.scr-day .rent-f{display:flex;justify-content:space-between;align-items:center;padding:9px 4px 0}
+.scr-day .rent-tot{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:var(--c-fg);background:var(--c-wash2);border-radius:99px;padding:5px 12px;white-space:nowrap}
+/* notes */
+.scr-day .ta{width:100%;background:var(--c-wash);border-radius:5px;color:var(--c-fg);font-size:11px;padding:8px 10px;line-height:1.6}
+.scr-day .ta .tph{color:var(--c-fg-3)}
+.scr-day .na{background:var(--c-wash2);border-radius:20px;padding:14px 12px}
+.scr-day .na-t{font-size:10px;color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+/* Payments */
+.scr-day .pay{display:flex;flex-direction:column;gap:16px}
+.scr-day .collect{background:var(--c-wash);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.scr-day .col-h{display:flex;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:4px}
+.scr-day .col-l{display:flex;align-items:baseline;gap:10px;padding:4px 6px;margin:0 -6px;border-radius:9px}
+.scr-day .col-a{font-size:20px;letter-spacing:-.02em;min-width:100px;color:var(--c-fg);line-height:1.3;white-space:nowrap}
+.scr-day .col-a.cod{color:var(--c-st-hot)}
+.scr-day .col-a.zero{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-day .col-how{font-size:11px;color:var(--c-fg-2);min-width:0}
+.scr-day .col-how b{color:var(--c-fg)}
+.scr-day .col-hist{font-size:10px;color:var(--c-fg-3);margin-top:6px;padding-top:6px;border-top:1px solid var(--c-wash2)}
+.scr-day .prow{display:grid;grid-template-columns:1fr 96px 24px;align-items:center;background:var(--c-wash);border-radius:12px;margin-bottom:6px;min-height:46px;position:relative}
+.scr-day .p-tw{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:4px 0;min-width:0}
+.scr-day .p-twl{font-size:7.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--c-fg-3);padding:0 6px;white-space:nowrap}
+.scr-day .p-x{display:flex;align-items:center;justify-content:center;padding:6px 6px}
+.scr-day .p-amt{grid-column:1 / -1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;row-gap:0;padding:0 6px 3px;min-width:0}
+.scr-day .p-fee{font-size:9.5px;color:var(--c-fg-2);white-space:nowrap}
+.scr-day .p-fee u{color:var(--c-fg-3);font-weight:700;letter-spacing:.04em;margin-left:5px}
+.scr-day .p-fee s{text-decoration:none;margin-left:6px;color:var(--c-fg-3)}
+.scr-day .p-run{font-size:17px;letter-spacing:-.02em;white-space:nowrap;color:var(--c-fg)}
+.scr-day .p-run.hot{color:var(--c-st-hot)}
+.scr-day .p-run.nil{color:var(--c-fg-3);opacity:.35}
+.scr-day .p-memo{grid-column:1 / -1}
+.scr-day .p-memo.half{grid-column:1 / 2}
+.scr-day .p-l4{grid-column:2 / -1}
+.scr-day .p-warn{grid-column:1 / -1;padding:0 12px 8px;font-size:10.5px;line-height:1.45;color:var(--c-st-hot)}
+.scr-day .p-fix{color:var(--c-fg);font-weight:700;letter-spacing:.04em;margin-left:8px;text-decoration:underline;white-space:nowrap;display:inline-block}
+.scr-day .p-add{padding:9px 4px 0}
+.scr-day .tots{border-radius:12px;overflow:hidden;background:var(--c-wash);padding:0 6px 6px}
+.scr-day .trow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px}
+.scr-day .trow .l{font-size:10px;color:var(--c-fg-2)}
+.scr-day .trow .v{font-size:11px;color:var(--c-fg);white-space:nowrap}
+.scr-day .trow.b .v{font-size:13px;font-weight:700}
+.scr-day .trow .v.ok{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-day .trow .v.hot{color:var(--c-st-hot)}
+/* pinned Submit bar (last block; in the app it is pinned to the bottom of the screen) */
+.scr-day .foot{padding:10px 12px 14px;background:var(--c-bg)}
+.scr-day .go{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 11px;background:var(--c-st-booked);color:var(--c-chip-ink);font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;box-shadow:var(--c-ctlsh);filter:saturate(.82) brightness(.88)}
+.scr-day .foot-s{text-align:center;font-size:9.5px;color:var(--c-fg-3);margin-top:6px}
+
+.scr-day{background:var(--c-bg)}
+/* the work order behind the sheet, dimmed (rgba(0,0,0,.45) backdrop) */
+.scr-day .behind{position:relative;background:var(--c-srf);height:150px;overflow:hidden}
+.scr-day .behind::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.scr-day .sheet{position:relative;margin-top:-22px;background:var(--c-bg);border-radius:22px 22px 0 0;padding:12px 10px 22px}
+.scr-day .grab{width:36px;height:4px;border-radius:99px;background:var(--c-wash2);margin:0 auto 10px}
+.scr-day .sh-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.scr-day .sh-nav{font-size:17px;display:flex;align-items:center;gap:8px;min-width:0}
+.scr-day .nav{width:30px;height:30px;border-radius:99px;font-size:15px;line-height:1;color:var(--c-fg-2);background:var(--c-wash);display:inline-flex;align-items:center;justify-content:center;font-family:'Inter',system-ui,sans-serif;font-weight:700;flex-shrink:0}
+.scr-day .nav.dis{opacity:.3}
+.scr-day .sh-date{font-size:15px;color:var(--c-fg-2);white-space:nowrap}
+.scr-day .fk{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-day .of{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-day .sh-r{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.scr-day .sh-sub{font-size:10.5px;color:var(--c-fg-3);margin:2px 0 10px}
+.scr-day .sh-sub b{color:var(--c-fg-2);font-weight:700}
+.scr-day .blk{background:var(--c-wash);border-radius:14px;padding:11px 10px;margin-bottom:9px}
+.scr-day[data-state="locked"] .lockable{opacity:.62}
+.scr-day .blk-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+.scr-day .room-sel{font-size:13px;padding:2px 4px;min-height:44px;display:inline-flex;align-items:center;gap:7px;border-radius:6px;white-space:nowrap}
+.scr-day .room-sel svg{opacity:.55}
+.scr-day .hrs{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;font-weight:700;color:var(--c-fg-2);background:var(--c-wash2);border-radius:99px;padding:4px 11px;white-space:nowrap;line-height:1.6}
+.scr-day .wells{display:flex;gap:8px;align-items:stretch}
+.scr-day .well{flex:1;min-width:0;position:relative}
+.scr-day .wbox{background:var(--c-wash2);border-radius:12px;padding:7px 8px 7px 14px;display:flex;align-items:center;gap:4px}
+.scr-day .wbox.dash{background:transparent;border:1.5px dashed var(--c-wash2)}
+.scr-day .wtx{flex:1;min-width:0}
+.scr-day .wl{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:1px;line-height:1.6}
+.scr-day .wv{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:17px;font-weight:600;line-height:1.4;min-height:30px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;color:var(--c-fg)}
+.scr-day .wdd{font-size:11px;font-weight:700;color:var(--c-fg-3);padding:8px 6px;flex-shrink:0;line-height:1.2}
+.scr-day .act-l{font-size:8px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45;margin:9px 0 5px;display:flex;align-items:baseline;gap:6px;line-height:1.6}
+.scr-day .act-l span{text-transform:none;letter-spacing:0;font-weight:400;opacity:.7}
+.scr-day .wells.act{gap:6px}
+.scr-day .wells.act .wbox{padding:7px 4px 7px 10px;gap:3px}
+.scr-day .wells.act .wdd{padding:8px 5px}
+.scr-day .noshow{flex-shrink:0;align-self:center;border-radius:99px;padding:6px 10px;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;background:var(--c-wash2);color:var(--c-fg-2);border:1px dashed var(--c-fg-3);line-height:1.6}
+.scr-day .noshow.on{background:var(--c-st-hot);color:#fff;border-color:transparent}
+.scr-day .warn14{font-size:10.5px;color:var(--c-st-hot);margin-top:7px;line-height:1.5}
+.scr-day .st-l{display:flex;align-items:center;gap:7px;min-width:0;flex:1}
+.scr-day .rolebtn{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.04em;padding:4px 8px;border-radius:6px;background:var(--c-wash2);color:var(--c-fg);line-height:1.6}
+.scr-day .st-name{font-weight:700;font-size:13px;min-height:30px;padding:3px 6px;display:flex;align-items:center;line-height:1.4;min-width:0;white-space:nowrap;overflow:hidden}
+.scr-day .st-note{font-size:9.5px;color:var(--c-fg-3);margin:-3px 0 10px 2px}
+.scr-day .box{background:var(--c-wash);border-radius:12px;padding:10px 14px;margin-bottom:10px}
+.scr-day .box .fk{display:block;margin-bottom:4px}
+.scr-day .ot-none{font-size:11.5px;color:var(--c-fg-3)}
+.scr-day .ot-yes{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--c-fg-2)}
+.scr-day .ot-yes b{color:var(--c-fg)}
+.scr-day .ot-yes .amt{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-weight:700;color:var(--c-fg);white-space:nowrap}
+.scr-day .song-ta{padding:10px 14px;font-size:13px;line-height:1.5;min-height:59px;color:var(--c-fg)}
+.scr-day .song-ta .tph{color:var(--c-fg-3)}
+.scr-day .eq-l{margin-bottom:6px;display:block}
+.scr-day .eq-p{margin-bottom:4px}
+.scr-day .enote{padding:8px 12px;background:var(--c-wash2);border-radius:12px;margin-top:8px}
+.scr-day .enote-t{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-st-hot);margin-bottom:6px}
+.scr-day .enote-ta{font-size:11px;padding:5px 7px;min-height:52px;line-height:1.6;color:var(--c-fg)}
+.scr-day .enote-ph{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.scr-day .thumb{width:44px;height:44px;border-radius:6px;background:var(--c-wash2);display:flex;align-items:center;justify-content:center;color:var(--c-fg-3)}
+.scr-day .enote-f{display:flex;gap:12px;align-items:center;margin-top:6px}
+.scr-day .enote-f .lnk.dn{color:var(--c-fg-3);margin-left:auto}
+.scr-day .bill{margin:10px 0 4px}
+.scr-day .brow{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--c-fg-2);padding:2px 0;gap:8px}
+.scr-day .brow .tnum{color:inherit;white-space:nowrap}
+.scr-day .brow.tot{font-size:12.5px;font-weight:700;color:var(--c-fg);padding-top:5px}
+.scr-day .sh-f{display:flex;gap:9px;margin-top:10px}
+.scr-day .sh-cancel{flex:1;min-height:46px;border-radius:12px;background:var(--c-wash2);color:var(--c-fg);font-size:12.5px;font-weight:700;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.scr-day .sh-save{flex:2;min-height:46px;border-radius:12px;background:var(--c-fg);color:var(--c-bg);font-size:12px;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.scr-day{container-type:inline-size}
+@container (max-width:350px){
+.scr-day .sheet{padding-left:6px;padding-right:6px}
+.scr-day .blk{padding-left:8px;padding-right:8px}
+.scr-day .wells.act{gap:4px}
+.scr-day .wells.act .wbox{padding:7px 2px 7px 7px;gap:2px}
+.scr-day .wells.act .wdd{padding:8px 3px}
+.scr-day .noshow{padding:6px 7px}
+}
+.scr-day .dd{position:absolute;top:100%;left:0;right:0;margin-top:4px;z-index:5;background:var(--c-bg);border-radius:12px;box-shadow:0 8px 26px rgba(0,0,0,.4);max-height:200px;overflow:hidden}
+.scr-day .dd div{padding:10px 16px;font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:13px;color:var(--c-fg-2);line-height:1.6}
+.scr-day .dd div.cur{color:var(--c-fg);font-weight:700;background:var(--c-wash2)}
+
+.scr-day .v-defa-nosh-pick-prob{display:none}
+.scr-day:not([data-state="done"]):not([data-state="long"]):not([data-state="locked"]) .v-defa-nosh-pick-prob{display:contents}
+.scr-day .v-done-lock{display:none}
+.scr-day[data-state="done"] .v-done-lock{display:contents}
+.scr-day[data-state="locked"] .v-done-lock{display:contents}
+.scr-day .v-long{display:none}
+.scr-day[data-state="long"] .v-long{display:contents}
+.scr-day .v-defa-done-lock-long-pick-prob{display:none}
+.scr-day:not([data-state="noshow"]) .v-defa-done-lock-long-pick-prob{display:contents}
+.scr-day .v-nosh{display:none}
+.scr-day[data-state="noshow"] .v-nosh{display:contents}
+.scr-day .v-defa-long-nosh-pick-prob{display:none}
+.scr-day:not([data-state="done"]):not([data-state="locked"]) .v-defa-long-nosh-pick-prob{display:contents}
+.scr-day .v-defa-long-nosh-pick{display:none}
+.scr-day:not([data-state="done"]):not([data-state="problem"]):not([data-state="locked"]) .v-defa-long-nosh-pick{display:contents}
+.scr-day .v-prob{display:none}
+.scr-day[data-state="problem"] .v-prob{display:contents}
+.scr-day .v-pick{display:none}
+.scr-day[data-state="picker"] .v-pick{display:contents}
+.scr-day .v-defa-done-lock-long-nosh-prob{display:none}
+.scr-day:not([data-state="picker"]) .v-defa-done-lock-long-nosh-prob{display:contents}
+.scr-day .v-lock{display:none}
+.scr-day[data-state="locked"] .v-lock{display:contents}
+</style>
+<div class="scr scr-day">
+<div class="behind">
+<div class="hd" data-k="d-wo-top">
+  <span class="back" data-k="d-wo-back">←</span>
+  <div class="hd-x"><div class="hd-t arch">Work Order · WO-1310</div><div class="hd-s">Jo Marlowe · October 6th, 2026</div></div>
+</div>
+<div class="acts" data-k="d-wo-acts"><span class="soft" data-k="d-wo-cancel">Cancel</span><span class="btn" data-k="d-wo-save">Save</span></div>
+<div class="body"><div class="card"><div class="si-h"><span class="si-t">Session Info</span><span class="si-lock">🔒 Set by the office</span></div></div></div>
+</div>
+<div class="sheet" data-k="d-sheet">
+  <div class="grab"></div>
+  <div class="sh-h" data-k="d-head">
+    <span class="sh-nav arch"><span class="nav" data-k="d-prev">‹</span><span class="sh-date">Thu, Oct 8</span><span class="nav dis">›</span></span>
+    <span class="fk">PRS B</span>
+    <span class="of">· 3 of 3</span>
+    <span class="v-lock"><span class="sh-r"><span class="tag" data-k="d-tag">Submitted · Terren L. · 12:52 AM</span></span></span>
+  </div>
+  <div class="sh-sub" data-k="d-agreed">Agreed with client: <b>12h included</b><span class="v-lock"><span style="margin-left:8px;display:inline-block" data-k="d-lockline">🔒 Approved by the office — view only</span></span></div>
+
+  <div class="blk lockable" data-k="d-studio">
+    <div class="blk-h"><span class="room-sel arch" data-k="d-room">PRS B<svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 3.5L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="hrs" data-k="d-hours"><span class="v-defa-nosh-pick-prob">12h</span><span class="v-done-lock">12.5h</span><span class="v-long">14.5h</span></span></div>
+    <div class="wells" data-k="d-times">
+      <div class="well" data-k="d-start"><div class="wbox"><div class="wtx"><div class="wl">Start</div><div class="wv">12:00 PM</div></div><span class="wdd">▾</span></div></div>
+      <div class="well" data-k="d-end"><div class="wbox"><div class="wtx"><div class="wl">End</div><div class="wv"><span class="v-defa-nosh-pick-prob">12:00 AM</span><span class="v-done-lock">12:30 AM</span><span class="v-long">2:30 AM</span></div></div><span class="wdd"><span class="v-defa-done-lock-long-nosh-prob">▾</span><span class="v-pick">▴</span></span></div><div class="v-pick"><div class="dd" data-k="d-picker"><div class="cur">12:00 AM</div><div>12:30 AM</div><div>1:00 AM</div><div>1:30 AM</div><div>2:00 AM</div></div></div></div>
+    </div>
+    <div data-k="d-actual">
+      <div class="act-l">Client actually here<span>· billed stays as booked</span></div>
+      <div class="wells act">
+        <div class="well" data-k="d-arrived"><div class="wbox dash"><div class="wtx"><div class="wl">Arrived</div><div class="wv"><span class="v-defa-done-lock-long-pick-prob">12:20 PM</span><span class="v-nosh"><span class="ph">—</span></span></div></div><span class="wdd">▾</span></div></div>
+        <div class="well" data-k="d-left"><div class="wbox dash"><div class="wtx"><div class="wl">Left</div><div class="wv"><span class="v-done-lock">12:40 AM</span><span class="v-defa-long-nosh-pick-prob"><span class="ph">—</span></span></div></div><span class="wdd">▾</span></div></div>
+        <span class="v-defa-done-lock-long-pick-prob"><span class="noshow" data-k="d-noshow">No show</span></span>
+        <span class="v-nosh"><span class="noshow on" data-k="d-noshow">No show</span></span>
+      </div>
+    </div>
+    <div class="v-long"><div class="warn14" data-k="d-long">⚠ That's 14.5h in the room — long sessions happen, but double-check AM/PM on the times.</div></div>
+  </div>
+
+  <div class="blk lockable" data-k="d-staff">
+    <div class="blk-h"><span class="st-l"><span class="rolebtn" data-k="d-role">1ST</span><span class="st-name" data-k="d-name">M. Torres</span></span><span class="hrs"><span class="v-defa-nosh-pick-prob">12h</span><span class="v-done-lock">12.5h</span><span class="v-long">14.5h</span></span></div>
+    <div class="wells" data-k="d-staff-times">
+      <div class="well"><div class="wbox"><div class="wtx"><div class="wl">Start</div><div class="wv">12:00 PM</div></div><span class="wdd">▾</span></div></div>
+      <div class="well"><div class="wbox"><div class="wtx"><div class="wl">End</div><div class="wv"><span class="v-defa-nosh-pick-prob">12:00 AM</span><span class="v-done-lock">12:30 AM</span><span class="v-long">2:30 AM</span></div></div><span class="wdd">▾</span></div></div>
+    </div>
+    <div class="v-long"><div class="warn14">⚠ That's 14.5h — double-check AM/PM on the times.</div></div>
+  </div>
+  <div class="st-note" data-k="d-follow">Staff times follow the studio times until you change them.</div>
+
+  <div class="box" data-k="d-ot">
+    <span class="fk">Overtime</span>
+    <div class="v-defa-nosh-pick-prob"><div class="ot-none">None — within the agreed time. Runs past it and this fills in by itself.</div></div>
+    <div class="v-done-lock"><div class="ot-yes"><span>Ran <b>0.5h</b> past the agreed 12h × 150</span><span class="amt">$75.00</span></div></div>
+    <div class="v-long"><div class="ot-yes"><span>Ran <b>2.5h</b> past the agreed 12h × 150</span><span class="amt">$375.00</span></div></div>
+  </div>
+
+  <div class="box lockable" data-k="d-song">
+    <span class="fk" style="margin-bottom:3px">Song title / session info</span>
+    <div class="song-ta"><span class="v-defa-long-nosh-pick-prob"><span class="tph">What was worked on…</span></span><span class="v-done-lock">“Glass Hours” — lead vocals, comps</span></div>
+  </div>
+
+  <div data-k="d-equip">
+    <span class="fk eq-l">Equipment</span>
+    <div class="v-defa-long-nosh-pick"><div class="pills eq-p"><span class="pill" data-k="d-pill"><i></i>Speakers</span><span class="pill" data-k="d-pill"><i></i>Microphone</span><span class="pill" data-k="d-pill"><i></i>Console</span></div></div>
+    <div class="v-done-lock"><div class="pills eq-p"><span class="pill ok" data-k="d-pill"><i></i>Speakers</span><span class="pill ok" data-k="d-pill"><i></i>Microphone</span><span class="pill ok" data-k="d-pill"><i></i>Console</span></div></div>
+    <div class="v-prob"><div class="pills eq-p"><span class="pill ok" data-k="d-pill"><i></i>Speakers</span><span class="pill bad" data-k="d-pill-bad"><i></i>Microphone<b>·</b></span><span class="pill ok" data-k="d-pill"><i></i>Console</span></div>
+      <div class="enote" data-k="d-pill-note">
+        <div class="enote-t">Microphone — what was wrong?</div>
+        <div class="enote-ta">U 87 in the booth crackles when the pad is in. Swapped it for the spare.</div>
+        <div class="enote-ph"><span class="thumb" data-k="d-pill-photo"><svg width="20" height="16" viewBox="0 0 20 16" fill="none"><rect x="1" y="3" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="9" r="3.2" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 3l1.2-2h4.6l1.2 2" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></span></div>
+        <div class="enote-f"><span class="lnk" data-k="d-pill-addphoto">+ Photo</span><span class="lnk dn">Done</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="box bill" data-k="d-rate">
+    <span class="fk">Billing · set by the office</span>
+    <div class="brow"><span>Room lockout — 12h incl. (1500)</span><span class="tnum">$1500.00</span></div>
+    <div class="v-defa-nosh-pick-prob"><div class="brow"><span>1ST M. Torres 12h × 75/hr</span><span class="tnum">$900.00</span></div></div>
+    <div class="v-done-lock"><div class="brow"><span>1ST M. Torres 12.5h × 75/hr</span><span class="tnum">$937.50</span></div><div class="brow"><span>OT 0.5h × 150/hr</span><span class="tnum">$75.00</span></div></div>
+    <div class="v-long"><div class="brow"><span>1ST M. Torres 14.5h × 75/hr</span><span class="tnum">$1087.50</span></div><div class="brow"><span>OT 2.5h × 150/hr</span><span class="tnum">$375.00</span></div></div>
+    <div class="brow tot"><span>Day total</span><span class="tnum"><span class="v-defa-nosh-pick-prob">$2400.00</span><span class="v-done-lock">$2512.50</span><span class="v-long">$2962.50</span></span></div>
+  </div>
+
+  <div class="sh-f" data-k="d-buttons"><span class="sh-cancel" data-k="d-cancel">Cancel</span><span class="sh-save arch" data-k="d-save">Save</span></div>
+</div>
+</div>

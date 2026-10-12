@@ -1,0 +1,160 @@
+<style>
+.scr-open{background:var(--c-bg);color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14.5px;line-height:1.5;padding:0 2px;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-open *{box-sizing:border-box}
+.scr-open .arch{font-family:'Archivo Black','Arial Black',system-ui,sans-serif;font-weight:400}
+.scr-open .mono{font-family:'DM Mono',ui-monospace,Menlo,monospace}
+/* header */
+.scr-open .hd{display:flex;align-items:center;gap:11px;padding:14px 2px 10px}
+.scr-open .bk{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:var(--c-ctlsh)}
+.scr-open .hd-mid{flex:1;min-width:0}
+.scr-open .hd-t{display:flex;align-items:baseline;gap:8px}
+.scr-open .hd-t .arch{font-size:18px;letter-spacing:-0.02em;line-height:1.15}
+.scr-open .hd-sub{font-size:11.5px;opacity:.5}
+.scr-open .subd{font-size:10.5px;color:var(--c-st-booked);font-weight:700}
+.scr-open .bar{width:56px;height:5px;background:var(--c-wash);border-radius:99px;overflow:hidden;flex-shrink:0}
+.scr-open .bar i{display:block;height:100%;border-radius:99px;background:var(--c-st-booked);width:39%}
+.scr-open[data-state="done"] .bar i{width:100%}
+/* body */
+.scr-open .body{padding:4px 0}
+.scr-open .lead{font-size:11px;opacity:.45;line-height:1.5;margin:0 2px 14px}
+.scr-open .sec{margin-bottom:16px}
+.scr-open .lbl{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-open .sec>.lbl{display:block;margin-bottom:7px;padding-left:2px}
+.scr-open .card{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:4px 12px}
+.scr-open .it{display:flex;align-items:flex-start;gap:11px;padding:10px 0;min-height:44px;box-shadow:0 -1px 0 var(--c-wash)}
+.scr-open .it:first-child{box-shadow:none}
+.scr-open .tk{width:22px;height:22px;border-radius:99px;flex-shrink:0;margin-top:1px;background:var(--c-wash2);color:transparent;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1}
+.scr-open .tx{font-size:13px;line-height:1.45;flex:1;min-width:0}
+.scr-open .it.on .tk,.scr-open[data-state="done"] .it .tk{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-open .it.on .tx,.scr-open[data-state="done"] .it .tx{opacity:.45;text-decoration:line-through}
+/* not app UI — the guide's own "list continues" marker */
+.scr-open .cut{margin:0 0 16px;padding:7px 10px;border-radius:10px;border:1px dashed var(--c-wash2);font-size:10.5px;font-style:italic;color:var(--c-fg-3);text-align:center;line-height:1.4}
+.scr-open .card .cut{margin:6px 0 8px}
+/* raise a flag */
+.scr-open .flag{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:13px 14px;margin-top:4px}
+.scr-open .flag>.lbl{display:block;margin-bottom:12px}
+.scr-open[data-state="attention"] .flag>.lbl{color:var(--c-st-warm);opacity:1}
+.scr-open .expl{font-size:11px;color:var(--c-fg-2);line-height:1.5;margin-bottom:10px}
+.scr-open .expl b.hot{color:var(--c-st-hot)}
+.scr-open .expl .dim{opacity:.7}
+.scr-open .raise{display:none;align-items:center;gap:10px;background:var(--c-wash);border-radius:12px;padding:10px 13px;margin-bottom:12px}
+.scr-open[data-state="attention"] .raise{display:flex}
+.scr-open .raise .dot{width:8px;height:8px;border-radius:99px;background:var(--c-st-warm);flex-shrink:0}
+.scr-open .raise .r1{font-size:12px;font-weight:700;color:var(--c-st-warm)}
+.scr-open .raise .r2{font-size:10.5px;opacity:.5;margin-top:1px}
+.scr-open .ta{background:var(--c-wash);border-radius:12px;padding:11px 13px;font-size:13px;line-height:1.5;min-height:100px;margin-bottom:11px}
+.scr-open .ta .ph{color:var(--c-fg-3)}
+.scr-open .ta .val{display:none}
+.scr-open[data-state="attention"] .ta .ph{display:none}
+.scr-open[data-state="attention"] .ta .val{display:block}
+.scr-open .addp{display:inline-flex;align-items:center;background:var(--c-wash);border-radius:99px;padding:9px 16px;min-height:40px;font-size:12px;font-weight:700;color:var(--c-fg)}
+.scr-open .thumbs{display:none;gap:8px;flex-wrap:wrap;margin-top:12px}
+.scr-open[data-state="attention"] .thumbs{display:flex}
+.scr-open .th{position:relative;width:72px;height:72px}
+.scr-open .th .img{width:72px;height:72px;border-radius:10px;background:linear-gradient(150deg,var(--c-wash2),var(--c-wash));display:flex;align-items:center;justify-content:center;color:var(--c-fg-3);overflow:hidden}
+.scr-open .th .x{position:absolute;top:-5px;right:-5px;width:19px;height:19px;border-radius:99px;background:var(--c-st-hot);color:var(--c-hot-text);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1}
+/* footer (pinned to the bottom of the phone in the app) */
+.scr-open .ft{padding:22px 0 16px;display:flex;gap:9px;align-items:center}
+.scr-open .ini{width:70px;min-height:48px;flex-shrink:0;background:var(--c-wash);border-radius:12px;box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:13px}
+.scr-open .save{flex:0 0 26%;min-height:48px;border-radius:14px;background:var(--c-wash);opacity:.8;box-shadow:var(--c-ctlsh);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.scr-open .sub{flex:1;min-width:0;min-height:48px;border-radius:14px;background:var(--c-wash2);box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;white-space:nowrap}
+.scr-open .ftd{padding:22px 0 16px;display:flex;flex-direction:column;gap:8px}
+.scr-open .ftd .ok{text-align:center;font-size:12px;font-weight:700;color:var(--c-st-booked)}
+.scr-open .ftd .back{width:100%;min-height:52px;border-radius:14px;background:var(--c-wash2);box-shadow:var(--c-softsh);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+/* state plumbing */
+.scr-open .only-done{display:none}
+.scr-open[data-state="done"] .only-done{display:inline}
+.scr-open[data-state="done"] .ftd.only-done{display:flex}
+.scr-open[data-state="done"] .not-done{display:none}
+</style>
+<div class="scr scr-open">
+
+  <div class="hd" data-k="c-head">
+    <div class="bk">←</div>
+    <div class="hd-mid">
+      <div class="hd-t">
+        <span class="arch">Opening</span>
+        <span class="subd only-done" data-k="c-submitted">Submitted</span>
+      </div>
+      <div class="hd-sub" data-k="c-progress">Paramount · <span class="not-done">9</span><span class="only-done">23</span>/23 checked</div>
+    </div>
+    <div class="bar" data-k="c-progress"><i></i></div>
+  </div>
+
+  <div class="body">
+    <div class="lead" data-k="c-saves">Tap items as you complete them — saves instantly. Only check what's done.</div>
+
+    <div class="sec">
+      <span class="lbl" data-k="c-section">Building</span>
+      <div class="card">
+        <div class="it on" data-k="c-item"><div class="tk" data-k="c-tick">✓</div><span class="tx">If MGMT isn't in yet, unlock/unarm</span></div>
+        <div class="it on" data-k="c-item"><div class="tk">✓</div><span class="tx">Check the closer's slack notes</span></div>
+        <div class="it on"><div class="tk">✓</div><span class="tx">Open the blinds &amp; turn on the lights</span></div>
+        <div class="it on"><div class="tk">✓</div><span class="tx">Unlock the back doors</span></div>
+        <div class="it on"><div class="tk">✓</div><span class="tx">Turn the TVs on in the office</span></div>
+        <div class="it on"><div class="tk">✓</div><span class="tx">Leaf blow the alleyway, sidewalks, parking lots, patio and cleanup any trash/debris. Hose down patio area/benches, look out for bird droppings. FIRST THING after opening.</span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <span class="lbl" data-k="c-section">Control Rooms / Studios</span>
+      <div class="card">
+        <div class="it on" data-k="c-item"><div class="tk">✓</div><span class="tx">Check console, racks and interior of studio for spills, burns/ash or damage. Take pictures and report any damages.</span></div>
+        <div class="it on"><div class="tk">✓</div><span class="tx">Open rooms with sessions and stage properly.</span></div>
+        <div class="it" data-k="c-item"><div class="tk" data-k="c-tick">✓</div><span class="tx">Live Rooms: Organize mic stands, center carpets, arrange gobos and active mic stand, turn on all lights and LEDs. Remove leftover items and return to storage.</span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <span class="lbl">Kitchen Area</span>
+      <div class="card">
+        <div class="it on"><div class="tk">✓</div><span class="tx">Unload the clean dishes, check cleanliness including silverware (wipe watermarks)</span></div>
+        <div class="it"><div class="tk">✓</div><span class="tx">Check silverware count, report low amounts to MGMT</span></div>
+        <div class="it"><div class="tk">✓</div><span class="tx">Toss expired food, check cold water stock, arrange fridge items</span></div>
+        <div class="cut">… 4 more in Kitchen Area</div>
+      </div>
+    </div>
+
+    <div class="cut">… then Runs · Other · Before you leave — 7 more items</div>
+
+    <div class="flag" data-k="c-attention">
+      <span class="lbl">Raise a flag</span>
+      <div class="expl">
+        <b class="hot">Unusual things only.</b> Something broken, missing, damaged or unsafe, a client problem, or a task you couldn't finish. It becomes a flag the office has to act on.
+        <span class="dim">How the shift went, questions, general updates — put those in <b>Notes</b>, not here.</span>
+      </div>
+      <div class="raise" data-k="c-attention">
+        <span class="dot"></span>
+        <div>
+          <div class="r1">This raises a flag for the office</div>
+          <div class="r2">Management will be notified when you submit</div>
+        </div>
+      </div>
+      <div class="ta" data-k="c-note">
+        <span class="ph">What's wrong, and where? (Leave empty if nothing needs the office.)</span>
+        <span class="val">Studio B control room — fresh burn mark on the credenza, left of the patchbay. Was not there last night. Photo attached.</span>
+      </div>
+      <span class="addp" data-k="c-photo">+ Add photos</span>
+      <div class="thumbs">
+        <div class="th" data-k="c-photo">
+          <div class="img">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
+          </div>
+          <span class="x">✕</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ft not-done" data-k="c-submit">
+    <div class="ini mono" data-k="c-initials">TL</div>
+    <div class="save" data-k="c-save">Save</div>
+    <div class="sub" data-k="c-submit">Submit opening</div>
+  </div>
+
+  <div class="ftd only-done" data-k="c-submitted">
+    <div class="ok">✓ Shift complete · 23/23 checked</div>
+    <div class="back">Back to Paramount</div>
+  </div>
+
+</div>

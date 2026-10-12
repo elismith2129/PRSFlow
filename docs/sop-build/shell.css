@@ -23,6 +23,9 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+/* iPhone: no text auto-resizing, no double-tap zoom, no grey flash on tap. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 body{background:var(--c-bg);color:var(--c-fg);font:400 14px/1.5 'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
 /* Shell classes are all sop-* and the button reset is limited to them: the drawn
    screens bring their own class names (.bar, .row, .btn…) and must not inherit ours. */
@@ -81,6 +84,13 @@ body{background:var(--c-bg);color:var(--c-fg);font:400 14px/1.5 'Inter',system-u
 .sop-wb{font-size:13.5px;line-height:1.5;color:var(--c-fg-2);margin-top:3px;max-width:760px;min-height:3em}
 .sop-wb b{color:var(--c-fg);font-weight:700}
 
+/* The WHY line — the reason behind a step. Only guides that give reasons show it. */
+.sop-ww{display:none;margin-top:9px;padding:8px 11px;border-radius:11px;background:color-mix(in srgb, var(--c-st-warm) 13%, transparent);font-size:13px;line-height:1.45;color:var(--c-fg)}
+.sop-ww.on{display:block}
+.sop-wwk{font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--c-st-warm);margin-right:8px}
+[data-theme="light"] .sop-wwk{color:#a35400}
+.sop-ww b{font-weight:700}
+
 .sop-stage{position:relative;margin-top:10px;border-radius:18px;background:var(--c-bg);box-shadow:inset 0 0 0 1px var(--c-wash2);overflow:hidden;cursor:pointer}
 .sop-stagein{padding:14px}
 .scr{position:relative}
@@ -128,4 +138,41 @@ body{background:var(--c-bg);color:var(--c-fg);font:400 14px/1.5 'Inter',system-u
   .sop-wbtn{padding:8px 12px}
   .sop-stagein{padding:8px}
   .sop-rrow,.sop-drow{grid-template-columns:1fr;gap:3px}
+}
+
+/* ══ PHONE GUIDES (body.sop-phone) ════════════════════════════════════════════
+   The drawn screens are phone screens. On a computer the phone stands on the
+   left and the step panel stays beside it. On a phone the drawing is the full
+   width of the device and the step panel is pinned to the bottom, with Next
+   under the thumb. */
+body.sop-phone .sop-main{max-width:940px}
+body.sop-phone .sop-walk{display:grid;grid-template-columns:418px minmax(0,1fr);column-gap:26px;align-items:start}
+body.sop-phone .sop-wtitle{grid-column:1 / -1}
+body.sop-phone .sop-stage{grid-column:1;grid-row:2;margin-top:0;border-radius:30px}
+body.sop-phone .sop-wpanel{grid-column:2;grid-row:2;top:calc(var(--barh) + 14px);padding:16px 18px 16px;max-width:430px}
+body.sop-phone .sop-wh{font-size:19px;margin-top:12px}
+body.sop-phone .sop-wb{font-size:14.5px;color:var(--c-fg);min-height:0;margin-top:6px}
+body.sop-phone .sop-wnav{display:flex;gap:8px;margin-top:14px}
+body.sop-phone .sop-wbtn{padding:13px 16px;font-size:13px}
+body.sop-phone .sop-wnext{flex:1}
+body.sop-phone .sop-pane{max-width:560px}
+@media (max-width: 900px){
+  body.sop-phone .sop-bar{display:none}
+  body.sop-phone .sop-rail{position:sticky;top:0;z-index:30;background:var(--c-bg);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  body.sop-phone .sop-rail::-webkit-scrollbar{display:none}
+  body.sop-phone .sop-main{padding:12px 0 40px}
+  body.sop-phone .sop-hbar,body.sop-phone .sop-wtitle{padding-left:14px;padding-right:14px}
+  body.sop-phone .sop-wtitle{margin:0 0 8px}
+  body.sop-phone .sop-pane,body.sop-phone .sop-cfoot{margin-left:12px;margin-right:12px}
+  body.sop-phone .sop-walk{display:flex;flex-direction:column;align-items:stretch;margin-top:18px;min-height:calc(100vh - 46px);min-height:calc(100dvh - 46px)}
+  body.sop-phone .sop-stage{order:1;border-radius:0;box-shadow:0 1px 0 var(--c-wash2), 0 -1px 0 var(--c-wash2)}
+  body.sop-phone .sop-stagein{padding:0}
+  body.sop-phone .sop-wpanel{order:2;margin-top:auto;position:sticky;top:auto;bottom:0;max-width:none;border-radius:20px 20px 0 0;
+    padding:10px 14px calc(12px + env(safe-area-inset-bottom, 0px));box-shadow:0 -10px 26px rgba(0,0,0,.4), 0 0 0 1px var(--c-wash2)}
+  body.sop-phone .sop-wh{font-size:16.5px;margin-top:8px}
+  body.sop-phone .sop-wb{font-size:14px;margin-top:3px}
+  body.sop-phone .sop-ww{margin-top:7px;padding:7px 10px;font-size:12.5px}
+  body.sop-phone .sop-wnav{margin-top:10px}
+  body.sop-phone .sop-wbtn{padding:14px 16px}
+  [data-theme="light"] body.sop-phone .sop-wpanel{box-shadow:0 -6px 18px rgba(26,23,18,.12), 0 0 0 1px var(--c-wash2)}
 }

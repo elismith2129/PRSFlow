@@ -21,6 +21,7 @@
 
   THIS FILE IS BUILT. The sources are in docs/sop-build/:
       content.py        chapters, walkthroughs and every step's words
+                        (content_runner.py + runner/ = the Runner guide, same engine)
       screens/NAME.html one drawn screen each (CSS scoped under .scr-NAME)
       shell.css · engine.js · headnote.txt (this comment)
       build.py          python3 docs/sop-build/build.py public/billing-sop.html

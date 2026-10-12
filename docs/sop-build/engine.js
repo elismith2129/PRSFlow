@@ -9,14 +9,14 @@
   var themeBtn = document.getElementById('themeBtn');
   function setTheme(t) {
     html.setAttribute('data-theme', t);
-    themeBtn.textContent = t === 'dark' ? 'View light' : 'View dark';
+    if (themeBtn) themeBtn.textContent = t === 'dark' ? 'View light' : 'View dark';
   }
   try {
     if (window.parent && window.parent !== window) {
       setTheme(window.parent.document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
     }
   } catch (e) { /* not same-origin: keep the default */ }
-  themeBtn.addEventListener('click', function () { setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); });
+  if (themeBtn) themeBtn.addEventListener('click', function () { setTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); });
 
   /* ── walkthroughs ── */
   var walks = [];
@@ -73,7 +73,7 @@
   Walk.prototype.advance = function () {
     if (this.i < this.def.steps.length - 1) { this.go(this.i + 1, true); return; }
     var n = this.nextWalk();
-    if (n) { scrollToY(n.getBoundingClientRect().top + window.pageYOffset - barH() - 10); return; }
+    if (n) { scrollToY(n.getBoundingClientRect().top + window.pageYOffset - topH() - 10); return; }
     var sec = this.el.parentNode, nx = sec.querySelector('.sop-cnav.sop-cnext');
     if (nx) go(nx.getAttribute('data-go')); else this.go(0, true);
   };
@@ -87,6 +87,9 @@
     this.el.querySelector('.sop-wbar i').style.width = (100 * (this.i + 1) / n) + '%';
     this.el.querySelector('.sop-wh').innerHTML = s.h;
     this.el.querySelector('.sop-wb').innerHTML = s.b;
+    // The WHY line: the reason behind the step, when the guide gives one.
+    var why = this.el.querySelector('.sop-ww');
+    if (why) { why.classList.toggle('on', !!s.w); why.querySelector('.sop-wwt').innerHTML = s.w || ''; }
     this.prev.disabled = this.i === 0;
     this.next.textContent = !last ? 'Next →' : this.nextWalk() ? 'Next part ↓' : this.el.parentNode.querySelector('.sop-cnav.sop-cnext') ? 'Next chapter →' : 'Start over ↺';
     if (s.s) this.root.setAttribute('data-state', s.s); else this.root.removeAttribute('data-state');
@@ -135,13 +138,30 @@
         top = Math.min(top, r.top); bottom = Math.max(bottom, r.bottom);
       }
     }
-    var pb = this.panel.getBoundingClientRect();
-    var roomTop = Math.max(pb.bottom, barH() + pb.height + 6) + 16;
-    var vh = window.innerHeight;
-    if (top >= roomTop && bottom <= vh - 12) return;            // already in view
-    var want = (bottom - top) > (vh - roomTop - 12) ? top - roomTop  // taller than the window: show its top
-      : top - roomTop - Math.max(0, (vh - roomTop - (bottom - top)) * 0.25);
-    scrollToY(window.pageYOffset + want);
+    // Where the step panel sits decides how much of the window the picture gets:
+    //   on top (desk guides) · beside the drawing (phone guide on a computer) ·
+    //   pinned to the bottom (phone guide on a phone).
+    var pb = this.panel.getBoundingClientRect(), sb = this.stage.getBoundingClientRect();
+    var vh = window.innerHeight, where = this.where();
+    var roomTop = where === 'top' ? Math.max(pb.bottom, topH() + pb.height + 6) + 16 : topH() + 12;
+    var roomBot = where === 'bottom' ? vh - pb.height - 12 : vh - 12;
+    var want = (top >= roomTop && bottom <= roomBot) ? 0             // already in view
+      : (bottom - top) > (roomBot - roomTop) ? top - roomTop         // taller than the window: show its top
+      : top - roomTop - Math.max(0, (roomBot - roomTop - (bottom - top)) * 0.25);
+    var y = window.pageYOffset + want;
+    if (where === 'bottom') {
+      // Never scroll the walkthrough's own end above the bottom of the window:
+      // that is what keeps the step panel pinned under the thumb.
+      var cap = this.el.getBoundingClientRect().bottom + window.pageYOffset - vh;
+      if (y > cap) y = Math.max(cap, 0);
+    }
+    if (Math.abs(y - window.pageYOffset) < 1) return;
+    scrollToY(y);
+  };
+  Walk.prototype.where = function () {
+    var pb = this.panel.getBoundingClientRect(), sb = this.stage.getBoundingClientRect();
+    if (pb.left >= sb.right - 2 || pb.right <= sb.left + 2) return 'side';
+    return window.getComputedStyle(this.panel).order === '2' ? 'bottom' : 'top';
   };
   Walk.prototype.queue = function () {
     var self = this;
@@ -178,7 +198,17 @@
     for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) n.setAttribute(k, attrs[k]);
     return n;
   }
-  function barH() { var b = document.querySelector('.sop-bar'); return b ? b.getBoundingClientRect().height : 44; }
+  // How much of the top of the window is covered by things that stay put.
+  function topH() {
+    var t = 0;
+    ['.sop-bar', '.sop-rail'].forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (!el) return;
+      var cs = window.getComputedStyle(el), r = el.getBoundingClientRect();
+      if (cs.display !== 'none' && cs.position === 'sticky' && r.height < 120) t = Math.max(t, (parseFloat(cs.top) || 0) + r.height);
+    });
+    return t;
+  }
   function scrollToY(y) {
     try { window.scrollTo({ top: Math.max(0, y), behavior: reduce ? 'auto' : 'smooth' }); }
     catch (e) { window.scrollTo(0, Math.max(0, y)); }

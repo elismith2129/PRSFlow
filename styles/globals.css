@@ -2638,6 +2638,20 @@ html[data-theme="light"].n-page .c-frame { background: #fdfcf9; }
 .n-home .n-pt b{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--n-ink2)}
 .n-home .n-pt .n-arrow{margin-left:auto;font-size:13px;color:var(--n-ink3);transition:opacity .15s,transform .15s,color .15s}
 .n-home .n-portal:hover .n-pt .n-arrow{color:var(--n-ink);transform:translateX(3px)}
+/* the day arrows on the sessions module (2026-10-12). Negative margins keep the
+   header the height it always was, so the room grid below does not lose a pixel. */
+.n-home .n-pt .n-daynav{display:inline-flex;align-items:center;gap:5px;align-self:center;cursor:default;min-width:0}
+.n-home .n-pt .n-daynav b{min-width:148px;text-align:center;white-space:nowrap}
+.n-home .n-daybtn,.n-home .n-daytoday{border:none;font:inherit;cursor:pointer;flex-shrink:0;margin:-6px 0;
+  background:var(--n-wash2);color:var(--n-ink);border-radius:99px;transition:background .15s,color .15s}
+.n-home .n-daybtn{width:22px;height:22px;padding:0 0 2px;font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.n-home .n-daytoday{height:22px;padding:0 9px;margin-left:3px;font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.n-home .n-daybtn:hover,.n-home .n-daytoday:hover{background:var(--n-ink);color:var(--n-card)}
+.n-home .n-daybtn:focus-visible,.n-home .n-daytoday:focus-visible{outline:2px solid var(--n-ok);outline-offset:2px}
+.n-home.n-mobile .n-pt .n-daynav b{min-width:96px}
+.n-home.n-mobile .n-daybtn{width:30px;height:30px;font-size:18px;margin:0}
+.n-home.n-mobile .n-daytoday{height:30px;margin:0 0 0 3px}
+.n-home.n-mobile .n-pt:has(.n-daynav){flex-wrap:wrap;row-gap:9px;align-items:center}
 
 /* rooms — solid status fills, chip ink, full standard card info */
 /* Rows stretch to fill the portal (Eli, 2026-09-07: "fill out the calendar

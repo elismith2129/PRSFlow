@@ -1,0 +1,239 @@
+<style>
+/* The notes ROOM — app/runner/[studio]/notes/page.tsx + components/runner/RunnerNotesChannel.tsx
+   (variant="room"). /runner/[studio]/shift-notes is a redirect stub; this is the only notes screen. */
+.scr-notes{background:var(--c-bg);color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;width:100%;max-width:100%;overflow:hidden;text-align:left}
+.scr-notes *{box-sizing:border-box}
+.scr-notes .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.scr-notes .mono{font-family:'DM Mono',ui-monospace,monospace}
+
+/* ── header (page.tsx) ── */
+.scr-notes .hd{padding:12px 14px 0;background:var(--c-bg)}
+.scr-notes .hd-row{display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.scr-notes .back{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;box-shadow:var(--c-ctlsh)}
+.scr-notes .ttl{font-size:18px;letter-spacing:-.02em;line-height:1.15}
+.scr-notes .sub{font-size:11.5px;opacity:.5}
+.scr-notes .tabs{display:flex;gap:5px;padding-bottom:8px}
+.scr-notes .tab{background:var(--c-wash);color:var(--c-fg);border-radius:99px;padding:7px 13px;min-height:32px;font-size:10.5px;font-weight:800;letter-spacing:.03em;opacity:.7;display:inline-flex;align-items:center;gap:6px;line-height:1.2}
+.scr-notes .tab.on{background:var(--c-wash2);opacity:1;box-shadow:inset 0 0 0 1.5px rgba(217,214,205,.25)}
+.scr-notes .tab .ct{font-family:'DM Mono',ui-monospace,monospace;font-size:8.5px;font-weight:700;border-radius:99px;padding:1px 6px;background:var(--c-wash2);color:var(--c-fg-2)}
+
+/* ── feed (RunnerNotesChannel, room) ── */
+.scr-notes .feed{padding:8px 12px 10px;background:var(--c-bg);position:relative}
+.scr-notes .day{display:flex;align-items:center;gap:8px;margin:9px 0 7px;font-size:8.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-notes .day::before,.scr-notes .day::after{content:"";flex:1;height:1px;background:var(--c-wash2)}
+.scr-notes .newline{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-st-warm)}
+.scr-notes .newline::before,.scr-notes .newline::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--c-st-warm) 45%,transparent)}
+.scr-notes .post{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px}
+.scr-notes .av{width:28px;height:28px;border-radius:99px;flex-shrink:0;margin-top:2px;background:var(--c-wash2);color:var(--c-fg);display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600}
+.scr-notes .av.office{background:var(--c-fg);color:var(--c-bg)}
+.scr-notes .pb{flex:1;min-width:0}
+.scr-notes .who{display:flex;align-items:baseline;gap:7px;margin-bottom:1px}
+.scr-notes .who .nm{font-weight:800;font-size:12px}
+.scr-notes .chip{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-wash2);border-radius:99px;padding:1px 7px;color:var(--c-fg-2);flex-shrink:0}
+.scr-notes .who .tm{font-size:9.5px;color:var(--c-fg-3);margin-left:auto;font-family:'DM Mono',ui-monospace,monospace;white-space:nowrap}
+.scr-notes .who .pen{color:var(--c-fg-3);font-size:11px;padding:0 4px;line-height:1;display:inline-block}
+.scr-notes .bub{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:4px 12px 12px 12px;padding:8px 10px;font-size:12.5px;line-height:1.5;color:var(--c-fg);margin-top:3px}
+.scr-notes .bub.mine{background:var(--c-wash2);box-shadow:none}
+.scr-notes .bub.forme{box-shadow:var(--c-softsh),inset 3px 0 0 var(--c-st-warm)}
+.scr-notes .bub b{font-weight:700}
+.scr-notes .photos{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.scr-notes .ph{display:inline-flex;width:146px;max-width:160px;height:110px;border-radius:8px;background:var(--c-wash2);color:var(--c-fg-3);align-items:center;justify-content:center;overflow:hidden}
+.scr-notes .ph svg{width:100%;height:100%;display:block}
+.scr-notes .task{margin-top:6px;display:flex;align-items:center;gap:8px;background:var(--c-bg);border-radius:10px;padding:6px 9px;border:1px dashed color-mix(in srgb,var(--c-st-warm) 50%,transparent)}
+.scr-notes .task .cb{width:15px;height:15px;border-radius:5px;flex-shrink:0;border:1.5px solid var(--c-fg-3)}
+.scr-notes .task .tt{flex:1;min-width:0;font-size:10.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.45}
+.scr-notes .task .tt small{display:block;font-size:8px;color:var(--c-fg-3);letter-spacing:.05em;text-transform:uppercase;font-weight:700}
+.scr-notes .task .due{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;font-weight:600;color:var(--c-st-warm);flex-shrink:0}
+
+/* own-post edit (editingId) */
+.scr-notes .editor{background:var(--c-wash);border-radius:10px;padding:9px 11px;font-size:12.5px;line-height:1.5;min-height:60px;color:var(--c-fg);margin-top:3px;box-shadow:inset 0 0 0 1.5px var(--c-wash2)}
+.scr-notes .edbtns{display:flex;gap:8px;margin-top:5px}
+.scr-notes .edbtns span{display:inline-block;font-size:10px;font-weight:800;border-radius:99px;padding:4px 12px;line-height:1.5}
+.scr-notes .edbtns .save{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-notes .edbtns .cancel{background:var(--c-wash2);color:var(--c-fg)}
+
+/* ── composer (pinned under the feed in the app; last block here) ── */
+.scr-notes .comp{position:relative;padding:8px 12px 10px;background:var(--c-srf);border-top:1px solid var(--c-wash2)}
+.scr-notes .roles{display:flex;gap:6px;margin-bottom:7px}
+.scr-notes .role{font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:5px 12px;background:var(--c-wash);color:var(--c-fg-2);line-height:1.5}
+.scr-notes .role.on{background:var(--c-ivory);color:#1b1a17}
+.scr-notes .field{background:var(--c-wash);border-radius:10px;padding:9px 11px;min-height:40px;font-size:12.5px;line-height:1.55;color:var(--c-fg)}
+.scr-notes .field .phd{color:var(--c-fg-3)}
+.scr-notes .caret{display:inline-block;width:1.5px;height:14px;background:var(--c-fg);vertical-align:-2px;margin-left:1px}
+.scr-notes .att{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.scr-notes .att .th{position:relative;display:inline-flex}
+.scr-notes .att .ph{width:78px;height:58px}
+.scr-notes .att .rm{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:99px;background:var(--c-fg);color:var(--c-bg);font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
+.scr-notes .will{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+.scr-notes .will .task{margin-top:0;background:var(--c-wash)}
+.scr-notes .will .task .cb{width:14px;height:14px;border-radius:4px}
+.scr-notes .bar{display:flex;align-items:center;gap:7px;margin-top:7px}
+.scr-notes .ic{background:var(--c-wash);color:var(--c-fg-2);font-size:13px;border-radius:99px;min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0}
+.scr-notes .ic.at{font-size:14px;font-weight:800}
+.scr-notes .hint{font-size:9px;color:var(--c-fg-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-notes .send{background:var(--c-st-booked);color:var(--c-chip-ink);font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:7px 18px;min-height:34px;display:inline-flex;align-items:center;flex-shrink:0;line-height:1.2}
+
+/* tag popover — sits above the composer, over the feed */
+.scr-notes .pop{position:absolute;left:10px;right:10px;bottom:100%;margin-bottom:-2px;z-index:3;background:var(--c-srf);box-shadow:var(--c-softsh),0 10px 30px rgba(0,0,0,.3);border-radius:14px;padding:6px}
+.scr-notes .pop-h{display:flex;align-items:center;gap:6px;padding:2px 4px 6px}
+.scr-notes .pop-h .lb{font-size:8px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-notes .pop-h .q{margin-left:auto;width:120px;background:var(--c-wash);border-radius:8px;padding:4px 8px;font-size:11px;color:var(--c-fg-3);line-height:1.5}
+.scr-notes .pop-h .x{color:var(--c-fg-3);font-size:12px;padding:0 4px}
+.scr-notes .person{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:9px;font-size:11.5px;font-weight:600;color:var(--c-fg)}
+.scr-notes .person .pav{width:22px;height:22px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',ui-monospace,monospace;font-size:8px;flex-shrink:0}
+.scr-notes .person .pav.office{background:var(--c-fg);color:var(--c-bg)}
+.scr-notes .person .kind{margin-left:auto;font-size:8.5px;color:var(--c-fg-3);font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+
+/* ── states ── */
+.scr-notes .only-typing,.scr-notes .only-editing,.scr-notes .only-tag,.scr-notes .only-task,.scr-notes .only-filled{display:none}
+.scr-notes[data-state="typing"] .only-typing{display:inline}
+.scr-notes[data-state="typing"] .att.only-typing{display:flex}
+.scr-notes[data-state="task"] .only-task{display:inline}
+.scr-notes[data-state="task"] .will.only-task{display:flex}
+.scr-notes[data-state="tag"] .pop.only-tag{display:block}
+.scr-notes[data-state="tag"] .ic.at{background:var(--c-fg);color:var(--c-bg)}
+.scr-notes[data-state="editing"] .only-editing{display:block}
+.scr-notes[data-state="editing"] .not-editing{display:none}
+.scr-notes[data-state="typing"] .only-empty,.scr-notes[data-state="task"] .only-empty{display:none}
+.scr-notes[data-state="typing"] .only-filled,.scr-notes[data-state="task"] .only-filled{display:inline}
+.scr-notes:not([data-state="typing"]):not([data-state="task"]) .send{opacity:.45}
+</style>
+<div class="scr scr-notes">
+
+  <!-- header -->
+  <div class="hd" data-k="n-head ch-head">
+    <div class="hd-row">
+      <span class="back" data-k="n-back">←</span>
+      <div>
+        <div class="ttl arch">Notes</div>
+        <div class="sub" data-k="n-sees">Paramount · everyone here sees this</div>
+      </div>
+    </div>
+    <div class="tabs" data-k="n-tabs">
+      <span class="tab on" data-k="n-tab-studio">PRS</span>
+      <span class="tab" data-k="n-tab-general">General <span class="ct">2</span></span>
+    </div>
+  </div>
+
+  <!-- feed: oldest at the top, newest at the bottom -->
+  <div class="feed" data-k="n-feed">
+    <div class="day" data-k="n-day">Today</div>
+
+    <!-- another runner's post, earlier — the handoff -->
+    <div class="post" data-k="n-entry n-other ch-post">
+      <span class="av">MS</span>
+      <div class="pb">
+        <div class="who" data-k="n-who"><span class="nm">MS</span><span class="chip" data-k="n-role-chip">opener</span><span class="tm">3:55 PM</span></div>
+        <div class="bub">Handoff: B is Hitline / KAYA B till midnight, engineer M. Torres. Dante Hollis is in A at 6 — COD, collect before he starts. Ice machine by A is slow.</div>
+      </div>
+    </div>
+
+    <!-- my own post (editable) -->
+    <div class="post" data-k="n-entry n-mine ch-post">
+      <span class="av">TL</span>
+      <div class="pb">
+        <div class="who" data-k="n-who"><span class="nm">TL</span><span class="chip">closer</span><span class="tm">6:10 PM</span><span class="pen not-editing" data-k="n-edit">✎</span></div>
+        <div class="bub mine not-editing">Dante Hollis paid $410.00 cash before start. Logged on WO-1312, cash is in the box.</div>
+        <div class="only-editing" data-k="n-editing">
+          <div class="editor">Dante Hollis paid $410.00 cash before start. Logged on WO-1312, cash is in the petty cash box.<span class="caret"></span></div>
+          <div class="edbtns"><span class="save" data-k="n-edit-save">Save</span><span class="cancel">Cancel</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- my own post with a photo -->
+    <div class="post" data-k="n-entry n-mine ch-post">
+      <span class="av">TL</span>
+      <div class="pb">
+        <div class="who" data-k="n-who"><span class="nm">TL</span><span class="chip">closer</span><span class="tm">9:42 PM</span><span class="pen" data-k="n-edit">✎</span></div>
+        <div class="bub mine">
+          B lounge AC drip is back. Bucket is under it.
+          <div class="photos">
+            <span class="ph" data-k="n-photo">
+              <svg viewBox="0 0 146 110" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M0 22h146" opacity=".55"/>
+                <rect x="52" y="10" width="42" height="12" rx="2" opacity=".7"/>
+                <path d="M60 16h26" opacity=".45"/>
+                <path d="M73 34c-3 5-4 7-4 9a4 4 0 0 0 8 0c0-2-1-4-4-9z" opacity=".8"/>
+                <path d="M73 56v6" opacity=".5"/>
+                <path d="M52 72h42l-5 26H57z" opacity=".8"/>
+                <path d="M52 72c2-9 40-9 42 0" opacity=".6"/>
+                <path d="M20 98h106" opacity=".4"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="newline" data-k="n-new">New since you looked</div>
+
+    <!-- a post from the office that tags me with a time = a task -->
+    <div class="post" data-k="ch-office ch-post n-entry">
+      <span class="av office" data-k="n-office-av">FE</span>
+      <div class="pb">
+        <div class="who" data-k="n-who"><span class="nm">Fernando</span><span class="chip" data-k="n-office-chip">Office</span><span class="tm">10:05 PM</span></div>
+        <div class="bub forme" data-k="n-forme">
+          <b>@Terren</b> 11:30pm check the B lounge bucket again and empty it
+          <div class="task" data-k="n-task">
+            <span class="cb"></span>
+            <span class="tt"><small>task for Terren L.</small>check the B lounge bucket again and empty it</span>
+            <span class="due">11:30 PM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- composer -->
+  <div class="comp" data-k="n-compose ch-compose">
+
+    <!-- @ popover (state: tag) -->
+    <div class="pop only-tag" data-k="n-tagpop">
+      <div class="pop-h"><span class="lb">Tag someone</span><span class="q">name…</span><span class="x">✕</span></div>
+      <div class="person"><span class="pav office">F</span>Fernando<span class="kind">Office</span></div>
+      <div class="person"><span class="pav office">L</span>Lori<span class="kind">Office</span></div>
+      <div class="person"><span class="pav">MS</span>Mika S.<span class="kind">Runner</span></div>
+      <div class="person"><span class="pav">TL</span>Terren L.<span class="kind">Runner</span></div>
+    </div>
+
+    <div class="roles" data-k="n-roles">
+      <span class="role">Opener</span><span class="role">Floater</span><span class="role on">Closer</span>
+    </div>
+
+    <div class="field" data-k="n-field">
+      <span class="phd only-empty">Message PRS…</span>
+      <span class="only-typing">Guest spilled a drink on the A lounge rug. Blotted it and put the fan on it — photo attached.<span class="caret"></span></span>
+      <span class="only-task">@Mika 9am let the AC tech into B lounge<span class="caret"></span></span>
+    </div>
+
+    <div class="att only-typing" data-k="n-attached">
+      <span class="th">
+        <span class="ph">
+          <svg viewBox="0 0 78 58" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M6 44h66" opacity=".45"/>
+            <rect x="12" y="30" width="54" height="20" rx="3" opacity=".7"/>
+            <path d="M30 37c4-3 9 2 14-1 3-2 6 1 8 3" opacity=".8"/>
+            <path d="M20 14h14l-2 12h-10z" opacity=".6"/>
+          </svg>
+        </span>
+        <span class="rm">✕</span>
+      </span>
+    </div>
+
+    <div class="will only-task" data-k="n-task-preview">
+      <div class="task">
+        <span class="cb"></span>
+        <span class="tt"><small>task for Mika S.</small>let the AC tech into B lounge</span>
+        <span class="due">9:00 AM</span>
+      </div>
+    </div>
+
+    <div class="bar">
+      <span class="ic" data-k="n-attach">📷</span>
+      <span class="ic at" data-k="n-at">@</span>
+      <span class="hint" data-k="n-hint"><span class="only-empty">Tag someone with @ · a tag + a time makes a task</span><span class="only-filled">Draft kept</span></span>
+      <span class="send" data-k="n-post ch-send">Send</span>
+    </div>
+  </div>
+</div>

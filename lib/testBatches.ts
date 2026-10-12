@@ -198,6 +198,16 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open Training, then Billing SOP. Each chapter shows a drawn copy of the real screen with a step box above it. Press Next: one part of the screen lights up and the rest dims, with a line or two explaining it. Press Back. Click any part of a picture: it jumps to the step about that part. Try chapter 03 (the work order) and chapter 07 (Holds). Switch "View light" at the top right and check it still reads.',
       },
       {
+        id: 'v143-dash-day-arrows', area: 'Dashboard',
+        what: 'The dashboard sessions box can step between days',
+        how: 'On the dashboard, find "Today\'s sessions". Press the little arrow on the right of the title: the title becomes tomorrow\'s date and the rooms show tomorrow\'s sessions. The PRS / ERS / ARS / TRS counts change with it. Press the left arrow twice: yesterday. A "Today" button appears whenever you are off today: press it. Click the arrows fast five or six times: the rooms must match the date in the title when it settles.',
+      },
+      {
+        id: 'v143-runner-guide', area: 'Training',
+        what: 'The Runner App Guide is a walkthrough on the phone',
+        how: 'ON AN IPHONE, sign in as a runner (or open /runner/sop). The first screen\'s "App guide" row opens it. The drawn phone screen fills the width; a box pinned to the bottom has the step, an orange WHY line, and a big Next button. Press Next ten times in "The work order": each time one part lights up and the page scrolls to it by itself. The box must stay pinned to the bottom the whole time and never cover the lit part. Swipe the chapter chips at the top and open "COD: take the payment" and "Petty cash". Then open the same page on a computer: the phone stands on the left, the steps beside it.',
+      },
+      {
         id: 'v143-wo-no-delete', area: 'Calendar',
         what: 'A session work order has no Delete button',
         how: 'Open any CONFIRMED session from the calendar. Look along the bottom of the work order. There should be NO Delete button and NO Remove hold button. Do the same from the dashboard.',

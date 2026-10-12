@@ -1,12 +1,43 @@
 #!/usr/bin/env python3
-# Assembles the walkthrough Billing SOP: shell + drawn screens + step copy.
+# Assembles a walkthrough SOP: shell + drawn screens + step copy.
+#
+#   python3 build.py                  → the Billing SOP  (content.py,        screens/)
+#   python3 build.py runner           → the Runner guide (content_runner.py, runner/screens/)
+#   python3 build.py runner out.html  → same, written somewhere else
+#
+# A guide is one content module. It holds CHAPTERS and, optionally, META — the
+# title, where its drawn screens live, and its layout ('desk' = wide screens
+# with the step panel on top; 'phone' = phone screens, step panel beside the
+# drawing on a computer and pinned to the bottom of a phone, Next under the thumb).
 import re, os, json, sys, html
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import importlib, content
-importlib.reload(content)
+import importlib
+args = sys.argv[1:]
+if args and args[0].endswith('.html'):      # old form: build.py out.html
+    args = ['billing'] + args
+NAME = args[0] if args else 'billing'
+content = importlib.import_module('content' if NAME == 'billing' else 'content_' + NAME)
 CH = content.CHAPTERS
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'billing-sop.html')
+META = dict(title='Billing SOP', bar='Billing SOP',
+            barsub=' · Paramount Recording Studios · as of Oct 8, 2026',
+            railsub='Billing Coordinator · Operating Manual',
+            railfoot='What changed in each release: Training → App guide (SOP) → Version History.',
+            screens='screens', mode='desk', headnote='headnote.txt', out='billing-sop.html')
+META.update(getattr(content, 'META', {}))
+SCR = os.path.join(HERE, META['screens'])
+PHONE = META['mode'] == 'phone'
+OUT = args[1] if len(args) > 1 else os.path.join(HERE, META['out'])
+
+def step(s):
+    """A step is (keys, title, body[, state]) or a dict with k/h/b and optional w (why) and s (state)."""
+    if isinstance(s, dict):
+        return dict(k=s['k'], h=s['h'], b=s['b'], w=s.get('w', ''), s=s.get('s', ''))
+    return dict(k=s[0], h=s[1], b=s[2], w='', s=(s[3] if len(s) > 3 else ''))
+for c in CH:
+    for b in c['blocks']:
+        if b['kind'] == 'walk':
+            b['steps'] = [step(s) for s in b['steps']]
 
 # ── drawn screens ────────────────────────────────────────────────────────────
 used = []
@@ -16,7 +47,7 @@ for c in CH:
             used.append(b['scr'])
 scr_css, scr_tpl = [], []
 for name in used:
-    s = open(os.path.join(HERE, 'screens', name + '.html'), encoding='utf-8').read()
+    s = open(os.path.join(SCR, name + '.html'), encoding='utf-8').read()
     styles = re.findall(r'<style[^>]*>(.*?)</style>', s, flags=re.S)
     body = re.sub(r'<style[^>]*>.*?</style>', '', s, flags=re.S).strip()
     assert '<script' not in body, name
@@ -29,10 +60,13 @@ for c in CH:
     for b in c['blocks']:
         if b['kind'] != 'walk':
             continue
-        src = open(os.path.join(HERE, 'screens', b['scr'] + '.html'), encoding='utf-8').read()
+        src = open(os.path.join(SCR, b['scr'] + '.html'), encoding='utf-8').read()
         have = set(k for m in re.findall(r'data-k="([^"]+)"', src) for k in m.split())
+        states = set(re.findall(r'data-state[~|^$*]?="([^"]+)"', src))
         for st in b['steps']:
-            for k in st[0].split():
+            if st['s']:
+                assert st['s'] in states, 'walk %s: state %s is not styled on screen %s' % (b['id'], st['s'], b['scr'])
+            for k in st['k'].split():
                 assert k in have, 'walk %s: key %s is not on screen %s' % (b['id'], k, b['scr'])
 
 # ── chapters ─────────────────────────────────────────────────────────────────
@@ -40,7 +74,19 @@ walks = {}
 def render_block(b):
     k = b['kind']
     if k == 'walk':
-        walks[b['id']] = dict(scr=b['scr'], steps=[dict(k=s[0], h=s[1], b=s[2], s=(s[3] if len(s) > 3 else '')) for s in b['steps']])
+        walks[b['id']] = dict(scr=b['scr'], steps=[dict((k, v) for k, v in s.items() if v or k in 'khb') for s in b['steps']])
+        if PHONE:
+            return ('<section class="sop-walk" data-walk="%s">\n'
+                    '  <h2 class="sop-wtitle">%s</h2>\n'
+                    '  <div class="sop-wpanel" role="group" aria-label="Walkthrough steps">\n'
+                    '    <div class="sop-wtop"><span class="sop-wk"></span><span class="sop-wbar"><i></i></span></div>\n'
+                    '    <div class="sop-wh" aria-live="polite"></div>\n'
+                    '    <div class="sop-wb"></div>\n'
+                    '    <div class="sop-ww"><b class="sop-wwk">Why</b><span class="sop-wwt"></span></div>\n'
+                    '    <div class="sop-wnav"><button class="sop-wbtn sop-wprev" type="button">← Back</button><button class="sop-wbtn sop-wnext" type="button">Next →</button></div>\n'
+                    '  </div>\n'
+                    '  <div class="sop-stage" data-scr="%s"><div class="sop-stagein"></div></div>\n'
+                    '</section>') % (b['id'], b['title'], b['scr'])
         return ('<section class="sop-walk" data-walk="%s">\n'
                 '  <h2 class="sop-wtitle">%s</h2>\n'
                 '  <div class="sop-wpanel" role="group" aria-label="Walkthrough steps">\n'
@@ -79,14 +125,14 @@ for i, c in enumerate(CH):
 
 SHELL_CSS = open(os.path.join(HERE, 'shell.css'), encoding='utf-8').read()
 ENGINE_JS = open(os.path.join(HERE, 'engine.js'), encoding='utf-8').read()
-HEAD_NOTE = open(os.path.join(HERE, 'headnote.txt'), encoding='utf-8').read()
+HEAD_NOTE = open(os.path.join(HERE, META['headnote']), encoding='utf-8').read()
 
 page = '''<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PRSFlo — Billing SOP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PRSFlo — %s</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <!--
@@ -99,18 +145,18 @@ page = '''<!DOCTYPE html>
 %s
 </style>
 </head>
-<body>
+<body%s>
 <div class="sop-bar">
-  <span class="sop-bartitle"><b>Billing SOP</b><span class="sop-barsub"> · Paramount Recording Studios · as of Oct 8, 2026</span></span>
+  <span class="sop-bartitle"><b>%s</b><span class="sop-barsub">%s</span></span>
   <span class="sop-grow"></span>
   <button class="sop-ctl" type="button" id="themeBtn">View light</button>
 </div>
 <div class="sop-frame">
 <nav class="sop-rail" aria-label="Chapters">
   <span class="sop-wm">PRS<span class="sop-flo">Flo</span></span>
-  <span class="sop-sub">Billing Coordinator · Operating Manual</span>
+  <span class="sop-sub">%s</span>
   %s
-  <div class="sop-railfoot">What changed in each release: Training → App guide (SOP) → Version History.</div>
+  <div class="sop-railfoot">%s</div>
 </nav>
 <main class="sop-main">
 %s
@@ -123,7 +169,7 @@ var WALKS = %s;
 </script>
 </body>
 </html>
-''' % (HEAD_NOTE.strip(), SHELL_CSS, '\n\n'.join(scr_css), '\n  '.join(nav), '\n\n'.join(secs), '\n'.join(scr_tpl),
+''' % (META['title'], HEAD_NOTE.strip(), SHELL_CSS, '\n\n'.join(scr_css), ' class="sop-phone"' if PHONE else '', META['bar'], META['barsub'], META['railsub'], '\n  '.join(nav), META['railfoot'], '\n\n'.join(secs), '\n'.join(scr_tpl),
        json.dumps(walks, ensure_ascii=False, separators=(',', ':')), ENGINE_JS)
 open(OUT, 'w', encoding='utf-8').write(page)
 nsteps = sum(len(w['steps']) for w in walks.values())

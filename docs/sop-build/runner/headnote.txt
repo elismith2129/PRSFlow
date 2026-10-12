@@ -1,0 +1,26 @@
+  PRSFlo — RUNNER APP GUIDE, walkthrough edition (2026-10-12; app v1.43.10)
+  Served inside the runner app at /runner/sop (app/runner/sop/page.tsx, an iframe).
+
+  Eli, 2026-10-08: "this one needs to be SOOOOO idiot proof. short copy, exact
+  walkthrough and explanation of 'why' we do things."
+
+  HOW IT WORKS
+    Every chapter is a WALKTHROUGH: the real phone screen, drawn, and a step
+    panel. Next lights up one part of the screen and says what to do and WHY.
+    On a phone the panel is pinned to the bottom, Next under the thumb. On a
+    computer the phone stands on the left with the panel beside it.
+
+  THIS FILE IS BUILT, NOT WRITTEN BY HAND
+    Source lives in docs/sop-build/:
+      content_runner.py     the chapters and every step's words (edit copy HERE)
+      runner/screens/*.html one drawn phone screen each; parts tagged data-k="…"
+      runner/BRIEF.md       how a phone screen is drawn
+      shell.css, engine.js  the page and the walkthrough engine (shared with the Billing SOP)
+      build.py              python3 build.py runner ../../public/runner-sop.html
+      test.py               python3 test.py runner-sop.html 390   (steps every step, fails on a miss;
+                            add a height for a short phone: … 375 560)
+    Change the app → change the drawing and the step that describes it, rebuild.
+
+  COPY RULES (content_runner.py has them in full)
+    One step = one thing to tap, type or check. A body is one or two short
+    sentences. Every step that asks for an action carries a WHY.

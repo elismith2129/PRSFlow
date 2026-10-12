@@ -1,0 +1,268 @@
+<style>
+/* PRSFlo runner work order — drawn from components/calendar/WorkOrderPopup.tsx (mode="runner", phone layout) */
+.scr-pay{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:14.5px;line-height:1.6;color:var(--c-fg);background:var(--c-srf);border-radius:12px;overflow:hidden;position:relative;text-align:left;-webkit-font-smoothing:antialiased}
+.scr-pay *{box-sizing:border-box}
+.scr-pay .arch{font-family:'Archivo Black','Inter',system-ui,sans-serif;font-weight:400}
+.scr-pay .mono{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+.scr-pay .ph{color:var(--c-fg);opacity:.3;font-weight:400}
+/* top bar: back arrow + title, then Cancel / Save */
+.scr-pay .hd{background:var(--c-bg);padding:14px 12px;display:flex;align-items:center;gap:12px}
+.scr-pay .back{width:34px;height:34px;border-radius:99px;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh);font-size:15px;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.scr-pay .hd-x{min-width:0}
+.scr-pay .hd-t{font-size:16px;line-height:1.6}
+.scr-pay .hd-s{font-size:13px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-pay .acts{display:flex;align-items:center;gap:8px;padding:4px 12px 12px;background:var(--c-bg)}
+.scr-pay .soft,.scr-pay .btn{display:flex;align-items:center;justify-content:center;border-radius:99px;min-height:48px;padding:6px 13px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:var(--c-ctlsh)}
+.scr-pay .soft{flex:1 1 0;background:var(--c-bg);color:var(--c-fg)}
+.scr-pay .btn{flex:2 1 0;background:var(--c-ivory);color:#1b1a17}
+/* scrolling body + section cards */
+.scr-pay .body{padding:16px 8px;display:flex;flex-direction:column;gap:20px}
+.scr-pay .card{background:var(--c-wash);border-radius:20px;padding:14px 12px;min-width:0}
+.scr-pay .loz{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45}
+/* Session Info */
+.scr-pay .si-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.scr-pay .si-t{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--c-fg-2)}
+.scr-pay .si-lock{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);white-space:nowrap}
+.scr-pay .si-r{display:flex;gap:8px;margin-bottom:5px;align-items:center}
+.scr-pay .si-l{font-size:10px;color:var(--c-fg-2);min-width:60px;flex-shrink:0}
+.scr-pay .si-v{font-size:11px;color:var(--c-fg);min-width:0}
+.scr-pay .due{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.scr-pay .food{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.scr-pay .food-chip{font-size:10px;font-weight:800;letter-spacing:.04em;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:6px 14px;white-space:nowrap}
+.scr-pay .food-chip .mono{font-weight:400;margin-left:7px;font-size:12.5px}
+.scr-pay .food-btn{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:6px 14px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.scr-pay .food-btn .mono{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%);font-size:12.5px;font-weight:400;letter-spacing:0}
+.scr-pay .food-btn i{font-style:normal;opacity:.5}
+.scr-pay .tel{display:inline-flex;align-items:center;gap:4px;background:var(--c-wash2);border-radius:99px;padding:2px 10px;font-size:10.5px;color:var(--c-fg);white-space:nowrap}
+/* Studio Time header + list/cards toggle */
+.scr-pay .st-h{display:flex;align-items:center;gap:10px}
+.scr-pay .st-h .loz{flex:1;min-width:0}
+.scr-pay .seg{display:inline-flex;background:var(--c-wash);border-radius:99px;padding:3px;gap:2px;flex-shrink:0;margin-bottom:12px}
+.scr-pay .seg span{display:flex;align-items:center;padding:4px 10px;border-radius:99px;color:var(--c-fg);opacity:.5;line-height:1}
+.scr-pay .seg span.on{opacity:1;background:var(--c-ivory);color:#1b1a17}
+.scr-pay .seg svg{display:block}
+/* day card */
+.scr-pay .day{background:var(--c-wash);border-radius:14px;padding:13px 12px;margin-bottom:9px;min-width:0}
+.scr-pay .day.lk{opacity:.62}
+.scr-pay .d1{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.scr-pay .d-room{font-size:15px;letter-spacing:-.01em;flex-shrink:0;white-space:nowrap}
+.scr-pay .d-mid{display:flex;align-items:center;gap:7px;min-width:0;flex:1;font-size:11.5px;font-weight:700;color:var(--c-fg-2);overflow:hidden;white-space:nowrap}
+.scr-pay .d-date{flex-shrink:0}
+.scr-pay .tag{display:block;font-size:8.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:99px;padding:2px 7px;white-space:nowrap;line-height:1.4;background:var(--c-st-warm);color:var(--c-chip-ink);max-width:190px;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:0}
+.scr-pay .edit{flex-shrink:0;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:var(--c-wash2);color:var(--c-fg-2);border-radius:99px;padding:4px 11px;white-space:nowrap}
+.scr-pay .d-times{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:12px;font-weight:500;color:var(--c-fg);margin-bottom:2px}
+.scr-pay .d-times .h{color:var(--c-fg-2)}
+.scr-pay .d-times .ot{color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%)}
+.scr-pay .d-staff{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-fg-2);margin-bottom:3px}
+.scr-pay .role{font-size:8px;font-weight:700;padding:1px 5px;border-radius:3px;background:var(--c-wash2);color:var(--c-fg)}
+.scr-pay .role.r2{color:var(--c-st-warm)}
+.scr-pay .pills{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.scr-pay .d-pills{margin:7px 0}
+.scr-pay .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;line-height:1.5;white-space:nowrap;background:var(--c-wash2);color:var(--c-fg);opacity:.45}
+.scr-pay .pill i{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5}
+.scr-pay .pill.ok{opacity:1;color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-pay .pill.ok i{opacity:1}
+.scr-pay .pill.bad{opacity:1;background:var(--c-st-hot);color:var(--c-hot-text)}
+.scr-pay .pill.bad i{opacity:1}
+.scr-pay .pill b{font-weight:800;opacity:.75}
+.scr-pay .d-song{font-size:11px;font-style:italic;color:var(--c-fg-3);margin:2px 0 8px}
+.scr-pay .d-song.has{color:var(--c-fg-2)}
+.scr-pay .d-tot{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--c-wash2);border-radius:8px;padding:5px 9px}
+.scr-pay .d-tot-l{font-size:8.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)}
+.scr-pay .tnum{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:500;text-align:right;color:var(--c-fg)}
+.scr-pay .d-tot .tnum{font-size:12px;font-weight:700}
+.scr-pay .d-lock{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--c-fg-3);margin-top:6px}
+.scr-pay .sum{display:flex;justify-content:flex-end;padding:5px 4px 0}
+.scr-pay .sum-b{display:flex;flex-direction:column;align-items:flex-end;gap:3px;background:var(--c-wash2);border-radius:14px;padding:6px 12px}
+.scr-pay .sum-b .tot{font-weight:700}
+/* bare table inputs (c-tin c-tin-show) — 44px tall on a phone */
+.scr-pay .cin{padding:3px 0;display:flex;align-items:center;min-width:0}
+.scr-pay .cs{padding:3px 6px;display:flex;align-items:center;min-width:0;font-size:11px;font-weight:500}
+.scr-pay .tin{width:100%;min-width:0;min-height:44px;display:flex;align-items:center;padding:3px 6px;border-radius:6px;font-size:11px;font-weight:500;line-height:1.4;background:var(--c-wash2);color:var(--c-fg);white-space:nowrap;overflow:hidden}
+.scr-pay .tin.r{justify-content:flex-end}
+.scr-pay .tin.sel{justify-content:space-between;gap:6px}
+.scr-pay .tin.sel svg{flex-shrink:0;opacity:.6}
+.scr-pay .xb{font-size:14px;line-height:1;color:var(--c-fg-3)}
+.scr-pay .lnk{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--c-fg-2);display:inline-block}
+/* Rentals — a 540px table inside a card: it scrolls sideways on a phone */
+.scr-pay .rent-clip{overflow:hidden;position:relative}
+.scr-pay .rent-in{min-width:540px}
+.scr-pay .rg{display:grid;grid-template-columns:1fr 120px 110px 44px 65px 80px 24px}
+.scr-pay .th{padding:5px 6px;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg);opacity:.45;display:flex;align-items:center;min-width:0;white-space:nowrap}
+.scr-pay .th.r{justify-content:flex-end}
+.scr-pay .rrow{background:var(--c-wash);border-radius:12px;margin-bottom:6px}
+.scr-pay .rent-f{display:flex;justify-content:space-between;align-items:center;padding:9px 4px 0}
+.scr-pay .rent-tot{font-family:'DM Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700;color:var(--c-fg);background:var(--c-wash2);border-radius:99px;padding:5px 12px;white-space:nowrap}
+/* notes */
+.scr-pay .ta{width:100%;background:var(--c-wash);border-radius:5px;color:var(--c-fg);font-size:11px;padding:8px 10px;line-height:1.6}
+.scr-pay .ta .tph{color:var(--c-fg-3)}
+.scr-pay .na{background:var(--c-wash2);border-radius:20px;padding:14px 12px}
+.scr-pay .na-t{font-size:10px;color:color-mix(in srgb,var(--c-st-warm),var(--c-fg) 25%);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+/* Payments */
+.scr-pay .pay{display:flex;flex-direction:column;gap:16px}
+.scr-pay .collect{background:var(--c-wash);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.scr-pay .col-h{display:flex;justify-content:space-between;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3);margin-bottom:4px}
+.scr-pay .col-l{display:flex;align-items:baseline;gap:10px;padding:4px 6px;margin:0 -6px;border-radius:9px}
+.scr-pay .col-a{font-size:20px;letter-spacing:-.02em;min-width:100px;color:var(--c-fg);line-height:1.3;white-space:nowrap}
+.scr-pay .col-a.cod{color:var(--c-st-hot)}
+.scr-pay .col-a.zero{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-pay .col-how{font-size:11px;color:var(--c-fg-2);min-width:0}
+.scr-pay .col-how b{color:var(--c-fg)}
+.scr-pay .col-hist{font-size:10px;color:var(--c-fg-3);margin-top:6px;padding-top:6px;border-top:1px solid var(--c-wash2)}
+.scr-pay .prow{display:grid;grid-template-columns:1fr 96px 24px;align-items:center;background:var(--c-wash);border-radius:12px;margin-bottom:6px;min-height:46px;position:relative}
+.scr-pay .p-tw{display:flex;flex-direction:column;align-items:stretch;gap:1px;padding:4px 0;min-width:0}
+.scr-pay .p-twl{font-size:7.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--c-fg-3);padding:0 6px;white-space:nowrap}
+.scr-pay .p-x{display:flex;align-items:center;justify-content:center;padding:6px 6px}
+.scr-pay .p-amt{grid-column:1 / -1;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;row-gap:0;padding:0 6px 3px;min-width:0}
+.scr-pay .p-fee{font-size:9.5px;color:var(--c-fg-2);white-space:nowrap}
+.scr-pay .p-fee u{color:var(--c-fg-3);font-weight:700;letter-spacing:.04em;margin-left:5px}
+.scr-pay .p-fee s{text-decoration:none;margin-left:6px;color:var(--c-fg-3)}
+.scr-pay .p-run{font-size:17px;letter-spacing:-.02em;white-space:nowrap;color:var(--c-fg)}
+.scr-pay .p-run.hot{color:var(--c-st-hot)}
+.scr-pay .p-run.nil{color:var(--c-fg-3);opacity:.35}
+.scr-pay .p-memo{grid-column:1 / -1}
+.scr-pay .p-memo.half{grid-column:1 / 2}
+.scr-pay .p-l4{grid-column:2 / -1}
+.scr-pay .p-warn{grid-column:1 / -1;padding:0 12px 8px;font-size:10.5px;line-height:1.45;color:var(--c-st-hot)}
+.scr-pay .p-fix{color:var(--c-fg);font-weight:700;letter-spacing:.04em;margin-left:8px;text-decoration:underline;white-space:nowrap;display:inline-block}
+.scr-pay .p-add{padding:9px 4px 0}
+.scr-pay .tots{border-radius:12px;overflow:hidden;background:var(--c-wash);padding:0 6px 6px}
+.scr-pay .trow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px}
+.scr-pay .trow .l{font-size:10px;color:var(--c-fg-2)}
+.scr-pay .trow .v{font-size:11px;color:var(--c-fg);white-space:nowrap}
+.scr-pay .trow.b .v{font-size:13px;font-weight:700}
+.scr-pay .trow .v.ok{color:color-mix(in srgb,var(--c-st-booked),var(--c-fg) 30%)}
+.scr-pay .trow .v.hot{color:var(--c-st-hot)}
+/* pinned Submit bar (last block; in the app it is pinned to the bottom of the screen) */
+.scr-pay .foot{padding:10px 12px 14px;background:var(--c-bg)}
+.scr-pay .go{width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:99px;padding:4px 11px;background:var(--c-st-booked);color:var(--c-chip-ink);font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;box-shadow:var(--c-ctlsh);filter:saturate(.82) brightness(.88)}
+.scr-pay .foot-s{text-align:center;font-size:9.5px;color:var(--c-fg-3);margin-top:6px}
+
+.scr-pay .gap{display:flex;justify-content:center;gap:6px;margin:-8px 0}
+.scr-pay .gap i{width:4px;height:4px;border-radius:50%;background:var(--c-fg-3)}
+.scr-pay .notes{display:flex;flex-direction:column;gap:16px}
+.scr-pay .cod{display:flex;flex-direction:column;gap:10px}
+.scr-pay .legal{font-size:9px;color:var(--c-fg-3);line-height:1.8;padding:10px 12px;background:var(--c-wash);border-radius:5px}
+.scr-pay .legal em{display:block;margin-top:14px}
+.scr-pay .mrow{display:grid;grid-template-columns:80px 1fr;gap:8px;align-items:center}
+.scr-pay .ml{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-2)}
+.scr-pay .mv{font-size:11px;color:var(--c-fg)}
+.scr-pay .pn{min-height:44px;display:flex;align-items:center;padding:3px 6px;font-size:11px;font-weight:500;border-radius:6px}
+.scr-pay .sig-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.scr-pay .sig-clr{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--c-fg-2);padding:2px 8px;border-radius:4px}
+.scr-pay .sig{height:100px;background:var(--c-bg);border-radius:6px;display:block;position:relative;overflow:hidden}
+.scr-pay .sig svg{position:absolute;inset:0;width:100%;height:100%;color:var(--c-fg)}
+.scr-pay .sig-ok{font-size:9px;color:var(--c-fg-3);margin-top:4px}
+.scr-pay .menu{position:absolute;top:48px;left:6px;z-index:5;min-width:200px;background:var(--c-srf);border-radius:12px;box-shadow:0 8px 26px rgba(0,0,0,.45);padding:5px}
+.scr-pay .menu div{font-size:12.5px;padding:7px 10px;border-radius:8px;color:var(--c-fg);white-space:nowrap}
+.scr-pay .menu div.cur{background:var(--c-wash2)}
+
+.scr-pay .v-defa-pick{display:none}
+.scr-pay:not([data-state="card"]):not([data-state="warn"]):not([data-state="paid"]) .v-defa-pick{display:contents}
+.scr-pay .v-card{display:none}
+.scr-pay[data-state="card"] .v-card{display:contents}
+.scr-pay .v-warn{display:none}
+.scr-pay[data-state="warn"] .v-warn{display:contents}
+.scr-pay .v-paid{display:none}
+.scr-pay[data-state="paid"] .v-paid{display:contents}
+.scr-pay .v-card-paid{display:none}
+.scr-pay[data-state="card"] .v-card-paid{display:contents}
+.scr-pay[data-state="paid"] .v-card-paid{display:contents}
+.scr-pay .v-card-warn{display:none}
+.scr-pay[data-state="card"] .v-card-warn{display:contents}
+.scr-pay[data-state="warn"] .v-card-warn{display:contents}
+.scr-pay .v-pick{display:none}
+.scr-pay[data-state="picking"] .v-pick{display:contents}
+.scr-pay .v-card-paid-warn{display:none}
+.scr-pay[data-state="card"] .v-card-paid-warn{display:contents}
+.scr-pay[data-state="paid"] .v-card-paid-warn{display:contents}
+.scr-pay[data-state="warn"] .v-card-paid-warn{display:contents}
+</style>
+<div class="scr scr-pay">
+<div class="hd" data-k="y-top">
+  <span class="back" data-k="y-back">←</span>
+  <div class="hd-x"><div class="hd-t arch">Work Order · WO-1312</div><div class="hd-s">Dante Hollis · October 8th, 2026</div></div>
+</div>
+<div class="acts" data-k="y-acts"><span class="soft" data-k="y-cancel">Cancel</span><span class="btn" data-k="y-save">Save</span></div>
+<div class="body">
+
+  <div class="card" data-k="y-info">
+    <div class="si-h"><span class="si-t">Session Info</span><span class="si-lock">🔒 Set by the office</span></div>
+    <div class="si-r"><span class="si-l">Client</span><span class="si-v">Dante Hollis</span></div>
+    <div class="si-r"><span class="si-l">Date</span><span class="si-v">October 8th, 2026</span></div>
+    <div class="si-r"><span class="si-l">Time</span><span class="si-v">6:00 PM – 2:00 AM</span></div>
+    <div class="si-r"><span class="si-l">Studio</span><span class="si-v">Studio A</span></div>
+    <div class="si-r"><span class="si-l">Billing</span><span class="si-v">COD</span><span class="v-defa-pick"><span class="due" data-k="y-balance y-chip">Balance due</span></span></div>
+    <div class="si-r"><span class="si-l">Phone</span><span class="tel">📞 (323) 555-0117</span></div>
+  </div>
+
+  <div class="gap" aria-hidden="true"><i></i><i></i><i></i></div>
+
+  <div class="card notes">
+    <div>
+      <div class="loz"><b>Session Notes</b></div>
+      <div class="ta" style="min-height:90px"></div>
+    </div>
+    <div class="cod" data-k="y-sign-block">
+      <div class="legal" data-k="y-legal">By signing below, I acknowledge that I am authorized to approve charges for this session. I accept responsibility for all associated costs and understand that payment is due in full at the time of service unless otherwise agreed. I also acknowledge that Paramount Recording is not responsible for any media, personal items, or equipment left behind.<em>No Tapes, CDs, DVDs, Thumb Drives, Computer Drives or other Recording Media will be released until payment in full is received.</em></div>
+      <div class="mrow"><span class="ml arch">Date</span><span class="mv">Oct 8, 2026</span></div>
+      <div class="mrow" data-k="y-print"><span class="ml arch">Print Name</span><span class="pn"><span class="v-paid">Dante Hollis</span></span></div>
+      <div data-k="y-sign">
+        <div class="sig-h"><span class="ml arch">Signature</span><span class="sig-clr">Clear</span></div>
+        <div class="sig"><span class="v-paid"><svg viewBox="0 0 300 100" preserveAspectRatio="none" fill="none"><path d="M22 66c9-22 20-40 27-39 8 1-9 44-2 45 8 1 16-33 24-33 7 0-4 30 3 30 6 0 11-22 17-22 5 0 0 21 6 21 7 0 14-30 22-44m-9 22c14-4 30-7 44-9m12 30c8-16 16-37 23-37 7 0-6 36 1 37 7 1 13-24 20-24 6 0-1 22 6 22 8 0 16-14 30-20 10-4 24-5 34-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="v-paid"><div class="sig-ok" data-k="y-sign-ok">Signature captured ✓</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card pay">
+    <div data-k="y-payments">
+      <div class="loz"><b>Payments</b></div>
+      <div class="collect" data-k="y-collect">
+        <div class="col-h"><span>Collect</span><span>COD</span></div>
+        <div class="v-defa-pick">
+          <div class="col-l" data-k="y-cash"><span class="col-a cod arch">$410.00</span><span class="col-how"><b>cash</b> · Zelle · check</span></div>
+          <div class="col-l" data-k="y-card"><span class="col-a cod arch">$422.30</span><span class="col-how"><b>card</b> · incl. 3% fee $12.30</span></div>
+        </div>
+        <div class="v-card-warn"><div class="col-l" style="margin:0;padding:4px 0" data-k="y-paid"><span class="col-a zero arch">$0.00</span><span class="col-how">paid in full once saved</span></div></div>
+        <div class="v-paid"><div class="col-l" style="margin:0;padding:4px 0" data-k="y-paid"><span class="col-a zero arch">$0.00</span><span class="col-how">paid in full</span></div></div>
+        <div class="v-card"><div class="col-hist">Collected: $422.30 across 1 payment · card fees $12.30 · 1 not saved yet</div></div>
+        <div class="v-warn"><div class="col-hist">Collected: $434.97 across 1 payment · card fees $12.67 · 1 not saved yet</div></div>
+        <div class="v-paid"><div class="col-hist">Collected: $422.30 across 1 payment · card fees $12.30</div></div>
+      </div>
+
+      <div class="prow" data-k="y-row">
+        <div class="cs"><span class="tin sel" data-k="y-types"><span><span class="v-defa-pick">— type —</span><span class="v-card-warn">Credit Card · $422.30</span><span class="v-paid">Credit Card</span></span><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1l3.5 3.5L8 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="p-tw" data-k="y-toward"><span class="p-twl">Toward balance</span><span class="tin mono"><span class="v-defa-pick"><span class="ph">0.00</span></span><span class="v-card-paid">$410.00</span><span class="v-warn">$422.30</span></span></div>
+        <div class="p-x"><span class="xb">×</span></div>
+        <div class="p-amt">
+          <span class="v-defa-pick"><span class="p-run nil arch" data-k="y-run">$0.00</span></span>
+          <span class="v-card-paid"><span class="p-fee" data-k="y-fee">+ $12.30 fee<u data-k="y-waive">waive</u><s>=</s></span><span class="p-run hot arch" data-k="y-run">$422.30</span></span>
+          <span class="v-warn"><span class="p-fee" data-k="y-fee">+ $12.67 fee<u>waive</u><s>=</s></span><span class="p-run hot arch" data-k="y-run">$434.97</span></span>
+        </div>
+        <div class="v-defa-pick"><div class="cin p-memo"><span class="tin" data-k="y-memo"><span class="ph">memo</span></span></div></div>
+        <div class="v-card-paid-warn">
+          <div class="cin p-memo half"><span class="tin" data-k="y-memo"><span class="ph">memo</span></span></div>
+          <div class="cin p-l4"><span class="tin mono" data-k="y-last4"><span class="v-card-paid">4417</span><span class="v-warn"><span class="ph">last 4</span></span></span></div>
+        </div>
+        <div class="v-warn"><div class="p-warn" data-k="y-warn">$422.30 is $12.30 more than the balance. If $422.30 is what ran on the card, the amount before the 3% is $410.00.<span class="p-fix" data-k="y-fix">Use $410.00</span></div></div>
+        <div class="v-pick"><div class="menu" data-k="y-types y-menu"><div class="cur">— type —</div><div>Cash · $410.00</div><div>Zelle · $410.00</div><div>Venmo · $410.00</div><div>Wire · $410.00</div><div>ACH · $410.00</div><div>Credit Card · $422.30</div><div>Debit Card · $422.30</div><div>Check · $410.00</div><div>Other · $410.00</div></div></div>
+      </div>
+      <div class="p-add"><span class="lnk" data-k="y-add">+ Add payment</span></div>
+    </div>
+
+    <div class="tots" data-k="y-totals">
+      <div class="trow"><span class="l">Studio Total</span><span class="v">$360.00</span></div>
+      <div class="trow"><span class="l">Rentals Total</span><span class="v">$50.00</span></div>
+      <div class="v-defa-pick"><div class="trow b"><span class="l">Grand Total</span><span class="v">$410.00</span></div><div class="trow"><span class="l">Total Paid</span><span class="v ok">$0.00</span></div><div class="trow b" data-k="y-balance"><span class="l">Balance Due</span><span class="v hot">$410.00</span></div></div>
+      <div class="v-card-paid"><div class="trow"><span class="l">Card Fees (3%)</span><span class="v">$12.30</span></div><div class="trow b"><span class="l">Grand Total</span><span class="v">$422.30</span></div><div class="trow"><span class="l">Total Paid</span><span class="v ok">$422.30</span></div><div class="trow b" data-k="y-balance"><span class="l">Balance Due</span><span class="v ok">$0.00</span></div></div>
+      <div class="v-warn"><div class="trow"><span class="l">Card Fees (3%)</span><span class="v">$12.67</span></div><div class="trow b"><span class="l">Grand Total</span><span class="v">$422.67</span></div><div class="trow"><span class="l">Total Paid</span><span class="v ok">$434.97</span></div><div class="trow b" data-k="y-balance"><span class="l">Balance Due</span><span class="v ok">$-12.30</span></div></div>
+    </div>
+  </div>
+
+</div>
+<div class="foot" data-k="y-submit">
+  <div class="go">Submit today</div>
+  <div class="foot-s">Sends today’s times to the office · nothing is invoiced yet</div>
+</div>
+</div>

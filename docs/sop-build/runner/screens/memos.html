@@ -1,0 +1,113 @@
+<style>
+/* The runner's memo board — app/runner/[studio]/memos/page.tsx (+ lib/memos.ts).
+   The LIST is drawn from the page code. The OPENED memo is components/memos/MemoView.tsx,
+   which was not in the read-only copy: its frame (full-screen, one card) is from the page
+   code, its inside is rebuilt from the in-app release notes (button wording only). */
+.scr-memos{background:var(--c-bg);color:var(--c-fg);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;width:100%;max-width:100%;overflow:hidden;text-align:left}
+.scr-memos *{box-sizing:border-box}
+
+/* ── the board ── */
+.scr-memos .board{padding-bottom:28px}
+.scr-memos .hd{display:flex;align-items:center;gap:11px;padding:14px 16px 10px;background:var(--c-bg)}
+.scr-memos .hub{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:6px 12px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh),inset 0 0 0 1px var(--c-wash);line-height:1.5}
+.scr-memos .ttl{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:16px;letter-spacing:-.02em}
+.scr-memos .list{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.scr-memos .memo{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;color:var(--c-fg)}
+.scr-memos .memo .t{font-size:13px;font-weight:700;line-height:1.25}
+.scr-memos .memo.done .t{font-weight:500}
+.scr-memos .memo .m{display:flex;gap:8px;font-size:10.5px;color:var(--c-fg-3)}
+.scr-memos .memo .st{margin-left:auto;font-weight:700;white-space:nowrap;display:inline-block}
+.scr-memos .st.warm{color:var(--c-st-warm)}
+.scr-memos .st.hot{color:var(--c-st-hot)}
+.scr-memos .st.quiet{color:var(--c-fg-3)}
+
+/* ── the opened memo: full screen over the board ── */
+.scr-memos .reader{background:var(--c-bg);padding:12px;display:none}
+.scr-memos .sheet{width:100%;display:flex;flex-direction:column;background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:20px;padding:18px 16px 14px;min-height:590px}
+.scr-memos .mv-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.scr-memos .mv-kick{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-memos .mv-x{margin-left:auto;color:var(--c-fg);opacity:.4;font-size:16px;line-height:1;padding:0 2px}
+.scr-memos .mv-title{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:19px;letter-spacing:-.02em;line-height:1.2}
+.scr-memos .mv-meta{font-size:11px;color:var(--c-fg-3);margin-top:4px}
+.scr-memos .mv-body{flex:1;margin-top:14px;padding-top:14px;border-top:1px solid var(--c-wash2);font-size:13.5px;line-height:1.6;color:var(--c-fg)}
+.scr-memos .mv-body p{margin:0 0 10px}
+.scr-memos .mv-body b{font-weight:700}
+.scr-memos .mv-body .li{position:relative;padding-left:16px;margin:2px 0 2px 6px}
+.scr-memos .mv-body .li::before{content:'•';position:absolute;left:2px;top:0;opacity:.75}
+.scr-memos .mv-foot{margin-top:16px;padding-top:8px;border-top:1px solid var(--c-wash2);display:flex;flex-direction:column;gap:8px}
+.scr-memos .mv-sign{display:flex;align-items:flex-end;gap:10px}
+.scr-memos .mv-ini{display:flex;align-items:center;gap:8px;background:var(--c-wash);border-radius:12px;padding:9px 12px}
+.scr-memos .mv-ini .lb{font-size:12px;color:var(--c-fg)}
+.scr-memos .mv-ini .box{display:flex;align-items:center;justify-content:center;margin-left:auto;width:72px;height:34px;border-radius:10px;background:var(--c-wash2);font-family:'DM Mono',ui-monospace,monospace;font-size:15px;font-weight:700;letter-spacing:.08em;color:var(--c-fg)}
+.scr-memos .mv-btn{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:99px;background:var(--c-st-booked);color:var(--c-chip-ink);font-size:13px;font-weight:700;box-shadow:var(--c-ctlsh);white-space:nowrap}
+.scr-memos .mv-later{align-self:center;padding:4px;color:var(--c-fg-3);font-size:11px;text-decoration:underline}
+
+/* ── states ── */
+.scr-memos[data-state="open"] .board{display:none}
+.scr-memos[data-state="open"] .reader{display:block}
+.scr-memos .memo .st.st-signed,.scr-memos .memo .st.st-later,.scr-memos .memo .st.st-hard{display:none}
+.scr-memos[data-state="signed"] .memo .st.st-unread,.scr-memos[data-state="later"] .memo .st.st-unread,.scr-memos[data-state="hard"] .memo .st.st-unread{display:none}
+.scr-memos[data-state="signed"] .memo .st.st-signed,.scr-memos[data-state="later"] .memo .st.st-later,.scr-memos[data-state="hard"] .memo .st.st-hard{display:inline-block}
+.scr-memos[data-state="signed"] .memo.first .t{font-weight:500}
+</style>
+<div class="scr scr-memos">
+
+  <!-- the board (default) -->
+  <div class="board">
+    <div class="hd" data-k="e-head">
+      <span class="hub" data-k="e-back">‹ Hub</span>
+      <div class="ttl">Memos</div>
+    </div>
+
+    <div class="list" data-k="e-list">
+      <!-- needs my signature -->
+      <div class="memo first" data-k="e-memo e-unread">
+        <span class="t">Closing: lock the back gate last</span>
+        <span class="m">
+          <span data-k="e-from">Oct 8 · Eli</span>
+          <span class="st warm st-unread" data-k="e-status">Unread</span>
+          <span class="st quiet st-signed" data-k="e-signed">Signed TL</span>
+          <span class="st warm st-later" data-k="e-later">Sign by Sat</span>
+          <span class="st hot st-hard" data-k="e-hard">Needs your signature</span>
+        </span>
+      </div>
+      <!-- read-only announcement, already opened -->
+      <div class="memo done" data-k="e-memo e-readonly">
+        <span class="t">Parking lot repaving — Wed Oct 14</span>
+        <span class="m">
+          <span>Sep 30 · Fernando</span>
+          <span class="st quiet" data-k="e-read">Read</span>
+        </span>
+      </div>
+      <!-- already signed -->
+      <div class="memo done" data-k="e-memo">
+        <span class="t">COD: collect before the session starts</span>
+        <span class="m">
+          <span>Sep 22 · Eli</span>
+          <span class="st quiet" data-k="e-signed">Signed TL</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- the unread memo, opened (state: open) -->
+  <div class="reader">
+    <div class="sheet" data-k="e-open">
+      <div class="mv-top"><span class="mv-kick">Memo · from Eli</span></div>
+      <div class="mv-title">Closing: lock the back gate last</div>
+      <div class="mv-meta">Sent Oct 8, 4:12 PM · to runners</div>
+      <div class="mv-body" data-k="e-body">
+        <p>Twice this month the back gate was left unlocked overnight.</p>
+        <p><b>The closer locks the back gate last — after the final walk-through, every night.</b></p>
+        <div class="li">Walk every room first.</div>
+        <div class="li">Lock the gate.</div>
+        <div class="li">Post “gate locked” in Notes.</div>
+      </div>
+      <div class="mv-foot" data-k="e-sign">
+        <div class="mv-ini" data-k="e-initials"><span class="lb">I’ve read this</span><span class="box">TL</span></div>
+        <span class="mv-btn" data-k="e-sign-btn">Sign &amp; continue</span>
+        <span class="mv-later" data-k="e-later">I’ll read it later</span>
+      </div>
+    </div>
+  </div>
+</div>

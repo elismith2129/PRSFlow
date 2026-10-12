@@ -39,3 +39,6 @@ supabase/seed/*.local.sql
 
 # Calendar-import scratch area — real client data, never commit
 imports-scratch/
+
+# python caches from docs/sop-build (the SOP build scripts)
+__pycache__/

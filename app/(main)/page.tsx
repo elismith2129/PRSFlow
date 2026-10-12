@@ -390,6 +390,10 @@ export default function DashboardPage() {
 
   // ── Leads + the viewed day's bookings. ─────────────────────────────────────
   useEffect(() => {
+    // The day arrows (2026-10-12) can be clicked faster than a day loads. Only
+    // the LAST day asked for may land — an earlier day's answer arriving late
+    // must not paint itself under a newer day's title.
+    let live = true
     async function load() {
       const d = new Date(calDate)
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
@@ -398,12 +402,16 @@ export default function DashboardPage() {
         supabase.from('leads').select('*').order('created_at', { ascending: false }),
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
       ])
+      if (!live) return
       setLeads(leadsData || [])
       // Today's own times/staff per card (lib/dayTimes, 2026-09-28).
-      setBookings(await overlayDayTimes(bookingsData || [], today))
+      const dayCards = await overlayDayTimes(bookingsData || [], today)
+      if (!live) return
+      setBookings(dayCards)
       setLoading(false)
     }
     load()
+    return () => { live = false }
   }, [calDate, leadsVersion, dashDataVersion])
 
   // Realtime — bookings drive Tonight + landed + holds re-fetches.
@@ -573,6 +581,16 @@ export default function DashboardPage() {
 
   // ── Tonight's rooms. ───────────────────────────────────────────────────────
   const [dashEditBooking, setDashEditBooking] = useState<Booking | null>(null)
+  // THE DAY ARROWS (Eli, 2026-10-12: "i want that dashboard cal to have the
+  // little arrows to click between days. very helpful from the dashboard").
+  // calDate was always the day this module shows; nothing could change it.
+  // ‹ › step it a day, Today snaps back. Everything in the module already
+  // follows calDate: the rooms, the PRS/ARS/ERS/TRS counts, and an empty
+  // room's click (it books on the day being looked at, not on today).
+  const calIsToday = calDate.toDateString() === new Date().toDateString()
+  function shiftCalDay(n: number) {
+    setCalDate(prev => { const d = new Date(prev); d.setDate(d.getDate() + n); return d })
+  }
   function openNewRoomBooking(room: { venue: string; studio: string }) {
     const d = new Date(calDate)
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
@@ -1017,7 +1035,17 @@ export default function DashboardPage() {
 
         <div className="n-portal" onClick={() => router.push('/calendar')}>
           <div className="n-pt">
-            <b>{calDate.toDateString() === new Date().toDateString() ? "Today's sessions" : calDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</b>
+            {/* The title sits in a fixed-width slot so › stays under the
+                pointer while you click through a week (house rule: boxes do
+                not move). Clicks here never open the calendar page. */}
+            <span className="n-daynav" onClick={e => e.stopPropagation()}>
+              <button type="button" className="n-daybtn" aria-label="Previous day" title="Previous day" onClick={() => shiftCalDay(-1)}>‹</button>
+              <b>{calIsToday ? (isMobile ? 'Today' : "Today's sessions") : calDate.toLocaleDateString('en-US', { weekday: isMobile ? 'short' : 'long', month: 'short', day: 'numeric' })}</b>
+              <button type="button" className="n-daybtn" aria-label="Next day" title="Next day" onClick={() => shiftCalDay(1)}>›</button>
+              {!calIsToday && (
+                <button type="button" className="n-daytoday" title="Back to today" onClick={() => setCalDate(new Date())}>Today</button>
+              )}
+            </span>
             <span className="n-loccount" style={{ marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>
               {LOC_CHIPS.map(lc => {
                 const n = bookings.filter(b => b.location === lc.venue && b.status === 'confirmed').length

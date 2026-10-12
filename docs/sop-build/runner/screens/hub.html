@@ -1,0 +1,253 @@
+<style>
+.scr-hub{font:400 14px/1.5 'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--c-fg);background:var(--c-bg);-webkit-font-smoothing:antialiased;text-align:left;overflow:hidden}
+.scr-hub *{box-sizing:border-box;margin:0;padding:0}
+.scr-hub .arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:900;font-synthesis:none}
+.scr-hub .mono{font-family:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace}
+.scr-hub .lab{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.scr-hub .hint{display:inline-flex;width:15px;height:15px;border-radius:50%;background:var(--c-st-cold);color:var(--c-bg);font-size:9.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;vertical-align:middle;margin-left:6px;line-height:1;letter-spacing:0;text-transform:none}
+.scr-hub .srf{background:var(--c-srf,var(--c-bg));box-shadow:var(--c-softsh);border-radius:18px;padding:13px 14px}
+
+/* status pill (.c-pill) */
+.scr-hub .pill{display:inline-flex;align-items:center;flex-shrink:0;border-radius:99px;padding:4px 11px;font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--c-chip-ink);box-shadow:1.5px 1.5px 4px rgba(0,0,0,.35);white-space:nowrap}
+.scr-hub:is([data-theme="light"] *) .pill{box-shadow:1.5px 1.5px 4px rgba(42,39,34,.14)}
+.scr-hub:not(:is([data-theme="light"] *)) .pill{filter:saturate(.82) brightness(.88)}
+.scr-hub .pill.warm{background:var(--c-st-warm)}
+.scr-hub .pill.booked{background:var(--c-st-booked)}
+.scr-hub .pill.dim{background:var(--c-wash2);color:var(--c-fg);opacity:.7}
+
+/* ── header (real padding 14px 16px 10px; the stage supplies 14px of the gutter) */
+.scr-hub .hd{display:flex;align-items:center;gap:11px;padding:14px 2px 10px;background:var(--c-bg)}
+.scr-hub .back{width:38px;height:38px;border-radius:99px;flex-shrink:0;background:var(--c-wash);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:16px;line-height:1;box-shadow:2px 2px 7px rgba(0,0,0,.38),-1px -1px 3px rgba(255,255,255,.03)}
+.scr-hub:is([data-theme="light"] *) .back{box-shadow:2px 2px 6px rgba(42,39,34,.09),-2px -2px 6px rgba(255,255,255,.7)}
+.scr-hub .ttl{min-width:0;flex:1}
+.scr-hub .ttl .nm{font-size:18px;letter-spacing:-.02em;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .ttl .sub{font-size:11.5px;opacity:.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-hub .sw{display:flex;gap:4px;flex-shrink:0}
+.scr-hub .sp{min-width:34px;min-height:30px;border-radius:99px;padding:0 7px;color:var(--c-fg);opacity:.45;font-size:10px;font-weight:800;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.scr-hub .sp.on{background:var(--c-wash2);opacity:1}
+.scr-hub .bulb{min-width:30px;min-height:30px;border-radius:99px;padding:0 5px;background:var(--c-wash2);font-size:13px;display:flex;align-items:center;justify-content:center}
+
+/* ── body (real padding 4px 14px — the stage supplies the 14px) */
+.scr-hub .bd{padding:4px 0 28px;display:flex;flex-direction:column;gap:20px}
+.scr-hub .sec > .lab{margin-bottom:9px}
+
+/* From the office */
+.scr-hub .office{padding:8px 12px}
+.scr-hub .office > .lab{margin-bottom:2px;display:flex;align-items:center;gap:7px}
+.scr-hub .task{display:flex;align-items:center;gap:9px;padding:6px 0}
+.scr-hub .task + .task{box-shadow:0 -1px 0 var(--c-wash)}
+.scr-hub .tick{width:22px;height:22px;border-radius:99px;flex-shrink:0;background:var(--c-wash2);color:var(--c-fg);display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1}
+.scr-hub .tick.done{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.scr-hub .task .tx{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-hub .task .t{font-size:12.5px;font-weight:700}
+.scr-hub .task .t.done{opacity:.4;text-decoration:line-through}
+.scr-hub .task .m{font-size:10.5px;opacity:.45;margin-left:7px}
+.scr-hub .task .due{font-size:10.5px;font-weight:700;color:var(--c-st-warm);margin-left:8px}
+
+/* Sessions */
+.scr-hub .cards{display:flex;flex-direction:column;gap:12px}
+.scr-hub .card{display:block}
+.scr-hub .card .rm{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:5px;padding:0 2px}
+.scr-hub .card .room{font-size:17px;letter-spacing:-.02em;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-hub .ev{border-radius:14px;min-width:0;overflow:hidden;display:grid;min-height:84px;color:var(--c-chip-ink);background:var(--c-st-booked);box-shadow:2.5px 2.5px 8px rgba(0,0,0,.5)}
+.scr-hub:is([data-theme="light"] *) .ev{box-shadow:2.5px 2.5px 7px rgba(42,39,34,.2),-1px -1px 4px rgba(255,255,255,.35)}
+.scr-hub:not(:is([data-theme="light"] *)) .ev{background:color-mix(in srgb,var(--c-st-booked) 72%,transparent)}
+.scr-hub .evbody{display:flex;flex-direction:column;height:100%;min-width:0;overflow:hidden;color:var(--c-chip-ink)}
+.scr-hub .evbody .pay{flex:1 1 auto;min-width:0;padding:8px 12px 7px}
+.scr-hub .evbody .who{display:block;font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .evbody .cl{display:block;font-size:12px;font-weight:700;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .evbody .tm{display:block;font-size:11.5px;font-weight:500;opacity:.85;white-space:nowrap}
+.scr-hub .evbody .foot{background:rgba(0,0,0,.22);display:flex;align-items:center;gap:6px;padding:3px 12px;font-size:10.5px;font-weight:800;line-height:1.35;white-space:nowrap;overflow:hidden;flex-shrink:0}
+.scr-hub:not(:is([data-theme="light"] *)) .evbody .foot{background:rgba(0,0,0,.3)}
+.scr-hub .evbody .foot .wo{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .evbody .foot .staff{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.scr-hub .evbody .cod{display:block;background:var(--c-st-hot);color:var(--c-hot-text);padding:2px 8px;font-size:10px;font-weight:800;letter-spacing:.07em;line-height:1.35;text-align:center;white-space:nowrap;overflow:hidden;flex-shrink:0}
+
+/* Tonight: memo strip + duty tiles */
+.scr-hub .strip{width:100%;margin-bottom:9px;display:flex;align-items:center;gap:10px;border-left:3px solid var(--c-st-warm)}
+.scr-hub .strip .a{font-size:12.5px;font-weight:700}
+.scr-hub .strip .b{font-size:10.5px;opacity:.55;margin-left:auto;white-space:nowrap}
+.scr-hub .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.scr-hub .tile{min-height:72px;display:flex;flex-direction:column;justify-content:space-between;min-width:0}
+.scr-hub .tile.soon{opacity:.45;box-shadow:none;background:var(--c-wash)}
+.scr-hub .tile .t{font-size:12.5px;font-weight:700}
+.scr-hub .tile .s{display:block;font-size:10px;margin-top:4px;opacity:.45}
+.scr-hub .tile .s.ok{color:var(--c-st-booked);opacity:1;font-weight:700}
+.scr-hub .tile .s.wm{color:var(--c-st-warm);opacity:1;font-weight:700}
+
+/* Notes door */
+.scr-hub .door{display:flex;flex-direction:column;gap:7px}
+.scr-hub .door .r1{display:flex;align-items:center;gap:8px}
+.scr-hub .door .ch{font-size:12.5px;font-weight:700}
+.scr-hub .door .new{margin-left:auto;font-size:9.5px;font-weight:800;color:var(--c-st-warm);white-space:nowrap}
+.scr-hub .door .caught{margin-left:auto;font-size:9.5px;opacity:.45;white-space:nowrap}
+.scr-hub .door .r2{display:flex;gap:7px;align-items:flex-start;font-size:11px;line-height:1.45;opacity:.85}
+.scr-hub .door .av{width:22px;height:22px;border-radius:99px;flex-shrink:0;background:var(--c-fg);color:var(--c-bg);display:inline-flex;align-items:center;justify-content:center;font-size:8px}
+.scr-hub .door .av.run{background:var(--c-wash2);color:var(--c-fg)}
+.scr-hub .door .pv{min-width:0;flex:1;overflow:hidden}
+.scr-hub .door .pv b{font-size:10px;font-weight:700}
+.scr-hub .door .pv .mt{font-size:9.5px;opacity:.5}
+.scr-hub .door .r3{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.6;display:flex;align-items:center}
+.scr-hub .door .r3 .go{margin-left:auto;opacity:.6}
+
+/* ── states ── */
+.scr-hub:not([data-state="carry"]) .only-carry{display:none}
+.scr-hub[data-state="carry"] .not-carry{display:none}
+.scr-hub:not([data-state="alldone"]) .only-alldone{display:none}
+.scr-hub[data-state="alldone"] .not-alldone{display:none}
+</style>
+<div class="scr scr-hub">
+
+ <!-- Header -->
+ <div class="hd">
+  <div class="back" data-k="h-back">←</div>
+  <div class="ttl" data-k="h-greeting">
+   <div class="nm arch">Paramount</div>
+   <div class="sub">Thursday, Oct 8 · Terren L.</div>
+  </div>
+  <div class="sw">
+   <div class="sw" data-k="h-studios">
+    <div class="sp on">PRS</div>
+    <div class="sp">ARS</div>
+    <div class="sp">ERS</div>
+    <div class="sp">TRS</div>
+   </div>
+   <div class="bulb" data-k="h-hints">💡</div>
+  </div>
+ </div>
+
+ <div class="bd">
+
+  <!-- From the office — only while at least one task is still open -->
+  <div class="srf office not-alldone" data-k="h-office">
+   <div class="lab">From the office <span class="pill warm">1</span></div>
+   <div class="task" data-k="h-task">
+    <div class="tick" data-k="h-task-tick"></div>
+    <div class="tx"><span class="t">Ice for Studio B</span><span class="m">for Terren · from Eli</span><span class="due mono">9:00 PM</span></div>
+   </div>
+   <div class="task" data-k="h-task">
+    <div class="tick done" data-k="h-task-tick">✓</div>
+    <div class="tx"><span class="t done">Blow the parking lot</span><span class="m">done 5:42 PM</span></div>
+   </div>
+  </div>
+
+  <!-- Today's sessions -->
+  <div class="sec" data-k="h-sessions">
+   <div class="lab"><span class="not-carry">Today · 2 sessions</span><span class="only-carry">Today · 3 sessions</span><span class="hint">?</span></div>
+   <div class="cards">
+
+    <!-- LAST NIGHT'S session, still not submitted — carried at the top, same card -->
+    <div class="card only-carry" data-k="h-carry h-session">
+     <div class="rm">
+      <div class="room arch">Studio C</div>
+      <span class="pill dim" data-k="h-session-state">Not submitted</span>
+     </div>
+     <div class="ev">
+      <div class="evbody">
+       <div class="pay">
+        <span class="who arch">RIO VALE</span>
+        <span class="cl">Northside Sound</span>
+        <span class="tm mono">8P–4A</span>
+       </div>
+       <div class="foot"><span class="wo">WO-1304</span><span class="staff">1ST-MT</span></div>
+      </div>
+     </div>
+    </div>
+
+    <div class="card" data-k="h-session">
+     <div class="rm">
+      <div class="room arch">Studio B</div>
+      <span class="pill dim not-alldone" data-k="h-session-state">Not submitted</span>
+      <span class="pill warm only-alldone" data-k="h-session-state">Submitted</span>
+     </div>
+     <div class="ev">
+      <div class="evbody">
+       <div class="pay">
+        <span class="who arch">KAYA B</span>
+        <span class="cl">Hitline Records</span>
+        <span class="tm mono">12P–12A</span>
+       </div>
+       <div class="foot"><span class="wo">WO-1310</span><span class="staff">1ST-MT</span></div>
+      </div>
+     </div>
+    </div>
+
+    <div class="card" data-k="h-session">
+     <div class="rm">
+      <div class="room arch">Studio A</div>
+      <span class="pill dim not-alldone" data-k="h-session-state">Not submitted</span>
+      <span class="pill warm only-alldone" data-k="h-session-state">Submitted</span>
+     </div>
+     <div class="ev">
+      <div class="evbody">
+       <div class="pay">
+        <span class="who arch">Dante Hollis</span>
+        <span class="tm mono">6P–2A</span>
+       </div>
+       <div class="foot"><span class="wo">WO-1312</span></div>
+       <span class="cod" data-k="h-balance">COD</span>
+      </div>
+     </div>
+    </div>
+
+   </div>
+  </div>
+
+  <!-- Tonight: memo strip + duty tiles -->
+  <div class="sec" data-k="h-duties">
+   <div class="lab">Tonight<span class="hint">?</span></div>
+   <div class="srf strip not-alldone" data-k="h-memo-strip">
+    <span class="a">1 memo waiting</span>
+    <span class="b">tap to read ›</span>
+   </div>
+   <div class="tiles">
+    <div class="srf tile" data-k="h-opening">
+     <span class="t">Opening checklist</span>
+     <span class="s ok" data-k="h-tile-state">Submitted</span>
+    </div>
+    <div class="srf tile" data-k="h-closing">
+     <span class="t">Closing checklist</span>
+     <span class="s not-alldone" data-k="h-tile-state">Not started</span>
+     <span class="s ok only-alldone" data-k="h-tile-state">Submitted</span>
+    </div>
+    <div class="srf tile soon" data-k="h-mics">
+     <span class="t">Mic inventory</span>
+     <span class="s" data-k="h-tile-state">Coming soon</span>
+    </div>
+    <div class="srf tile" data-k="h-petty">
+     <span class="t">Petty cash</span>
+     <span class="s wm not-alldone" data-k="h-tile-state">Opened · count at close</span>
+     <span class="s ok only-alldone" data-k="h-tile-state">Counted at close</span>
+    </div>
+    <div class="srf tile" data-k="h-stock">
+     <span class="t">Stock list</span>
+     <span class="s not-alldone" data-k="h-tile-state">Not started</span>
+     <span class="s ok only-alldone" data-k="h-tile-state">Submitted</span>
+    </div>
+    <div class="srf tile" data-k="h-memos">
+     <span class="t">Memos</span>
+     <span class="s wm not-alldone" data-k="h-tile-state">1 unread</span>
+     <span class="s ok only-alldone" data-k="h-tile-state">All read</span>
+    </div>
+   </div>
+  </div>
+
+  <!-- Notes — the door to the notes room (this replaced the old Shift notes tile) -->
+  <div class="sec">
+   <div class="lab">Notes<span class="hint">?</span></div>
+   <div class="srf door" data-k="h-channel h-shiftnotes">
+    <div class="r1">
+     <span class="ch">PRS · General</span>
+     <span class="new not-alldone">2 new · 1 for you</span>
+     <span class="caught only-alldone">You’re caught up</span>
+    </div>
+    <div class="r2">
+     <span class="av mono">E</span>
+     <span class="pv"><b>Eli</b><span class="mt"> · PRS · 7:42 PM</span><br>@Terren Ice for Studio B 9:00 PM</span>
+    </div>
+    <div class="r3">Open notes <span class="go">›</span></div>
+   </div>
+  </div>
+
+ </div>
+</div>
