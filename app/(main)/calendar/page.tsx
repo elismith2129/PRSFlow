@@ -13,6 +13,9 @@ import { dateRange, toStudioLetter } from '@/lib/time'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { SessionCardBody, CARD_FULL_H, initials, sessionFillClass, fmtCardTime } from '@/components/calendar/SessionCard'
 import { StatusDot, StatusPill } from '@/components/carved'
+import { PageTop } from '@/components/layout/PageTop'
+import { DateStep } from '@/components/layout/DateStep'
+import { CalendarFind, type FindHit } from '@/components/calendar/CalendarFind'
 
 // ─── LOCATIONS ───────────────────────────────────────────────────────────────
 
@@ -303,9 +306,11 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
 function BookingBlock({
   booking, gridStart, totalDays, lane, numLanes, rowH, onClick, isMobile = false, staffByDay = {},
   timesByDay = {},
-  onHover, onHoverEnd, colW = 0,
+  onHover, onHoverEnd, colW = 0, found = false,
 }: {
   booking: RunBooking; gridStart: Date; totalDays: number
+  /** Outlined — the session the find just jumped to (2026-10-13). */
+  found?: boolean
   lane: number; numLanes: number; rowH: number; onClick: () => void
   // work_order_id|date -> staff for that day (F-9 Option B). Empty for legacy rows.
   staffByDay?: Record<string, { eng?: string; asst?: string; engTbd?: boolean; asstTbd?: boolean }>
@@ -458,7 +463,7 @@ function BookingBlock({
           onHover(booking, fmt(addDays(visStart, idx)), r, e.clientX)
         } : undefined}
         onMouseLeave={onHoverEnd}
-        className={`c-ev c-control c-raised-chip c-ev-spine ${sessionFillClass(booking.status)}${isCancelled ? ' c-ev-cancelled' : ''}`}
+        className={`c-ev c-control c-raised-chip c-ev-spine ${sessionFillClass(booking.status)}${isCancelled ? ' c-ev-cancelled' : ''}${found ? ' c-ev-found' : ''}`}
         style={{
           position: 'absolute', top: blockTop, height: blockHeight,
           left: `calc(${left}% + 2px)`, width: `calc(${width}% - 4px)`,
@@ -1107,6 +1112,11 @@ function CalendarPageInner() {
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
   const [locFilter, setLocFilter] = useState('All')
   const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
+  // THE FIND (2026-10-13, components/calendar/CalendarFind): the page top's
+  // search. `found` is the session the last pick jumped to — its card is
+  // outlined until the bar is cleared.
+  const [query, setQuery] = useState('')
+  const [found, setFound] = useState<FindHit | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [woWarning, setWoWarning] = useState<string | null>(null)
   const [rowMode, setRowMode] = useState<RowMode>('card')
@@ -1795,6 +1805,18 @@ function CalendarPageInner() {
 
   // ── 2-week / week grid ─────────────────────────────────────────────────────
 
+  /** A find pick: go to that week, show every room (a room filter could hide
+   *  it), outline the card. The list stays open for the next pick. */
+  const jumpTo = useCallback((hit: FindHit) => {
+    setFound(hit)
+    if (locFilter !== 'All') setLocFilter('All')
+    if (view !== 'grid') setView('grid')
+    setDayViewDate(parse(hit.start))
+    setStartDate(getSunday(parse(hit.start)))
+  }, [locFilter, view])
+  const closeFind = useCallback(() => { setQuery(''); setFound(null) }, [])
+  const foundIds = useMemo(() => found ? new Set([found.bookingId]) : null, [found])
+
   function renderGrid() {
     const DAYS = totalRenderDays
     // Bounds of the actually-rendered grid window. `load` fetches a wider ±buffer
@@ -2088,6 +2110,7 @@ function CalendarPageInner() {
                             onHover={showHover}
                             onHoverEnd={hideHover}
                             colW={colW}
+                            found={!!foundIds && (foundIds.has(b.id) || !!(b as RunBooking)._members?.some(m => foundIds.has(m.id)))}
                           />
                         )
                       })}
@@ -2137,103 +2160,63 @@ function CalendarPageInner() {
         </div>
       )}
 
-      {/* Top bar */}
-      <div style={{
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: isMobile ? 'stretch' : 'center',
-        gap: 10, paddingBottom: 12,
-        flexShrink: 0, flexWrap: isMobile ? 'nowrap' : 'wrap',
-      }}>
-        {/* Row 1 on mobile: date range + prev/today/next. `display: contents` on
-            desktop keeps these as direct flex children so the desktop bar is
-            byte-identical; on mobile they group into their own flex row. */}
-        <div style={isMobile
-          ? { display: 'flex', alignItems: 'center', gap: 8 }
-          : { display: 'contents' }}>
-        {/* Prev / Today / Next */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            onClick={goPrev}
-            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
-          >‹</button>
-          <button
-            onClick={() => {
-              const t = new Date()
-              if (view === 'day') {
-                setDayViewDate(t)
-              } else {
-                const thisSunday = getSunday(t)
-                if (fmt(startDate) === fmt(thisSunday)) {
-                  // Already on this week — force scroll reset
-                  const el = gridRef.current
-                  if (el) el.scrollLeft = bufDays * colW
-                } else {
-                  setStartDate(thisSunday)
-                }
-              }
-            }}
-            style={{ background: 'var(--c-wash)', color: 'var(--c-fg-2)', borderRadius: 4, padding: '4px 10px', fontSize: 10, fontFamily: 'Inter', cursor: 'pointer' }}
-          >Today</button>
-          <button
-            onClick={goNext}
-            style={{ background: 'var(--c-wash)', color: 'var(--c-fg)', borderRadius: 4, padding: '4px 10px', fontSize: 14, lineHeight: 1, cursor: 'pointer' }}
-          >›</button>
-        </div>
-
-        {/* Range label — on mobile a transparent native date input is overlaid
-            directly over the text, so a tap lands on the input itself (iOS Safari
-            won't open a picker from a programmatic .click()). Picking a date jumps
-            to that date's week. Desktop is plain text (no picker), unchanged. */}
-        {isMobile ? (
-          <div style={{ flex: 1, position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-            <span style={{
-              fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)',
-              textDecoration: 'underline', textDecorationColor: 'var(--c-fg-3)', textUnderlineOffset: 3,
-              cursor: 'pointer',
-            }}>
-              {rangeLabel(startDate, totalDays)}
-            </span>
-            <input
-              type="date"
-              value={fmt(startDate)}
-              onChange={e => {
-                const v = e.target.value
-                if (!v) return
-                const picked = parse(v)
-                setStartDate(getSunday(picked))
-                setDayViewDate(picked)
-              }}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, background: 'transparent', cursor: 'pointer' }}
+      {/* THE SHARED PAGE TOP (2026-10-13, components/layout/PageTop; mock
+          docs/design-refs/rail-header-real-pages.html). ‹ range › Today and the
+          room picker sit on the right; Day / Grid are the view tabs; the search
+          is THE FIND — see CalendarFind. The old toolbar row (‹ Today ›, the
+          range, the select, the Day/Grid switch) is gone; the grid's zoom and
+          row-mode controls keep a slim row of their own below. */}
+      <div style={{ position: 'relative', zIndex: 5, flexShrink: 0, marginLeft: isMobile ? 0 : 12 }}>
+        <PageTop<ViewType>
+          title="Calendar"
+          search={{ value: query, onChange: v => { setQuery(v); if (!v) setFound(null) }, placeholder: 'Find a session — artist, client, label, WO #…' }}
+          actions={<>
+            <DateStep
+              onPrev={goPrev}
+              onNext={goNext}
+              label={isMobile ? (
+                /* On a phone the range is tappable: a transparent native date
+                   input sits over the words (iOS Safari won't open a picker
+                   from a programmatic click). Picking a date jumps to its week. */
+                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', textDecoration: 'underline', textDecorationColor: 'var(--c-fg-3)', textUnderlineOffset: 3 }}>
+                  {rangeLabel(startDate, totalDays)}
+                  <input
+                    type="date"
+                    value={fmt(startDate)}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (!v) return
+                      const picked = parse(v)
+                      setStartDate(getSunday(picked))
+                      setDayViewDate(picked)
+                    }}
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, padding: 0, margin: 0, background: 'transparent', cursor: 'pointer' }}
+                  />
+                </span>
+              ) : rangeLabel(startDate, totalDays)}
             />
-          </div>
-        ) : (
-          <div style={{ flex: 1, fontSize: 14, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, color: 'var(--c-fg)' }}>
-            {rangeLabel(startDate, totalDays)}
-          </div>
-        )}
-        </div>{/* end mobile row 1 */}
-
-        {/* Row 2 on mobile: location filter + view toggles (+ zoom, hidden on
-            mobile). `display: contents` on desktop preserves the original bar. */}
-        <div style={isMobile
-          ? { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }
-          : { display: 'contents' }}>
-
-        {/* "All" pill — only shown when a specific studio is selected */}
-        {locFilter.includes('|') && (
-          <button
-            onClick={() => { setLocFilter('All'); setView('grid') }}
-            style={{
-              padding: '4px 14px', borderRadius: 20, fontSize: 10, fontFamily: 'Inter',
-              fontWeight: 700, cursor: 'pointer', background: 'var(--c-wash)', color: 'var(--c-fg-2)',
-              letterSpacing: '0.04em',
-            }}
-          >All</button>
-        )}
-
-        {/* Location filter */}
-        <select
+            <button
+              className="c-soft c-control c-raised"
+              onClick={() => {
+                const t = new Date()
+                if (view === 'day') {
+                  setDayViewDate(t)
+                } else {
+                  const thisSunday = getSunday(t)
+                  if (fmt(startDate) === fmt(thisSunday)) {
+                    // Already on this week — force scroll reset
+                    const el = gridRef.current
+                    if (el) el.scrollLeft = bufDays * colW
+                  } else {
+                    setStartDate(thisSunday)
+                  }
+                }
+              }}
+            >Today</button>
+            {locFilter.includes('|') && (
+              <button className="c-soft c-control c-raised" onClick={() => { setLocFilter('All'); setView('grid') }}>All</button>
+            )}
+            <select
           value={locFilter}
           onChange={e => {
             const val = e.target.value
@@ -2241,12 +2224,8 @@ function CalendarPageInner() {
             if (val.includes('|')) setView('studio')
             else if (view === 'studio') setView('day')
           }}
-          style={{
-            background: locFilter.includes('|') ? 'var(--c-wash2)' : 'var(--c-wash)',
-            color: locFilter.includes('|') ? 'var(--c-fg)' : 'var(--c-fg-2)',
-            borderRadius: 4, padding: '4px 10px',
-            fontSize: 10, fontFamily: 'Inter', cursor: 'pointer', outline: 'none',
-          }}
+          className="c-sel"
+          title="Which rooms to show"
         >
           <option value="All">All Locations</option>
           {LOCATIONS.map(l => (
@@ -2258,36 +2237,28 @@ function CalendarPageInner() {
             </optgroup>
           ))}
         </select>
+          </>}
+          views={[{ key: 'day', label: 'Day' }, { key: 'grid', label: 'Grid' }]}
+          view={view === 'studio' ? undefined : view}
+          onView={v => {
+            const today = new Date()
+            const thisSunday = getSunday(today)
+            if (v === 'day') setDayViewDate(today)
+            const alreadyHere = view === v && fmt(startDate) === fmt(thisSunday)
+            setStartDate(thisSunday)
+            setView(v)
+            // If state won't change, force scroll directly (React won't re-run the effect)
+            if (alreadyHere) {
+              const el = gridRef.current
+              if (el) el.scrollLeft = bufDays * colW
+            }
+          }}
+        />
+        <CalendarFind query={query} activeKey={found?.key ?? null} onPick={jumpTo} onClose={closeFind} />
+      </div>
 
-        {/* View switcher */}
-        <div style={{
-          display: 'flex', background: 'var(--c-wash)',
-          borderRadius: 6, overflow: 'hidden',
-        }}>
-          {(['day', 'grid'] as ViewType[]).map(v => (
-            <button key={v} onClick={() => {
-              const today = new Date()
-              const thisSunday = getSunday(today)
-              if (v === 'day') setDayViewDate(today)
-              const alreadyHere = view === v && fmt(startDate) === fmt(thisSunday)
-              setStartDate(thisSunday)
-              setView(v)
-              // If state won't change, force scroll directly (React won't re-run the effect)
-              if (alreadyHere) {
-                const el = gridRef.current
-                if (el) el.scrollLeft = bufDays * colW
-              }
-            }} style={{
-              padding: '4px 12px', fontSize: 10, fontFamily: 'Inter',
-              cursor: 'pointer', background: view === v ? 'var(--c-wash2)' : 'transparent',
-              color: view === v ? 'var(--c-fg)' : 'var(--c-fg-2)',
-              fontWeight: view === v ? 700 : 400,
-            }}>
-              {v === 'grid' ? 'Grid' : 'Day'}
-            </button>
-          ))}
-        </div>
-
+      {/* Grid density — the zoom and row-mode controls. Grid, desktop only. */}
+      <div style={{ display: isMobile || view !== 'grid' ? 'none' : 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, paddingBottom: 10, flexShrink: 0 }}>
         {/* HORIZONTAL zoom — days across. The pinch gesture's visible twin, so
             the feature is discoverable without knowing the gesture exists.
             Hidden in Day view, which has no columns to spread. */}
@@ -2326,12 +2297,9 @@ function CalendarPageInner() {
             >{label}</button>
           ))}
         </div>
-        </div>{/* end mobile row 2 */}
-
         {/* + New Booking button removed (Eli 2026-08-24, "not needed") — every
             create path goes through the grid itself: click an empty cell, or
-            arrive via Start Booking / the dashboard's empty-room cards. openNew
-            stays; only this launcher died. */}
+            arrive via Start Booking / the dashboard's empty-room cards. */}
       </div>
 
       {/* Calendar content */}

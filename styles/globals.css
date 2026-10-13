@@ -2058,6 +2058,42 @@ select.c-input {
 .c-step button:hover:not(:disabled) { background: var(--c-wash2); opacity: 1; }
 .c-step button:disabled { opacity: .25; cursor: default; }
 .c-step b { font-size: 12px; font-weight: 700; padding: 0 8px; white-space: nowrap; }
+/* A quiet select in the header (the calendar's room picker). Same capsule as
+   the stepper; the native arrow is kept so it reads as a menu. */
+.c-sel {
+  display: inline-flex; align-items: center; height: 30px; padding: 0 28px 0 13px;
+  background: var(--c-wash); border-radius: 99px; border: none; outline: none; cursor: pointer;
+  color: var(--c-fg); font-family: inherit; font-size: 12px; font-weight: 600; white-space: nowrap;
+  -webkit-appearance: none; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--c-fg-3) 50%), linear-gradient(135deg, var(--c-fg-3) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 12px, calc(100% - 10px) 12px; background-size: 5px 5px; background-repeat: no-repeat;
+}
+/* THE FIND (components/calendar/CalendarFind.tsx) — drops under the search bar
+   and floats over the grid. One of the few floating surfaces, so it gets the
+   sheet's lift. */
+.c-find {
+  position: absolute; left: 0; top: 50px; width: min(760px, 100%); z-index: 20;
+  max-height: min(420px, 60vh); display: flex; flex-direction: column;
+  background: var(--c-srf); border-radius: 16px; padding: 10px;
+  box-shadow: var(--c-softsh), 0 18px 50px rgba(0, 0, 0, .35);
+}
+[data-theme="light"] .c-find { box-shadow: var(--c-softsh), 0 18px 50px rgba(42, 39, 34, .16); }
+.c-find-sec { display: block; padding: 6px 10px 3px; }
+.c-find-row {
+  display: grid; grid-template-columns: 104px minmax(0, 1fr) auto 84px 70px; gap: 10px; align-items: center;
+  padding: 6px 10px; border-radius: 10px; font-size: 12px; cursor: pointer;
+}
+.c-find-row:hover { background: var(--c-wash); }
+.c-find-row.c-on { background: var(--c-wash2); }
+.c-find-row.c-find-x { opacity: .5; }
+/* The card the find jumped to: an ink ring, the same mark as the rail's
+   current page. Outranks the chip's own dimming so it reads at a glance. */
+.c-ev.c-ev-found { box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-fg) !important; filter: none !important; z-index: 3 !important; }
+@media (max-width: 768px) {
+  .c-find { top: 46px; width: 100%; }
+  .c-find-row { grid-template-columns: 86px minmax(0, 1fr) 70px; }
+  .c-find-row > :nth-child(3), .c-find-row > :nth-child(5) { display: none; }
+}
 @media (max-width: 768px) {
   .c-ph { flex-wrap: wrap; min-height: 0; }
   .c-ph h1 { font-size: 20px; }
