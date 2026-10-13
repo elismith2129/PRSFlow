@@ -1980,6 +1980,86 @@ select.c-input {
 .c-bclr { opacity: .45; font-size: 11px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 .c-bclr:hover { opacity: .9; }
 
+/* ── THE SHARED PAGE TOP (components/layout/PageTop.tsx — Eli, 2026-10-12, the
+   Ramp rework; mock docs/design-refs/rail-header-real-pages.html). One search
+   bar, one header, one row of view tabs — the same on every page.
+   Every size here is spelled out (nothing inherited) so the top measures the
+   same whether the page under it is a .c-root or not.
+   THE UNDERLINE on the open view is the second of the two sanctioned
+   exceptions to Law 1 (no lines); the first is the outline on the rail's
+   current page. Inset box-shadow in ink, never a border, and no rule runs
+   under the whole row — only the open word is marked. */
+.c-pagetop { flex-shrink: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--c-fg); }
+/* Same field recipe as .c-bsearch / .c-input (12px radius, wash, focus = one
+   wash step), a touch taller because it is the page's main control. */
+.c-topsearch {
+  display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px;
+  margin-bottom: 14px; background: var(--c-wash); border-radius: 12px; cursor: text;
+}
+.c-topsearch:focus-within { background: var(--c-wash2); }
+.c-topsearch-gl { opacity: .4; font-size: 13px; flex-shrink: 0; line-height: 1; }
+.c-topsearch input {
+  flex: 1; min-width: 0; outline: none; border: none; background: none; padding: 0;
+  color: var(--c-fg); font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  /* The BAR is the field; the input is only the text layer (see .c-bsearch). */
+  box-shadow: none;
+}
+.c-topsearch input::placeholder { color: var(--c-fg); opacity: .38; }
+.c-kbd {
+  font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; line-height: 1.4;
+  background: var(--c-wash2); padding: 2px 6px; border-radius: 5px; opacity: .6; flex-shrink: 0;
+}
+/* min-height keeps the title on the same line whether or not a page has a
+   label above it or buttons beside it. */
+.c-ph { display: flex; align-items: flex-end; gap: 12px; padding: 0 4px 10px; min-height: 58px; }
+.c-ph-crumb {
+  display: block; margin-bottom: 3px; line-height: 1.4;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; opacity: .45;
+}
+.c-ph h1 {
+  margin: 0; font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400;
+  font-size: 26px; letter-spacing: -.03em; line-height: 1.05;
+}
+.c-ph h1 .c-hint { margin-left: 9px; top: -3px; }
+.c-ph-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; min-height: 32px; flex-shrink: 0; }
+.c-views { display: flex; gap: 22px; padding: 0 4px; margin-bottom: 14px; min-height: 26px; }
+/* Dimmed while a search overrides the views (same reason as .c-btabs.c-dim). */
+.c-views.c-dim { opacity: .35; pointer-events: none; }
+/* Inactive words dim by COLOUR, not opacity, so a hot count stays full
+   strength on a view you are not on. */
+.c-view {
+  display: flex; align-items: center; gap: 7px; padding: 0 0 6px;
+  background: none; border: none; border-radius: 0; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4;
+  color: var(--c-fg-3); white-space: nowrap;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.c-view:hover { color: var(--c-fg-2); }
+.c-view.c-on { color: var(--c-fg); font-weight: 700; box-shadow: inset 0 -2px 0 var(--c-fg); }
+.c-view-n { font-family: 'DM Mono', ui-monospace, monospace; font-size: 11px; font-weight: 400; opacity: .6; }
+.c-view-n.c-hot {
+  background: var(--c-st-hot); color: var(--c-hot-text);
+  border-radius: 99px; padding: 0 7px; font-weight: 700; opacity: 1;
+}
+/* CRM search results (components/crm/CrmSearchResults.tsx): what kind of thing
+   a hit is, and the matched run — a wash chip, because colour is status. */
+.c-srch-kind {
+  flex-shrink: 0; width: 46px;
+  font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .5;
+}
+.c-srch-hit { background: var(--c-wash2); border-radius: 3px; box-shadow: 0 0 0 2px var(--c-wash2); }
+@media (max-width: 768px) {
+  .c-ph { flex-wrap: wrap; min-height: 0; }
+  .c-ph h1 { font-size: 20px; }
+  .c-ph-actions { margin-left: 0; flex-wrap: wrap; }
+  .c-ph-actions .c-btn, .c-ph-actions .c-soft { min-height: 40px; }
+  .c-views { gap: 16px; overflow-x: auto; scrollbar-width: none; }
+  .c-views::-webkit-scrollbar { display: none; }
+  .c-kbd { display: none; }
+  /* 16px stops iOS Safari zooming the page when the bar is tapped. */
+  .c-topsearch input { font-size: 16px; }
+}
+
 .c-btabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 /* Dimmed while searching: search ignores the tab entirely, so leaving them lit
    would imply the results are filtered by the open one. */

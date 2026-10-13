@@ -1,5 +1,5 @@
 'use client'
-// REGISTRATIONS — every completed client registration in one searchable list.
+// REGISTRATIONS — every completed client registration in one list.
 //
 // Registrations previously surfaced only as a transient "needs review" banner
 // (30-day window, cleared on confirm), so there was no way to look one up after
@@ -8,8 +8,12 @@
 // image, Copy Address), so there is exactly one registration-detail UI.
 //
 // Filtering and paging are client-side on purpose: the row count is small (one
-// studio group's clients), and keeping the full set in memory makes search
-// instant and keeps the realtime subscription a single plain re-fetch.
+// studio group's clients), and keeping the full set in memory keeps the
+// realtime subscription a single plain re-fetch.
+//
+// NO NAME SEARCH HERE since 2026-10-12: the CRM page's one search bar
+// (components/layout/PageTop → components/crm/CrmSearchResults) finds a
+// registration by name, email or phone. This view keeps only its date range.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { RegViewModal } from '@/components/shared/RegViewModal'
@@ -45,7 +49,6 @@ function fmtSubmitted(iso: string): string {
 export function RegistrationsView() {
   const [rows, setRows] = useState<RegRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [page, setPage] = useState(1)
@@ -68,12 +71,7 @@ export function RegistrationsView() {
   useEffect(() => { load() }, [load, clientsVersion])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
     return rows.filter(r => {
-      if (q) {
-        const hay = [displayName(r), r.email, r.phone].filter(Boolean).join(' ').toLowerCase()
-        if (!hay.includes(q)) return false
-      }
       // registered_at is a timestamp; compare on its date part so an inclusive
       // "to" date covers the whole day rather than cutting off at midnight.
       const day = r.registered_at.slice(0, 10)
@@ -81,12 +79,12 @@ export function RegistrationsView() {
       if (to && day > to) return false
       return true
     })
-  }, [rows, search, from, to])
+  }, [rows, from, to])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   // Snap back to page 1 whenever the filters change the result set, so you can't
   // be stranded on a page that no longer exists.
-  const filterKey = `${search}|${from}|${to}`
+  const filterKey = `${from}|${to}`
   const lastFilterKey = useRef(filterKey)
   useEffect(() => {
     if (lastFilterKey.current !== filterKey) {
@@ -123,21 +121,15 @@ export function RegistrationsView() {
       <div style={{ padding: '12px 16px', flexShrink: 0 }}>
         <SectionHeader title="Registrations" count={filtered.length > 0 ? filtered.length : undefined} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search name, email or phone…"
-            style={{ ...inputStyle, flex: 1, minWidth: 180 }}
-          />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ ...headCell }}>Submitted</span>
             <input type="date" value={from} onChange={e => setFrom(e.target.value)} title="From" style={{ ...inputStyle, cursor: 'pointer' }} />
             <span style={{ color: 'var(--c-fg-3)', fontSize: 11 }}>–</span>
             <input type="date" value={to} onChange={e => setTo(e.target.value)} title="To" style={{ ...inputStyle, cursor: 'pointer' }} />
           </div>
-          {(search || from || to) && (
+          {(from || to) && (
             <button
-              onClick={() => { setSearch(''); setFrom(''); setTo('') }}
+              onClick={() => { setFrom(''); setTo('') }}
               style={{ padding: '5px 10px', background: 'transparent', color: 'var(--c-fg-2)', borderRadius: 4, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, fontSize: 9, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
             >
               Clear

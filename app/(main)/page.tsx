@@ -51,7 +51,7 @@ import {
   type LandedItem, type InquiryLead, type BillingPulse, type FloBriefing,
 } from '@/lib/home'
 import { FLO_GO_ROUTES, FLO_GO_LABELS, type FloLine } from '@/lib/floLines'
-import { daysSince, isParked, isDue } from '@/lib/crm'
+import { daysSince, needsActionCounts } from '@/lib/crm'
 import { fetchUnsubmittedSessions, type UnsubmittedSession } from '@/lib/unsubmitted'
 import { STUDIO_SHORT } from '@/lib/studios'
 import { fetchOpenFlags, isHot as flagIsHot, ageLabel as flagAge, studioCode, KIND_LABEL, type Flag } from '@/lib/flags'
@@ -137,6 +137,26 @@ type QueueRow = {
   /** Duty rows tick in place; others navigate. */
   duty?: DutyView
   href?: string
+}
+
+/** Every lead, paged. A bare select stops at 1,000 rows (newest first), which
+ *  would quietly drop older leads from the pipeline count and make it disagree
+ *  with the CRM page, which has always paged. Same loop as the CRM's load. */
+async function fetchAllLeads(): Promise<{ data: Lead[] }> {
+  let all: Lead[] = []
+  let from = 0
+  const BATCH = 1000
+  while (true) {
+    const { data, error } = await supabase
+      .from('leads').select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + BATCH - 1)
+    if (error || !data || data.length === 0) break
+    all = all.concat(data as Lead[])
+    if (data.length < BATCH) break
+    from += BATCH
+  }
+  return { data: all }
 }
 
 export default function DashboardPage() {
@@ -399,7 +419,7 @@ export default function DashboardPage() {
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
       const today = d.toISOString().slice(0, 10)
       const [{ data: leadsData }, { data: bookingsData }] = await Promise.all([
-        supabase.from('leads').select('*').order('created_at', { ascending: false }),
+        fetchAllLeads(),
         supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
       ])
       if (!live) return
@@ -481,19 +501,15 @@ export default function DashboardPage() {
   const clockDate = clockNow.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const clockTime = clockNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
 
-  // ── Pipeline numbers (same predicate as the CRM Needs Action bucket). ──────
-  const pipelineLeads = leads.filter(l => {
-    if (l.needs_contact === false) return false
-    const uncontacted = l.status === 'uncontacted' || (!l.last_contact && l.status !== 'booked' && l.status !== 'dead')
-    const hot = l.status === 'hot' && isDue(l) && !isParked(l)
-    const warm = l.status === 'warm' && isDue(l) && !isParked(l)
-    const incomplete = (l.status === 'hot' || l.status === 'warm' || l.status === 'uncontacted')
-      && (!l.fname || !l.lname || !l.email || !l.phone || (!l.quote && !l.rate_daily))
-    return uncontacted || hot || warm || incomplete
-  })
-  const pipeHot = pipelineLeads.filter(l => l.status === 'hot').length
-  const pipeWarm = pipelineLeads.filter(l => l.status === 'warm').length
-  const pipeUncon = pipelineLeads.filter(l => l.status === 'uncontacted').length
+  // ── Pipeline numbers = the CRM's Needs Action count, from the ONE source
+  // (lib/crm needsActionCounts — the CRM's Leads count and the rail badge read
+  // the same function). Until 2026-10-12 this was a local copy that had
+  // drifted from the CRM: it also counted hot / warm / uncontacted leads with a
+  // missing field ("incomplete", a bucket the CRM dropped as double-counting)
+  // and it kept never-contacted leasing leads, so the dashboard could show a
+  // bigger number than the page it opens. The three chips are the three Needs
+  // Action buckets and add up to the big number.
+  const pipe = needsActionCounts(leads)
 
   // ── THE STATEMENT — the briefing's real sentences, sized to be read.
   //    Red bullets lead (max 2), the landed line follows when we landed
@@ -935,13 +951,13 @@ export default function DashboardPage() {
           <div className="n-pbody">
             <div className="n-pleft">
               <div>
-                <div className="n-pipebig">{loading ? '–' : pipelineLeads.length}</div>
+                <div className="n-pipebig">{loading ? '–' : pipe.total}</div>
                 <div className="n-pipesub">active leads</div>
               </div>
               <div className="n-pstat">
-                <span className="n-chip n-h">{pipeHot} hot</span>
-                <span className="n-chip n-wchip">{pipeWarm} warm</span>
-                <span className="n-chip n-u">{pipeUncon} uncon</span>
+                <span className="n-chip n-h">{pipe.hot} hot</span>
+                <span className="n-chip n-wchip">{pipe.warm} warm</span>
+                <span className="n-chip n-u">{pipe.uncontacted} uncon</span>
               </div>
             </div>
             <div className={`n-inqblock${inquiries.length === 0 ? ' n-quietblock' : ''}`}>

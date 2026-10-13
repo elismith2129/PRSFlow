@@ -11,11 +11,18 @@ const supabase = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 )
 
-export default async function RegPrintPage({ params }: { params: { clientId: string } }) {
+export default async function RegPrintPage({ params }: { params: Promise<{ clientId: string }> }) {
+  // `params` is a PROMISE (Next 15+), and since Next 16 reading it without
+  // awaiting gives undefined — no error, just nothing. This page read
+  // `params.clientId` directly, so it looked up a client with no id, found
+  // none and showed "not found" for every registration (fixed 2026-10-12;
+  // found by building in webpack mode, whose page type check rejects the old
+  // signature). The route handlers (/display, /m) already awaited theirs.
+  const { clientId } = await params
   const { data: client } = await supabase
     .from('clients')
     .select('fname, lname, email, phone, address_street, address_street2, address_city, address_state, address_zip, instagram, how_heard, terms_accepted, terms_accepted_at, registered_at, id_file_url')
-    .eq('id', params.clientId)
+    .eq('id', clientId)
     .single()
 
   if (!client) notFound()

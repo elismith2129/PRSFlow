@@ -357,7 +357,11 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
           type="button"
           onClick={() => setHandOpen({ at: pathname, group: open ? null : group.href })}
           className={`c-rail-link${childActive || open ? ' c-on' : ''}`}
-          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+          // No `font: inherit` here. The old Billing / Admin buttons carried it and
+          // it overrode .c-rail-link's 12.5px / 600 with the page's 14px / 400, so
+          // a group read bigger and lighter than the links beside it — easy to
+          // miss with two groups, obvious with five (fixed 2026-10-12).
+          style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
           aria-expanded={open}
         >
           <span className="c-rail-ic">{group.ic}</span>

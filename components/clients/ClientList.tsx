@@ -1,7 +1,12 @@
 'use client'
 // ─── CLIENT LIST (rebuild 2026-09-30, mock docs/design-refs/crm-clients-v3.html)
-// The billing hub's anatomy: search bar on top (it outranks the filters), pill
-// filters with counts, then one carved list panel with a lozenge header.
+// Pill filters with counts, then one carved list panel with a lozenge header.
+//
+// NO SEARCH BAR OF ITS OWN since 2026-10-12: the CRM page's one search bar
+// (components/layout/PageTop → components/crm/CrmSearchResults) finds clients
+// by name, A&R, artist, email and phone, across leads and registrations too.
+// Do not put a second search box back here — one bar per page is the rule.
+// The + New client button moved to the page header with it.
 //
 // "Needs fixing" is the clean-up queue for the database: a label with no
 // contacts or whose rep on file isn't one of its contacts (the 10 Summers /
@@ -31,8 +36,6 @@ interface Props {
   selectedId: string | null
   loading: boolean
   onSelect: (id: string) => void
-  /** Rendered beside the search bar (the page's + New client). */
-  searchAction?: React.ReactNode
 }
 
 /** Why a client is in "Needs fixing" — null when it isn't. */
@@ -59,15 +62,14 @@ function initials(name: string): string {
   return (w[0][0] + w[1][0]).toUpperCase()
 }
 
-export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, loading, onSelect, searchAction }: Props) {
+export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, loading, onSelect }: Props) {
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<SortOption>('alpha')
-  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const bodyRef = useRef<HTMLDivElement>(null)
   const [pageSize, setPageSize] = useState(12)
 
-  useEffect(() => { setPage(1) }, [filter, sort, search])
+  useEffect(() => { setPage(1) }, [filter, sort])
 
   // Fit rows to the panel body. ResizeObserver so a window resize, the CRM
   // tab strip appearing, or the filter tabs wrapping all re-fit live.
@@ -88,9 +90,6 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
     return () => ro.disconnect()
   }, [loading])
 
-  const q = search.trim().toLowerCase()
-  const searching = q.length > 0
-
   const matchesFilter = (c: Client, f: Filter) => {
     if (f === 'all') return true
     if (f === 'label') return c.type === 'label'
@@ -109,24 +108,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
   const counts: Record<Filter, number> = { all: 0, label: 0, individual: 0, registered: 0, fix: 0 }
   for (const c of clients) for (const f of filterDefs) if (matchesFilter(c, f.key)) counts[f.key]++
 
-  // Search ignores the pill (like the billing hub): you look for a client, not
-  // a client-in-a-filter.
-  let filtered: Client[] = searching ? clients : clients.filter(c => matchesFilter(c, filter))
-  if (searching) {
-    filtered = filtered.filter(c => {
-      if (c.name.toLowerCase().includes(q)) return true
-      if (fullName(c.fname, c.lname).toLowerCase().includes(q)) return true
-      if ((c.email || '').toLowerCase().includes(q)) return true
-      if ((c.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, '') || '\u0000')) return true
-      if ((c.artist_name || '').toLowerCase().includes(q)) return true
-      if ((c.artists || []).some(a => a.toLowerCase().includes(q))) return true
-      return (contactsMap[c.id] || []).some(ct =>
-        fullName(ct.fname, ct.lname).toLowerCase().includes(q) ||
-        (ct.email || '').toLowerCase().includes(q) ||
-        (ct.artists || []).some(a => a.toLowerCase().includes(q))
-      )
-    })
-  }
+  let filtered: Client[] = clients.filter(c => matchesFilter(c, filter))
 
   if (sort === 'alpha') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
   else if (sort === 'recent') filtered = [...filtered].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -137,24 +119,11 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
   const startIdx = (safePage - 1) * pageSize
   const paginated = filtered.slice(startIdx, startIdx + pageSize)
 
-  const lozengeTitle = searching ? 'Search results' : filterDefs.find(f => f.key === filter)?.label ?? 'All'
+  const lozengeTitle = filterDefs.find(f => f.key === filter)?.label ?? 'All'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flexShrink: 0 }}>
-        <div className="c-bsearch" style={{ flex: 1 }}>
-          <span style={{ opacity: 0.4, fontSize: 12 }}>⌕</span>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search clients — name, label, A&R, artist, email, phone…"
-          />
-          {searching && <span className="c-bclr" onClick={() => setSearch('')}>clear ✕</span>}
-        </div>
-        {searchAction}
-      </div>
-
-      <div className={`c-btabs${searching ? ' c-dim' : ''}`} style={{ flexShrink: 0 }}>
+      <div className="c-btabs" style={{ flexShrink: 0 }}>
         {filterDefs.map(f => (
           <span key={f.key} className={`c-btab${filter === f.key ? ' c-on' : ''}`} onClick={() => setFilter(f.key)}>
             {f.label}{' '}
@@ -183,7 +152,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
           {loading ? (
             <div className="c-bempty" style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>Loading…</div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>{searching ? 'Nothing matches that.' : 'Nothing here.'}</div>
+            <div style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>Nothing here.</div>
           ) : paginated.map(c => {
             const contacts = contactsMap[c.id] || []
             const isLabel = c.type === 'label'

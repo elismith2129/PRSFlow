@@ -65,6 +65,7 @@ import { deleteWorkOrderEverywhere, fetchDeleted, type DeletedEntry } from '@/li
 import { DeletedLogModal } from '@/components/billing/DeletedLog'
 import { RemovedHoldsPanel } from '@/components/billing/RemovedHolds'
 import { Hint } from '@/components/ui/Hint'
+import { PageTop } from '@/components/layout/PageTop'
 import { FinancialsView } from '@/components/billing/FinancialsView'
 import { TenantsView } from '@/components/billing/TenantsView'
 import {
@@ -565,60 +566,50 @@ export default function BillingPage() {
   // owner-only word in it — hidden for everyone else, and backed by an
   // owner-only RLS policy on `financial_history`, because a hidden button is
   // presentation and never a boundary.
-  const header = (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, padding: '2px 4px 14px', flexWrap: 'wrap' }}>
-      <div>
-        <span className="c-label" style={{ display: 'block', marginBottom: 3 }}>
-          {view === 'financials'
-            ? 'Revenue'
-              : view === 'tenants'
-              ? <>Rent<Hint tip="One row per tenant per period: Mark sent (the rent email) → Mark paid (asks how much; less is a Partial) → In QB. Tap a name for the ledger; ✎ edits the tenant (owner/manager). Tenants don't have work orders — except Mustard, whose OT and shared-runner hours bill through Billing." /></>
-              : <>Work orders &amp; invoices<Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid." /></>}
-        </span>
-        <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26 }}>
-          {(['billing', 'cod'] as Pipeline[]).map(p => (
-            <button
-              key={p}
-              className={`c-arch${view === 'invoices' && pipeline === p ? ' c-on' : ''}`}
-              onClick={() => { setView('invoices'); switchPipeline(p) }}
-              aria-current={view === 'invoices' && pipeline === p ? 'page' : undefined}
-            >
-              {p === 'billing' ? 'Billing' : 'COD'}
-              {/* Hot only on COD, only when a balance exists. Sanctioned under
-                  hot-as-needs-you-now (§5) — this is money nobody is chasing. */}
-              <span className={`c-btitlen${p === 'cod' && codAlert ? ' c-hot' : ''}`}>
-                {pipelineCount(rows, p)}
-              </span>
-            </button>
-          ))}
-          <button
-            className={`c-arch${view === 'tenants' ? ' c-on' : ''}`}
-            onClick={() => setView('tenants')}
-            aria-current={view === 'tenants' ? 'page' : undefined}
-            title="Tenant rent board — what's open, what's paid and when"
-          >
-            Tenants
-          </button>
-          {isOwner && (
-            <button
-              className={`c-arch${view === 'financials' ? ' c-on' : ''}`}
-              onClick={() => setView('financials')}
-              aria-current={view === 'financials' ? 'page' : undefined}
-              title="Revenue over time — owners only"
-            >
-              Financials
-            </button>
-          )}
-        </div>
-      </div>
-      <div style={{ flex: 1 }} />
-      {view === 'invoices' && (
+  // THE SHARED PAGE TOP since 2026-10-12 (components/layout/PageTop, mock
+  // docs/design-refs/rail-header-real-pages.html): the label, the title, the
+  // one search bar, and Billing · COD · Tenants · Financials as quiet
+  // underlined words. It replaced the "Work orders & invoices" label over the
+  // big title-words (.c-btitle) and the search bar that sat under the approval
+  // bin.
+  //
+  // THE COD RULING STILL HOLDS (2026-08-13, spec §17 — "I don't want staff to
+  // forget about COD"): both pipelines are always named in the heading, and
+  // COD's count goes HOT the moment a balance exists, at full strength even
+  // while you are on Billing. Quiet words, never a quiet number.
+  //
+  // The search looks across BOTH pipelines and outranks the tabs (it always
+  // has). Typing while on Tenants or Financials shows the invoice hits — see
+  // the two early returns below, which stand aside while searching.
+  const top = (
+    <PageTop<'billing' | 'cod' | 'tenants' | 'financials'>
+      crumb="Billing"
+      title="Billing Hub"
+      hint={view === 'tenants'
+        ? <Hint tip="One row per tenant per period: Mark sent (the rent email) → Mark paid (asks how much; less is a Partial) → In QB. Tap a name for the ledger; ✎ edits the tenant (owner/manager). Tenants don't have work orders — except Mustard, whose OT and shared-runner hours bill through Billing." />
+        : view === 'financials'
+          ? undefined
+          : <Hint tip="Two pipelines. COD: the money is already in — check the work order, attach the invoice, done. Billing: the full cycle — review, invoice, owner approval, send, chase, paid. Every row shows at most one button — always the next action. Click a row to open the work order (or the combined package once an invoice is attached). Drag a QuickBooks PDF straight onto a row to attach it." />}
+      search={{ value: query, onChange: setQuery, placeholder: 'Search Billing Hub — client, artist, invoice #, WO #, PO…' }}
+      views={[
+        // Hot only on COD, only when a balance exists. Sanctioned under
+        // hot-as-needs-you-now (§5) — this is money nobody is chasing.
+        { key: 'billing', label: 'Billing', count: pipelineCount(rows, 'billing') },
+        { key: 'cod', label: 'COD', count: pipelineCount(rows, 'cod'), hot: codAlert },
+        { key: 'tenants', label: 'Tenants', title: "Tenant rent board — what's open, what's paid and when" },
+        ...(isOwner ? [{ key: 'financials' as const, label: 'Financials', title: 'Revenue over time — owners only' }] : []),
+      ]}
+      view={view === 'invoices' ? pipeline : view}
+      onView={k => {
+        if (k === 'billing' || k === 'cod') { setView('invoices'); switchPipeline(k) }
+        else setView(k)
+      }}
+      dimViews={searching}
+      actions={view === 'invoices' || searching ? (
         /* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
            things that belong to the PAGE rather than to an invoice. It is not a
            header button because a blank work order is rare — Eli: "these are
-           gonna be rare occasions" — and a permanent button next to the
-           pipeline toggle would give a once-a-month action the same weight as
-           the control that changes what the whole screen means. */
+           gonna be rare occasions". */
         <button
           className="c-bmore"
           onClick={() => setPageMenu(true)}
@@ -627,18 +618,18 @@ export default function BillingPage() {
         >
           ⋯
         </button>
-      )}
-    </div>
+      ) : undefined}
+    />
   )
 
   // Revenue is a different page that happens to live behind the same heading —
   // no search, no buckets, no rows, no modals. Rendering it as a branch rather
   // than threading `view` through the invoice tree keeps the two from acquiring
   // each other's conditionals.
-  if (view === 'financials' && isOwner) {
+  if (view === 'financials' && isOwner && !searching) {
     return (
       <div className="c-root">
-        {header}
+        {top}
         <FinancialsView />
       </div>
     )
@@ -648,10 +639,10 @@ export default function BillingPage() {
   // and the early return matters doubly here: it unmounts WorkOrderPopup,
   // which is what makes TenantsView's studio_time_rows channel safe under
   // the one-channel-per-table-per-page rule (see TenantsView header).
-  if (view === 'tenants') {
+  if (view === 'tenants' && !searching) {
     return (
       <div className="c-root">
-        {header}
+        {top}
         <TenantsView />
       </div>
     )
@@ -677,7 +668,7 @@ export default function BillingPage() {
 
           Since 2026-08-20 the heading also carries FINANCIALS for owners; it is
           built above as `header` because both views wear it. */}
-      {header}
+      {top}
 
       {/* SUMMARY — AR aging without leaving the page, computed from the same
           rows the tabs use, so a figure up here can never disagree with the
@@ -729,8 +720,12 @@ export default function BillingPage() {
           approval bin to ever disappear"). Its rows come from the full list,
           never the search, so typing changes nothing in it. */}
       {isOwner && approvals.length > 0 && (
-        <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3 }}>
+        /* ONE FIXED SIZE (2026-10-12 — the fixed-box house rule, CLAUDE.md).
+           The bin used to grow a row per invoice and push the pills and the
+           list down the page. It is now the height of its heading plus two
+           rows, always: one waiting leaves room, a third scrolls inside. */
+        <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12, height: 146, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3, flexShrink: 0 }}>
             <span style={{
               minWidth: 19, height: 17, borderRadius: 99, padding: '0 6px',
               fontSize: 9.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -743,6 +738,7 @@ export default function BillingPage() {
               </span>
             )}
           </div>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', margin: '0 -4px', padding: '0 4px 4px' }}>
           {approvals.map(r => (
             <div
               key={r.workOrderId}
@@ -783,21 +779,13 @@ export default function BillingPage() {
               </button>
             </div>
           ))}
+          </div>
         </div>
       )}
 
-      {/* SEARCH — above the tabs on purpose: it outranks them, and it spans
-          both pipelines. You look for a client, not for a client-in-a-folder. */}
-      <div className="c-bsearch">
-        <span style={{ opacity: 0.4, fontSize: 12 }}>⌕</span>
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search everything — client, artist, invoice #, WO #, PO…"
-        />
-        {searching && <span className="c-bclr" onClick={() => setQuery('')}>clear ✕</span>}
-        <Hint tip="Every row shows at most one button — always the next action. Click a row to open the work order (or the combined package once an invoice is attached). Drag a QuickBooks PDF straight onto a row to attach it." />
-      </div>
+      {/* THE SEARCH BAR MOVED UP (2026-10-12): it is the page top's one bar
+          now (PageTop, above the title). Same query, same reach — both
+          pipelines, outranking the tabs. Its row hint rides on the title's "?". */}
 
       <div className={`c-btabs${searching ? ' c-dim' : ''}`}>
         {tabs.map(b => (

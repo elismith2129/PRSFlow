@@ -16,9 +16,11 @@ import { combineLocation, parseLocation } from '@/lib/studios'
 import { STARTER_TAGS } from '@/lib/tags'
 import { StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
 import { addArtistToLabel } from '@/lib/roster'
-import { ClientsPageInner } from '@/app/(main)/clients/page'
+import { ClientsPageInner } from '@/components/clients/ClientsPageInner'
 import { RegistrationBanner } from '@/components/clients/RegistrationBanner'
 import { RegistrationsView } from '@/components/crm/RegistrationsView'
+import { CrmSearchResults } from '@/components/crm/CrmSearchResults'
+import { PageTop } from '@/components/layout/PageTop'
 import { SectionHeader } from '@/components/ui/SectionHeader'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -413,6 +415,8 @@ export default function CRMPage() {
   // Refreshed by the shared clients channel — never open another one.
   const clientsVersion = useClientsVersion()
   const [unreviewedRegs, setUnreviewedRegs] = useState(0)
+  // How many clients there are — the quiet count beside the Clients word.
+  const [clientTotal, setClientTotal] = useState<number | null>(null)
   useEffect(() => {
     let live = true
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -423,10 +427,29 @@ export default function CRMPage() {
       .is('profile_confirmed_at', null)
       .gt('registered_at', thirtyDaysAgo)
       .then(({ count }) => { if (live) setUnreviewedRegs(count ?? 0) })
+    supabase
+      .from('clients')
+      .select('id', { count: 'exact', head: true })
+      .then(({ count }) => { if (live) setClientTotal(count ?? null) })
     return () => { live = false }
   }, [clientsVersion])
   const [tab, setTab] = useState<'leads' | 'clients' | 'registrations'>('leads')
   const [initialClientId, setInitialClientId] = useState<string | null>(null)
+  // ONE SEARCH BAR FOR THE PAGE (2026-10-12 — components/layout/PageTop). It
+  // looks across leads, clients and registrations at once and ignores the
+  // view you are on; CrmSearchResults draws the hits. It replaced three
+  // separate boxes (All Leads, Clients, Registrations). Never add a second
+  // search box to a view on this page.
+  const [query, setQuery] = useState('')
+  const searching = query.trim().length > 0
+  // Bumped each time a search hit points at a client, so the same client can
+  // be opened twice in a row (see ClientsPageInner targetNonce).
+  const [clientTargetNonce, setClientTargetNonce] = useState(0)
+  // The header's + New client: non-zero asks the Clients view to open its
+  // pop-up; the view sets it back to 0 once it has.
+  const [newClientRequest, setNewClientRequest] = useState(0)
+  // A registration opened straight from a search hit.
+  const [regOpenId, setRegOpenId] = useState<string | null>(null)
 
   // Switch to clients tab if ?clientId= or ?id= is present on load;
   // open the New Lead modal (on the leads tab) if ?newLead=1 (e.g. from the dashboard).
@@ -652,36 +675,77 @@ export default function CRMPage() {
         />
       )}
 
-      {/* Pending registrations — page level, above the tabs, so a returned
+      {/* THE SHARED PAGE TOP (2026-10-12 — components/layout/PageTop, mock
+          docs/design-refs/rail-header-real-pages.html). One search bar, the
+          label + title, the two "new" buttons on the right, and the three
+          views as quiet underlined words. It replaced the big title-words
+          (the Billing Hub's .c-btitle recipe) this page wore since Sep 30.
+          Leads carries the Needs Action count and stays hot when above zero;
+          Registrations carries the unreviewed count.
+
+          COUNTER-ZOOM: this whole page renders at 90% on desktop (the wrapper
+          above). The page top must be the SAME size on every page, so it is
+          zoomed back up by 1/0.9 — 0.9 × 1/0.9 = 1. When the page's 90% zoom
+          goes (it is on the tidy list), delete this wrapper's zoom with it. */}
+      <div style={isMobile ? { flexShrink: 0 } : { zoom: 1 / 0.9, flexShrink: 0 }}>
+        <PageTop<'leads' | 'clients' | 'registrations'>
+          crumb="CRM"
+          title="Leads & clients"
+          search={{ value: query, onChange: setQuery, placeholder: 'Search leads, clients and registrations — name, label, artist, email, phone…' }}
+          actions={<>
+            <button
+              onClick={() => { setQuery(''); setTab('clients'); setNewClientRequest(n => n + 1) }}
+              className="c-soft c-control c-raised"
+            >+ New client</button>
+            <button onClick={() => setNewLeadOpen(true)} className="c-btn c-control c-raised-primary">+ New lead</button>
+          </>}
+          views={[
+            { key: 'leads', label: 'Leads', count: needsActionCount > 0 ? needsActionCount : null, hot: true, title: 'Leads that need action' },
+            { key: 'clients', label: 'Clients', count: clientTotal },
+            { key: 'registrations', label: 'Registrations', count: unreviewedRegs > 0 ? unreviewedRegs : null, title: 'Registrations waiting for review' },
+          ]}
+          view={tab}
+          onView={setTab}
+          dimViews={searching}
+        />
+      </div>
+
+      {/* Pending registrations — page level, under the page top, so a returned
           registration is visible while working leads. (It used to live inside
           ClientsPageInner and only appeared on the CLIENTS tab.) */}
       <RegistrationBanner
         onNavigate={(clientId) => { setTab('clients'); setInitialClientId(clientId) }}
       />
 
-      {/* CRM TABS = THE BILLING HUB'S TITLE WORDS (Eli, 2026-09-30: "the tabs at
-          the top of the CRM are small, need to be closer to the billing hub" —
-          docs/design-refs/crm-tabs.html). Same .c-btitle recipe as Billing /
-          COD / Tenants: big Archivo words, the open one full strength, the rest
-          dimmed. Leads carries the Needs Action count and goes hot when it's
-          above zero — the COD rule: a number that needs you is never quiet.
-          THREE WORDS since 2026-10-12 (the rail rework): Texting and Campaigns
-          moved to their own Eli-only page, /texting. Registrations carries the
-          unreviewed count that used to ride on the rail's CRM row. */}
-      <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26, gap: isMobile ? 14 : 22, padding: '2px 4px 14px', flexShrink: 0 }}>
-        {(['leads', 'clients', 'registrations'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`c-arch${tab === t ? ' c-on' : ''}`} aria-current={tab === t ? 'page' : undefined}>
-            {t === 'leads' ? 'Leads' : t === 'clients' ? 'Clients' : 'Registrations'}
-            {t === 'leads' && needsActionCount > 0 && (
-              <span className="c-btitlen c-hot">{needsActionCount > 99 ? '99+' : needsActionCount}</span>
-            )}
-            {t === 'registrations' && unreviewedRegs > 0 && (
-              <span className="c-btitlen" title="Registrations waiting for review">{unreviewedRegs > 99 ? '99+' : unreviewedRegs}</span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* WHILE SEARCHING the hits take the page. A lead opens in the Leads
+          view's panel, a client in the Clients view; a registration opens over
+          the results so the search can carry on. */}
+      {searching && (
+        <CrmSearchResults
+          query={query}
+          leads={leads}
+          onOpenLead={id => {
+            setQuery('')
+            setTab('leads')
+            // Analytics has no lead panel to open into.
+            if (view === 'analytics') setView('all-leads')
+            setSelectedId(id)
+          }}
+          onOpenClient={id => {
+            setQuery('')
+            setTab('clients')
+            setInitialClientId(id)
+            setClientTargetNonce(n => n + 1)
+          }}
+          onOpenRegistration={id => setRegOpenId(id)}
+        />
+      )}
+      {regOpenId && <RegViewModal clientId={regOpenId} onClose={() => setRegOpenId(null)} />}
 
+      {/* The views stay MOUNTED under a search (hidden, not removed), so a
+          half-typed note or an open lead is still there when the bar is
+          cleared. */}
+      <div style={{ display: searching ? 'none' : 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       {tab === 'leads' && (
         <>
           {/* Sub-nav */}
@@ -701,9 +765,6 @@ export default function CRMPage() {
                 )
               })}
             </div>
-            {view !== 'analytics' && (
-              <button onClick={() => setNewLeadOpen(true)} className="c-btn c-control c-raised-primary" style={{ minHeight: isMobile ? 44 : undefined, flexShrink: 0 }}>+ New Lead</button>
-            )}
           </div>
 
           {(view === 'needs-action' || view === 'all-leads') && (
@@ -798,7 +859,13 @@ export default function CRMPage() {
       {tab === 'clients' && (
         <div style={{ flex: 1, minHeight: 0 }}>
           <Suspense>
-            <ClientsPageInner initialClientId={initialClientId} embedded />
+            <ClientsPageInner
+              initialClientId={initialClientId}
+              targetNonce={clientTargetNonce}
+              newClientRequest={newClientRequest}
+              onNewClientRequestHandled={() => setNewClientRequest(0)}
+              embedded
+            />
           </Suspense>
         </div>
       )}
@@ -808,6 +875,7 @@ export default function CRMPage() {
           <RegistrationsView />
         </div>
       )}
+      </div>
     </div>
   )
 }
@@ -1202,7 +1270,6 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   // See NeedsActionSection — new web inquiries pulse in this list too.
   const { isUnacked } = useWebInquiries()
   const [active, setActive] = useState<Set<StatusFilter>>(() => new Set(DEFAULT_STATUS_FILTERS))
-  const [search, setSearch] = useState('')
   const skipFilterReset = useRef(false)
 
   // Restore persisted active-set + search after mount — lazy initializers read sessionStorage
@@ -1211,8 +1278,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   useEffect(() => {
     try {
       const a = sessionStorage.getItem('crm_al_active')
-      const s = sessionStorage.getItem('crm_al_search')
-      if (a !== null || s) {
+      if (a !== null) {
         skipFilterReset.current = true
         if (a !== null) {
           const raw = JSON.parse(a) as string[]
@@ -1227,21 +1293,16 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
             setActive(new Set(DEFAULT_STATUS_FILTERS))
           }
         }
-        if (s) setSearch(s)
       }
     } catch {}
   }, [])
   useEffect(() => {
     try { sessionStorage.setItem('crm_al_active', JSON.stringify(Array.from(active))) } catch {}
   }, [active])
-  useEffect(() => {
-    try { sessionStorage.setItem('crm_al_search', search) } catch {}
-  }, [search])
   const [page, setPage] = useState(1)
   const [touchPromptId, setTouchPromptId] = useState<number | null>(null)
   const [keepHotPromptId, setKeepHotPromptId] = useState<number | null>(null)
 
-  useEffect(() => { setPage(1) }, [search])
   useEffect(() => {
     if (skipFilterReset.current) { skipFilterReset.current = false; return }
     setPage(1)
@@ -1285,11 +1346,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   // so the list is never blank.
   const effectiveActive = active.size === 0 ? new Set(ALL_STATUS_FILTERS) : active
   const activeLeads = leads.filter(l => effectiveActive.has(leadStatusKey(l)))
-  const q = search.trim().toLowerCase()
-  const filtered = activeLeads.filter(l => {
-    if (!q) return true
-    return `${l.fname || ''} ${l.lname || ''} ${l.email || ''} ${l.phone || ''} ${l.company || ''} ${l.label || ''}`.toLowerCase().includes(q)
-  })
+  // No search of its own since 2026-10-12: the page's one search bar
+  // (PageTop → CrmSearchResults) looks across every lead, whatever pills are
+  // lit here. This list is only ever narrowed by its status pills.
+  const filtered = activeLeads
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
@@ -1298,7 +1358,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
 
   return (
     <div className="c-panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: 0 }}>
-      {/* Header: filter pills + search */}
+      {/* Header: filter pills (the search is the page's, up top) */}
       <div style={{ flexShrink: 0 }}>
         <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 5, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, marginBottom: 8 }}>
           {filterDefs.map(f => {
@@ -1323,13 +1383,6 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
             )
           })}
         </div>
-        <div style={{ padding: '0 0 8px' }}>
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={`Search ${activeLeads.length} leads…`}
-            className="c-input c-inset2" style={{ fontSize: 12 }}
-          />
-        </div>
       </div>
 
       {/* Lead list */}
@@ -1338,7 +1391,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>Loading…</div>
         ) : filtered.length === 0 ? (
           <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>
-            {search ? 'No leads match.' : 'No leads.'}
+            No leads.
           </div>
         ) : paginated.map((l, idx) => {
           const touch = latestTouches[l.id]
