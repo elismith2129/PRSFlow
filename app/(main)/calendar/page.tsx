@@ -2166,7 +2166,9 @@ function CalendarPageInner() {
           is THE FIND — see CalendarFind. The old toolbar row (‹ Today ›, the
           range, the select, the Day/Grid switch) is gone; the grid's zoom and
           row-mode controls keep a slim row of their own below. */}
-      <div style={{ position: 'relative', zIndex: 5, flexShrink: 0, marginLeft: isMobile ? 0 : 12 }}>
+      {/* z 20: above the grid's sticky day header (12) and month rail, which
+          otherwise paint over the find's drop-down (seen 2026-10-13). */}
+      <div style={{ position: 'relative', zIndex: 20, flexShrink: 0, marginLeft: isMobile ? 0 : 12 }}>
         <PageTop<ViewType>
           title="Calendar"
           search={{ value: query, onChange: v => { setQuery(v); if (!v) setFound(null) }, placeholder: 'Find a session — artist, client, label, WO #…' }}

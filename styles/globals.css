@@ -2072,7 +2072,7 @@ select.c-input {
    and floats over the grid. One of the few floating surfaces, so it gets the
    sheet's lift. */
 .c-find {
-  position: absolute; left: 0; top: 50px; width: min(760px, 100%); z-index: 20;
+  position: absolute; left: 0; top: 50px; width: min(760px, 100%); z-index: 30;
   max-height: min(420px, 60vh); display: flex; flex-direction: column;
   background: var(--c-srf); border-radius: 16px; padding: 10px;
   box-shadow: var(--c-softsh), 0 18px 50px rgba(0, 0, 0, .35);
