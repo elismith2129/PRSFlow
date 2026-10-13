@@ -290,13 +290,26 @@ function assignLanes(bookings: Booking[]): Map<string, { lane: number; numLanes:
     while (used.has(lane)) lane++
     lanes[i] = lane
   }
+  // numLanes is per CHAIN, not per booking (fix 2026-10-13). It used to be
+  // each booking's own neighbour count — so with three cards on Monday and a
+  // fourth on Tuesday that only touched the middle one, the fourth was told
+  // "2 lanes" and drew in the top half while its neighbour, told "3 lanes",
+  // drew in the middle third: top half and middle third collide (Eli's
+  // screenshot: Logan over Baldgirl). Every booking linked by overlaps shares
+  // one lane count, so their slots line up along the whole run.
+  const group: number[] = sorted.map((_, i) => i)
+  const find = (i: number): number => (group[i] === i ? i : (group[i] = find(group[i])))
+  for (let i = 0; i < sorted.length; i++)
+    for (let j = i + 1; j < sorted.length; j++)
+      if (bookingDateOverlaps(sorted[i], sorted[j])) group[find(i)] = find(j)
+  const chainMax = new Map<number, number>()
+  for (let i = 0; i < sorted.length; i++) {
+    const g = find(i)
+    chainMax.set(g, Math.max(chainMax.get(g) ?? 0, lanes[i]))
+  }
   const result = new Map<string, { lane: number; numLanes: number }>()
   for (let i = 0; i < sorted.length; i++) {
-    let maxLane = lanes[i]
-    for (let j = 0; j < sorted.length; j++) {
-      if (i !== j && bookingDateOverlaps(sorted[i], sorted[j])) maxLane = Math.max(maxLane, lanes[j])
-    }
-    result.set(sorted[i].id, { lane: lanes[i], numLanes: maxLane + 1 })
+    result.set(sorted[i].id, { lane: lanes[i], numLanes: (chainMax.get(find(i)) ?? 0) + 1 })
   }
   return result
 }
