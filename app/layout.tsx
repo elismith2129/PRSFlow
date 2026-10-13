@@ -8,9 +8,11 @@ export const metadata: Metadata = {
   description: 'Paramount Recording Group Studio Management',
   manifest: '/manifest.json',
   icons: {
+    // -v2: black background / white wave for browser tabs (was dark olive / green).
+    // New URLs on purpose — browsers cache favicons aggressively by URL.
     icon: [
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32-v2.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16-v2.png', sizes: '16x16', type: 'image/png' },
     ],
     // -v2: cache-busted URL — iOS caches A2HS icons BY URL and had a poisoned
     // (failed) entry for the old path on real phones. See generate-icons.js.
