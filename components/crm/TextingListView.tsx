@@ -63,12 +63,13 @@ function csvCell(v: string | number | null | undefined): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-export function TextingListView() {
+/** `search` is the page top's bar (2026-10-13) — this view used to own a box
+ *  of its own. One bar per page. */
+export function TextingListView({ search = '' }: { search?: string } = {}) {
   const { profile } = useUserProfile()
   const clientsVersion = useClientsVersion()
   const [rows, setRows] = useState<TxRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [heard, setHeard] = useState('')
@@ -219,7 +220,6 @@ export function TextingListView() {
           {optedIn} opted in · grows as registrations come in with the “Yes, text me” box ticked. Promotional texts go to this list only.
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email or phone…" style={{ ...inputStyle, flex: 1, minWidth: 180 }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={headCell}>Opted in</span>
             <input type="date" value={from} onChange={e => setFrom(e.target.value)} title="From" style={{ ...inputStyle, cursor: 'pointer' }} />
@@ -245,7 +245,7 @@ export function TextingListView() {
             <input type="checkbox" checked={showOut} onChange={e => setShowOut(e.target.checked)} /> show opted out
           </label>
           {anyFilter && (
-            <button onClick={() => { setSearch(''); setFrom(''); setTo(''); setHeard(''); setCity(''); setLast('any'); setShowOut(false) }} style={smallBtn}>Clear</button>
+            <button onClick={() => { setFrom(''); setTo(''); setHeard(''); setCity(''); setLast('any'); setShowOut(false) }} style={smallBtn}>Clear</button>
           )}
         </div>
       </div>

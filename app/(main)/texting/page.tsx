@@ -7,6 +7,7 @@ import { CampaignsPanel } from '@/components/crm/CampaignsPanel'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
+import { PageTop } from '@/components/layout/PageTop'
 
 /**
  * TEXTING & CAMPAIGNS — the two outreach tabs, on a page of their own
@@ -21,8 +22,8 @@ import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
  * BOUNDARY — the texting list is read from `clients`, which every CRM role can
  * read anyway, and a campaign send is gated separately by /api/send-campaign.
  *
- * The big title-words are the CRM's recipe on purpose, so the page looks the
- * way it did as a tab. They become the shared page header in the next push.
+ * Wears the shared page top (components/layout/PageTop) since 2026-10-13; the
+ * search bar feeds the texting list.
  */
 export default function TextingPage() {
   // Carved surfaces paint their own ground — same mount/unmount marker as /crm.
@@ -39,6 +40,7 @@ export default function TextingPage() {
   // second leads channel for it.
   const { leadsVersion } = useWebInquiries()
   const [tab, setTab] = useState<'texting' | 'campaigns'>('texting')
+  const [query, setQuery] = useState('')
   const [leads, setLeads] = useState<Lead[]>([])
 
   // Same paged read as the CRM page — a bare select stops at 1,000 rows and
@@ -76,17 +78,22 @@ export default function TextingPage() {
     <div style={{ display: 'flex', flexDirection: 'column', ...(isMobile
       ? { height: 'calc(100vh - 36px)' }
       : { zoom: 0.9, height: 'calc((100vh - 36px) / 0.9)' }) }}>
-      <div className="c-btitle" style={{ fontSize: isMobile ? 20 : 26, gap: isMobile ? 14 : 22, padding: '2px 4px 14px', flexShrink: 0 }}>
-        {(['texting', 'campaigns'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`c-arch${tab === t ? ' c-on' : ''}`} aria-current={tab === t ? 'page' : undefined}>
-            {t === 'texting' ? 'Texting' : 'Campaigns'}
-          </button>
-        ))}
+      {/* Counter-zoomed like the CRM page: 0.9 × 1/0.9 = 1, so the page top is
+          the same size here as everywhere. Goes when the 90% zoom goes. */}
+      <div style={isMobile ? { flexShrink: 0 } : { zoom: 1 / 0.9, flexShrink: 0 }}>
+        <PageTop<'texting' | 'campaigns'>
+          crumb="CRM"
+          title="Texting & campaigns"
+          search={tab === 'texting' ? { value: query, onChange: setQuery, placeholder: 'Search the text list — name, email, phone…' } : undefined}
+          views={[{ key: 'texting', label: 'Texting' }, { key: 'campaigns', label: 'Campaigns' }]}
+          view={tab}
+          onView={setTab}
+        />
       </div>
 
       {tab === 'texting' && (
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <TextingListView />
+          <TextingListView search={query} />
         </div>
       )}
 

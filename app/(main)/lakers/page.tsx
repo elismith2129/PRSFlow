@@ -20,6 +20,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { getLocalToday } from '@/lib/time'
 import { toast } from '@/components/ui/Toaster'
+import { PageTop } from '@/components/layout/PageTop'
 import {
   fetchSeasons, fetchGames, fetchRecipientCounts, saveGame, setTick, deleteGame,
   parseSchedule, insertSchedule, seasonFor, type LakersGame,
@@ -49,6 +50,9 @@ export default function LakersPage() {
   const [loading, setLoading] = useState(true)
   const [edit, setEdit] = useState<Draft | null>(null)
   const [pasting, setPasting] = useState(false)
+  // The page top's search (2026-10-13) — new; finds a game by opponent, who got
+  // the tickets, their company, who passed, or the note.
+  const [query, setQuery] = useState('')
 
   const loadSeasons = useCallback(async () => {
     const s = await fetchSeasons()
@@ -68,7 +72,9 @@ export default function LakersPage() {
 
   const byMonth = useMemo(() => {
     const m: { key: string; label: string; games: LakersGame[] }[] = []
-    for (const g of games) {
+    const q = query.trim().toLowerCase()
+    const shown = q ? games.filter(g => [g.opponent, g.recipient, g.company, g.note, ...(g.passed || [])].filter(Boolean).join(' ').toLowerCase().includes(q)) : games
+    for (const g of shown) {
       const key = g.game_date.slice(0, 7)
       let b = m.find(x => x.key === key)
       if (!b) {
@@ -78,7 +84,7 @@ export default function LakersPage() {
       b.games.push(g)
     }
     return m
-  }, [games])
+  }, [games, query])
 
   if (profile && !allowed) return <div className="c-bempty">Lakers tickets are for owners.</div>
 
@@ -91,22 +97,28 @@ export default function LakersPage() {
 
   return (
     <div style={{ maxWidth: 980 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-        <h1 className="c-arch" style={{ fontSize: 22, letterSpacing: '-0.01em', margin: '2px 0' }}>Lakers {season ?? ''}</h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="c-seg">
-            {seasons.map(s => (
-              <button key={s} type="button" className={s === season ? 'c-on' : ''} onClick={() => { setSeason(s); setLoading(true) }} style={{ padding: '4px 12px' }}>{s}</button>
-            ))}
-          </div>
-          <button className="c-bact" onClick={() => season && setEdit({ season, game_date: today, arena: 'Crypto.com Arena', passed: [] })}>+ Game</button>
-          <button className="c-bact" onClick={() => setPasting(true)}>Paste schedule</button>
-        </div>
-      </div>
+      {/* THE SHARED PAGE TOP (2026-10-13, components/layout/PageTop): the
+          seasons are the view tabs, the two buttons sit on the right. Under
+          CRM since the rail rework (it was under Admin). */}
+      <PageTop
+        crumb="CRM"
+        title="Lakers"
+        search={{ value: query, onChange: setQuery, placeholder: 'Search games — opponent, who got them, who passed…' }}
+        actions={<>
+          <button className="c-soft c-control c-raised" onClick={() => setPasting(true)}>Paste schedule</button>
+          <button className="c-btn c-control c-raised-primary" onClick={() => season && setEdit({ season, game_date: today, arena: 'Crypto.com Arena', passed: [] })}>+ Game</button>
+        </>}
+        views={seasons.map(s => ({ key: s, label: s }))}
+        view={season ?? undefined}
+        onView={s => { setSeason(s); setLoading(true) }}
+      />
 
       {loading && <div className="c-bempty">Loading…</div>}
       {!loading && games.length === 0 && (
         <div className="c-bempty">No games in {season} yet. When the schedule drops, copy the home games off the web and use <b>Paste schedule</b>.</div>
+      )}
+      {!loading && games.length > 0 && byMonth.length === 0 && (
+        <div className="c-bempty">No game matches that.</div>
       )}
 
       {!loading && byMonth.map(b => (

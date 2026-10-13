@@ -22,6 +22,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
+import { PageTop } from '@/components/layout/PageTop'
+import { DateStep } from '@/components/layout/DateStep'
+import { Hint } from '@/components/ui/Hint'
 
 const STUDIOS = [
   { key: 'paramount', label: 'Paramount', short: 'PRS' },
@@ -64,6 +67,9 @@ export function PettyCashSection() {
   const now = new Date()
   const [studio, setStudio] = useState<StudioKey>('paramount')
   const [ym, setYm] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+  // The page top's search (2026-10-13): narrows the lines by what was bought,
+  // who, or the amount. New — this page had no search before.
+  const [query, setQuery] = useState('')
   const [entries, setEntries] = useState<Entry[]>([])
   const [bals, setBals] = useState<Bal[]>([])
   const [opening, setOpening] = useState(0)
@@ -128,6 +134,14 @@ export function PettyCashSection() {
   const label = STUDIOS.find(s => s.key === studio)!
   const [yy, mm] = ym.split('-').map(Number)
   const periodLabel = `${MONTHS[mm - 1]} ${yy}`
+  const shiftYm = (by: number) => {
+    const d = new Date(yy, mm - 1 + by, 1)
+    setYm(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  const q = query.trim().toLowerCase()
+  const shown = q
+    ? lines.filter(l => (l.description || '').toLowerCase().includes(q) || l.amount.toFixed(2).includes(q) || fmtDate(l.date).toLowerCase().includes(q))
+    : lines
 
   function downloadCsv() {
     const head = ['Date', 'Description', 'Type', 'Amount', 'Signed Amount', 'Balance', 'Studio']
@@ -176,29 +190,25 @@ export function PettyCashSection() {
         }
       `}</style>
 
-      <div className="c-pcnoprint" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
-        {STUDIOS.map(s => (
-          <button
-            key={s.key}
-            onClick={() => setStudio(s.key)}
-            // c-soft, NOT c-pill (2026-10-08): a c-pill is a STATUS chip — dark ink
-            // meant to sit on a colour fill it never had here, so these read as
-            // near-black words on a near-black page, and the chosen studio
-            // looked like the other three (c-pill has no c-on state).
-            className={`c-soft c-control c-raised${studio === s.key ? ' c-on' : ''}`}
-            style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}
-          >{s.label}</button>
-        ))}
-        <div style={{ flex: 1 }} />
-        <input
-          type="month"
-          value={ym}
-          onChange={e => setYm(e.target.value)}
-          className="c-control c-mono"
-          style={{ background: 'var(--c-wash)', border: 'none', borderRadius: 10, padding: '8px 11px', color: 'var(--c-fg)', font: 'inherit', fontSize: 12.5, minHeight: 34 }}
+      {/* THE SHARED PAGE TOP (2026-10-13, components/layout/PageTop). The
+          studios are the view tabs, the month is the ‹ › stepper, the paragraph
+          that used to open the page is the "?". It replaced a row of studio
+          buttons, a native month box and two grey buttons. */}
+      <div className="c-pcnoprint">
+        <PageTop<StudioKey>
+          crumb="Billing"
+          title="Petty Cash"
+          hint={<Hint tip="One studio, one month: every transaction with a running balance, what each box was counted at, and any night the count disagreed with the ledger. Download CSV for QuickBooks, or Print for the file. Runners record the nightly side in the runner app." />}
+          search={{ value: query, onChange: setQuery, placeholder: 'Search this month — item, amount, date…' }}
+          actions={<>
+            <DateStep label={periodLabel} onPrev={() => shiftYm(-1)} onNext={() => shiftYm(1)} />
+            <button onClick={downloadCsv} className="c-soft c-control c-raised">Download CSV</button>
+            <button onClick={() => window.print()} className="c-soft c-control c-raised">Print</button>
+          </>}
+          views={STUDIOS.map(s => ({ key: s.key, label: s.label }))}
+          view={studio}
+          onView={setStudio}
         />
-        <button onClick={downloadCsv} className="c-soft c-control c-raised" style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}>Download CSV</button>
-        <button onClick={() => window.print()} className="c-soft c-control c-raised" style={{ border: 'none', font: 'inherit', cursor: 'pointer', minHeight: 34, padding: '0 14px' }}>Print</button>
       </div>
 
       <div className="c-pcsheet" style={{ background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh)', borderRadius: 16, padding: 16 }}>
@@ -226,8 +236,8 @@ export function PettyCashSection() {
 
         {loading ? (
           <div style={{ padding: 22, textAlign: 'center', fontSize: 12.5, opacity: 0.5 }}>Loading…</div>
-        ) : lines.length === 0 ? (
-          <div style={{ padding: 22, textAlign: 'center', fontSize: 12.5, opacity: 0.5 }}>No transactions in {periodLabel}.</div>
+        ) : shown.length === 0 ? (
+          <div style={{ padding: 22, textAlign: 'center', fontSize: 12.5, opacity: 0.5 }}>{q ? 'Nothing matches that.' : `No transactions in ${periodLabel}.`}</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><tr>
@@ -237,7 +247,7 @@ export function PettyCashSection() {
               <th style={{ ...th, textAlign: 'right' }}>Balance</th>
             </tr></thead>
             <tbody>
-              {lines.map(l => (
+              {shown.map(l => (
                 <tr key={l.id} style={{ boxShadow: '0 -1px 0 var(--c-wash)' }}>
                   <td style={{ ...td, whiteSpace: 'nowrap' }} className="c-mono">{fmtDate(l.date)}</td>
                   <td style={td}>{l.description || <span style={{ opacity: 0.4 }}>—</span>}</td>

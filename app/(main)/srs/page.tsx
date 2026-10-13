@@ -25,6 +25,8 @@ import { formatCurrency } from '@/lib/format'
 import { getLocalToday } from '@/lib/time'
 import { toast } from '@/components/ui/Toaster'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
+import { PageTop } from '@/components/layout/PageTop'
+import { Hint } from '@/components/ui/Hint'
 import {
   fetchSrsDefaultPct, setSrsDefaultPct, fetchSrsRows, setSrsPct, markSrsPaid, undoSrsPaid, feeFor,
   fetchSrsHistory, SRS_DEFAULT_PCT_FALLBACK, type SrsRow, type SrsHistoryRow,
@@ -43,7 +45,6 @@ const pctLabel = (p: number) => `${Number.isInteger(p) ? p : p.toFixed(1)}%`
 const lbl: CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', opacity: 0.5, display: 'block', marginBottom: 3 }
 const sec: CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', opacity: 0.4, margin: '16px 2px 4px', display: 'flex', justifyContent: 'space-between' }
 const btn96: CSSProperties = { width: 96, textAlign: 'center', justifyContent: 'center', flexShrink: 0 }
-const PAID_SHOWN = 6
 
 export default function SrsPage() {
   const { profile } = useUserProfile()
@@ -59,7 +60,11 @@ export default function SrsPage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [payFor, setPayFor] = useState<SrsRow | null>(null)
   const [pctFor, setPctFor] = useState<SrsRow | 'default' | null>(null)
-  const [showAllPaid, setShowAllPaid] = useState(false)
+  // OWED · PAID are view tabs since 2026-10-13 (the shared page top) — they
+  // were two stacked sections with a "show older paid" link. The page top's
+  // search is new; it looks across both.
+  const [view, setView] = useState<'owed' | 'paid'>('owed')
+  const [query, setQuery] = useState('')
   const [openBooking, setOpenBooking] = useState<Booking | null>(null)
 
   const load = useCallback(async () => {
@@ -113,7 +118,10 @@ export default function SrsPage() {
     ...history.filter(h => h.paid).map(h => ({ kind: 'log' as const, date: h.date, h })),
   ].sort((a, b) => b.date.localeCompare(a.date))
   const owedTotal = owed.reduce((s, r) => s + r.fee, 0)
-  const paidShown = showAllPaid ? paid : paid.slice(0, PAID_SHOWN)
+  const q = query.trim().toLowerCase()
+  const hitRow = (r: SrsRow) => [r.client, r.artist, r.woNumber, ...r.rooms].filter(Boolean).join(' ').toLowerCase().includes(q)
+  const owedShown = q ? owed.filter(hitRow) : owed
+  const paidShown = q ? paid.filter(p => p.kind === 'wo' ? hitRow(p.r) : [p.h.client, p.h.invoiceNumber, p.h.note].filter(Boolean).join(' ').toLowerCase().includes(q)) : paid
 
   // A row from Eli's spreadsheet log: no work order, read-only, as recorded.
   function LogRow({ h }: { h: SrsHistoryRow }) {
@@ -195,49 +203,52 @@ export default function SrsPage() {
 
   return (
     <div style={{ maxWidth: 860 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 4 }}>
-        <div>
-          <h1 className="c-arch" style={{ fontSize: 22, letterSpacing: '-0.01em', margin: '2px 0 4px' }}>SRS</h1>
-          <div style={{ fontSize: 12, opacity: 0.6 }}>
-            Default {pctLabel(defaultPct)} of room charges
-            {canEditDefault && (
-              <button className="c-bmore" title="Change the studio default" onClick={() => setPctFor('default')} style={{ fontSize: 13, padding: '0 5px', marginLeft: 4 }}>✎</button>
-            )}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={lbl}>Owed · {owed.length} {owed.length === 1 ? 'session' : 'sessions'}</div>
-          <div className="c-arch" style={{ fontSize: 22, color: owedTotal > 0 ? 'var(--c-st-warm)' : undefined, fontVariantNumeric: 'tabular-nums' }}>{money(owedTotal)}</div>
-        </div>
-      </div>
+      {/* THE SHARED PAGE TOP (2026-10-13, components/layout/PageTop). The
+          default % is the button on the right; the explanation that closed the
+          page is the "?"; Owed and Paid are the view tabs, Owed carrying what
+          is owed in warm. */}
+      <PageTop<'owed' | 'paid'>
+        crumb="Billing"
+        title="SRS"
+        hint={<Hint tip="Every session with SRS ticked on its work order lands here by itself. The fee is the percent × room charges (studio time and overtime; engineering excluded). Tap a % to set it for that one session — 20% for one-offs, 10% for a low rate or an extended booking. Mark paid asks the date it went out and locks the percent and amount. Tap a green chip to undo. Tap a name to open its work order. Rows marked “from the log” are the SRS spreadsheet from before PRSFlo (Dec 2023 – Jun 2026), entered as recorded." />}
+        search={{ value: query, onChange: setQuery, placeholder: 'Search SRS — client, artist, WO #, room…' }}
+        actions={<>
+          {owedTotal > 0 && (
+            <span className="c-arch" style={{ fontSize: 16, color: 'var(--c-st-warm)', fontVariantNumeric: 'tabular-nums', marginRight: 6 }} title="Owed — round up on the 1st">{money(owedTotal)}</span>
+          )}
+          <button
+            className="c-soft c-control c-raised"
+            disabled={!canEditDefault}
+            title={canEditDefault ? 'Change the studio default' : 'The studio default — owners and managers change it'}
+            onClick={() => canEditDefault && setPctFor('default')}
+            style={canEditDefault ? undefined : { opacity: 0.6, cursor: 'default' }}
+          >Default {pctLabel(defaultPct)}{canEditDefault ? ' ✎' : ''}</button>
+        </>}
+        views={[
+          { key: 'owed', label: 'Owed', count: owed.length, title: 'Round up on the 1st' },
+          { key: 'paid', label: 'Paid', count: paid.length },
+        ]}
+        view={view}
+        onView={setView}
+        dimViews={!!q}
+      />
 
       {loading && <div className="c-bempty">Loading…</div>}
 
-      {!loading && (
+      {!loading && (q || view === 'owed') && (
         <>
-          <div style={sec}><span>Owed</span><span>Round up on the 1st</span></div>
-          {owed.length === 0 && <div className="c-bempty">Nothing owed.</div>}
-          {owed.map(r => <Row key={r.workOrderId} r={r} />)}
-
-          {paid.length > 0 && <div style={sec}><span>Paid</span><span /></div>}
+          {q && <div style={sec}><span>Owed</span><span>Round up on the 1st</span></div>}
+          {owedShown.length === 0 && <div className="c-bempty">{q ? 'Nothing owed matches that.' : 'Nothing owed.'}</div>}
+          {owedShown.map(r => <Row key={r.workOrderId} r={r} />)}
+        </>
+      )}
+      {!loading && (q || view === 'paid') && (
+        <>
+          {q && <div style={sec}><span>Paid</span><span /></div>}
+          {paidShown.length === 0 && <div className="c-bempty">{q ? 'Nothing paid matches that.' : 'Nothing paid yet.'}</div>}
           {paidShown.map(p => p.kind === 'wo'
             ? <Row key={p.r.workOrderId} r={p.r} />
             : <LogRow key={p.h.id} h={p.h} />)}
-          {paid.length > PAID_SHOWN && (
-            <button onClick={() => setShowAllPaid(s => !s)}
-              style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', color: 'var(--c-fg)', opacity: 0.5, fontSize: 11.5, cursor: 'pointer', fontFamily: 'inherit' }}>
-              {showAllPaid ? 'Show fewer ↑' : `Show ${paid.length - PAID_SHOWN} older paid ↓`}
-            </button>
-          )}
-
-          <div className="c-bnote" style={{ marginTop: 16 }}>
-            Every session with SRS ticked on its work order lands here by itself. The fee is the
-            percent × room charges (studio time and overtime; engineering excluded). Tap a % to set
-            it for that one session — 20% for one-offs, 10% for a low rate or an extended booking.
-            Mark paid asks the date it went out and locks the percent and amount. Tap a green chip
-            to undo. Tap a name to open its work order. Rows marked “from the log” are the SRS
-            spreadsheet from before PRSFlo (Dec 2023 – Jun 2026), entered as recorded.
-          </div>
         </>
       )}
 

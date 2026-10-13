@@ -20,16 +20,8 @@ import { PettyCashSection } from '@/components/billing/PettyCashSection'
 
 export default function PettyCashPage() {
   return (
-    <div>
-      <h1 className="c-arch" style={{ fontSize: 22, letterSpacing: '-0.01em', margin: '2px 0 4px' }}>
-        Petty Cash
-      </h1>
-      <div style={{ fontSize: 12.5, color: 'var(--c-fg-3)', marginBottom: 16, maxWidth: 620 }}>
-        One studio, one month: every transaction with a running balance, what each box was
-        counted at, and any night the count disagreed with the ledger. <b>Download CSV</b> for
-        QuickBooks, or <b>Print</b> for the file. Runners record the nightly side in the runner app.
-      </div>
-      <PettyCashSection />
-    </div>
+    // The title, the "?" and the buttons are the shared page top, drawn by
+    // the section (it owns the studio and month) — 2026-10-13.
+    <PettyCashSection />
   )
 }

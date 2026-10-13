@@ -17,16 +17,8 @@ import { ApProfilesSection } from '@/components/admin/ApProfilesSection'
 
 export default function ApProtocolsPage() {
   return (
-    <div>
-      <h1 className="c-arch" style={{ fontSize: 22, letterSpacing: '-0.01em', margin: '2px 0 4px' }}>
-        Client AP Protocols
-      </h1>
-      <div style={{ fontSize: 12.5, color: 'var(--c-fg-3)', marginBottom: 16, maxWidth: 620 }}>
-        How each label wants its invoice submitted — the portal or AP email, whether a PO is
-        required, and the steps. This is what the <b>AP</b> button on a Billing row shows.
-        A client is linked to a procedure on its client profile, not here.
-      </div>
-      <ApProfilesSection />
-    </div>
+    // The title, the "?" and the button are the shared page top, drawn by
+    // the section (it owns the search and the editor) — 2026-10-13.
+    <ApProfilesSection />
   )
 }

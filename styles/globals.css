@@ -2048,6 +2048,16 @@ select.c-input {
   font-size: 8px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .5;
 }
 .c-srch-hit { background: var(--c-wash2); border-radius: 3px; box-shadow: 0 0 0 2px var(--c-wash2); }
+/* THE ONE DATE STEPPER (components/layout/DateStep.tsx) — ‹ label › in the
+   page header. Wash capsule, no depth; the arrows are bare and lift on hover. */
+.c-step { display: inline-flex; align-items: center; gap: 2px; height: 30px; padding: 0 3px; background: var(--c-wash); border-radius: 99px; }
+.c-step button {
+  width: 26px; height: 24px; border-radius: 99px; background: none; border: none; cursor: pointer;
+  color: var(--c-fg); font-family: inherit; font-weight: 700; font-size: 13px; line-height: 1; opacity: .7;
+}
+.c-step button:hover:not(:disabled) { background: var(--c-wash2); opacity: 1; }
+.c-step button:disabled { opacity: .25; cursor: default; }
+.c-step b { font-size: 12px; font-weight: 700; padding: 0 8px; white-space: nowrap; }
 @media (max-width: 768px) {
   .c-ph { flex-wrap: wrap; min-height: 0; }
   .c-ph h1 { font-size: 20px; }

@@ -65,20 +65,37 @@ const chipStyle = (kind: 'paid' | 'open' | 'late' | 'none' | 'partial'): CSSProp
 
 const lbl: CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', opacity: 0.5, display: 'block', marginBottom: 3 }
 
-export function TenantsView() {
+/** `month` / `onMonth` and `newTenantRequest` come from the Billing Hub page
+ *  since 2026-10-13: the ‹ month › stepper and "+ Tenant" live in the shared
+ *  page top. A non-zero request opens the New tenant form; the page is told
+ *  once it has. Called with no props (nothing does today) it keeps its own
+ *  month. */
+export function TenantsView({ month, onMonth, newTenantRequest, onNewTenantRequestHandled }: {
+  month?: string
+  onMonth?: (m: string) => void
+  newTenantRequest?: number
+  onNewTenantRequestHandled?: () => void
+} = {}) {
   const { profile } = useUserProfile()
   const isMobile = useIsMobile()
   const woVersion = useWoInvoicesVersion()
   const canEdit = profile?.role === 'owner' || profile?.role === 'manager'
 
   const [leases, setLeases] = useState<Lease[]>([])
-  const [boardMonth, setBoardMonth] = useState(currentMonth())
+  const [ownMonth] = useState(currentMonth())
+  const boardMonth = month ?? ownMonth
+  void onMonth // the page steps the month; nothing inside the view changes it any more
   const [stamps, setStamps] = useState<Map<string, RentStamp>>(new Map())
   const [shared, setShared] = useState<Record<string, SharedRunnerMonth>>({})
   const [sheetMonth, setSheetMonth] = useState<string | null>(null) // null = board
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [editing, setEditing] = useState<Lease | 'new' | null>(null)
+  useEffect(() => {
+    if (!newTenantRequest || !canEdit) return
+    setEditing('new')
+    onNewTenantRequestHandled?.()
+  }, [newTenantRequest]) // eslint-disable-line react-hooks/exhaustive-deps
   const [ledgerFor, setLedgerFor] = useState<Lease | null>(null)
   const [payFor, setPayFor] = useState<{ lease: Lease; month: string } | null>(null)
   const [showPast, setShowPast] = useState(false)
@@ -332,19 +349,15 @@ export function TenantsView() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        {canEdit && <button className="c-bact" onClick={() => setEditing('new')}>+ Tenant</button>}
-        {past.length > 0 && (
+      {/* "+ Tenant" and the month arrows moved to the page top (2026-10-13);
+          the past-tenants toggle stays with the list it changes. */}
+      {past.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           <button className="c-bact" onClick={() => setShowPast(v => !v)} style={{ opacity: 0.7 }}>
             {showPast ? 'Hide past' : `Past tenants (${past.length})`}
           </button>
-        )}
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto', fontWeight: 700, fontSize: 12 }}>
-          <button className="c-bact" onClick={() => setBoardMonth(shiftMonth(boardMonth, -1))}>‹</button>
-          {monthLabel(boardMonth)}
-          <button className="c-bact" onClick={() => setBoardMonth(shiftMonth(boardMonth, 1))}>›</button>
-        </span>
-      </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 8, marginBottom: 12 }}>
         {[

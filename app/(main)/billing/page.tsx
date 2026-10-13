@@ -66,6 +66,8 @@ import { DeletedLogModal } from '@/components/billing/DeletedLog'
 import { RemovedHoldsPanel } from '@/components/billing/RemovedHolds'
 import { Hint } from '@/components/ui/Hint'
 import { PageTop } from '@/components/layout/PageTop'
+import { DateStep } from '@/components/layout/DateStep'
+import { currentMonth, shiftMonth, monthLabel } from '@/lib/tenants'
 import { FinancialsView } from '@/components/billing/FinancialsView'
 import { TenantsView } from '@/components/billing/TenantsView'
 import {
@@ -195,6 +197,11 @@ export default function BillingPage() {
   const [dragOver, setDragOver] = useState<string | null>(null)
   /** The page-level ⋯ menu. Rare actions that belong to the PAGE, not a row. */
   const [pageMenu, setPageMenu] = useState(false)
+  // TENANTS' controls live in the page top (2026-10-13): the ‹ month › stepper
+  // and "+ Tenant". The month is the page's; TenantsView reads it.
+  const [tenantMonth, setTenantMonth] = useState(currentMonth())
+  const [newTenantRequest, setNewTenantRequest] = useState(0)
+  const canEditTenants = profile?.role === 'owner' || profile?.role === 'manager'
   const [deletedLog, setDeletedLog] = useState(false)
   const [blankBusy, setBlankBusy] = useState(false)
   const uploadFor = useRef<InvoiceRow | null>(null)
@@ -605,7 +612,14 @@ export default function BillingPage() {
         else setView(k)
       }}
       dimViews={searching}
-      actions={view === 'invoices' || searching ? (
+      actions={view === 'tenants' && !searching ? (
+        <>
+          <DateStep label={monthLabel(tenantMonth)} onPrev={() => setTenantMonth(shiftMonth(tenantMonth, -1))} onNext={() => setTenantMonth(shiftMonth(tenantMonth, 1))} />
+          {canEditTenants && (
+            <button className="c-btn c-control c-raised-primary" onClick={() => setNewTenantRequest(n => n + 1)}>+ Tenant</button>
+          )}
+        </>
+      ) : view === 'invoices' || searching ? (
         /* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
            things that belong to the PAGE rather than to an invoice. It is not a
            header button because a blank work order is rare — Eli: "these are
@@ -643,7 +657,7 @@ export default function BillingPage() {
     return (
       <div className="c-root">
         {top}
-        <TenantsView />
+        <TenantsView month={tenantMonth} newTenantRequest={newTenantRequest} onNewTenantRequestHandled={() => setNewTenantRequest(0)} />
       </div>
     )
   }

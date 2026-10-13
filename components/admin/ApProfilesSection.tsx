@@ -30,6 +30,8 @@ import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useClientsVersion } from '@/hooks/useClientsVersion'
+import { PageTop } from '@/components/layout/PageTop'
+import { Hint } from '@/components/ui/Hint'
 import type { ApProfile, ApStep } from '@/components/billing/ApCard'
 
 type LabelClient = { id: string; name: string; ap_profile_id: string | null }
@@ -117,6 +119,9 @@ export function ApProfilesSection() {
   const [labels, setLabels] = useState<LabelClient[]>([])
   const [editing, setEditing] = useState<Partial<ApProfile> | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  // The page top's search (2026-10-13) — new; a procedure by its name, or by
+  // a label linked to it. (`query` below is the add-client picker's own box.)
+  const [pageQuery, setPageQuery] = useState('')
   /** Which procedure has its client picker open. One at a time — two open
    *  pickers on one screen is two places to type the same search. */
   const [picking, setPicking] = useState<string | null>(null)
@@ -184,19 +189,38 @@ export function ApProfilesSection() {
 
   const byFamily = useMemo(() => {
     const m: Record<string, ApProfile[]> = {}
+    const q = pageQuery.trim().toLowerCase()
     for (const r of rows) {
       if (r.is_global) continue          // the general reference card is not a label
+      if (q && !(r.name || '').toLowerCase().includes(q) && !labels.some(l => l.ap_profile_id === r.id && l.name.toLowerCase().includes(q))) continue
       ;(m[r.family] ??= []).push(r)
     }
     return m
-  }, [rows])
+  }, [rows, labels, pageQuery])
+  const anyShown = Object.values(byFamily).some(a => a.length > 0)
 
   const unlinkedCount = labels.filter(l => !l.ap_profile_id).length
 
   // ── The editor takes the whole page — a form and a browse competing for one
   //    screen is what made the first version cramped. ──────────────────────────
+  // THE SHARED PAGE TOP (2026-10-13, components/layout/PageTop). The
+  // paragraph that opened the page is the "?". The editor keeps the top
+  // (title only) so the page doesn't jump when a procedure is opened.
+  const top = (
+    <PageTop
+      crumb="Billing"
+      title="Client AP Protocols"
+      hint={<Hint tip="How each label wants its invoice submitted — the portal or AP email, whether a PO is required, and the steps. This is what the AP button on a Billing row shows. A client is linked to a procedure on its client profile, not here." />}
+      search={editing ? undefined : { value: pageQuery, onChange: setPageQuery, placeholder: 'Search procedures and label clients…' }}
+      actions={editing ? undefined : (
+        <button onClick={() => { setEditing(blank()); setEditingId(null) }} className="c-btn c-control c-raised-primary">+ New procedure</button>
+      )}
+    />
+  )
+
   if (editing) {
-    return (
+    return (<>
+      {top}
       <ProcedureForm
         draft={editing}
         isNew={!editingId}
@@ -205,7 +229,7 @@ export function ApProfilesSection() {
         onCancel={() => { setEditing(null); setEditingId(null) }}
         sharedWith={editingId ? clientsFor(editingId).length : 0}
       />
-    )
+    </>)
   }
 
   /** One procedure: its pills, its clients, and the picker. */
@@ -308,16 +332,11 @@ export function ApProfilesSection() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--c-fg-3)' }}>
-          {rows.filter(r => !r.is_global).length} procedures · {labels.length - unlinkedCount} of {labels.length} label clients linked
-        </div>
-        <div style={{ flex: 1 }} />
-        <button
-          onClick={() => { setEditing(blank()); setEditingId(null) }}
-          className="c-btn" style={{ fontSize: 11.5 }}
-        >+ New procedure</button>
+      {top}
+      <div style={{ fontSize: 12, color: 'var(--c-fg-3)', marginBottom: 16 }}>
+        {rows.filter(r => !r.is_global).length} procedures · {labels.length - unlinkedCount} of {labels.length} label clients linked
       </div>
+      {pageQuery.trim() && !anyShown && <div className="c-bempty">No procedure or label matches that.</div>}
 
       {/* ── MAJORS ───────────────────────────────────────────────────────── */}
       <div style={{ ...lbl, marginBottom: 10 }}>Majors</div>
@@ -348,12 +367,14 @@ export function ApProfilesSection() {
       })}
 
       {/* ── INDEPENDENTS ─────────────────────────────────────────────────── */}
-      <div style={{ ...lbl, margin: '26px 0 10px' }}>
-        Independents — one label, one procedure
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 8 }}>
-        {(byFamily['Other'] ?? []).map(p => renderProc(p, true))}
-      </div>
+      {(byFamily['Other'] ?? []).length > 0 && (<>
+        <div style={{ ...lbl, margin: '26px 0 10px' }}>
+          Independents — one label, one procedure
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 8 }}>
+          {(byFamily['Other'] ?? []).map(p => renderProc(p, true))}
+        </div>
+      </>)}
 
       {/* Unlinked clients are the work left to do, so the number is on screen
           rather than something you have to go and count. */}
