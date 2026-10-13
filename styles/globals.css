@@ -997,6 +997,40 @@ select.c-input {
 .c-rail-badge.c-ok { background: var(--c-st-booked); color: var(--c-chip-ink); }
 .c-rail-foot { margin-top: auto; padding-top: 12px; }
 
+/* ── RAIL GROUPS — the Ramp rework (Eli, 2026-10-12;
+   docs/design-refs/rail-header-real-pages.html). CRM, Billing, Operations, HR
+   and Admin are click-to-open groups; one is open at a time.
+   · The OPEN group sits on a soft panel (one wash step — a band, not a carve).
+   · THE PAGE YOU ARE ON IS OUTLINED. This is a sanctioned exception to Law 1
+     (no lines), ruled the same day ("i like the lines") together with the
+     underline on view tabs — the only two. It is an inset box-shadow in ink,
+     not a border, and nothing else may borrow it.
+   · Top-level links keep the 2026-09-07 rule: selected = full ink, nothing else.
+   The rail must never scroll: check the tallest group open on a short laptop
+   screen before adding a row. */
+.c-rail-group { border-radius: 11px; }
+.c-rail-group.c-open { background: var(--c-wash); }
+/* The parent row doesn't lean toward the cursor — inside a panel the scale
+   reads as the panel twitching. */
+.c-rail-group > .c-rail-link:hover { transform: none; }
+.c-rail-caret { margin-left: auto; font-size: 9px; opacity: .5; }
+.c-rail-badge + .c-rail-caret { margin-left: 6px; }
+.c-rail-kids { padding: 0 4px 5px; }
+.c-rail-kid {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  padding: 5px 7px 5px 26px; border-radius: 9px;
+  font-size: 12px; font-weight: 600; font-family: inherit; text-align: left;
+  color: var(--c-fg); opacity: .6; text-decoration: none; cursor: pointer;
+  white-space: nowrap;
+  transition: opacity .16s ease;
+}
+.c-rail-kid:hover { opacity: .9; }
+.c-rail-kid.c-on {
+  opacity: 1; font-weight: 700;
+  background: var(--c-bg);
+  box-shadow: inset 0 0 0 1.5px var(--c-fg);
+}
+
 /* Mobile: 52px top bar + the rail as a slide-in drawer over a dimmed backdrop. */
 .c-mobilebar {
   display: flex; align-items: center; justify-content: space-between;

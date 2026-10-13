@@ -70,6 +70,25 @@ export function isComingUp(l: Lead): boolean {
   return isParked(l) || !isDue(l)
 }
 
+/** THE NEEDS ACTION COUNT (2026-10-12, the rail rework). The CRM's Leads tab,
+ *  its Needs Action pill and the rail's "Leads & clients" badge all show this
+ *  number, so it lives here once instead of being re-derived in each place.
+ *  The three filters are the Needs Action buckets on the CRM page, moved here
+ *  unchanged: uncontacted (or never contacted and still open), hot due, warm
+ *  due — each only while needs_contact isn't switched off. `total` is the SUM
+ *  of the buckets, exactly as the page has always counted it (a hot lead that
+ *  was never contacted and is also due sits in two buckets and counts twice;
+ *  kept so the badge can never disagree with the tabs under it).
+ *  Typed loosely on purpose: the rail fetches only these columns. */
+type NeedsActionLead = Pick<Lead, 'status' | 'last_contact' | 'created_at' | 'keep_hot_until' | 'parked_until' | 'needs_contact'>
+export function needsActionCounts(leads: NeedsActionLead[]): { uncontacted: number; hot: number; warm: number; total: number } {
+  const open = leads.filter(l => l.needs_contact !== false)
+  const uncontacted = open.filter(l => l.status === 'uncontacted' || (!l.last_contact && !['booked', 'dead', 'leasing'].includes(l.status))).length
+  const hot = open.filter(l => l.status === 'hot' && isDue(l as Lead) && !isParked(l as Lead)).length
+  const warm = open.filter(l => l.status === 'warm' && isDue(l as Lead) && !isParked(l as Lead)).length
+  return { uncontacted, hot, warm, total: uncontacted + hot + warm }
+}
+
 export function getMissing(l: Lead): string[] {
   const m: string[] = []
   if (!l.fname) m.push('first name')

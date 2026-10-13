@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Rail + page header, on the real pages</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- RAIL + PAGE-HEADER REWORK, RAMP-STYLE (Eli, 2026-10-12). Round 2 of docs/design-refs/rail-ramp-options.html,
+     rebuilt from the real pages: components/layout/Rail.tsx, app/(main)/crm/page.tsx, components/clients/*,
+     components/crm/RegistrationsView.tsx, app/(main)/billing/page.tsx. Tokens copied from styles/globals.css
+     (carved tokens + the soft-skin block). Dark = no data-theme attribute, exactly like the app.
+     Rows are placeholders. Classes that exist in globals.css keep their names; the NEW ones are
+     .c-rail-group / .c-rail-kid (rail), .c-topsearch, .c-ph (page header), .c-views / .c-view (view tabs).
+     RULINGS (Eli, 2026-10-12): the lines are approved - the outline on the page you're on and the underline on
+     view tabs are the two sanctioned exceptions to the no-lines law. Texting & campaigns is ELI ONLY (Texting was
+     open to every CRM role before). No search bar on the dashboard; it keeps its own layout.
+     Operations and HR are dropdowns as well, so the rail never scrolls; the grey group headings are gone. -->
+<style>
+/* ── tokens, verbatim from styles/globals.css ── */
+:root{
+  --c-bg:#0b0a09; --c-fg:#f2efe7; --c-wash:rgba(242,239,231,.06); --c-wash2:rgba(242,239,231,.12); --c-chip-ink:#1c2626;
+  --c-st-hot:#ff5a4d; --c-st-warm:#ffa94d; --c-st-cold:#5fc9e8; --c-st-booked:#43dfae; --c-st-uncon:#7fb2e5; --c-st-tech:#b5a3ef; --c-st-lease:var(--c-st-tech); --c-st-dead:#cfd6d4;
+  --c-fg-2:rgba(242,239,231,.72); --c-fg-3:rgba(242,239,231,.45); --c-ivory:#d5d0c2; --c-hot-text:#fff4f2;
+  --c-srf:#151412; --c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22); --c-ctlsh:0 1px 4px rgba(0,0,0,.3);
+}
+[data-theme="light"]{
+  --c-bg:#fdfcf9; --c-fg:#1a1712; --c-wash:rgba(26,23,18,.055); --c-wash2:rgba(26,23,18,.105);
+  --c-fg-2:rgba(26,23,18,.72); --c-fg-3:rgba(26,23,18,.46);
+  --c-srf:#f1efe9; --c-softsh:0 1px 2px rgba(26,23,18,.05),0 4px 12px rgba(26,23,18,.05); --c-ctlsh:0 1px 3px rgba(26,23,18,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--c-bg)}
+body{color:var(--c-fg);font:400 14.5px/1.6 Inter,-apple-system,BlinkMacSystemFont,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+input{font-family:inherit;color:inherit}
+
+/* ── the mock's own chrome (not part of the app) ── */
+.mk-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 16px;font-size:12px;background:var(--c-wash)}
+.mk-bar b{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:13px;letter-spacing:-.01em}
+.mk-bar .sp{flex:1}
+.mk-bar label{opacity:.6;font-size:11px}
+.mk-bar select,.mk-bar .tg{background:var(--c-wash2);border-radius:99px;padding:5px 11px;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-fg);border:none;cursor:pointer}
+.mk-bar select{text-transform:none;letter-spacing:0;font-weight:700;font-size:11.5px}
+.mk-bar .tg.on{background:var(--c-fg);color:var(--c-bg)}
+.mk-stage{padding:0}
+body.force-m .mk-stage{display:flex;justify-content:center;padding:16px 0;background:var(--c-wash)}
+body.force-m .c-frame{width:390px;height:760px;border-radius:26px;overflow:hidden;box-shadow:var(--c-softsh)}
+.mk-notes{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+.mk-notes h2{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:19px;letter-spacing:-.02em;margin-bottom:4px}
+.mk-notes>p{font-size:13px;opacity:.6;margin-bottom:16px;max-width:760px}
+.mk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:26px}
+.mk-card{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:14px 16px;font-size:12.5px;line-height:1.5}
+.mk-card h3{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:14px;margin-bottom:8px}
+.mk-card dl{display:grid;gap:9px}
+.mk-card dt{font-weight:700}
+.mk-card dd{opacity:.62}
+.mk-card dd b{font-weight:800;font-size:9px;letter-spacing:.09em;text-transform:uppercase;opacity:.75;margin-right:5px}
+.mk-card.same{background:var(--c-wash);box-shadow:none}
+.mk-tidy{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mk-tidy .mk-card i{font-style:normal;font-family:'DM Mono',monospace;font-size:11px;opacity:.5;margin-right:8px}
+.mk-tidy .mk-card p{opacity:.62;margin-top:3px}
+@media (max-width:900px){.mk-grid,.mk-tidy{grid-template-columns:1fr}}
+
+/* ── frame + rail (globals.css) ── */
+.c-frame{display:flex;height:calc(100vh - 44px);min-height:640px;background:var(--c-bg);position:relative}
+.c-rail{width:176px;flex-shrink:0;padding:14px 8px 12px 10px;display:flex;flex-direction:column;gap:2px;height:100%;overflow-y:auto}
+.c-rail-wm{padding:2px 10px 10px;display:flex;align-items:center;gap:4px}
+.c-wordmark{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400;letter-spacing:-.02em;font-size:16px;line-height:1}
+.c-wordmark span{opacity:.45}
+.c-rail-grp{margin-top:10px;padding:0 10px 4px;font-size:9px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.c-rail-link{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;border-radius:11px;font-size:12.5px;font-weight:600;text-align:left;color:var(--c-fg);opacity:.6;cursor:pointer;background:none;transition:opacity .16s ease,transform .16s ease;transform-origin:left center}
+.c-rail-link:hover{opacity:.9;transform:scale(1.045)}
+.c-rail-link.c-on{opacity:1;font-weight:700}
+.c-rail-ic{width:16px;text-align:center;opacity:.75;flex-shrink:0;font-size:13px}
+.c-rail-badge{margin-left:auto;min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.c-rail-badge.c-hot{background:var(--c-st-hot);color:var(--c-hot-text)}
+.c-rail-badge.c-ok{background:var(--c-st-booked);color:var(--c-chip-ink)}
+.c-rail-badge.c-dim{background:var(--c-wash2)}
+.c-rail-foot{margin-top:auto;padding-top:12px}
+.c-rail-caret{margin-left:auto;font-size:9px;opacity:.5}
+.c-rail-badge + .c-rail-caret{margin-left:6px}
+/* NEW — the Ramp touches: the open group is a soft panel, the page you're on is outlined */
+.c-rail-group{border-radius:11px}
+.c-rail-group.c-open{background:var(--c-wash)}
+.c-rail-group.c-open > .c-rail-link{opacity:1;font-weight:700}
+.c-rail-group > .c-rail-link:hover{transform:none}
+.c-rail-kids{padding:0 4px 5px}
+.c-rail-kid{display:flex;align-items:center;gap:6px;width:100%;padding:5px 7px 5px 26px;border-radius:9px;font-size:12px;font-weight:600;text-align:left;color:var(--c-fg);opacity:.6;white-space:nowrap}
+.c-rail-kid:hover{opacity:.9}
+.c-rail-kid.c-on{opacity:1;font-weight:700;background:var(--c-bg);box-shadow:inset 0 0 0 1.5px var(--c-fg)}
+/* mobile bar + drawer (globals.css) */
+.c-mobilebar{display:none;align-items:center;justify-content:space-between;height:52px;padding:0 12px;background:var(--c-bg);flex-shrink:0}
+.c-rail-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:50}
+body.m .c-frame{flex-direction:column}
+body.m .c-mobilebar{display:flex}
+body.m .c-rail{display:none}
+body.m .c-rail.c-drawer{display:flex;position:absolute;top:0;left:0;bottom:0;z-index:51;background:var(--c-bg);box-shadow:0 18px 40px rgba(0,0,0,.55)}
+
+/* ── type + primitives (globals.css) ── */
+.c-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.c-mono{font-family:'DM Mono',ui-monospace,monospace}
+.c-label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.c-sub{font-size:13px;opacity:.6}
+.c-panel{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:16px;padding:12px}
+.c-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:7px 15px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;box-shadow:var(--c-ctlsh);white-space:nowrap}
+[data-theme="light"] .c-btn{background:var(--c-fg);color:var(--c-bg)}
+.c-soft{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:99px;padding:6px 13px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--c-bg);color:var(--c-fg);box-shadow:var(--c-ctlsh);white-space:nowrap}
+.c-soft.c-on{background:var(--c-ivory);color:#1b1a17}
+[data-theme="light"] .c-soft.c-on{background:var(--c-fg);color:var(--c-bg)}
+.c-soft-sm{padding:6px 8px;font-size:8.5px}
+.c-pill{display:inline-flex;align-items:center;flex-shrink:0;border-radius:99px;padding:4px 11px;font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--c-chip-ink);box-shadow:var(--c-ctlsh);white-space:nowrap}
+:root:not([data-theme="light"]) .c-pill{filter:saturate(.82) brightness(.88)}
+.c-fill-hot{background:var(--c-st-hot);color:var(--c-hot-text)} .c-fill-warm{background:var(--c-st-warm)} .c-fill-cold{background:var(--c-st-cold)}
+.c-fill-booked{background:var(--c-st-booked)} .c-fill-uncon{background:var(--c-st-uncon)} .c-fill-lease{background:var(--c-st-lease)} .c-fill-dead{background:var(--c-st-dead)}
+.c-dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
+.c-lozenge{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 3px 7px;margin-bottom:6px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.c-lozenge > b,.c-lozenge > span:first-child{opacity:.45;font-weight:800}
+.c-ct{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.7;letter-spacing:0}
+.c-row{display:flex;align-items:center;gap:9px;padding:6px 12px;border-radius:99px;margin-bottom:4px;font-size:12.5px;cursor:pointer}
+.c-row:hover{background:var(--c-wash)}
+.c-row.c-selected{background:var(--c-wash2)}
+.c-band{background:var(--c-wash);border-radius:12px;padding:8px 10px;margin-top:6px}
+.c-band-head{font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.5;margin-bottom:4px}
+.c-input{display:block;width:100%;border-radius:12px;padding:0 10px;height:32px;background:var(--c-wash);color:var(--c-fg);font-size:12.5px;font-weight:500;border:none;outline:none}
+.c-seg-tiny{display:inline-flex;padding:3px;border-radius:99px;background:var(--c-wash)}
+.c-seg-tiny button{padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:99px;opacity:.6}
+.c-seg-tiny button.c-on{background:var(--c-ivory);color:#1b1a17;opacity:1}
+[data-theme="light"] .c-seg-tiny button.c-on{background:var(--c-fg);color:var(--c-bg)}
+.txtbtn{flex-shrink:0;padding:3px 8px;font-family:'Archivo Black',sans-serif;font-size:9px;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+
+/* ── billing hub (globals.css) ── */
+.c-bstat{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:10px 12px;height:62px;cursor:pointer}
+.c-btabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;flex-shrink:0}
+.c-btabs.c-dim{opacity:.35;pointer-events:none}
+.c-btab{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--c-wash);font-size:12px;font-weight:700;cursor:pointer;box-shadow:var(--c-ctlsh);color:var(--c-fg);white-space:nowrap}
+.c-btab.c-on{background:var(--c-ivory);color:#1b1a17}
+[data-theme="light"] .c-btab.c-on{background:var(--c-fg);color:var(--c-bg)}
+.c-bn{font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px;opacity:.65}
+.c-brow,.c-browhd{display:grid;grid-template-columns:100px 76px minmax(0,1fr) 234px 84px 46px 120px 48px;align-items:center;gap:10px}
+.c-bage-off .c-brow,.c-bage-off .c-browhd{grid-template-columns:100px 76px minmax(0,1fr) 234px 84px 120px 48px}
+.c-brow{padding:4px 10px;min-height:38px;border-radius:11px;font-size:12px;cursor:pointer}
+.c-brow:hover{background:var(--c-wash)}
+.c-browhd{padding:2px 10px 6px;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.35}
+.c-browhd .c-r{text-align:right} .c-browhd .c-bacthd{text-align:center}
+.c-bbin{font-size:8px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:3px 6px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-bbin.c-bbin-two{white-space:normal;line-height:1.25;padding:2px 6px}
+.c-bbin.c-bbin-two small{display:block;font-size:7px;font-weight:700;letter-spacing:.03em;text-transform:none;opacity:.8}
+.c-binv{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;opacity:.6}
+.c-bwho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-bwho span{opacity:.5;font-size:11px}
+.c-bwho .ap{margin-left:7px;padding:1px 6px;border-radius:99px;border:1px solid var(--c-fg-3);color:var(--c-fg-2);font-size:9.5px;font-weight:800;letter-spacing:.08em;line-height:1.5;opacity:1}
+.c-bamt{font-family:'DM Mono',ui-monospace,monospace;font-size:11.5px;text-align:right}
+.c-brow.c-od .c-bamt{color:var(--c-st-hot);font-weight:700}
+.c-bage{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;opacity:.45;text-align:right}
+.c-bflagcell{display:flex;justify-content:flex-end;min-width:0}
+.c-bactcell{display:flex;justify-content:center}
+.c-bmorecell{display:flex;justify-content:flex-end;align-items:center;gap:4px}
+.c-bact{font-size:9.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);opacity:.8;white-space:nowrap}
+.c-bmore{font-size:12px;line-height:1;padding:4px 2px;color:var(--c-fg);opacity:.3}
+.c-bmore:hover{opacity:.9}
+.c-bnoteg{font-size:11px;opacity:.25;padding:4px 3px}
+.c-bdrift{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-hot);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-bdone,.c-brev{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--c-st-booked);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-bhint{font-size:9.5px;opacity:.4;font-style:italic;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-bsoon{font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;opacity:.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-bday{display:flex;align-items:center;gap:9px;margin:12px 2px 2px}
+.c-bday:first-child{margin-top:2px}
+.c-bday b{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;opacity:.4;white-space:nowrap}
+.c-bday i{flex:1;height:1px;background:var(--c-wash2)}
+.c-bday u{font-size:9px;opacity:.3;text-decoration:none;white-space:nowrap}
+.c-bempty{padding:18px 10px;font-size:12px;opacity:.5;text-align:center}
+.c-bpager{display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:9px 6px 0;font-size:11px;flex-shrink:0}
+.c-binfo{margin-right:auto;opacity:.45;font-family:'DM Mono',ui-monospace,monospace;font-size:10.5px}
+.c-bpg{padding:3px 9px;border-radius:99px;background:var(--c-wash2);font-size:10.5px;font-weight:700;opacity:.7}
+.c-bpg.c-on{background:var(--c-ivory);color:#1b1a17;opacity:1}
+[data-theme="light"] .c-bpg.c-on{background:var(--c-fg);color:var(--c-bg)}
+
+/* ── NEW: the shared page top — search, header, view tabs ── */
+.c-main{flex:1;min-width:0;min-height:0;padding:14px 20px 20px;display:flex;flex-direction:column}
+.c-topsearch{display:flex;align-items:center;gap:9px;background:var(--c-wash);border-radius:12px;height:36px;padding:0 12px;margin-bottom:14px;flex-shrink:0}
+.c-topsearch:focus-within{background:var(--c-wash2)}
+.c-topsearch input{flex:1;min-width:0;background:none;border:none;outline:none;font-size:13px;font-weight:500}
+.c-topsearch input::placeholder{color:var(--c-fg);opacity:.38}
+.c-topsearch .gl{opacity:.4;font-size:13px}
+.c-kbd{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;background:var(--c-wash2);padding:2px 6px;border-radius:5px;opacity:.6}
+.c-bclr{opacity:.45;font-size:11px;font-weight:700;cursor:pointer}
+.c-ph{display:flex;align-items:flex-end;gap:12px;padding:0 4px 10px;flex-shrink:0;min-height:58px}
+.c-ph h1{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:26px;letter-spacing:-.03em;line-height:1.05}
+.c-ph .c-label{display:block;margin-bottom:3px}
+.c-ph-actions{margin-left:auto;display:flex;gap:8px;align-items:center;height:32px}
+.c-views{display:flex;gap:22px;padding:0 4px;margin-bottom:14px;flex-shrink:0;min-height:26px}
+.c-views.c-dim{opacity:.35;pointer-events:none}
+/* inactive words dim by COLOUR, not opacity, so a hot count stays full strength on a tab you are not on */
+.c-view{display:flex;align-items:center;gap:7px;padding:0 0 6px;font-size:13px;font-weight:600;color:var(--c-fg-3);white-space:nowrap;box-shadow:inset 0 -2px 0 transparent}
+.c-view:hover{color:var(--c-fg-2)}
+.c-view.c-on{color:var(--c-fg);font-weight:700;box-shadow:inset 0 -2px 0 var(--c-fg)}
+.c-view .n{font-family:'DM Mono',ui-monospace,monospace;font-size:11px;font-weight:400;opacity:.6}
+.c-view .n.c-hot{background:var(--c-st-hot);color:var(--c-hot-text);border-radius:99px;padding:0 7px;font-weight:700;opacity:1}
+.c-body{flex:1;min-height:0;display:flex;flex-direction:column}
+.fill{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+/* Billing Hub on a short screen: the list keeps a usable size and the page scrolls instead of squeezing it */
+.c-body.hub{overflow-y:auto;margin:0 -6px;padding:0 6px 6px}
+.c-body.hub > .c-panel.fill{flex:1 0 380px}
+.scroll{flex:1;min-height:0;overflow-y:auto}
+.hit{background:var(--c-wash2);border-radius:3px;box-shadow:0 0 0 2px var(--c-wash2)}
+.kind{flex-shrink:0;width:86px;font-size:8px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+.el{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avatar{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--c-chip-ink)}
+.avatar.c-fill-hot{color:var(--c-hot-text)}
+.avatar.plain{background:var(--c-wash2);color:var(--c-fg)}
+.rowtext{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
+.rowtext .nm{font-size:12.5px;font-weight:600;flex-shrink:0;max-width:55%}
+.rowtext .mt{flex:1;min-width:0;font-size:10.5px;color:var(--c-fg-2);text-align:right}
+.sl{color:var(--c-fg-3)}
+.od{flex-shrink:0;padding:2px 8px;border-radius:99px;background:var(--c-st-hot);color:var(--c-hot-text);font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px}
+.kv div span{display:block;font-size:8.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45}
+.reg{display:grid;grid-template-columns:1.3fr 1.5fr 1fr 1fr 1fr 70px;gap:10px;align-items:center;padding:10px 16px;font-size:11px;color:var(--c-fg-2)}
+.reg.hd{padding:8px 16px;font-family:'Archivo Black',sans-serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)}
+.reg > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.idchip{font-family:'Archivo Black',sans-serif;font-size:8px;letter-spacing:.08em;background:var(--c-wash2);padding:2px 6px;border-radius:3px;color:var(--c-fg)}
+.stub{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12.5px;opacity:.45;padding:30px}
+
+body.m .c-main{padding:10px 12px 14px}
+body.m .c-ph h1{font-size:20px}
+body.m .two{grid-template-columns:1fr !important}
+body.m .two > .detail{display:none}
+body.m .hide-m{display:none !important}
+body.m .c-views{gap:16px;overflow-x:auto}
+body.m .c-btabs{flex-wrap:nowrap;overflow-x:auto}
+body.m .stats{grid-template-columns:1fr 1fr !important}
+body.m .c-brow{display:flex;flex-wrap:wrap;gap:6px}
+body.m .c-browhd{display:none}
+body.m .rowtext{display:block}
+body.m .rowtext .nm{max-width:none}
+body.m .rowtext .mt{text-align:left}
+body.m .c-kbd{display:none}
+</style>
+</head>
+<body>
+
+<div class="mk-bar">
+  <b>Mock · rail + page header on the real pages</b>
+  <span style="opacity:.5">Click around: open a group, pick a page, switch views, type in the search. Placeholder rows.</span>
+  <span class="sp"></span>
+  <label for="role">View as</label>
+  <select id="role">
+    <option value="eli">Eli</option>
+    <option value="owner">Owner</option>
+    <option value="manager">Manager</option>
+    <option value="billing">Billing</option>
+    <option value="asst">Asst. manager</option>
+    <option value="tech">Tech</option>
+  </select>
+  <button class="tg" id="tgPhone">Phone</button>
+  <button class="tg" id="tgTheme">Light</button>
+</div>
+
+<div class="mk-stage">
+  <div class="c-frame" id="frame">
+    <div class="c-mobilebar" id="mbar"></div>
+    <nav class="c-rail" id="rail"></nav>
+    <main class="c-main" id="main"></main>
+  </div>
+</div>
+
+<div class="mk-notes">
+  <h2>What each thing replaces</h2>
+  <p>Left of each line is what's in the mock; "Today" is what it takes the place of. Anything not listed is untouched.</p>
+  <div class="mk-grid">
+    <div class="mk-card">
+      <h3>The rail</h3>
+      <dl>
+        <div><dt>CRM opens to Leads &amp; clients, Texting &amp; campaigns, Lakers</dt><dd><b>Today</b>One CRM link, then five big tabs on the page. Lakers sits under Admin.</dd></div>
+        <div><dt>One group open at a time, on a soft panel; the page you're on is outlined</dt><dd><b>Today</b>Groups open independently and the current page is only bolder.</dd></div>
+        <div><dt>Red count on Leads &amp; clients = leads that need action</dt><dd><b>Today</b>The CRM row shows a grey count of unreviewed registrations. That count moves to the Registrations tab.</dd></div>
+        <div><dt>Green count on Billing Hub = invoices waiting on an owner</dt><dd><b>Today</b>Same count, on the Billing group. When a group is closed its count shows on the group so it's never hidden.</dd></div>
+        <div><dt>Texting &amp; campaigns is Eli only</dt><dd><b>Today</b>Campaigns is Eli only, but Texting is open to everyone who has the CRM.</dd></div>
+        <div><dt>A group with one page is a plain link</dt><dd><b>Today</b>Not needed. Now managers and billing only have Leads &amp; clients under CRM, so for them CRM is one click, no dropdown.</dd></div>
+        <div><dt>Operations and HR are dropdowns too, so the rail never scrolls</dt><dd><b>Today</b>Ten always-open links under grey BUSINESS / OPERATIONS / HR headings. The headings go. Memos' count shows on Operations when it's closed.</dd></div>
+        <div><dt>Admin = Rates + Positions</dt><dd><b>Today</b>Rates, Positions, Lakers.</dd></div>
+      </dl>
+    </div>
+    <div class="mk-card">
+      <h3>Leads &amp; clients</h3>
+      <dl>
+        <div><dt>One search at the top, across leads, clients and registrations</dt><dd><b>Today</b>Three separate boxes: "Search N leads…" (All Leads only), the Clients search, the Registrations search. Each hit says which view it's in.</dd></div>
+        <div><dt>Header: CRM · Leads &amp; clients · buttons on the right</dt><dd><b>Today</b>No title. "+ New lead" sits in the Leads pill row and "+ New client" beside the client search.</dd></div>
+        <div><dt>Leads · Clients · Registrations as quiet underlined words</dt><dd><b>Today</b>Five big title-words (Leads, Clients, Registrations, Texting, Campaigns). Texting and Campaigns leave for their own page.</dd></div>
+        <div><dt>Counts on the tabs</dt><dd><b>Today</b>Only Leads has one. Clients gets its total, Registrations gets the unreviewed count from the rail.</dd></div>
+      </dl>
+    </div>
+    <div class="mk-card">
+      <h3>Billing Hub</h3>
+      <dl>
+        <div><dt>The same top search</dt><dd><b>Today</b>The "Search everything…" bar between the approval bin and the pills. Still searches Billing and COD together.</dd></div>
+        <div><dt>Header: Billing · Billing Hub · ⋯ on the right</dt><dd><b>Today</b>A "Work orders &amp; invoices" label over the big words, with ⋯ floating far right.</dd></div>
+        <div><dt>Billing · COD · Tenants · Financials as quiet underlined words</dt><dd><b>Today</b>The big title-words. COD's count still turns red the moment a balance is open, so it can't be forgotten.</dd></div>
+        <div><dt>Approval bin is one fixed size; the list fills the rest and scrolls inside</dt><dd><b>Today</b>The bin grows a row per invoice and pushes the list down. This is the fixed-box rule applied, the only change below the header. On a short laptop screen the page still scrolls so the list never gets squeezed.</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <h2>What a dev would tidy</h2>
+  <p>Proposed, in the order I'd build them after the rail + CRM split. None of it changes what staff do, only how many versions of the same thing exist.</p>
+  <div class="mk-tidy">
+    <div class="mk-card"><i>1</i><b>One page header, used by every page.</b><p>Today there are five versions: big title-words (CRM, Billing, Daily Ops), a 22px title (Lakers, SRS, Petty Cash), a small label over a title (Engineers, Shift Notes), a lone 26px title (Training), and no title at all (Memos, Punches, Hiring, Positions).</p></div>
+    <div class="mk-card"><i>2</i><b>One search, in one place.</b><p>At least six places have their own search box, each built differently (All Leads, Clients, Registrations, Texting, Billing Hub, Engineers). The top bar becomes the only one and each page tells it what to search. The dashboard has no search.</p></div>
+    <div class="mk-card"><i>3</i><b>One rule for tabs.</b><p>Underlined words switch the view. Pills filter the list you're on. Today pills and big words are both used for both jobs.</p></div>
+    <div class="mk-card"><i>4</i><b>The view goes in the address.</b><p>Opening Clients becomes /crm?view=clients, so the back button, bookmarks and links from the dashboard land on the right tab. Texting gets its own address; old links keep working.</p></div>
+    <div class="mk-card"><i>5</i><b>Who-sees-what in one list.</b><p>Each rail item carries its own roles instead of a chain of if-statements. Same rules as today (flip "View as" above to check them), harder to break when a page is added.</p></div>
+    <div class="mk-card"><i>6</i><b>One page width and spacing.</b><p>Pages set their own max width (780, 860, 980, full) and the CRM runs at 90% zoom to fit. One content width and one gap scale, then the zoom can go. Last, and page by page.</p></div>
+  </div>
+</div>
+
+<script>
+/* ───────── who sees what — the same rules as filterItems in Rail.tsx ───────── */
+const ROLES = {
+  eli:{role:'owner',eli:true}, owner:{role:'owner'}, manager:{role:'manager'},
+  billing:{role:'billing'}, asst:{role:'asst_manager'}, tech:{role:'tech'},
+}
+let who = ROLES.eli
+const is = (...r) => r.includes(who.role)
+function can(k){
+  const tech = who.role === 'tech'
+  if (tech && ['crm','text','bill','pc','ap'].includes(k)) return false
+  if (k === 'nad' || k === 'text') return !!who.eli
+  if (k === 'hire' || k === 'pos') return is('owner','manager')
+  if (k === 'srs' || k === 'rates') return is('owner','manager','billing')
+  if (k === 'lakers') return who.role === 'owner' || !!who.eli
+  if (k === 'sn') return !!who.eli || is('owner','manager','billing','asst_manager')
+  return true
+}
+const isOwner = () => who.role === 'owner' || !!who.eli
+
+/* ───────── placeholder data ───────── */
+const LEADS = [
+  {id:1,st:'uncontacted',na:'uncontacted',n:'Dana Whitfield',x:'Web Inquiry',mt:'never contacted · added Oct 12',day:'Today',em:'dana.w@example.com',ph:'(323) 555-0142'},
+  {id:2,st:'uncontacted',na:'uncontacted',n:'Marcus Lee',art:'Young Jordan',ses:'Oct 18 · 6p–2a',mt:'Oct 18 · 6p–2a · never contacted · added Oct 11',day:'Yesterday',em:'marcus@example.com',ph:'(818) 555-0190'},
+  {id:3,st:'uncontacted',na:'uncontacted',n:'Priya Nair',x:'Concord',mt:'never contacted · added Oct 11',day:'Yesterday',em:'pnair@example.com',ph:'(310) 555-0117'},
+  {id:4,st:'hot',na:'hot',lab:'Atlantic',n:'Riley Chen',art:'Havelange',ses:'Oct 20–24',rm:'Paramount · Studio A',mt:'Oct 20–24 · Studio A · 4d ago · FB via call',od:2,day:'Oct 8',em:'riley.chen@example.com',ph:'(212) 555-0164'},
+  {id:5,st:'hot',na:'hot',lab:'Epic',n:'Sam Ortiz',art:'Kiana Ledé',ses:'Oct 27 · 12p–12a',mt:'Oct 27 · 12p–12a · 3d ago · ES via text',keep:'Keep Hot?',day:'Oct 8',em:'sam.ortiz@example.com',ph:'(323) 555-0128'},
+  {id:6,st:'warm',na:'warm',n:'Jesse Haugen',mt:'8d ago · QN via email',od:1,day:'Oct 4',em:'jesse@example.com',ph:'(818) 555-0177'},
+  {id:7,st:'warm',na:'warm',n:'Tori Vance',x:'Red Bull Records',mt:'7d ago · IS via call',keep:'Keep Warm?',day:'Oct 4',em:'tvance@example.com',ph:'(424) 555-0103'},
+  {id:8,st:'hot',na:'coming',n:'Stuart Price',mt:'back Oct 19 · ES via call',day:'Oct 2',em:'stuart@example.com',ph:'(323) 555-0144'},
+  {id:9,st:'warm',n:'Leah Park',x:'10K Projects',mt:'2d ago · FB via email',day:'Oct 2',em:'leah@example.com',ph:'(213) 555-0155'},
+  {id:10,st:'cold',n:'Andre Collins',mt:'21d ago · SM via text',day:'Sep 21',em:'andre.c@example.com',ph:'(747) 555-0121'},
+  {id:11,st:'cold',n:'Nina Alvarez',art:'NINA A',mt:'30d ago',day:'Sep 12',em:'nina@example.com',ph:'(626) 555-0136'},
+  {id:12,st:'leasing',n:'Owen Brandt',x:'Brandt Audio',mt:'Leasing · 5d ago · ES via call',day:'Sep 12',em:'owen@example.com',ph:'(818) 555-0112'},
+  {id:13,st:'booked',lab:'Concord',n:'Amy Tran',art:'Writers camp',ses:'Oct 5–7',rm:'Encore · Studio A',mt:'Oct 5–7 · Studio A · booked',day:'Sep 30',em:'amy.tran@example.com',ph:'(615) 555-0188'},
+  {id:14,st:'booked',n:'Christina Perri',ses:'Oct 14',mt:'Oct 14 · Calendar',cal:1,day:'Sep 30',em:'cp@example.com',ph:'(323) 555-0109'},
+  {id:15,st:'dead',n:'Kyle Bishop',mt:'45d ago',day:'Aug 28',em:'kyle.b@example.com',ph:'(562) 555-0147'},
+]
+const CLIENTS = [
+  {id:1,n:'Atlantic Records',t:'label',mt:'4 A&Rs · 2 admins · 19 sessions',em:'ap@example.com',who:'Riley Chen, Havelange'},
+  {id:2,n:'Christina Perri',t:'cod',mt:'COD · 6 sessions',em:'cp@example.com',reg:1},
+  {id:3,n:'Concord',t:'label',mt:'2 A&Rs · 1 admin · 8 sessions',em:'studio@example.com',who:'Amy Tran, Priya Nair'},
+  {id:4,n:'Epic Records',t:'label',mt:'6 A&Rs · 2 admins · 31 sessions',em:'invoices@example.com',who:'Sam Ortiz, Kiana Ledé, Molly Santana'},
+  {id:5,n:'Jesse Haugen',t:'cod',mt:'COD · 3 sessions',em:'jesse@example.com',reg:1},
+  {id:6,n:'Marcus Lee',t:'cod',mt:'COD · Young Jordan · 2 sessions',em:'marcus@example.com',fix:1},
+  {id:7,n:'Stuart Price',t:'cod',mt:'COD · 11 sessions',em:'stuart@example.com',reg:1},
+  {id:8,n:'10K Projects',t:'label',mt:'3 A&Rs · 1 admin · 12 sessions',em:'billing@example.com',who:'Leah Park'},
+  {id:9,n:'Warner Records',t:'label',mt:'5 A&Rs · 2 admins · 22 sessions',em:'ap-warner@example.com',who:'Liz Isik'},
+]
+const REGS = [
+  {n:'Morgan Smith',em:'morgan.s@example.com',ph:'(323) 555-0166',city:'Los Angeles, CA',at:'Oct 11 · 4:12 PM',id:1,nw:1},
+  {n:'Liz Isik',em:'liz.isik@example.com',ph:'(310) 555-0191',city:'Burbank, CA',at:'Oct 10 · 11:40 AM',id:1,nw:1},
+  {n:'Marcus Lee',em:'marcus@example.com',ph:'(818) 555-0190',city:'North Hollywood, CA',at:'Oct 9 · 9:02 PM',id:0},
+  {n:'Riley Chen',em:'riley.chen@example.com',ph:'(212) 555-0164',city:'New York, NY',at:'Sep 30 · 2:15 PM',id:1},
+  {n:'Jesse Haugen',em:'jesse@example.com',ph:'(818) 555-0177',city:'Glendale, CA',at:'Sep 22 · 6:48 PM',id:1},
+]
+const STAGE = {
+  progress:['In progress','background:var(--c-wash2);color:var(--c-fg)'],
+  progress_reviewed:['In progress','background:var(--c-st-booked);color:var(--c-chip-ink)','all reviewed'],
+  review2:['Needs review','background:var(--c-st-warm);color:var(--c-chip-ink)','in progress'],
+  not_started:['Not started','background:var(--c-wash2);color:var(--c-fg);opacity:.55'],
+  review:['Needs review','background:var(--c-st-warm);color:var(--c-chip-ink)'],
+  invoice:['Needs invoice','background:var(--c-st-warm);color:var(--c-chip-ink);opacity:.75'],
+  approval:['Needs approval','background:var(--c-st-uncon);color:var(--c-chip-ink)'],
+  po:['Awaiting PO','background:#b9d5f1;color:var(--c-chip-ink)'],
+  approved:['Ready to send','background:var(--c-st-booked);color:var(--c-chip-ink)'],
+  sent:['Sent','background:var(--c-st-uncon);color:var(--c-chip-ink)'],
+  paid:['Paid','background:var(--c-st-booked);color:var(--c-chip-ink)'],
+  closed:['Closed','background:var(--c-wash2);opacity:.65'],
+  balance:['Balance due','background:var(--c-st-hot);color:var(--c-hot-text)'],
+}
+const GROUP = {review:'Needs review',review2:'Needs review',invoice:'Needs invoice',approval:'Needs approval',approved:'Ready to send',progress:'In progress',progress_reviewed:'In progress'}
+const INV = [
+  // billing
+  {p:'b',bk:'progress',sg:'review',wo:'WO-1318',cl:'Epic Records',ap:1,ar:'Molly Santana',dr:'Oct 9–11',rm:'ARS B',fl:['drift','Never submitted · JR'],amt:'$7,450'},
+  {p:'b',bk:'progress',sg:'review',wo:'WO-1321',cl:'Atlantic Records',ap:1,ar:'Havelange',dr:'Oct 10',rm:'PRS A',fl:['done','Submitted by Lori'],amt:'$3,900'},
+  {p:'b',bk:'progress',sg:'review2',wo:'WO-1309',cl:'10K Projects',ar:'Leah Park',dr:'Oct 6–17',rm:'PRS C',amt:'$21,600'},
+  {p:'b',bk:'progress',sg:'invoice',wo:'WO-1311',cl:'Concord',ap:1,ar:'Writers camp',dr:'Oct 5–7',rm:'ERS A',amt:'$13,340'},
+  {p:'b',bk:'progress',sg:'approval',wo:'WO-1304',cl:'Epic Records',ap:1,ar:'Kiana Ledé',dr:'Oct 1–3',rm:'PRS B',fl:['drift','Changed since invoiced'],amt:'$9,870',q:1,drift:1},
+  {p:'b',bk:'progress',sg:'approval',wo:'WO-1302',cl:'Red Bull Records',ar:'Tori Vance',dr:'Oct 2',rm:'TRK North',amt:'$2,150',q:1},
+  {p:'b',bk:'progress',sg:'approved',wo:'WO-1298',cl:'Warner Records',ap:1,ar:'Liz Isik',dr:'Sep 28–30',rm:'ARS A',fl:['hint','Approved Oct 8'],amt:'$6,200',act:'Mark sent'},
+  {p:'b',bk:'progress',sg:'progress_reviewed',wo:'WO-1306',cl:'Atlantic Records',ap:1,ar:'Riley Chen',dr:'Oct 8–15',rm:'PRS A',fl:['rev','Reviewed thru Oct 11'],amt:'$14,000'},
+  {p:'b',bk:'progress',sg:'progress',wo:'WO-1323',cl:'Interscope',ap:1,ar:'Dana Whitfield',dr:'Oct 12–14',rm:'ERS B',amt:'$5,250'},
+  {p:'b',bk:'notstarted',sg:'not_started',wo:'WO-1327',cl:'Epic Records',ap:1,ar:'Sam Ortiz',dr:'Oct 27',rm:'PRS A',amt:'$1,750'},
+  {p:'b',bk:'notstarted',sg:'not_started',wo:'WO-1329',cl:'Atlantic Records',ap:1,ar:'Havelange',dr:'Oct 20–24',rm:'PRS A',amt:'$8,750'},
+  {p:'b',bk:'po',sg:'po',wo:'WO-1291',cl:'Warner Records',ap:1,ar:'Liz Isik',dr:'Sep 22–24',rm:'ARS A',fl:['hint','Approved Oct 1'],amt:'$6,900',act:'Add PO'},
+  {p:'b',bk:'po',sg:'po',wo:'WO-1287',cl:'10K Projects',ar:'Leah Park',dr:'Sep 18',rm:'PRS C',fl:['hint','Approved Sep 26'],amt:'$1,950',act:'Add PO'},
+  {p:'b',bk:'awaiting',sg:'sent',wo:'WO-1279',cl:'Concord',ap:1,ar:'Amy Tran',dr:'Sep 14–16',rm:'ERS A',amt:'$11,200',age:'12d',act:'Mark paid'},
+  {p:'b',bk:'awaiting',sg:'sent',wo:'WO-1262',cl:'Epic Records',ap:1,ar:'Molly Santana',dr:'Sep 2–5',rm:'ARS B',amt:'$15,400',age:'34d',od:1,act:'Mark paid'},
+  {p:'b',bk:'awaiting',sg:'sent',wo:'WO-1270',cl:'Interscope',ap:1,ar:'Dana Whitfield',dr:'Sep 9',rm:'PRS B',amt:'$2,300',age:'21d',act:'Mark paid'},
+  {p:'b',bk:'paid',sg:'paid',wo:'WO-1244',cl:'Atlantic Records',ap:1,ar:'Riley Chen',dr:'Aug 25–27',rm:'PRS A',amt:'$7,800',age:'18d'},
+  {p:'b',bk:'paid',sg:'paid',wo:'WO-1251',cl:'Warner Records',ap:1,ar:'Liz Isik',dr:'Aug 30',rm:'ARS A',amt:'$2,100',age:'9d'},
+  {p:'b',bk:'closed',sg:'closed',wo:'WO-1131',cl:'Atlantic Records',ar:'Havelange',dr:'Sep 16',rm:'PRS A',fl:['soon','Voided — duplicate invoice'],amt:'$0',act:'Reopen'},
+  // COD
+  {p:'c',bk:'balance',sg:'balance',wo:'WO-1315',cl:'Marcus Lee',ar:'Young Jordan',dr:'Oct 10',rm:'TRK South',amt:'$1,150',od:1},
+  {p:'c',bk:'progress',sg:'progress',wo:'WO-1324',cl:'Stuart Price',dr:'Oct 12',rm:'PRS D',amt:'$1,400'},
+  {p:'c',bk:'progress',sg:'progress',wo:'WO-1325',cl:'Christina Perri',dr:'Oct 12–14',rm:'ERS B',amt:'$4,200'},
+  {p:'c',bk:'review',sg:'review',wo:'WO-1319',cl:'Jesse Haugen',dr:'Oct 11',rm:'TRK North',fl:['done','Submitted by Quinn'],amt:'$0'},
+  {p:'c',bk:'review',sg:'review',wo:'WO-1317',cl:'Nina Alvarez',ar:'NINA A',dr:'Oct 10',rm:'PRS D',amt:'$0'},
+  {p:'c',bk:'paid',sg:'approval',wo:'WO-1310',cl:'Stuart Price',dr:'Oct 6',rm:'PRS D',amt:'$0',q:1,act:'Approve',cod:1},
+  {p:'c',bk:'paid',sg:'paid',wo:'WO-1301',cl:'Christina Perri',dr:'Oct 1',rm:'ERS B',amt:'$0'},
+  {p:'c',bk:'notstarted',sg:'not_started',wo:'WO-1330',cl:'Andre Collins',dr:'Oct 19',rm:'TRK South',amt:'$0'},
+]
+const BT = [['progress','In progress'],['notstarted','Not started'],['po','Awaiting PO'],['awaiting','Awaiting payment'],['paid','Paid'],['closed','Closed']]
+const CT = [['balance','Balance due',1],['progress','In progress'],['review','Needs review'],['paid','Paid'],['notstarted','Not started']]
+
+/* ───────── rail ───────── */
+const needsAction = () => LEADS.filter(l => ['uncontacted','hot','warm'].includes(l.na)).length
+const approvals = () => INV.filter(r => r.q)
+function railDef(){
+  const tech = who.role === 'tech'
+  return [
+    {k:'dash',t:'Dashboard',ic:'▦'}, {k:'cal',t:'Calendar',ic:'▤'},
+    {g:'CRM',ic:'◎',kids:[
+      {k:'crm',t:'Leads & clients',bd:needsAction(),bc:'c-hot'},
+      {k:'text',t:'Texting & campaigns'},
+      {k:'lakers',t:'Lakers'},
+    ]},
+    {g:'Billing',ic:'▽',kids:[
+      {k:'bill',t:'Billing Hub',bd:isOwner() ? approvals().length : 0,bc:'c-ok'},
+      {k:'pc',t:'Petty Cash'}, {k:'srs',t:'SRS'}, {k:'ap',t:'Client AP Protocols'},
+    ]},
+    // Operations and HR are dropdowns too (Eli, 2026-10-12: "id like the rail to not have to scroll… same
+    // treatment with the HR one and operations"). The grey group headings go: the group names say it.
+    {g:'Operations',ic:'◔',kids:[
+      {k:'memos',t:'Memos',bd:2,bc:'c-ok'}, {k:'sn',t:'Shift Notes'},
+      {k:'ops',t:tech ? 'Flags' : 'Daily Ops'},
+      {k:'run',t:'Runner Hub'}, {k:'mic',t:'Mic Inventory'}, {k:'eng',t:'Engineers'}, {k:'nad',t:"Nadine's"},
+    ]},
+    {g:'HR',ic:'◷',kids:[{k:'pun',t:'Punches'}, {k:'hire',t:'Hiring'}, {k:'train',t:'Training'}]},
+    {g:'Admin',ic:'⚙',kids:[{k:'rates',t:'Rates'},{k:'pos',t:'Positions'}]},
+  ]
+}
+const RIBBON = '<svg width="26" height="26" viewBox="0 0 200 200" aria-hidden="true"><path d="M 14 100 Q 70 -10 113 100 Q 156 210 186 100 Q 156 130 113 100 Q 70 70 14 100 Z" fill="#43dfae"/></svg>'
+const WM = `${RIBBON}<span class="c-wordmark">PRS<span>Flo</span></span>`
+let cur = 'crm', openGroup = 'CRM', drawer = false, settings = false
+function findPage(k){ for (const it of railDef()) { if (it.k === k) return {it}; if (it.kids) { const c = it.kids.find(x => x.k === k); if (c) return {it:c, g:it.kids.filter(x => can(x.k)).length > 1 ? it.g : null} } } return null }
+function renderRail(){
+  let h = `<div class="c-rail-wm">${WM}</div>`, pend = ''   // a group label only prints once something under it does
+  for (const it of railDef()) {
+    if (it.grp) { pend = `<div class="c-rail-grp">${it.grp}</div>`; continue }
+    if (it.kids) {
+      const kids = it.kids.filter(c => can(c.k)); if (!kids.length) continue
+      h += pend; pend = ''
+      // one visible page = a plain link, not a one-item dropdown (CRM for everyone but owners + Eli)
+      if (kids.length === 1) { const c = kids[0]; h += `<button class="c-rail-link${cur === c.k ? ' c-on' : ''}" onclick="go('${c.k}')"><span class="c-rail-ic">${it.ic}</span>${it.g}${c.bd ? `<span class="c-rail-badge ${c.bc}">${c.bd}</span>` : ''}</button>`; continue }
+      const isOpen = openGroup === it.g
+      const b = kids.find(c => c.bd)
+      h += `<div class="c-rail-group${isOpen ? ' c-open' : ''}"><button class="c-rail-link" onclick="tog('${it.g}')" aria-expanded="${isOpen}"><span class="c-rail-ic">${it.ic}</span>${it.g}`
+        + (!isOpen && b ? `<span class="c-rail-badge ${b.bc}">${b.bd}</span>` : '')
+        + `<span class="c-rail-caret">${isOpen ? '▾' : '▸'}</span></button>`
+      if (isOpen) h += `<div class="c-rail-kids">` + kids.map(c => `<button class="c-rail-kid${cur === c.k ? ' c-on' : ''}" onclick="go('${c.k}')">${esc(c.t)}${c.bd ? `<span class="c-rail-badge ${c.bc}">${c.bd}</span>` : ''}</button>`).join('') + `</div>`
+      h += `</div>`
+    } else if (can(it.k)) {
+      h += pend; pend = ''
+      h += `<button class="c-rail-link${cur === it.k ? ' c-on' : ''}" onclick="go('${it.k}')"><span class="c-rail-ic">${it.ic}</span>${esc(it.t)}${it.bd ? `<span class="c-rail-badge ${it.bc}">${it.bd}</span>` : ''}</button>`
+    }
+  }
+  h += `<div class="c-rail-foot">`
+  if (settings) h += `<button class="c-rail-link" style="opacity:.35"><span class="c-rail-ic">∴</span>DEV</button><button class="c-rail-link" onclick="theme()"><span class="c-rail-ic">☼</span>${document.documentElement.dataset.theme === 'light' ? 'Dark mode' : 'Light mode'}</button><button class="c-rail-link"><span class="c-rail-ic">↩</span>Sign Out</button>`
+  h += `<button class="c-rail-link${settings ? ' c-on' : ''}" onclick="settings=!settings;renderRail()"><span class="c-rail-ic">⚙</span>Settings<span class="c-rail-caret">${settings ? '▾' : '▸'}</span></button></div>`
+  const el = document.getElementById('rail'); el.innerHTML = h; el.classList.toggle('c-drawer', drawer)
+  // phone bar: CRM + Calendar + ≡, same as today (CRM lands on Leads & clients)
+  document.getElementById('mbar').innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px">${WM}</span><span style="display:flex;align-items:center;gap:2px">`
+    + (can('crm') ? `<button class="c-rail-link${['crm','text','lakers'].includes(cur) ? ' c-on' : ''}" style="width:auto;padding:6px 12px" onclick="go('crm')">CRM</button>` : '')
+    + `<button class="c-rail-link${cur === 'cal' ? ' c-on' : ''}" style="width:auto;padding:6px 12px" onclick="go('cal')">Calendar</button>`
+    + `<button class="c-rail-link" style="width:44px;height:44px;font-size:24px;opacity:1;justify-content:center;padding:0" onclick="drawer=!drawer;renderRail()" aria-label="Menu">≡</button></span>`
+  let ov = document.getElementById('ov')
+  if (drawer && !ov) { ov = document.createElement('div'); ov.id = 'ov'; ov.className = 'c-rail-overlay'; ov.onclick = () => { drawer = false; renderRail() }; document.getElementById('frame').appendChild(ov) }
+  if (!drawer && ov) ov.remove()
+}
+function tog(g){ openGroup = openGroup === g ? null : g; renderRail() }
+function go(k){
+  cur = k; const f = findPage(k); openGroup = f && f.g ? f.g : null
+  q = ''; drawer = false; renderRail(); renderMain(true)
+}
+
+/* ───────── helpers ───────── */
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) }
+function mark(s){ if (!q) return esc(s); const i = s.toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? esc(s) : esc(s.slice(0,i)) + '<span class="hit">' + esc(s.slice(i,i+q.length)) + '</span>' + esc(s.slice(i+q.length)) }
+const fill = st => 'c-fill-' + ({uncontacted:'uncon',hot:'hot',warm:'warm',cold:'cold',leasing:'lease',dead:'dead',booked:'booked',coming:'dead'}[st])
+const ini = n => n.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase()
+function leadName(l, m){
+  const f = m ? mark : esc, s = ' <span class="sl">/</span> '
+  if (l.lab && l.art) return f(l.lab) + s + f(l.n) + s + f(l.art)
+  if (l.art) return f(l.n) + ' <span class="sl">·</span> ' + f(l.art)
+  return f(l.n) + (l.x ? ` <span class="sl" style="font-weight:400">· ${f(l.x)}</span>` : '')
+}
+
+/* ───────── page state ───────── */
+let q = '', crmView = 'leads', leadSub = 'na', naTab = 'uncontacted', selLead = 1, selClient = 4, cFilter = 'all'
+let allOn = new Set(['uncontacted','hot','warm','cold','leasing'])
+let hubView = 'billing', bTab = 'progress', codBins = new Set(['balance','progress','review'])
+
+/* ───────── the shared top: search + header + view tabs ───────── */
+function pageTop({ph, crumb, title, actions = '', views = []}){
+  return `<label class="c-topsearch"><span class="gl">⌕</span><input id="q" value="${esc(q)}" placeholder="${ph}" autocomplete="off" oninput="q=this.value;renderMain()">`
+    + (q ? `<span class="c-bclr" onclick="q='';renderMain(true)">clear ✕</span>` : `<span class="c-kbd">⌘K</span>`) + `</label>`
+    + `<div class="c-ph"><div>${crumb ? `<span class="c-label">${crumb}</span>` : ''}<h1>${title}</h1></div><div class="c-ph-actions">${actions}</div></div>`
+    + (views.length ? `<div class="c-views${q ? ' c-dim' : ''}">` + views.map(v => `<button class="c-view${v.on ? ' c-on' : ''}" onclick="${v.go}">${v.t}${v.n != null ? `<span class="n${v.hot ? ' c-hot' : ''}">${v.n}</span>` : ''}</button>`).join('') + `</div>` : '')
+}
+
+/* ───────── CRM · Leads & clients ───────── */
+function leadRow(l, bucket){
+  return `<div class="c-row${selLead === l.id ? ' c-selected' : ''}" onclick="selLead=${l.id};renderMain()">
+    <div class="avatar ${fill(l.st)}">${ini(l.n)}</div>
+    <div class="rowtext"><div class="nm el">${leadName(l)}</div><div class="mt el">${esc(l.mt)}</div></div>
+    ${bucket && bucket !== 'coming' && l.od ? `<span class="od">overdue ${l.od}d</span>` : ''}
+    ${l.keep ? `<button class="txtbtn hide-m">${l.keep}</button>` : ''}
+    <button class="txtbtn">Contact</button></div>`
+}
+function leadDetail(){
+  const l = LEADS.find(x => x.id === selLead)
+  if (!l) return `<div class="c-panel detail fill"><div class="stub" style="font-size:11px">Select a lead to view details</div></div>`
+  const lbl = {uncontacted:'Uncontacted',hot:'Hot',warm:'Warm',cold:'Cold',leasing:'Leasing',dead:'DNB',booked:'Booked'}[l.st]
+  return `<div class="c-panel detail fill"><div class="scroll" style="padding:4px 4px 8px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      <span class="c-pill ${fill(l.st)}">${lbl} ▾</span>
+      ${l.na && l.na !== 'coming' ? `<span class="sl" style="font-size:9px">·</span><span style="font-weight:800;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase">Needs Contact</span>` : ''}
+      <span style="margin-left:auto"></span><button class="c-btn">Start Booking</button>
+    </div>
+    <div class="c-arch" style="font-size:19px;letter-spacing:-.01em;line-height:1.2;margin:6px 0 2px">${esc(l.art || l.n)}</div>
+    <div class="c-sub" style="font-size:12px">${l.lab ? esc(l.lab) + ' · ' : ''}${esc(l.n)}${l.x ? ' · ' + esc(l.x) : ''}</div>
+    <div class="c-band"><div class="c-band-head">Contact</div><div class="kv"><div><span>Email</span>${esc(l.em)}</div><div><span>Phone</span>${esc(l.ph)}</div></div></div>
+    <div class="c-band"><div class="c-band-head">Session</div><div class="kv"><div><span>Dates</span>${l.ses ? esc(l.ses) : '—'}</div><div><span>Room</span>${l.rm ? esc(l.rm) : '—'}</div><div><span>Rate</span>—</div><div><span>Staff</span>Asst</div></div></div>
+    <div class="c-band"><div class="c-band-head">Booking Notes <span style="color:var(--c-st-warm);letter-spacing:.06em;margin-left:6px;font-size:8px">Internal</span></div><div style="font-size:12px;opacity:.4">Who they are, what they need, the deal…</div></div>
+    <div class="c-band"><div class="c-band-head">Log Activity</div><div style="font-size:12px;opacity:.4;min-height:44px">Conversation, rate update… saved to Activity with your initials + time</div></div>
+  </div></div>`
+}
+function leadsView(){
+  const na = needsAction()
+  let h = `<div class="c-btabs" style="margin-bottom:14px">`
+    + [['na','Needs Action',na],['all','All Leads'],['an','Analytics']].map(([k,t,n]) => `<span class="c-btab${leadSub === k ? ' c-on' : ''}" onclick="leadSub='${k}';renderMain()">${t}${n ? ` <span class="c-bn">${n}</span>` : ''}</span>`).join('') + `</div>`
+  if (leadSub === 'an') return h + `<div class="c-panel fill"><div class="stub">Analytics, unchanged. Not drawn in this mock.</div></div>`
+  let left
+  if (leadSub === 'na') {
+    const tabs = [['uncontacted','Uncontacted','No fresh uncontacted leads.'],['hot','Hot','All hot leads are up to date.'],['warm','Warm','All warm leads are up to date.'],['coming','Coming Up','Nothing parked — every lead is due or fresh.']]
+    const items = LEADS.filter(l => l.na === naTab)
+    left = `<div class="c-panel fill"><div style="flex-shrink:0"><div class="c-lozenge"><b>Needs Action</b><span class="c-ct">${na}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">` + tabs.map(([k,t]) => `<button class="c-soft c-soft-sm${naTab === k ? ' c-on' : ''}" onclick="naTab='${k}';renderMain()"><span class="c-dot ${fill(k)}"></span>${t} (${LEADS.filter(l => l.na === k).length})</button>`).join('') + `</div></div>
+      <div class="scroll">${items.length ? items.map(l => leadRow(l, naTab)).join('') : `<div class="c-sub" style="padding:20px;text-align:center">${tabs.find(t => t[0] === naTab)[2]}</div>`}</div></div>`
+  } else {
+    const defs = [['uncontacted','Uncontacted'],['hot','Hot'],['warm','Warm'],['cold','Cold'],['leasing','Leasing'],['dead','DNB'],['booked','Booked']]
+    const list = LEADS.filter(l => allOn.has(l.st)); let last = ''
+    left = `<div class="c-panel fill"><div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;flex-shrink:0">` + defs.map(([k,t]) => {
+        const all = LEADS.filter(l => l.st === k), cal = all.filter(l => l.cal).length
+        return `<button class="c-pill ${fill(k)}" style="opacity:${allOn.has(k) ? 1 : .55}" onclick="allOn.has('${k}')?allOn.delete('${k}'):allOn.add('${k}');renderMain()">${t} (${all.length})${cal ? `<span style="font-size:8.5px;font-weight:700;opacity:.75;margin-left:5px">· ${cal} from calendar</span>` : ''}</button>` }).join('') + `</div>
+      <div class="scroll">` + list.map(l => { const sep = l.day !== last ? `<div class="c-label" style="margin:8px 4px 4px">${l.day}</div>` : ''; last = l.day; return sep + leadRow(l) }).join('') + `</div>
+      <div style="display:flex;justify-content:space-between;padding:8px 16px 0;font-size:10px;color:var(--c-fg-3);flex-shrink:0"><span>← Prev</span><span>1–${list.length} of ${list.length}</span><span>Next →</span></div></div>`
+  }
+  return h + `<div class="two" style="display:grid;grid-template-columns:minmax(0,60fr) minmax(0,40fr);gap:14px;flex:1;min-height:0">${left}${leadDetail()}</div>`
+}
+function clientsView(){
+  const f = {all:c => 1, label:c => c.t === 'label', cod:c => c.t === 'cod', reg:c => c.reg, fix:c => c.fix}
+  const defs = [['all','All'],['label','Labels'],['cod','COD'],['reg','Registered'],['fix','Needs fixing']]
+  const list = CLIENTS.filter(f[cFilter]); const c = CLIENTS.find(x => x.id === selClient)
+  const box = (t, by, rows) => `<div class="c-panel" style="height:104px;display:flex;flex-direction:column;padding:10px 12px"><div class="c-lozenge" style="margin-bottom:2px;padding-bottom:4px"><b>${t}</b><span class="c-ct">${by}</span></div><div class="scroll">` + rows.map((r,i) => `<div style="display:flex;gap:8px;font-size:12px;line-height:1.75"><span class="c-mono" style="opacity:.4;font-size:10.5px;width:12px">${i+1}</span><b class="el" style="font-weight:600;flex:1;min-width:0">${r[0]}</b><span class="c-mono" style="font-size:11px;opacity:.6">${r[1]}</span></div>`).join('') + `</div></div>`
+  return `<div class="hide-m" style="margin-bottom:12px;flex-shrink:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.45;margin-right:auto">Top clients · last 30 days</span>
+      <span class="c-seg-tiny"><button class="c-on">Sessions</button><button>$</button></span><span class="c-seg-tiny"><button class="c-on">30 days</button><button>90 days</button><button>Year</button></span></div>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px">${box('COD','by client',[['Stuart Price','6 sessions'],['Christina Perri','4 sessions'],['Jesse Haugen','2 sessions'],['Marcus Lee','1 session']])}${box('Label / Billing','by label · tap to open',[['Epic Records','11 sessions'],['Atlantic Records','9 sessions'],['10K Projects','8 sessions'],['Concord','3 sessions']])}</div></div>
+    <div class="two" style="display:grid;grid-template-columns:minmax(0,40fr) minmax(0,60fr);gap:14px;flex:1;min-height:0">
+      <div class="fill"><div class="c-btabs">` + defs.map(([k,t]) => { const n = CLIENTS.filter(f[k]).length; return `<span class="c-btab${cFilter === k ? ' c-on' : ''}" onclick="cFilter='${k}';renderMain()">${t} <span class="c-bn"${k === 'fix' && n ? ' style="color:var(--c-st-warm);opacity:1"' : ''}>${n}</span></span>` }).join('') + `</div>
+        <div class="c-panel fill"><div class="c-lozenge"><b>${defs.find(d => d[0] === cFilter)[1]}</b><span class="c-ct">${list.length}</span></div><div class="scroll">` + list.map(x => `<div class="c-row${selClient === x.id ? ' c-selected' : ''}" onclick="selClient=${x.id};renderMain()"><div class="avatar plain">${ini(x.n)}</div><div class="rowtext"><div class="nm el">${esc(x.n)}</div><div class="mt el">${esc(x.mt)}</div></div></div>`).join('') + `</div></div></div>
+      <div class="c-panel detail fill"><div class="scroll" style="padding:4px 4px 8px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="c-pill" style="background:var(--c-wash2);color:var(--c-fg)">${c.t === 'label' ? 'Label / Billing' : 'COD'}</span>${c.reg ? '<span class="c-pill c-fill-booked">✓ Registered</span>' : ''}</div>
+        <div class="c-arch" style="font-size:19px;letter-spacing:-.01em;line-height:1.2;margin:6px 0 2px">${esc(c.n)}</div><div class="c-sub" style="font-size:12px">${esc(c.mt)}</div>
+        <div class="c-band"><div class="c-band-head">${c.t === 'label' ? 'A&Rs and their artists' : 'Contact'}</div><div style="font-size:12px">${esc(c.who || c.em)}</div></div>
+        ${c.t === 'label' ? `<div class="c-band"><div class="c-band-head">Admin contacts</div><div style="font-size:12px">${esc(c.em)}</div></div>` : ''}
+        <div class="c-band"><div class="c-band-head">Notes</div><div style="font-size:12px;opacity:.4;min-height:36px">—</div></div>
+        <div class="c-band"><div class="c-band-head">Sessions</div><div style="font-size:12px;opacity:.4">Profile panel, unchanged. Sketched here.</div></div>
+      </div></div></div>`
+}
+function regsView(){
+  return `<div class="c-panel fill" style="padding:0"><div style="padding:12px 16px 4px;flex-shrink:0"><div class="c-lozenge"><b>Registrations</b><span class="c-ct">${REGS.length}</span></div>
+    <div class="hide-m" style="display:flex;align-items:center;gap:6px"><span style="font-family:'Archivo Black',sans-serif;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-fg-3)">Submitted</span><span class="c-input" style="width:120px;height:28px;line-height:28px;font-size:11px;opacity:.6;border-radius:4px">mm/dd/yyyy</span><span class="sl" style="font-size:11px">–</span><span class="c-input" style="width:120px;height:28px;line-height:28px;font-size:11px;opacity:.6;border-radius:4px">mm/dd/yyyy</span></div></div>
+    <div class="reg hd hide-m"><div>Name</div><div>Email</div><div>Phone</div><div>City / State</div><div>Submitted</div><div>ID</div></div>
+    <div class="scroll">` + REGS.map(r => `<div class="reg"><div style="color:var(--c-fg);font-weight:500">${esc(r.n)}</div><div>${esc(r.em)}</div><div>${r.ph}</div><div>${r.city}</div><div>${r.at}</div><div><span class="idchip"${r.id ? '' : ' style="color:var(--c-fg-3);background:var(--c-wash)"'}>${r.id ? 'ON FILE' : 'NONE'}</span></div></div>`).join('') + `</div>
+    <div style="padding:10px 16px;display:flex;justify-content:space-between;font-size:10px;color:var(--c-fg-3);flex-shrink:0"><span>1–${REGS.length} of ${REGS.length}</span><span>Page 1 of 1</span></div></div>`
+}
+function crmSearch(){
+  const s = q.toLowerCase(), hits = []
+  LEADS.forEach(l => { if ([l.n,l.lab,l.art,l.x,l.em,l.ph].filter(Boolean).join(' ').toLowerCase().includes(s)) hits.push(['Lead', `crmView='leads';leadSub='all';allOn.add('${l.st}');selLead=${l.id}`, `<div class="avatar ${fill(l.st)}">${ini(l.n)}</div>`, leadName(l,1), mark(l.em) + ' · ' + mark(l.ph)]) })
+  CLIENTS.forEach(c => { if ([c.n,c.who,c.em].filter(Boolean).join(' ').toLowerCase().includes(s)) hits.push(['Client', `crmView='clients';cFilter='all';selClient=${c.id}`, `<div class="avatar plain">${ini(c.n)}</div>`, mark(c.n), c.who ? mark(c.who) : esc(c.mt)]) })
+  REGS.forEach(r => { if ([r.n,r.em,r.ph].join(' ').toLowerCase().includes(s)) hits.push(['Registration', `crmView='regs'`, `<div class="avatar plain">${ini(r.n)}</div>`, mark(r.n), mark(r.em) + ' · submitted ' + r.at]) })
+  return `<div class="c-panel fill"><div class="c-lozenge"><b>Search results · leads, clients and registrations</b><span class="c-ct">${hits.length}</span></div><div class="scroll">`
+    + (hits.length ? hits.map(h => `<div class="c-row" onclick="${h[1]};q='';renderMain(true)"><span class="kind">${h[0]}</span>${h[2]}<div class="rowtext"><div class="nm el">${h[3]}</div><div class="mt el">${h[4]}</div></div></div>`).join('') : `<div class="c-bempty">Nothing matches that.</div>`) + `</div></div>`
+}
+function pageCrm(){
+  const newReg = REGS.filter(r => r.nw).length
+  return pageTop({ph:'Search leads, clients and registrations — name, label, artist, email, phone…', crumb:'CRM', title:'Leads &amp; clients',
+    actions:`<button class="c-soft">+ New client</button><button class="c-btn">+ New lead</button>`,
+    views:[{t:'Leads',n:needsAction(),hot:needsAction() > 0,on:crmView === 'leads',go:"crmView='leads';renderMain()"},{t:'Clients',n:CLIENTS.length,on:crmView === 'clients',go:"crmView='clients';renderMain()"},{t:'Registrations',n:newReg || null,on:crmView === 'regs',go:"crmView='regs';renderMain()"}]})
+    + `<div class="c-body">${q ? crmSearch() : crmView === 'leads' ? leadsView() : crmView === 'clients' ? clientsView() : regsView()}</div>`
+}
+
+/* ───────── Billing Hub ───────── */
+function invRow(r, searching){
+  const s = STAGE[r.sg], fl = r.fl ? `<span class="c-b${r.fl[0]}">${esc(r.fl[1])}</span>` : ''
+  const hideApprove = r.act === 'Approve' && !isOwner()
+  return `<div class="c-brow${r.od ? ' c-od' : ''}">
+    <span class="c-bbin${s[2] ? ' c-bbin-two' : ''}" style="${s[1]}">${s[0]}${s[2] ? `<small>${s[2]}</small>` : ''}</span>
+    <span class="c-binv">${searching ? mark(r.wo) : r.wo}</span>
+    <span class="c-bwho"><b>${searching ? mark(r.cl) : esc(r.cl)}</b>${r.ap ? '<span class="ap">AP</span>' : ''}${r.ar ? `<span> · ${searching ? mark(r.ar) : esc(r.ar)}</span>` : ''}<span> · ${r.dr} · ${r.rm}</span>${searching ? `<span> · ${r.p === 'c' ? 'COD' : 'Billing'} · ${(r.p === 'c' ? CT : BT).find(b => b[0] === r.bk)[1]}</span>` : ''}</span>
+    <span class="c-bflagcell hide-m">${fl}</span>
+    <span class="c-bamt">${r.amt}</span>
+    ${showAge(searching) ? `<span class="c-bage hide-m">${r.age || '—'}</span>` : ''}
+    <span class="c-bactcell">${r.act && !hideApprove ? `<button class="c-bact">${r.act}</button>` : ''}</span>
+    <span class="c-bmorecell hide-m"><span class="c-bnoteg">✎</span><button class="c-bmore">⋯</button></span></div>`
+}
+const showAge = searching => searching || (hubView === 'billing' && ['awaiting','paid'].includes(bTab))
+function hubList(){
+  const cod = hubView === 'cod', rows = q
+    ? INV.filter(r => [r.wo,r.cl,r.ar].filter(Boolean).join(' ').toLowerCase().includes(q.toLowerCase()))
+    : INV.filter(r => cod ? r.p === 'c' && codBins.has(r.bk) : r.p === 'b' && r.bk === bTab)
+  const title = q ? 'Search results · Billing and COD' : cod ? CT.filter(t => codBins.has(t[0])).map(t => t[1]).join(' + ') : BT.find(t => t[0] === bTab)[1]
+  let body = '', last = ''
+  rows.forEach(r => {
+    const g = GROUP[r.sg]
+    if (!q && !cod && bTab === 'progress' && g !== last) { last = g; const n = rows.filter(x => GROUP[x.sg] === g).length; body += `<div class="c-bday"><b>${g}</b><i></i><u>${n} invoice${n === 1 ? '' : 's'}</u></div>` }
+    body += invRow(r, !!q)
+  })
+  return `<div class="c-panel fill${showAge(!!q) ? '' : ' c-bage-off'}"><div class="c-lozenge"><b>${title}</b><span class="c-ct">${rows.length}</span></div>
+    ${rows.length ? `<div class="c-browhd"><span>Status</span><span>WO</span><span>Client &amp; session</span><span class="c-r">Flag</span><span class="c-r">Balance</span>${showAge(!!q) ? '<span class="c-r">Age</span>' : ''}<span class="c-bacthd">Next</span><span></span></div>` : ''}
+    <div class="scroll">${rows.length ? body : `<div class="c-bempty">${q ? 'Nothing matches that.' : 'Nothing here.'}</div>`}</div>
+    <div class="c-bpager"><span class="c-binfo"><b>${rows.length ? 1 : 0}–${rows.length}</b> of ${rows.length}</span><span class="c-bpg c-on">1</span></div></div>`
+}
+function pageHub(){
+  const cod = hubView === 'cod', bal = INV.some(r => r.bk === 'balance')
+  const views = [{t:'Billing',n:INV.filter(r => r.p === 'b' && r.bk !== 'closed').length,on:hubView === 'billing',go:"hubView='billing';renderMain()"},
+    {t:'COD',n:INV.filter(r => r.p === 'c').length,hot:bal,on:cod,go:"hubView='cod';renderMain()"},
+    {t:'Tenants',on:hubView === 'tenants',go:"hubView='tenants';renderMain()"}]
+  if (isOwner()) views.push({t:'Financials',on:hubView === 'fin',go:"hubView='fin';renderMain()"})
+  if (hubView === 'fin' && !isOwner()) hubView = 'billing'
+  let h = pageTop({ph:'Search Billing Hub — client, artist, invoice #, WO #, PO…', crumb:'Billing', title:'Billing Hub',
+    actions:hubView === 'tenants' ? '<button class="c-soft">+ New tenant</button>' : hubView === 'fin' ? '' : `<button class="c-bmore" style="font-size:15px;padding:4px 6px" title="More — blank work order, deleted work orders">⋯</button>`, views})
+  if (!q && (hubView === 'tenants' || hubView === 'fin')) return h + `<div class="c-body"><div class="c-panel fill"><div class="stub">${hubView === 'tenants' ? 'Tenant rent board' : 'Revenue (owners only)'}, unchanged below this header. Not drawn in this mock.</div></div></div>`
+  const stats = cod
+    ? [['$1,150','Balance due',1],['$18,400','Collected this month'],['2','Needs review'],['1','Balances open',1]]
+    : [['$132,010','Outstanding'],['$31,975','Received this month'],['2','Waiting on approval'],['1','Over 31 days',1]]
+  h += `<div class="c-body hub"><div class="stats" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;flex-shrink:0">` + stats.map(s => `<div class="c-bstat"><div class="c-arch" style="font-size:20px;letter-spacing:-.02em;line-height:1.3${s[2] ? ';color:var(--c-st-hot)' : ''}">${s[0]}</div><div style="font-size:10px;opacity:.55;line-height:1.3">${s[1]}</div></div>`).join('') + `</div>`
+  const ap = approvals()
+  if (isOwner() && ap.length) h += `<div style="border-radius:14px;background:var(--c-wash);padding:12px 14px;margin-bottom:12px;flex-shrink:0;height:136px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:3px;flex-shrink:0"><span class="c-rail-badge c-ok" style="margin:0">${ap.length}</span><span class="c-arch" style="font-size:12px">Ready for your approval</span><span class="hide-m" style="margin-left:auto;font-size:10px;opacity:.45">click a row to read the package first</span></div>
+      <div class="scroll" style="margin:0 -4px;padding:0 4px 4px">` + ap.map(r => `<div class="c-panel" style="display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;cursor:pointer">
+        <span class="el" style="font-weight:700;font-size:12.5px;min-width:150px">${esc(r.cl)}${r.ar ? ' — ' + esc(r.ar) : ''}</span>${r.cod ? '<span style="font-size:9px;font-weight:800;letter-spacing:.05em;background:var(--c-wash2);padding:3px 8px;border-radius:99px;opacity:.8">COD</span>' : ''}
+        <span class="hide-m el" style="font-size:11px;opacity:.55">${r.dr} · ${r.rm}</span>
+        <span style="margin-left:auto;font-weight:800;font-size:12.5px;white-space:nowrap${r.drift ? ';color:var(--c-st-hot)' : ''}">${r.amt}${r.drift ? ' ⚠' : ''}</span><button class="c-bact">Approve</button></div>`).join('') + `</div></div>`
+  const tabs = cod ? CT : BT
+  h += `<div class="c-btabs${q ? ' c-dim' : ''}">` + tabs.map(([k,t,hot]) => { const n = INV.filter(r => r.p === (cod ? 'c' : 'b') && r.bk === k).length, on = cod ? codBins.has(k) : bTab === k
+      return `<span class="c-btab${on ? ' c-on' : ''}" onclick="${cod ? `codBins.has('${k}')?(codBins.size>1&&codBins.delete('${k}')):codBins.add('${k}')` : `bTab='${k}'`};renderMain()">${t} <span class="c-bn"${hot && n ? ' style="color:var(--c-st-hot);opacity:1"' : ''}>${n}</span></span>` }).join('')
+    + (is('owner','manager','billing') ? `<span class="c-btab">Removed holds <span class="c-bn">1</span></span>` : '') + `</div>`
+  return h + hubList() + `</div>`
+}
+
+/* ───────── the other pages: same top, body not drawn ───────── */
+const OTHER = {
+  dash:{title:'Dashboard'},
+  cal:{title:'Calendar',ph:'Search the calendar — client, artist, room…'},
+  text:{crumb:'CRM',title:'Texting &amp; campaigns',ph:'Search the text list — name, email, phone…',actions:'<button class="c-soft">Export CSV</button>',views:['Texting','Campaigns'],note:'The Texting and Campaigns tabs, moved here as they are. Eli only.'},
+  lakers:{crumb:'CRM',title:'Lakers 26–27',ph:'Search games — opponent, who got them, who passed…',actions:'<button class="c-soft">Paste schedule</button><button class="c-btn">+ Game</button>',views:['26–27','25–26','24–25','23–24'],note:'The Lakers page as it is today, under CRM instead of Admin. Owners and Eli only.'},
+  pc:{crumb:'Billing',title:'Petty Cash',ph:'Search petty cash…'}, srs:{crumb:'Billing',title:'SRS',ph:'Search SRS — client, WO #…'}, ap:{crumb:'Billing',title:'Client AP Protocols',ph:'Search labels…'},
+  memos:{crumb:'Operations',title:'Memos',ph:'Search memos…'}, sn:{crumb:'Operations',title:'Shift Notes',ph:'Search shift notes…',views:['Manager','Runner']},
+  ops:{crumb:'Operations',title:'Daily Ops',ph:'Search flags and tasks…',views:['Daily Ops','Flags']}, run:{crumb:'Operations',title:'Runner Hub',ph:'Search…'},
+  mic:{crumb:'Operations',title:'Mic Inventory',ph:'Search mics…'}, eng:{crumb:'Operations',title:'Engineers',ph:'Search name, email, phone…',actions:'<button class="c-btn">+ Add</button>'},
+  nad:{crumb:'Operations',title:"Nadine's",ph:'Search…'}, pun:{crumb:'HR',title:'Punches',ph:'Search punches…'}, hire:{crumb:'HR',title:'Hiring',ph:'Search cases…'},
+  train:{crumb:'HR',title:'Training',ph:'Search…'}, rates:{crumb:'Admin',title:'Rates',ph:'Search rates…'}, pos:{crumb:'Admin',title:'Positions',ph:'Search positions…',actions:'<button class="c-btn">+ Position</button>'},
+}
+function pageOther(){
+  if (cur === 'dash' || !OTHER[cur]) return `<div class="c-body"><div class="c-panel fill"><div class="stub">The dashboard stays exactly as it is: its own header, no search bar.</div></div></div>`
+  const p = OTHER[cur], tech = who.role === 'tech' && cur === 'ops'
+  let views = (p.views || []).map((t,i) => ({t, on:i === 0, go:''}))
+  if (tech) views = []
+  return pageTop({ph:p.ph, crumb:p.crumb, title:tech ? 'Flags' : p.title, actions:p.actions || '', views})
+    + `<div class="c-body"><div class="c-panel fill"><div class="stub">${p.note || 'Same search bar and header. This page is not drawn in this mock.'}</div></div></div>`
+}
+
+function renderMain(keepFocus){
+  if (!findPage(cur) || !can(cur)) { cur = 'dash'; openGroup = null; renderRail() }
+  const had = document.activeElement && document.activeElement.id === 'q', pos = had ? document.activeElement.selectionStart : 0
+  document.getElementById('main').innerHTML = cur === 'crm' ? pageCrm() : cur === 'bill' ? pageHub() : pageOther()
+  if (had && keepFocus !== true) { const el = document.getElementById('q'); el.focus(); el.setSelectionRange(pos, pos) }
+}
+function theme(){
+  const r = document.documentElement
+  if (r.dataset.theme === 'light') delete r.dataset.theme; else r.dataset.theme = 'light'
+  document.getElementById('tgTheme').textContent = r.dataset.theme === 'light' ? 'Dark' : 'Light'
+  renderRail()
+}
+let forceM = false
+function fit(){ document.body.classList.toggle('m', forceM || window.innerWidth <= 768); document.body.classList.toggle('force-m', forceM) }
+document.getElementById('tgTheme').onclick = theme
+document.getElementById('tgPhone').onclick = e => { forceM = !forceM; drawer = false; e.target.classList.toggle('on', forceM); fit(); renderRail() }
+document.getElementById('role').onchange = e => { who = ROLES[e.target.value]; renderRail(); renderMain(true) }
+window.addEventListener('resize', fit)
+document.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); const el = document.getElementById('q'); if (el) el.focus() } })
+fit(); renderRail(); renderMain()
+</script>
+</body>
+</html>

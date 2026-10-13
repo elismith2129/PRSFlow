@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Rail, Ramp-style</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- RAIL REWORK (Eli, 2026-10-12). Reference: Ramp's rail + top search (screenshot in chat).
+     Eli: "like billing has the drop down… change CRM to a drop down and include the tabs
+     that's in the CRM. leaving clients/crm/reg on the same page, then one for
+     campaigns/texting. then the lakers." / "when you click something 'bill pay' it gives you
+     that little opening 'bills and vendor credits'" / "instead of the tabs at the top, ramp
+     just has the search bar at the top that applies to everything on that page."
+     Clickable: open a group, pick a page, type in the search bar.
+     Rulings: pending. -->
+<style>
+:root{--bg:#f5f3ee;--fg:#2a2722;--wash:rgba(42,39,34,.05);--wash2:rgba(42,39,34,.095);--fg3:rgba(42,39,34,.5);
+  --hot:#ff5a4d;--warm:#ffa94d;--booked:#43dfae;--chip-ink:#1c2626;--srf:#fff;--rail:#ece9e2;--line:rgba(42,39,34,.12);
+  --softsh:0 1px 3px rgba(42,39,34,.08),0 5px 16px rgba(42,39,34,.07)}
+[data-theme="dark"]{--bg:#1b1a17;--fg:#d9d6cd;--wash:rgba(217,214,205,.06);--wash2:rgba(217,214,205,.12);--fg3:rgba(217,214,205,.5);
+  --srf:#242320;--rail:#161512;--line:rgba(217,214,205,.1);--softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:400 14px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.intro{max-width:1100px;margin:0 auto;padding:22px 16px 14px}
+.intro h1{font-family:'Archivo Black',sans-serif;font-size:20px;letter-spacing:-.02em}
+.intro p{font-size:13px;opacity:.65;margin-top:4px;max-width:820px}
+.tg{float:right;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--wash2);padding:5px 11px;border-radius:99px;cursor:pointer}
+.app{max-width:1100px;margin:0 auto 18px;display:grid;grid-template-columns:220px 1fr;height:640px;border-radius:16px;overflow:hidden;box-shadow:var(--softsh);border:1px solid var(--line)}
+/* rail */
+.rail{background:var(--rail);padding:14px 10px;overflow-y:auto;border-right:1px solid var(--line)}
+.brand{font-family:'Archivo Black',sans-serif;font-size:15px;padding:2px 10px 14px;letter-spacing:-.01em}
+.brand b{color:var(--warm)}
+.it{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;user-select:none}
+.it:hover{background:var(--wash)}
+.it .ic{width:16px;text-align:center;opacity:.6;font-size:12px}
+.it .bd{margin-left:auto;font-size:10.5px;font-weight:800;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--warm);color:var(--chip-ink);display:grid;place-items:center}
+.it.on{background:var(--wash2);font-weight:700}
+.sep{height:1px;background:var(--line);margin:8px 6px}
+.grp{border-radius:10px;margin:1px 0}
+.grp.open{background:var(--wash)}
+.grp.open>.it{font-weight:700}
+.kids{display:none;padding:2px 0 6px}
+.grp.open .kids{display:block}
+.kid{display:flex;align-items:center;padding:6px 10px 6px 36px;margin:1px 4px;border-radius:7px;font-size:12.5px;cursor:pointer;opacity:.75}
+.kid:hover{opacity:1;background:var(--wash)}
+.kid.on{opacity:1;font-weight:700;background:var(--srf);box-shadow:inset 0 0 0 1.5px var(--fg)}
+.kid .bd{margin-left:auto;font-size:10px;font-weight:800;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--warm);color:var(--chip-ink);display:grid;place-items:center}
+/* main */
+.main{display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.top{display:flex;align-items:center;gap:12px;padding:12px 22px;border-bottom:1px solid var(--line)}
+.search{flex:1;display:flex;align-items:center;gap:9px;background:var(--wash);border:1.5px solid transparent;border-radius:10px;padding:8px 12px}
+.search:focus-within{border-color:var(--warm)}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--fg);font:500 13.5px Inter}
+.kbd{font:600 10.5px 'DM Mono',monospace;background:var(--wash2);padding:2px 6px;border-radius:5px;opacity:.7}
+.av{width:32px;height:32px;border-radius:99px;background:var(--wash2);display:grid;place-items:center;font:600 11px 'DM Mono',monospace}
+.page{padding:20px 26px;overflow-y:auto;flex:1}
+.crumb{font-size:12.5px;opacity:.55}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:2px 0 16px;flex-wrap:wrap}
+.ph h2{font-family:'Archivo Black',sans-serif;font-size:26px;letter-spacing:-.02em}
+.btn{border:1.5px solid var(--line);background:var(--srf);color:var(--fg);font:700 12px Inter;padding:8px 14px;border-radius:9px;cursor:pointer}
+.btn.pri{background:var(--warm);border-color:var(--warm);color:var(--chip-ink)}
+.views{display:flex;gap:22px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.v{padding:8px 0;font-size:13px;opacity:.6;cursor:pointer;display:flex;gap:7px;align-items:center;border-bottom:2px solid transparent;margin-bottom:-1px}
+.v.on{opacity:1;font-weight:700;border-color:var(--fg)}
+.v .n{font:600 10.5px 'DM Mono',monospace;background:var(--wash2);padding:1px 7px;border-radius:99px}
+.rows .r{display:grid;grid-template-columns:1.4fr 1fr 110px 90px;gap:12px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line);font-size:13px}
+.rows .h{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.45;padding-top:4px}
+.chip{font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:99px;background:var(--wash2);justify-self:start}
+.chip.hot{background:var(--hot);color:#fff}.chip.ok{background:var(--booked);color:var(--chip-ink)}.chip.warm{background:var(--warm);color:var(--chip-ink)}
+.kind{font-size:10px;opacity:.5;font-weight:600}
+.hit{background:rgba(255,169,77,.35);border-radius:3px}
+.empty{opacity:.5;padding:30px 0;text-align:center;font-size:13px}
+.notes{max-width:1100px;margin:0 auto;padding:0 16px 60px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--srf);box-shadow:var(--softsh);border-radius:14px;padding:16px 18px;font-size:13px}
+.card h3{font-family:'Archivo Black',sans-serif;font-size:14px;margin-bottom:8px}
+.card li{margin:0 0 6px 18px}
+.card b{font-weight:700}
+@media (max-width:760px){.app{grid-template-columns:1fr;height:auto}.rail{display:none}.notes{grid-template-columns:1fr}.rows .r{grid-template-columns:1fr 90px}.rows .r>:nth-child(2),.rows .r>:nth-child(3){display:none}}
+</style>
+</head>
+<body>
+<div class="intro">
+  <span class="tg" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</span>
+  <h1>Rail, Ramp-style</h1>
+  <p>Click a group to open it (only one open at a time, like Ramp). Pick a page. Type in the search bar — it searches everything on the page you're on, across all its views. Placeholder rows.</p>
+</div>
+
+<div class="app">
+  <nav class="rail" id="rail"></nav>
+  <div class="main">
+    <div class="top">
+      <label class="search">⌕ <input id="q" placeholder="Search this page…" autocomplete="off"><span class="kbd">⌘K</span></label>
+      <div class="av">ES</div>
+    </div>
+    <div class="page" id="page"></div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="card">
+    <h3>The rail</h3>
+    <ul>
+      <li><b>CRM</b> opens to <b>Leads &amp; clients</b> (Leads, Clients, Registrations on one page), <b>Texting &amp; campaigns</b>, and <b>Lakers</b> (owners).</li>
+      <li><b>Billing</b> stays as it is: Hub, Petty cash, SRS, AP protocols.</li>
+      <li><b>Admin</b> keeps Rates + Positions. Lakers leaves it.</li>
+      <li>One group open at a time; the open group gets a soft panel and the page you're on is outlined — the two Ramp touches.</li>
+      <li>Badges sit on the page they belong to (needs-action leads on Leads &amp; clients, approvals on Billing Hub).</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>The page</h3>
+    <ul>
+      <li>Every page gets the same header: <b>breadcrumb, title, buttons on the right</b>. Today each page builds its own.</li>
+      <li><b>One search bar at the top</b>, always in the same spot, searching the page you're on. On Leads &amp; clients it searches all three views at once and tells you which one each hit is in.</li>
+      <li>The views (Leads / Clients / Registrations) stay as quiet underlined words with counts — that's what Ramp does with All bills / Drafts. The <i>search</i> moves up; the view switch stays.</li>
+      <li>⌘K focuses the search from anywhere.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+const R = [
+  { t:'Dashboard', ic:'▦', p:'dash' },
+  { t:'Calendar', ic:'▤', p:'cal' },
+  'sep',
+  { t:'CRM', ic:'◎', kids:[ { t:'Leads & clients', p:'crm', bd:4 }, { t:'Texting & campaigns', p:'text' }, { t:'Lakers', p:'lakers' } ] },
+  { t:'Billing', ic:'▽', kids:[ { t:'Billing Hub', p:'bill', bd:3 }, { t:'Petty Cash', p:'pc' }, { t:'SRS', p:'srs' }, { t:'Client AP Protocols', p:'ap' } ] },
+  'sep',
+  { t:'Memos', ic:'✉', p:'memos' }, { t:'Shift Notes', ic:'✎', p:'sn' }, { t:'Daily Ops', ic:'◔', p:'ops' },
+  { t:'Runner Hub', ic:'▷', p:'run' }, { t:'Mic Inventory', ic:'◌', p:'mic' }, { t:'Engineers', ic:'◈', p:'eng' },
+  'sep',
+  { t:'Punches', ic:'◷', p:'pun' }, { t:'Hiring', ic:'✎', p:'hire' }, { t:'Training', ic:'✦', p:'train' },
+  'sep',
+  { t:'Admin', ic:'⚙', kids:[ { t:'Rates', p:'rates' }, { t:'Positions', p:'pos' } ] },
+]
+const PAGES = {
+  crm: { crumb:'CRM', title:'Leads & clients', btns:['+ Lead','+ Client'], views:[
+    { n:'Leads', rows:[['Havelange','Atlantic · warm','Oct 10','Follow up','warm'],['Jesse Haugen','COD · pitched','Oct 8','Pitched',''],['Kiana Ledé','Epic · hot','Oct 11','Call back','hot'],['Concord writers','Concord','Oct 2','Booked','ok']] },
+    { n:'Clients', rows:[['Stuart Price','COD','Sep 29','On file','ok'],['Epic Records','Label · 6 A&Rs','Oct 9','On file','ok'],['10K Projects','Label · 3 A&Rs','Oct 4','On file','ok'],['Christina Perri','COD','Jun 18','On file','ok']] },
+    { n:'Registrations', rows:[['Morgan Smith','Red Bull Records','Oct 11','Review','warm'],['Liz Isik','Warner Records','Oct 10','Review','warm'],['Havelange','Atlantic','Sep 30','Done','ok']] },
+  ]},
+  text: { crumb:'CRM', title:'Texting & campaigns', btns:['Export CSV','+ Campaign'], views:[
+    { n:'Opted in', rows:[['Stuart Price','(323) 555-0144','Sep 29','Opted in','ok'],['Jesse Haugen','(818) 555-0190','Sep 12','Opted in','ok']] },
+    { n:'Campaigns', rows:[['Fall open-hours push','212 recipients','Draft','Draft',''],['Holiday rates','—','Not started','Idea','']] },
+  ]},
+  lakers: { crumb:'CRM', title:'Lakers 26–27', btns:['+ Game','Paste schedule'], views:[
+    { n:'Games', rows:[['Oct 21 · Golden State','Not given yet','7:00 PM','Open','warm'],['Oct 23 · LA Clippers','Not given yet','7:00 PM','Open','warm'],['Oct 27 · Portland','Not given yet','8:00 PM','Open','warm']] },
+  ]},
+  bill: { crumb:'Billing', title:'Billing Hub', btns:['New invoice'], views:[
+    { n:'Billing', rows:[['WO-1301 · Epic','$12,400','Oct 9','Needs approval','warm'],['WO-1297 · 10K','$6,850','Oct 6','Sent',''],['WO-1288 · Concord','$13,340','Sep 30','Paid','ok']] },
+    { n:'COD', rows:[['WO-1299 · Stuart Price','$2,575','Oct 8','Balance','hot']] },
+    { n:'Tenants', rows:[['MBA · Track South + PR1','$7,000','Oct 16','Not sent','']] },
+  ]},
+}
+let cur = 'crm', open = 'CRM', view = 0
+function rail(){
+  const el = document.getElementById('rail'); let h = '<div class="brand">PRS<b>Flo</b></div>'
+  for (const it of R) {
+    if (it === 'sep') { h += '<div class="sep"></div>'; continue }
+    if (it.kids) {
+      const isOpen = open === it.t
+      const bd = it.kids.reduce((s,k)=>s+(k.bd||0),0)
+      h += `<div class="grp${isOpen?' open':''}"><div class="it" onclick="tog('${it.t}')"><span class="ic">${it.ic}</span>${it.t}${!isOpen && bd ? `<span class="bd">${bd}</span>`:''}</div><div class="kids">`
+      for (const k of it.kids) h += `<div class="kid${cur===k.p?' on':''}" onclick="go('${k.p}','${it.t}')">${k.t}${k.bd?`<span class="bd">${k.bd}</span>`:''}</div>`
+      h += '</div></div>'
+    } else h += `<div class="it${cur===it.p?' on':''}" onclick="go('${it.p}',null)"><span class="ic">${it.ic}</span>${it.t}</div>`
+  }
+  el.innerHTML = h
+}
+function tog(t){ open = open === t ? null : t; rail() }
+function go(p, grp){ cur = p; if (grp) open = grp; view = 0; document.getElementById('q').value=''; rail(); page() }
+function esc(s){ return s.replace(/[&<]/g, c=>({'&':'&amp;','<':'&lt;'}[c])) }
+function mark(s,q){ if(!q) return esc(s); const i=s.toLowerCase().indexOf(q); return i<0?esc(s):esc(s.slice(0,i))+'<span class="hit">'+esc(s.slice(i,i+q.length))+'</span>'+esc(s.slice(i+q.length)) }
+function page(){
+  const P = PAGES[cur], el = document.getElementById('page'), q = document.getElementById('q').value.trim().toLowerCase()
+  document.getElementById('q').placeholder = P ? `Search ${P.title.toLowerCase()}…` : 'Search this page…'
+  if (!P) { el.innerHTML = `<div class="crumb">&nbsp;</div><div class="ph"><h2>${(R.flatMap(x=>x.kids||[x]).find(x=>x.p===cur)||{}).t||''}</h2></div><div class="empty">Same header and search bar on every page.</div>`; return }
+  let h = `<div class="crumb">${P.crumb}</div><div class="ph"><h2>${P.title}</h2><div style="display:flex;gap:8px">${P.btns.map((b,i)=>`<button class="btn${i===P.btns.length-1?' pri':''}">${b}</button>`).join('')}</div></div>`
+  if (q) {
+    const hits = P.views.flatMap(v => v.rows.filter(r => r.join(' ').toLowerCase().includes(q)).map(r => [v.n, r]))
+    h += `<div class="views"><div class="v on">Results across ${P.views.length > 1 ? 'all views' : 'this page'} <span class="n">${hits.length}</span></div></div>`
+    h += '<div class="rows"><div class="r h"><span>Name</span><span>Detail</span><span>Date</span><span>Status</span></div>'
+    h += hits.length ? hits.map(([vn,r]) => `<div class="r"><span>${mark(r[0],q)} ${P.views.length>1?`<span class="kind">· ${vn}</span>`:''}</span><span style="opacity:.7">${mark(r[1],q)}</span><span style="font:12px 'DM Mono',monospace;opacity:.6">${r[2]}</span><span class="chip ${r[4]}">${r[3]}</span></div>`).join('') : '<div class="empty">Nothing matches.</div>'
+    el.innerHTML = h + '</div>'; return
+  }
+  if (P.views.length > 1) h += `<div class="views">${P.views.map((v,i)=>`<div class="v${i===view?' on':''}" onclick="view=${i};page()">${v.n} <span class="n">${v.rows.length}</span></div>`).join('')}</div>`
+  else h += '<div style="height:6px"></div>'
+  h += '<div class="rows"><div class="r h"><span>Name</span><span>Detail</span><span>Date</span><span>Status</span></div>'
+  h += P.views[view].rows.map(r => `<div class="r"><span style="font-weight:600">${esc(r[0])}</span><span style="opacity:.7">${esc(r[1])}</span><span style="font:12px 'DM Mono',monospace;opacity:.6">${r[2]}</span><span class="chip ${r[4]}">${r[3]}</span></div>`).join('')
+  el.innerHTML = h + '</div>'
+}
+document.getElementById('q').addEventListener('input', page)
+document.addEventListener('keydown', e => { if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k') { e.preventDefault(); document.getElementById('q').focus() } })
+rail(); page()
+</script>
+</body>
+</html>
