@@ -78,6 +78,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Open one of the starred leads from the item above. Tap its solid star to take it off. Open the client: its star is off too, and its other leads are no longer in All-Stars.',
       },
       {
+        id: 'v1441-staff-clear', area: 'Calendar',
+        what: 'Removing the only assistant from a session clears it from the calendar',
+        how: 'On a throwaway session with one assistant, open the work order, remove the assistant from that day, and Save. Look at the calendar card (and a TV display if you can): the 2ND initials are gone. Then open WO-1326 (Katie Vinten), press Save without changing anything, and check its Oct 12 card no longer shows SL.',
+      },
+      {
         id: 'v144-pills', area: 'CRM',
         what: 'Leaving All-Stars by tapping a status pill shows that status',
         how: 'With "All-Stars" lit on All Leads, tap "Hot". The All-Stars pill goes dark and the list shows only Hot leads.',

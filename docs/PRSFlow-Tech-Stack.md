@@ -334,6 +334,7 @@ shadows are raised controls and the modal drop shadow.
 
 | Chunk | What shipped |
 |---|---|
+| **STAFF REMOVAL REACHES THE CARD ✅ (Oct 13, 2026, v1.44.1)** | `buildBookingProjection` → `staffFor` always writes `engineer_name` + `assistant_name` (name or null); the old omit-when-empty guard left the last-removed staffer on the calendar card forever (WO-1326 "SL"). |
 | **ALL-STARS ✅ (Oct 13, 2026, v1.44.0)** | `leads.all_star` + `clients.all_star` (migration `20261013120000`, three triggers keep a client and its leads on one star). ☆/★ on lead + client profiles (any admin), ★ in list rows, ★ All-Stars pill on All Leads and tab on Clients. `components/shared/AllStar.tsx`. |
 | **OFFICE REVIEW SETTLES A DAY ✅ (Oct 13, 2026, v1.43.11)** | `lib/billing.ts` per-day loop: a day with any `admin_locked` row counts as settled even with no runner submission — `daysSubmitted`/`stillRunning`/`arrived`/`reviewedThru` inherit it. Fixes same-day no-show and early office close-out reading "In progress" after invoicing (WO-1326). `unsubmittedDaysOf` deliberately unchanged. |
 | **NO SHOW ✅ (Oct 5, 2026, v1.43.3)** | `studio_time_rows.no_show` (migration `20261005190000`) - a chip beside Arrived / Left in WorkOrderPopup, runner and office. Clears both times; typing a time clears it. Satisfies the runner's Arrived/Left submit gate; logged in the history. **Reads into no charge** - billed stays as booked. Shown nowhere else on purpose |

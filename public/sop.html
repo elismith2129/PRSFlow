@@ -679,6 +679,21 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.44.1', date:'Oct 13, 2026',
+    headline:'Taking the last engineer or assistant off a session clears them from the calendar.',
+    desc:'The calendar, the TV displays and the dashboard now match the work order when nobody is staffed.',
+    changes:[
+      'If you remove the only engineer or assistant from a session in the work order and save, their initials now disappear from the calendar card too. Before, the old name stayed on the calendar even though the work order said nobody.',
+      'This was the stale <b>SL</b> on Katie Vinten&rsquo;s Oct 12 session. Opening that work order and pressing Save clears it.',
+    ],
+    meaning:'What the work order says about staffing is what the calendar and the TVs show, including when the answer is nobody.',
+    dev:[
+      'buildBookingProjection -> staffFor always writes engineer_name and assistant_name (name or null). It used to omit both keys when neither role had a name, so removing the LAST staffer never reached the card. A segment only exists because dated rows do, so an empty staff set is a real nobody.',
+      'Scope checked live: of 67 session cards from Oct 1 on that carry staff, only WO-1326 was stale; it corrects itself on its next save.',
+      'Watch-out: CLAUDE.md WO rule updated. Legacy wo.engineer / wo.second_engineer remain the fallback.',
+    ],
+  },
+  {
     ver:'v1.44', date:'Oct 13, 2026',
     headline:'All-Stars: star your top players.',
     desc:'A star on every lead and client profile, and an All-Stars filter to see just the starred ones.',

@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 13, 2026 (later still) — Stale "SL" on the calendar (v1.44.1)
+
+**Report.** Katie Vinten, Oct 12: calendar + display showed SL (Sam Lorimore) as 2nd; the work order showed no assistant. Live rows: both Studio Time rows had `eng_name` null; the Oct 12 booking card still held `assistant_name = 'Sam Lorimore'` from its Oct 6 creation, and Oct 13 held the literal string "N/A".
+
+**Cause.** The projection deliberately omitted both staff keys when no staff was known, to avoid "wiping initials". That made "remove the last staffer" impossible to express: the save simply didn't touch the card.
+
+**Decision.** Always write both keys. The guard predates the July rule that staff lives ONLY on the Studio Time rows; once the rows are the only home, an empty set is an answer, not a gap.
+
+**Rejected.** *A one-off database patch of WO-1326's two cards.* The next save of the work order fixes them through the normal path, and patching cards by hand is exactly treating a projection row as source of truth (the WO rule says never). *Keeping the omit but special-casing "staff was removed".* Detecting a removal needs the previous state; always writing is simpler and can't miss.
+
 ### October 13, 2026 (later) — All-Stars (v1.44.0)
 
 **Ask.** *"a clickable star on lead/client profiles and a simple 'allstar' category… so simple. the owner just wants to be able to star people as top players."*

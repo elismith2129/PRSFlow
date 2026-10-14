@@ -3404,14 +3404,19 @@ export function WorkOrderPopup({
       wo_number: wo.wo_number || null,
     }
     // Staff initials for the card: segment staff (1ST + 2ND can coexist), with
-    // the legacy WO-level fields as fallback. When neither role has a name we
-    // omit both keys so a save never wipes existing card initials; when at
-    // least one is known we write both explicitly (name or null) so removals
-    // and role flips propagate to the card.
+    // the legacy WO-level fields as fallback. ALWAYS written, both keys, name
+    // or null (2026-10-13). This used to omit both keys when neither role had
+    // a name, "so a save never wipes existing card initials" — a guard from
+    // before staff lived only on the Studio Time rows. Since that rule, the
+    // rows ARE the staffing, and the omit meant removing the LAST staffer could
+    // never reach the card: WO-1326 (Katie Vinten) showed "SL" (Sam Lorimore,
+    // seeded Oct 6) on the calendar, the display and the dashboard for a day
+    // the work order said had no assistant, and "N/A" on the next day. A
+    // segment only exists because dated rows do, so an empty staff set here is
+    // a real "nobody", not "unknown". Do not reinstate the omit.
     const staffFor = (seg: Seg): Record<string, any> => {
       const eng = seg.eng || wo.engineer || ''
       const asst = seg.asst || wo.second_engineer || ''
-      if (!eng && !asst) return {}
       return { engineer_name: eng || null, assistant_name: asst || null }
     }
     const scheduleFor = (seg: Seg) => ({

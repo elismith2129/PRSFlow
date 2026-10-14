@@ -20,6 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.44.1 — Removing the last staffer now clears the calendar card — Oct 13, 2026
+
+**Why.** WO-1326 (Katie Vinten): the calendar, the TV display and the dashboard all showed **SL** (Sam Lorimore) as 2nd on Oct 12, but the work order had no assistant — and the Oct 13 card said "N/A". Eli: *"there was no assistant for the session and the WO shows no assistant assigned but the calendar shows SL."* No migration.
+
+1. **`buildBookingProjection` → `staffFor` always writes `engineer_name` and `assistant_name` (name or null)** (`components/calendar/WorkOrderPopup.tsx`). It used to omit both keys when neither role had a name, "so a save never wipes existing card initials" — a guard from before staff lived only on the Studio Time rows. With that rule, removing the LAST staffer could never reach the card: whatever the card was seeded with (Sam, Oct 6) stayed forever. A segment only exists because dated rows do, so an empty staff set is a real "nobody", not "unknown".
+2. **Scope checked live:** of 67 session cards from Oct 1 on that carry staff, only WO-1326's two were stale. They correct themselves the next time WO-1326 is saved.
+
+**Watch-outs.** CLAUDE.md's WO rule was updated (it described the omit). Legacy WO-level `wo.engineer` / `wo.second_engineer` are still the fallback, so an old work order whose staff lived only on the WO top still writes those names.
+
+**Files.** `components/calendar/WorkOrderPopup.tsx`, `CLAUDE.md`.
+
 ## v1.44.0 — All-Stars: star your top players — Oct 13, 2026
 
 **Why.** Eli: *"the owner just wants to be able to star people as top players."* A clickable star on lead and client profiles, plus an All-Stars filter. Any admin can toggle it (owner / manager / billing / asst_manager); runners and tech never see the CRM.
