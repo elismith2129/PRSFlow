@@ -55,6 +55,36 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-13-2026-all-stars',
+    title: 'All-Stars',
+    version: 'v1.44',
+    date: 'Oct 13, 2026',
+    intro:
+      'A star on lead and client profiles and an All-Stars filter. Use a THROWAWAY lead and a THROWAWAY client (made-up names) and unstar them when you are done.',
+    items: [
+      {
+        id: 'v144-star-lead', area: 'CRM',
+        what: 'You can star a lead and it shows in the All-Stars pill',
+        how: 'Open a throwaway lead that is NOT linked to a client. Tap the outline star next to the name: it turns solid. Go to All Leads and tap the "All-Stars" pill. The lead is in the list, with a small star before its name.',
+      },
+      {
+        id: 'v144-star-client', area: 'Clients',
+        what: 'Starring a client stars its leads too',
+        how: 'Open a throwaway client that has at least one lead. Tap the star next to its name. Go to All Leads, tap "All-Stars": every lead for that client is there with a star. Back on Clients, tap the "All-Stars" tab: the client is there.',
+      },
+      {
+        id: 'v144-unstar-lead', area: 'CRM',
+        what: 'Unstarring a linked lead unstars the client',
+        how: 'Open one of the starred leads from the item above. Tap its solid star to take it off. Open the client: its star is off too, and its other leads are no longer in All-Stars.',
+      },
+      {
+        id: 'v144-pills', area: 'CRM',
+        what: 'Leaving All-Stars by tapping a status pill shows that status',
+        how: 'With "All-Stars" lit on All Leads, tap "Hot". The All-Stars pill goes dark and the list shows only Hot leads.',
+      },
+    ],
+  },
+  {
     id: 'oct-13-2026-office-review-settles-day',
     title: 'Reviewing a day closes it out',
     version: 'v1.43.11',

@@ -38,6 +38,8 @@ import { toast } from '@/components/ui/Toaster'
 import { propagateClientRename, propagateContactRename } from '@/lib/propagateClientRename'
 import { fullName, moveContactToArtists, removeContact } from '@/lib/clientEdits'
 import { ApCard, type ApProfile } from '@/components/billing/ApCard'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { AllStarToggle, canToggleAllStar } from '@/components/shared/AllStar'
 
 interface BookingLead {
   id: number
@@ -248,6 +250,19 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
+  // ALL-STAR (2026-10-13). Optimistic: the star flips on tap, the write lands
+  // behind it, and the shared clients channel brings the refetch. DB triggers
+  // carry it to every lead linked to this client (one star per person).
+  const { profile: myProfile } = useUserProfile()
+  const [starOn, setStarOn] = useState(!!client?.all_star)
+  useEffect(() => { setStarOn(!!client?.all_star) }, [client?.id, client?.all_star])
+  const toggleStar = useCallback(async () => {
+    if (!client) return
+    const next = !starOn
+    setStarOn(next)
+    const { error } = await supabase.from('clients').update({ all_star: next }).eq('id', client.id)
+    if (!dbResult(next ? 'Starring client' : 'Removing star', error)) setStarOn(!next)
+  }, [client, starOn])
   const [clientTags, setClientTags] = useState<string[]>(client?.tags || [])
   const [clientTagInput, setClientTagInput] = useState('')
 
@@ -562,9 +577,12 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
                   </div>
                 )
               ) : (
-                <h2 className="c-arch" style={{ fontWeight: 400, fontSize: isMobile ? 22 : 28, letterSpacing: '-0.03em', lineHeight: 1.05, marginTop: 2, overflowWrap: 'anywhere' }}>
-                  {client.name}
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <AllStarToggle on={starOn} canEdit={canToggleAllStar(myProfile?.role)} onToggle={toggleStar} size={isMobile ? 20 : 24} />
+                  <h2 className="c-arch" style={{ fontWeight: 400, fontSize: isMobile ? 22 : 28, letterSpacing: '-0.03em', lineHeight: 1.05, overflowWrap: 'anywhere', minWidth: 0 }}>
+                    {client.name}
+                  </h2>
+                </div>
               )}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 9, alignItems: 'center' }}>
                 {bookingCount > 0 && <Tag>{bookingCount} BOOKING{bookingCount === 1 ? '' : 'S'}</Tag>}

@@ -20,6 +20,22 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.44.0 — All-Stars: star your top players — Oct 13, 2026
+
+**Why.** Eli: *"the owner just wants to be able to star people as top players."* A clickable star on lead and client profiles, plus an All-Stars filter. Any admin can toggle it (owner / manager / billing / asst_manager); runners and tech never see the CRM.
+
+**Migration (run by hand):** `supabase/migrations/20261013120000_all_stars.sql` — adds `leads.all_star` + `clients.all_star` (boolean, NOT NULL default false) and three triggers. **Until it runs, the star renders but every toggle fails with a red "NOT saved" toast** (the column doesn't exist).
+
+1. **One star per person — enforced in the DATABASE, not the UI.** Triggers keep a client and all its leads in step: star/unstar a client → all its leads follow; star/unstar a linked lead → its client (and the client's other leads) follow; linking a lead to a starred client stars the lead; linking a starred lead to a client stars the client. Unlinked leads are starred on their own. Every write path (CRM, clients page, lead→client conversion, scripts) obeys it with no screen code. Loop guard: `pg_trigger_depth() > 1` on the lead triggers; `is distinct from` makes every propagation a no-op once values agree. All three functions are `security definer` so a billing/asst-manager toggle can update the linked rows whatever their row policies.
+2. **`components/shared/AllStar.tsx`** (new) — `AllStarToggle` (☆/★ button beside a profile's name), `AllStarMark` (small ★ in list rows), `canToggleAllStar(role)`. Read-only viewers see a ★ on starred people and nothing on the rest.
+3. **CRM leads** (`app/(main)/crm/page.tsx`): toggle at the head of the lead profile's hero row (writes the lead's own row via `save('all_star', …)`); ★ in both lead lists; **★ All-Stars** pill first in the All Leads filter row — when on, the list is every starred lead regardless of status and the status pills step aside (tapping a status pill leaves All-Stars and shows that status alone). Persisted in sessionStorage `crm_al_star`.
+4. **Clients** (`components/clients/ClientProfile.tsx`, `ClientList.tsx`): toggle beside the client name (optimistic, rolls back on a failed write); **★ All-Stars** tab after All; ★ in list rows.
+5. Types: `all_star?: boolean` on `Lead` and `Client` (`lib/supabase.ts`).
+
+**Watch-outs.** Never sync the star client-side (e.g. updating the client after starring a lead) — the triggers already do it, and a second writer would race them. Colour: the star is deliberately monochrome (`--c-fg`); amber/red are lead temperature and must not be borrowed.
+
+**Files.** `supabase/migrations/20261013120000_all_stars.sql`, `components/shared/AllStar.tsx`, `app/(main)/crm/page.tsx`, `components/clients/ClientProfile.tsx`, `components/clients/ClientList.tsx`, `lib/supabase.ts`.
+
 ## v1.43.11 — Office review settles a day, same as a runner submission — Oct 13, 2026
 
 **Why.** WO-1326 (Katie Vinten, COD) was invoiced at noon but read *In progress* with no Invoiced badge. Its final day (Oct 13, today) was a **no-show**: Lori marked it, reviewed/locked it, and attached the invoice — but a no-show day never gets a runner submission, so the billing math kept the work order "still running" until midnight, and the Sep 28 extension rule demoted the invoiced row back to step 1. Eli: *"a runner submittal and office submittal is the same thing ya know?"* — he needs to close out any open work order whenever, across all scenarios. No migration.

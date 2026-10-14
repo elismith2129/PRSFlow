@@ -21,6 +21,8 @@ export const CLIENT_TYPE_LABELS: Record<ClientType, string> = {
 
 export interface Lead {
   id: number
+  /** ALL-STAR (v1.44.0). One star per person: kept in sync with the linked client's by DB triggers (migration 20261013120000). */
+  all_star?: boolean
   fname: string
   lname: string
   company: string
@@ -73,6 +75,8 @@ export interface Lead {
 
 export interface Client {
   id: string
+  /** ALL-STAR (v1.44.0). Starring a client stars every linked lead (DB triggers). */
+  all_star?: boolean
   type: ClientType
   name: string
   fname: string | null

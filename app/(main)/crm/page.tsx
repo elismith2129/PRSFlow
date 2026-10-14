@@ -28,6 +28,7 @@ import { useClientsVersion } from '@/hooks/useClientsVersion'
 import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
+import { AllStarToggle, AllStarMark, canToggleAllStar } from '@/components/shared/AllStar'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--c-st-hot)', warm: 'var(--c-st-warm)', cold: 'var(--c-fg-3)',
@@ -1164,10 +1165,10 @@ function NeedsActionSection({ leads, latestTouches, selectedId, onSelect, onMark
                 <LeadAvatar lead={l} />
                 <LeadRowText
                   name={l.label && l.artist_name
-                    ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
+                    ? <><AllStarMark on={l.all_star} />{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
                     : l.artist_name && !l.label
-                      ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
-                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                      ? <><AllStarMark on={l.all_star} />{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
+                      : <><AllStarMark on={l.all_star} />{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   meta={<>
                     {fmtSessionLine(l) && <>{fmtSessionLine(l)} <span style={{ color: 'var(--c-fg-3)' }}>·</span> </>}
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
@@ -1270,6 +1271,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   // See NeedsActionSection — new web inquiries pulse in this list too.
   const { isUnacked } = useWebInquiries()
   const [active, setActive] = useState<Set<StatusFilter>>(() => new Set(DEFAULT_STATUS_FILTERS))
+  // ALL-STARS (2026-10-13): one extra pill. When it's on, the list is every
+  // starred lead whatever its status — "show me my top players" — and the
+  // status pills step aside until it's turned off.
+  const [starOnly, setStarOnly] = useState(false)
   const skipFilterReset = useRef(false)
 
   // Restore persisted active-set + search after mount — lazy initializers read sessionStorage
@@ -1296,6 +1301,13 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       }
     } catch {}
   }, [])
+  useEffect(() => {
+    try { if (sessionStorage.getItem('crm_al_star') === '1') setStarOnly(true) } catch {}
+  }, [])
+  useEffect(() => {
+    try { sessionStorage.setItem('crm_al_star', starOnly ? '1' : '0') } catch {}
+    setPage(1)
+  }, [starOnly])
   useEffect(() => {
     try { sessionStorage.setItem('crm_al_active', JSON.stringify(Array.from(active))) } catch {}
   }, [active])
@@ -1345,7 +1357,8 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
   // Show leads matching ANY active status. Empty set falls back to all statuses
   // so the list is never blank.
   const effectiveActive = active.size === 0 ? new Set(ALL_STATUS_FILTERS) : active
-  const activeLeads = leads.filter(l => effectiveActive.has(leadStatusKey(l)))
+  const starLeads = leads.filter(l => l.all_star)
+  const activeLeads = starOnly ? starLeads : leads.filter(l => effectiveActive.has(leadStatusKey(l)))
   // No search of its own since 2026-10-12: the page's one search bar
   // (PageTop → CrmSearchResults) looks across every lead, whatever pills are
   // lit here. This list is only ever narrowed by its status pills.
@@ -1361,12 +1374,22 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
       {/* Header: filter pills (the search is the page's, up top) */}
       <div style={{ flexShrink: 0 }}>
         <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 5, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : undefined, marginBottom: 8 }}>
+          <button
+            onClick={() => setStarOnly(v => !v)}
+            className={`c-pill c-control ${starOnly ? 'c-pressed' : 'c-raised-chip'}`}
+            title="Every starred lead, whatever its status"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap', opacity: starOnly ? 1 : 0.55 }}
+          >
+            ★ All-Stars ({starLeads.length})
+          </button>
           {filterDefs.map(f => {
-            const isActive = active.has(f.key)
+            const isActive = !starOnly && active.has(f.key)
             return (
               <button
                 key={f.key}
-                onClick={() => toggleFilter(f.key)}
+                // Out of All-Stars, a pill tap means "show me THIS status" —
+                // not "toggle whatever was lit before stars took over".
+                onClick={() => { if (starOnly) { setStarOnly(false); setActive(new Set([f.key])) } else toggleFilter(f.key) }}
                 className={`c-pill c-control ${statusFillClass(f.key)} ${isActive ? 'c-pressed' : 'c-raised-chip'}`}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap', opacity: isActive ? 1 : 0.55 }}
               >
@@ -1391,7 +1414,7 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
           <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>Loading…</div>
         ) : filtered.length === 0 ? (
           <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>
-            No leads.
+            {starOnly ? 'No All-Stars yet. Open a lead and tap the ☆ next to the name.' : 'No leads.'}
           </div>
         ) : paginated.map((l, idx) => {
           const touch = latestTouches[l.id]
@@ -1416,10 +1439,10 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
                 <LeadAvatar lead={l} />
                 <LeadRowText
                   name={l.label && l.artist_name
-                    ? <>{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
+                    ? <><AllStarMark on={l.all_star} />{l.label} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>/</span> {l.artist_name}</>
                     : l.artist_name && !l.label
-                      ? <>{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
-                      : <>{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
+                      ? <><AllStarMark on={l.all_star} />{l.fname} {l.lname} <span style={{ color: 'var(--c-fg-3)' }}>·</span> {l.artist_name}</>
+                      : <><AllStarMark on={l.all_star} />{l.fname} {l.lname}{l.company && <span style={{ color: 'var(--c-fg-3)', fontWeight: 400 }}> · {l.company}</span>}</>}
                   meta={<>
                     {fmtSessionLine(l) && <>{fmtSessionLine(l)} <span style={{ color: 'var(--c-fg-3)' }}>·</span> </>}
                     {l.booking && <span>{BOOKING_ICONS[l.booking] || ''} {l.booking} · </span>}
@@ -2134,6 +2157,10 @@ const parsedLoc0 = parseLocation(lead.location || '')
         {/* Row 1: hero name/label + reg button + Start Booking */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+            {/* ALL-STAR (2026-10-13). Writes this lead's own row; if the lead
+                is linked to a client, DB triggers carry the star to the client
+                and its other leads (one star per person). */}
+            <AllStarToggle on={!!lead.all_star} canEdit={canToggleAllStar(myProfile?.role)} onToggle={() => save('all_star', !lead.all_star)} />
             {lead.billing !== 'COD' ? (
               <>
                 <div style={{ display: 'inline-grid', minWidth: '3ch', position: 'relative' }}>

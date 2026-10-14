@@ -14,8 +14,9 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { Client, ClientContact } from '@/lib/supabase'
 import { fullName } from '@/lib/clientEdits'
+import { AllStarMark } from '@/components/shared/AllStar'
 
-type Filter = 'all' | 'label' | 'individual' | 'registered' | 'fix'
+type Filter = 'all' | 'star' | 'label' | 'individual' | 'registered' | 'fix'
 type SortOption = 'alpha' | 'recent' | 'bookings'
 
 export type BookingCountMap = Record<string, number>
@@ -92,6 +93,8 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
 
   const matchesFilter = (c: Client, f: Filter) => {
     if (f === 'all') return true
+    // ALL-STARS (2026-10-13): the owner's top players.
+    if (f === 'star') return !!c.all_star
     if (f === 'label') return c.type === 'label'
     if (f === 'individual') return c.type !== 'label'
     if (f === 'registered') return !!c.registered_at
@@ -100,12 +103,13 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
 
   const filterDefs: { key: Filter; label: string; warn?: boolean }[] = [
     { key: 'all', label: 'All' },
+    { key: 'star', label: '★ All-Stars' },
     { key: 'label', label: 'Labels' },
     { key: 'individual', label: 'COD' },
     { key: 'registered', label: 'Registered' },
     { key: 'fix', label: 'Needs fixing', warn: true },
   ]
-  const counts: Record<Filter, number> = { all: 0, label: 0, individual: 0, registered: 0, fix: 0 }
+  const counts: Record<Filter, number> = { all: 0, star: 0, label: 0, individual: 0, registered: 0, fix: 0 }
   for (const c of clients) for (const f of filterDefs) if (matchesFilter(c, f.key)) counts[f.key]++
 
   let filtered: Client[] = clients.filter(c => matchesFilter(c, filter))
@@ -152,7 +156,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
           {loading ? (
             <div className="c-bempty" style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>Loading…</div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>Nothing here.</div>
+            <div style={{ padding: 16, opacity: 0.5, fontSize: 12 }}>{filter === 'star' ? 'No All-Stars yet. Open a client and tap the ☆ next to the name.' : 'Nothing here.'}</div>
           ) : paginated.map(c => {
             const contacts = contactsMap[c.id] || []
             const isLabel = c.type === 'label'
@@ -182,7 +186,7 @@ export function ClientList({ clients, contactsMap, bookingCountMap, selectedId, 
                   {initials(c.name)}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.name}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><AllStarMark on={c.all_star} />{c.name}</div>
                   <div style={{ fontSize: 11, opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {sub}{bookings > 0 ? ` · ${bookings} booked` : ''}
                   </div>

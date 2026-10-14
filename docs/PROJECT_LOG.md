@@ -381,6 +381,19 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 13, 2026 (later) — All-Stars (v1.44.0)
+
+**Ask.** *"a clickable star on lead/client profiles and a simple 'allstar' category… so simple. the owner just wants to be able to star people as top players."*
+
+**Decisions (asked, Eli answered).** Who toggles: **"all admin no runners"** — owner, manager, billing, asst_manager. Lead vs client: **one star per person** — a client and its linked leads share the star.
+
+**Why the sync lives in the database.** One-star-per-person could have been done in the UI (after starring a lead, also update its client and siblings). Rejected: there are several write paths that link leads to clients (CRM conversion, the clients page, scripts), and each would have to remember the rule — the exact "a rule people have to remember" failure the Wordmark component was built to kill. Triggers make it structural.
+
+**Rejected.**
+- *A separate All-Stars page.* "trying not to make more pages" — it's a filter pill on the lists that already exist.
+- *A coloured (gold/amber) star.* Amber is lead temperature; colour is reserved. Monochrome ★ reads fine against the dark theme.
+- *Owner-only toggling.* Was the recommended default; Eli chose all admins.
+
 ### October 13, 2026 — Office review settles a day (v1.43.11)
 
 **Where it started.** WO-1326 showed *not invoiced* although the invoice was attached. Diagnosis from the live rows: invoice PDF + $1,650 snapshot on file, but the last day (Oct 13, today) was a no-show — admin_locked, status still `in_progress`. A day only counted as over if a runner submitted it or the date passed, and a no-show never gets a runner submission. So the work order was "still running" until midnight and the Sep 28 extension rule (invoiced-but-running → In progress) hid the badge. It would have self-healed at midnight; Eli wanted the gap closed for good: *"what I need is to be able to complete an open WO whenever… a runner submittal and office submittal is the same thing."*

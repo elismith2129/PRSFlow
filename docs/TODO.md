@@ -5,6 +5,10 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## To run (Oct 13)
+
+- [ ] **Run migration `20261013120000_all_stars.sql`** in the Supabase SQL editor. Until then the All-Star star shows but every toggle fails with a red "NOT saved" toast. *(Oct 13)*
+
 ## Billing hub (Oct 13)
 
 - [x] ~~WO card view: REVIEWED chip overlaps the status pills~~ Fixed in v1.43.11: the chip shared a line with edit/× in the fixed 120px column and overflowed; it now has its own line. *(Oct 13)*

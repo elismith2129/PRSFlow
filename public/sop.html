@@ -679,6 +679,26 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.44', date:'Oct 13, 2026',
+    headline:'All-Stars: star your top players.',
+    desc:'A star on every lead and client profile, and an All-Stars filter to see just the starred ones.',
+    changes:[
+      'Open a lead or a client. Next to the name there is a <b>&#9734; star</b>. Tap it to make them an <b>All-Star</b> (&#9733;). Tap again to take it off.',
+      'Owners, managers, billing and assistant managers can star people. Everyone else still sees who is starred.',
+      '<b>One star per person.</b> Star a client and every lead for that client is starred too. Star a lead that belongs to a client and the client is starred.',
+      'Starred people show a small &#9733; in the lead and client lists.',
+      'To see only your All-Stars: on <b>All Leads</b>, tap the <b>&#9733; All-Stars</b> pill (it shows every starred lead, whatever its status). On <b>Clients</b>, tap the <b>&#9733; All-Stars</b> tab.',
+    ],
+    meaning:'Your top players are one tap away, on both the leads side and the clients side.',
+    dev:[
+      'One star per person - enforced in the DATABASE, not the UI. Three triggers (migration 20261013120000) keep a client and all its leads in step; linking a lead to a starred client stars it, linking a starred lead stars the client. Loop guard: pg_trigger_depth() > 1; is distinct from makes every propagation a no-op once values agree. security definer so any admin toggle can update the linked rows.',
+      'components/shared/AllStar.tsx (new): AllStarToggle, AllStarMark, canToggleAllStar(role) - owner/manager/billing/asst_manager.',
+      'CRM: toggle in the lead hero row (save("all_star")); star in both lead lists; All-Stars pill first on All Leads - shows every starred lead regardless of status; tapping a status pill leaves All-Stars and shows that status alone. sessionStorage crm_al_star.',
+      'Clients: optimistic toggle beside the name (rolls back on a failed write); All-Stars tab after All; star in list rows.',
+      'Watch-out: never sync the star client-side - the triggers already do it and a second writer would race them. The star is monochrome on purpose; amber/red are lead temperature.',
+    ],
+  },
+  {
     ver:'v1.43.11', date:'Oct 13, 2026',
     headline:'Reviewing a day closes it out, the same as a runner submitting it.',
     desc:'You no longer have to wait for midnight to finish a work order whose last day never got a runner submission.',
