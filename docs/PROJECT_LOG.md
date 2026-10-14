@@ -392,7 +392,7 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 - *A new "Close day" button.* Review already is that act; a second button is another thing to forget (the "trying not to make more pages/things" rule).
 - *Teaching the unsubmitted-days alarm the same rule.* That alarm exists to catch runners who didn't turn a night in; letting the office's lock silence it would erase the accountability trail.
 
-**Also seen, not fixed.** In the WO card view, on a no-show day that is Reviewed, the green **REVIEWED** chip renders over the CONFIRMED/TENTATIVE/CANCELLED pill row (screenshot, Oct 13). Eli hadn't seen it before — likely the no-show + reviewed combination. Logged in TODO.
+**Also fixed: the Reviewed chip sitting on the status pills.** In the WO card view the green REVIEWED chip rendered over the CONFIRMED/TENTATIVE/CANCELLED row (screenshot, Oct 13). Cause: the card's right column is a fixed 120px, and the chip shared one line with `✎ edit` and `×` — too wide, so the line overflowed left into the middle column. It only shows on days that have happened, which is why it went unnoticed. Fix: the chip gets its own line under edit/×, keeping Eli's Sep 23 "top right where the x is" placement. **Rejected:** widening the column (it's fixed geometry, and would squeeze the notes column on every card) and moving the chip beside the status pill (Eli specifically asked for top right).
 
 ### October 5, 2026 — Daily Ops gets small, runners get a late submit, and a work order that vanished (v1.43.0 – v1.43.2)
 

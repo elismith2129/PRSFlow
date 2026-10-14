@@ -73,6 +73,11 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Use a throwaway session for today that the runner has NOT submitted. Enter the times, mark the day Reviewed, Save. In the billing hub the line should move out of In progress (to Needs invoice) without waiting for the runner or for midnight.',
       },
       {
+        id: 'v14311-review-chip', area: 'Work order',
+        what: 'The Reviewed chip on a day card does not cover the status pills',
+        how: 'Open any work order with a day that has already happened, in the CARDS view, on a computer. Look at the top right of that day card: the edit label and the x sit on one line, and the Reviewed (or Mark reviewed) chip sits on its own line just under them. Nothing should be on top of Confirmed / Tentative / Cancelled. Tap the chip to mark the day reviewed and check again.',
+      },
+      {
         id: 'v14311-alarm-kept', area: 'Daily Ops',
         what: 'A reviewed day the runner never submitted still shows "WO not submitted" the next morning',
         how: 'Tomorrow morning, look at Daily Ops for the throwaway session from the item above. It should still show the red "WO not submitted" badge, because the runner never submitted it. Reviewing it does not hide that.',

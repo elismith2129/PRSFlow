@@ -7,7 +7,7 @@ Newest at the top of each group.*
 
 ## Billing hub (Oct 13)
 
-- [ ] **WO card view: REVIEWED chip overlaps the status pills on a no-show + reviewed day.** The green chip sits on top of CONFIRMED / TENTATIVE / CANCELLED (WO-1326, Oct 13 card). Not seen before Oct 13. *(Oct 13)*
+- [x] ~~WO card view: REVIEWED chip overlaps the status pills~~ Fixed in v1.43.11: the chip shared a line with edit/× in the fixed 120px column and overflowed; it now has its own line. *(Oct 13)*
 
 ## SOPs: walkthrough editions (Oct 7)
 

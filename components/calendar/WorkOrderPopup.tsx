@@ -7534,21 +7534,29 @@ export function WorkOrderPopup({
                                   <button type="button" className="c-x" onClick={() => setConfirmDeleteDay(null)} style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', background: 'var(--c-wash2)', borderRadius: 99, padding: '2px 9px', cursor: 'pointer', opacity: 1 }}>Keep</button>
                                 </span>
                               ) : (
-                                <span style={{ display: 'flex', gap: 10, alignSelf: 'flex-end', alignItems: 'center' }}>
+                                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, alignSelf: 'flex-end' }}>
+                                  <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                    <span style={kLabel}>{cardLocked ? '👁 view' : '✎ edit'}</span>
+                                    {/* Day-card × — ADMIN ONLY (runner renders the
+                                        phone card, never this branch). */}
+                                    <button
+                                      type="button"
+                                      aria-label="Delete this day"
+                                      className="c-x"
+                                      onClick={e => { e.stopPropagation(); setConfirmDeleteDay(g.date || '') }}
+                                      style={{ fontSize: 13, boxShadow: 'none' }}
+                                    >×</button>
+                                  </span>
                                   {/* THE REVIEW CHIP, top right where the eye
                                       goes (Eli, 2026-09-23: "top right where
-                                      the x is"). */}
+                                      the x is") — on its OWN line under edit/×
+                                      (2026-10-13). Sharing one line inside this
+                                      fixed 120px column overflowed leftward and
+                                      the chip landed on top of the CONFIRMED /
+                                      TENTATIVE / CANCELLED pills (WO-1326). The
+                                      column is fixed geometry; never put a third
+                                      item back on the edit/× line. */}
                                   {dayReviewPill(g.date, true)}
-                                  <span style={kLabel}>{cardLocked ? '👁 view' : '✎ edit'}</span>
-                                  {/* Day-card × — ADMIN ONLY (runner renders the
-                                      phone card, never this branch). */}
-                                  <button
-                                    type="button"
-                                    aria-label="Delete this day"
-                                    className="c-x"
-                                    onClick={e => { e.stopPropagation(); setConfirmDeleteDay(g.date || '') }}
-                                    style={{ fontSize: 13, boxShadow: 'none' }}
-                                  >×</button>
                                 </span>
                               )
                             )}

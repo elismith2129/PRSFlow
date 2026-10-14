@@ -26,10 +26,11 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 1. **A day the office marked Reviewed (`admin_locked`) now counts as settled even with no runner submission** (`lib/billing.ts`, the per-day loop in `fetchInvoices`). `settled = submitted || approved || any row admin_locked`. `daysSubmitted`, `stillRunning`, `arrived` and `reviewedThru` all inherit it, so the stage badge, the bucket and the extension demotion follow without a second change. Covers: a same-day no-show on the final day, and billing closing out a session (e.g. ends 3 PM) before the runner submits.
 2. **The unsubmitted-days alarm is deliberately unchanged** — `unsubmittedDaysOf` still flags a past day no runner turned in. The office closing a day is not the runner having submitted it; that accountability signal stays separate.
+3. **Day card: the Reviewed chip no longer lands on the status pills** (`components/calendar/WorkOrderPopup.tsx`, desktop day card's right column). The chip shared one line with `✎ edit` and `×` inside the card's fixed 120px column; the line overflowed leftward and the chip sat on top of CONFIRMED / TENTATIVE / CANCELLED (WO-1326, Oct 13). The chip now takes its own line under edit/×, still top right.
 
-**Watch-outs.** `daysSubmitted` now means "days settled", not literally "days a runner submitted" — the name was kept to avoid touching `app/(main)/billing/page.tsx`'s two-tone In-progress chip. `unreviewedSubmitted` still keys on real submissions only, so an office-locked day can never read as "needs review".
+**Watch-outs.** `daysSubmitted` now means "days settled", not literally "days a runner submitted" — the name was kept to avoid touching `app/(main)/billing/page.tsx`'s two-tone In-progress chip. `unreviewedSubmitted` still keys on real submissions only, so an office-locked day can never read as "needs review". The day card's right column is fixed at 120px: never put a third item back on the edit/× line.
 
-**Files.** `lib/billing.ts`.
+**Files.** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`.
 
 ## v1.43.10 — Runner guide, walkthrough edition; day arrows on the dashboard — Oct 12, 2026
 
