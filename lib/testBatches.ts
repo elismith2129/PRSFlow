@@ -57,7 +57,7 @@ export const TEST_BATCHES: TestBatch[] = [
   {
     id: 'oct-13-2026-all-stars-billing-staff',
     title: 'All-Stars, closing out a day, calendar staff',
-    version: 'v1.44.1',
+    version: 'v1.44.2',
     date: 'Oct 13, 2026',
     intro:
       'Four things from Oct 13: the All-Stars star, reviewing a day now closes it out like a runner submission, the Reviewed chip on work order day cards, and the calendar clearing staff when the last one is removed. Use THROWAWAY leads, clients and sessions (made-up names) and undo what you change.',
@@ -106,6 +106,11 @@ export const TEST_BATCHES: TestBatch[] = [
         id: 'v14311-alarm-kept', area: 'Daily Ops',
         what: 'A reviewed day the runner never submitted still shows "WO not submitted" the next morning',
         how: 'Tomorrow morning, look at Daily Ops for the throwaway session from the item above. It should still show the red "WO not submitted" badge, because the runner never submitted it. Reviewing it does not hide that.',
+      },
+      {
+        id: 'v1442-tenant-aqua', area: 'Dashboard',
+        what: 'Tenant rooms (MBA, Camper) are light blue on the dashboard, not green',
+        how: 'Open the dashboard on a day MBA or Camper has its tenant booking. In Today\'s Sessions, that room card is the same light blue as on the calendar. Booked sessions in other rooms are still green.',
       },
       {
         id: 'v14311-inquiry-cookie', area: 'Website',

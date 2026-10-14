@@ -381,6 +381,14 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 14, 2026 — Tenant aqua on the dashboard (v1.44.2)
+
+**Report.** Eli: tenant rooms (MBA, Camper) had been changed to the lighter blue, but the dashboard still showed them green.
+
+**Cause.** The Noir dashboard's `roomFill()` mapped `tenant` to `n-on` — the booked-green fill — alongside confirmed/lockout. The calendar and WO read `--c-st-tenant`; the dashboard never did.
+
+**Fix.** A dedicated `n-tenant` fill that reads the shared `--c-st-tenant` token. **Rejected:** a separate `.n-home`-scoped tenant token — the dashboard is theme-fixed, but a second copy of the colour is exactly how this drifted.
+
 ### October 13, 2026 (later still) — Stale "SL" on the calendar (v1.44.1)
 
 **Report.** Katie Vinten, Oct 12: calendar + display showed SL (Sam Lorimore) as 2nd; the work order showed no assistant. Live rows: both Studio Time rows had `eng_name` null; the Oct 12 booking card still held `assistant_name = 'Sam Lorimore'` from its Oct 6 creation, and Oct 13 held the literal string "N/A".

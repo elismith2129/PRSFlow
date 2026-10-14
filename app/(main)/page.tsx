@@ -114,7 +114,10 @@ const VENUE_CODE: Record<string, string> = {
 
 /** Booking status → noir room-card class. Solid fill + chip ink (§5). */
 function roomFill(status: string | null | undefined): string {
-  if (status === 'confirmed' || status === 'lockout' || status === 'tenant') return ' n-on'
+  // Tenant rooms (MBA, Camper) wear the calendar's tenant aqua, not booked
+  // green — the same --c-st-tenant the calendar and WO use (v1.44.2).
+  if (status === 'tenant') return ' n-tenant'
+  if (status === 'confirmed' || status === 'lockout') return ' n-on'
   if (status === 'tentative') return ' n-warmc'
   if (status === 'cancelled') return ' n-hotc'
   return ''

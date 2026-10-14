@@ -679,6 +679,20 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.44.2', date:'Oct 14, 2026',
+    headline:'Tenant rooms show light blue on the dashboard.',
+    desc:'MBA and Camper now look the same on the dashboard as they do on the calendar.',
+    changes:[
+      'On the dashboard&rsquo;s Today&rsquo;s Sessions grid, tenant rooms (MBA, Camper) are now the light blue tenant colour instead of the green used for booked sessions.',
+    ],
+    meaning:'Green on the dashboard means a booked session; light blue means a tenant room.',
+    dev:[
+      'roomFill() (app/(main)/page.tsx) returns n-tenant for status=tenant; it used to lump tenant in with confirmed/lockout as n-on (booked green).',
+      'New .n-home .n-rc.n-tenant / .n-rs.n-tenant rules paint var(--c-st-tenant) with the same dark chip ink as the other fills.',
+      'Watch-out: the dashboard reads the SAME --c-st-tenant token as the calendar. Do not add an --n-tenant copy inside .n-home; that is how the two drifted.',
+    ],
+  },
+  {
     ver:'v1.44.1', date:'Oct 13, 2026',
     headline:'Taking the last engineer or assistant off a session clears them from the calendar.',
     desc:'The calendar, the TV displays and the dashboard now match the work order when nobody is staffed.',

@@ -20,6 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.44.2 — Tenant rooms show tenant aqua on the dashboard — Oct 14, 2026
+
+**Why.** Eli: *"we changed the color of the tenants (MBA and Camper) to the lighter blue. its just not showing lighter blue on the dashboard."* The calendar and WO already used `--c-st-tenant` (`#2ee8fd`); the Noir dashboard's room grid did not. No migration.
+
+1. **`roomFill()` (`app/(main)/page.tsx`) returns `n-tenant` for `status='tenant'`** — it used to lump tenant in with confirmed/lockout as `n-on` (booked green).
+2. **New `.n-home .n-rc.n-tenant` / `.n-rs.n-tenant` rules** (`styles/globals.css`) paint `var(--c-st-tenant)` with the same dark chip ink as the other fills.
+
+**Watch-outs.** The dashboard reads the SAME `--c-st-tenant` token as the calendar, so a future tenant colour change is one line in `:root`. Don't add an `--n-tenant` copy inside `.n-home` — that's how the two drifted.
+
+**Files.** `app/(main)/page.tsx`, `styles/globals.css`.
+
 ## v1.44.1 — Removing the last staffer now clears the calendar card — Oct 13, 2026
 
 **Why.** WO-1326 (Katie Vinten): the calendar, the TV display and the dashboard all showed **SL** (Sam Lorimore) as 2nd on Oct 12, but the work order had no assistant — and the Oct 13 card said "N/A". Eli: *"there was no assistant for the session and the WO shows no assistant assigned but the calendar shows SL."* No migration.
