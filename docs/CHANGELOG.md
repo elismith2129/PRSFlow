@@ -57,7 +57,9 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 **Watch-outs.** `daysSubmitted` now means "days settled", not literally "days a runner submitted" — the name was kept to avoid touching `app/(main)/billing/page.tsx`'s two-tone In-progress chip. `unreviewedSubmitted` still keys on real submissions only, so an office-locked day can never read as "needs review". The day card's right column is fixed at 120px: never put a third item back on the edit/× line.
 
-**Files.** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`.
+4. **Client-facing favicon** (`app/inquiry/icon.png`, Next per-segment icon): the public `/inquiry` page shows the chocolate-chip cookie from paramountrecording.com; the internal app keeps the green ribbon (`app/layout.tsx` icons unchanged from before a brief same-day black/white experiment). `public/favicon-*-v2.png` are unreferenced orphans from that experiment — the Cowork mount cannot delete files; safe to remove locally.
+
+**Files.** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`, `app/inquiry/icon.png`, `app/layout.tsx`.
 
 ## v1.43.10 — Runner guide, walkthrough edition; day arrows on the dashboard — Oct 12, 2026
 

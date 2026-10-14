@@ -55,12 +55,12 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
-    id: 'oct-13-2026-all-stars',
-    title: 'All-Stars',
-    version: 'v1.44',
+    id: 'oct-13-2026-all-stars-billing-staff',
+    title: 'All-Stars, closing out a day, calendar staff',
+    version: 'v1.44.1',
     date: 'Oct 13, 2026',
     intro:
-      'A star on lead and client profiles and an All-Stars filter. Use a THROWAWAY lead and a THROWAWAY client (made-up names) and unstar them when you are done.',
+      'Four things from Oct 13: the All-Stars star, reviewing a day now closes it out like a runner submission, the Reviewed chip on work order day cards, and the calendar clearing staff when the last one is removed. Use THROWAWAY leads, clients and sessions (made-up names) and undo what you change.',
     items: [
       {
         id: 'v144-star-lead', area: 'CRM',
@@ -87,16 +87,6 @@ export const TEST_BATCHES: TestBatch[] = [
         what: 'Leaving All-Stars by tapping a status pill shows that status',
         how: 'With "All-Stars" lit on All Leads, tap "Hot". The All-Stars pill goes dark and the list shows only Hot leads.',
       },
-    ],
-  },
-  {
-    id: 'oct-13-2026-office-review-settles-day',
-    title: 'Reviewing a day closes it out',
-    version: 'v1.43.11',
-    date: 'Oct 13, 2026',
-    intro:
-      'One change: when the office marks a day Reviewed, that day counts as done, the same as a runner submitting it. Use a THROWAWAY COD session booked for TODAY (any room, a made-up client) for every item.',
-    items: [
       {
         id: 'v14311-noshow-invoiced', area: 'Billing',
         what: 'A same-day no-show shows Invoiced as soon as it is reviewed and the invoice is attached',
@@ -116,6 +106,11 @@ export const TEST_BATCHES: TestBatch[] = [
         id: 'v14311-alarm-kept', area: 'Daily Ops',
         what: 'A reviewed day the runner never submitted still shows "WO not submitted" the next morning',
         how: 'Tomorrow morning, look at Daily Ops for the throwaway session from the item above. It should still show the red "WO not submitted" badge, because the runner never submitted it. Reviewing it does not hide that.',
+      },
+      {
+        id: 'v14311-inquiry-cookie', area: 'Website',
+        what: 'The public inquiry page shows the cookie in the browser tab; the app keeps the green wave',
+        how: 'In a private browser window, open prsflow.paramountrecording.com/inquiry. The tab icon is the chocolate-chip cookie (same as paramountrecording.com). Then log in to PRSFlo: every app tab still shows the green wave.',
       },
     ],
   },

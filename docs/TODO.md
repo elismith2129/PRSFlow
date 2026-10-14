@@ -7,6 +7,8 @@ Newest at the top of each group.*
 
 ## To run (Oct 13)
 
+- [ ] **Delete `public/favicon-16x16-v2.png` and `public/favicon-32x32-v2.png`** (unused, left by a same-day experiment; the Cowork mount can't delete files). *(Oct 13)*
+- [ ] **Open WO-1326 and press Save** after v1.44.1 deploys, to clear the stale SL / N/A on its calendar cards. *(Oct 13)*
 - [ ] **Run migration `20261013120000_all_stars.sql`** in the Supabase SQL editor. Until then the All-Star star shows but every toggle fails with a red "NOT saved" toast. *(Oct 13)*
 
 ## Billing hub (Oct 13)
