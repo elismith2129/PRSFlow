@@ -762,10 +762,20 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     let reviewedThru: string | null = null
     for (const [day, rows] of byDay.entries()) {
       const sub = rows.some(r => r.status === 'submitted' || r.status === 'approved')
-      if (sub) daysSubmitted++
+      // OFFICE REVIEW SETTLES A DAY (Eli, 2026-10-13: "a runner submittal and
+      // office submittal is the same thing"). A day the office marked Reviewed
+      // (admin_locked) counts as settled even with no runner submission — the
+      // cases a runner will never submit: a no-show on the final day (WO-1326,
+      // invoiced same-day, hid its Invoiced badge until midnight) and a session
+      // billing closes out before the runner gets to it. The unsubmitted-days
+      // alarm (unsubmittedDaysOf) deliberately does NOT learn this rule — the
+      // office closing a day is not the runner having turned it in.
+      const settled = sub || rows.some(r => r.admin_locked)
+      if (settled) daysSubmitted++
       if (sub && rows.some(r => (r.status === 'submitted' || r.status === 'approved') && !r.admin_locked)) unreviewedSubmitted = true
-      // A reviewed night: submitted, and every submitted row locked.
-      else if (sub && (!reviewedThru || day > reviewedThru)) reviewedThru = day
+      // A reviewed night: every submitted row locked — or office-reviewed with
+      // no submission at all (no-show / early close-out).
+      else if (settled && (!reviewedThru || day > reviewedThru)) reviewedThru = day
     }
     const unsubmittedDays = unsubmittedDaysOf(stRows, today)
     const stillRunning = !ended && daysSubmitted < daysTotal

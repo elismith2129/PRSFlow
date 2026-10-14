@@ -20,6 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.43.11 — Office review settles a day, same as a runner submission — Oct 13, 2026
+
+**Why.** WO-1326 (Katie Vinten, COD) was invoiced at noon but read *In progress* with no Invoiced badge. Its final day (Oct 13, today) was a **no-show**: Lori marked it, reviewed/locked it, and attached the invoice — but a no-show day never gets a runner submission, so the billing math kept the work order "still running" until midnight, and the Sep 28 extension rule demoted the invoiced row back to step 1. Eli: *"a runner submittal and office submittal is the same thing ya know?"* — he needs to close out any open work order whenever, across all scenarios. No migration.
+
+1. **A day the office marked Reviewed (`admin_locked`) now counts as settled even with no runner submission** (`lib/billing.ts`, the per-day loop in `fetchInvoices`). `settled = submitted || approved || any row admin_locked`. `daysSubmitted`, `stillRunning`, `arrived` and `reviewedThru` all inherit it, so the stage badge, the bucket and the extension demotion follow without a second change. Covers: a same-day no-show on the final day, and billing closing out a session (e.g. ends 3 PM) before the runner submits.
+2. **The unsubmitted-days alarm is deliberately unchanged** — `unsubmittedDaysOf` still flags a past day no runner turned in. The office closing a day is not the runner having submitted it; that accountability signal stays separate.
+
+**Watch-outs.** `daysSubmitted` now means "days settled", not literally "days a runner submitted" — the name was kept to avoid touching `app/(main)/billing/page.tsx`'s two-tone In-progress chip. `unreviewedSubmitted` still keys on real submissions only, so an office-locked day can never read as "needs review".
+
+**Files.** `lib/billing.ts`.
+
 ## v1.43.10 — Runner guide, walkthrough edition; day arrows on the dashboard — Oct 12, 2026
 
 **Why.** Eli on the runner guide: *"this one needs to be SOOOOO idiot proof. short copy, exact walkthrough and explanation of 'why' we do things."* And on the dashboard: *"i want that dashboard cal to have the little arrows to click between days. very helpful from the dashboard."* No migration.

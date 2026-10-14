@@ -5,6 +5,10 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Billing hub (Oct 13)
+
+- [ ] **WO card view: REVIEWED chip overlaps the status pills on a no-show + reviewed day.** The green chip sits on top of CONFIRMED / TENTATIVE / CANCELLED (WO-1326, Oct 13 card). Not seen before Oct 13. *(Oct 13)*
+
 ## SOPs: walkthrough editions (Oct 7)
 
 - [x] ~~Runner guide~~ Shipped in v1.43.10 (walkthrough edition, phone layout, a Why on every step). *(Oct 12)*

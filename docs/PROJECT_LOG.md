@@ -381,6 +381,19 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 13, 2026 — Office review settles a day (v1.43.11)
+
+**Where it started.** WO-1326 showed *not invoiced* although the invoice was attached. Diagnosis from the live rows: invoice PDF + $1,650 snapshot on file, but the last day (Oct 13, today) was a no-show — admin_locked, status still `in_progress`. A day only counted as over if a runner submitted it or the date passed, and a no-show never gets a runner submission. So the work order was "still running" until midnight and the Sep 28 extension rule (invoiced-but-running → In progress) hid the badge. It would have self-healed at midnight; Eli wanted the gap closed for good: *"what I need is to be able to complete an open WO whenever… a runner submittal and office submittal is the same thing."*
+
+**Decision.** An office Review (`admin_locked`) settles a day exactly like a runner submission. One change in the per-day loop; everything downstream inherits it.
+
+**Rejected.**
+- *Using the booking's end time (e.g. 3 PM) to decide a day is over.* Times are text, sessions run long, and the runner/office act is the real signal — a clock would just move the same problem to 3:01.
+- *A new "Close day" button.* Review already is that act; a second button is another thing to forget (the "trying not to make more pages/things" rule).
+- *Teaching the unsubmitted-days alarm the same rule.* That alarm exists to catch runners who didn't turn a night in; letting the office's lock silence it would erase the accountability trail.
+
+**Also seen, not fixed.** In the WO card view, on a no-show day that is Reviewed, the green **REVIEWED** chip renders over the CONFIRMED/TENTATIVE/CANCELLED pill row (screenshot, Oct 13). Eli hadn't seen it before — likely the no-show + reviewed combination. Logged in TODO.
+
 ### October 5, 2026 — Daily Ops gets small, runners get a late submit, and a work order that vanished (v1.43.0 – v1.43.2)
 
 **Where it started.** Eli wanted to see, after the fact, which runners forgot to submit a

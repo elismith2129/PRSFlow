@@ -55,6 +55,31 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-13-2026-office-review-settles-day',
+    title: 'Reviewing a day closes it out',
+    version: 'v1.43.11',
+    date: 'Oct 13, 2026',
+    intro:
+      'One change: when the office marks a day Reviewed, that day counts as done, the same as a runner submitting it. Use a THROWAWAY COD session booked for TODAY (any room, a made-up client) for every item.',
+    items: [
+      {
+        id: 'v14311-noshow-invoiced', area: 'Billing',
+        what: 'A same-day no-show shows Invoiced as soon as it is reviewed and the invoice is attached',
+        how: 'Open the throwaway work order. On today\'s day, press No show, then mark the day Reviewed, then Save. In the billing hub, drop any PDF on that line as its invoice. The line should read Invoiced right away, not In progress.',
+      },
+      {
+        id: 'v14311-early-closeout', area: 'Billing',
+        what: 'Billing can close out today\'s session before the runner submits',
+        how: 'Use a throwaway session for today that the runner has NOT submitted. Enter the times, mark the day Reviewed, Save. In the billing hub the line should move out of In progress (to Needs invoice) without waiting for the runner or for midnight.',
+      },
+      {
+        id: 'v14311-alarm-kept', area: 'Daily Ops',
+        what: 'A reviewed day the runner never submitted still shows "WO not submitted" the next morning',
+        how: 'Tomorrow morning, look at Daily Ops for the throwaway session from the item above. It should still show the red "WO not submitted" badge, because the runner never submitted it. Reviewing it does not hide that.',
+      },
+    ],
+  },
+  {
     id: 'oct-5-2026-daily-ops-late-submit-deletes',
     title: 'Daily Ops cards, late submit, deleted work orders',
     version: 'v1.43',

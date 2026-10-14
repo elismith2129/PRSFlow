@@ -679,6 +679,23 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.43.11', date:'Oct 13, 2026',
+    headline:'Reviewing a day closes it out, the same as a runner submitting it.',
+    desc:'You no longer have to wait for midnight to finish a work order whose last day never got a runner submission.',
+    changes:[
+      'When the office marks a day <b>Reviewed</b>, that day now counts as done &mdash; exactly like a runner hitting Submit.',
+      'A <b>no-show</b> on the last day: mark it No show, review it, attach the invoice, and the work order shows <b>Invoiced</b> right away (it used to wait until midnight).',
+      'A session that ends at 3 PM: if the runner has not submitted yet, reviewing the day yourself lets you invoice and finish it now.',
+      'The <b>WO not submitted</b> badge on Daily Ops still shows when a runner never turned a night in. Reviewing a day does not hide that.',
+    ],
+    meaning:'You can finish any open work order whenever the work is actually done, without waiting for the date to roll over.',
+    dev:[
+      'A day the office marked Reviewed (admin_locked) now counts as settled even with no runner submission (lib/billing.ts, the per-day loop in fetchInvoices). daysSubmitted, stillRunning, arrived and reviewedThru all inherit it, so the stage badge, the bucket and the extension demotion follow without a second change.',
+      'The unsubmitted-days alarm is deliberately unchanged: unsubmittedDaysOf still flags a past day no runner turned in.',
+      'Watch-out: daysSubmitted now means "days settled". unreviewedSubmitted still keys on real submissions only, so an office-locked day can never read as needs review.',
+    ],
+  },
+  {
     ver:'v1.43', date:'Oct 5, 2026',
     headline:'Daily Ops is one clean page. Runners can submit late. Deleted work orders can be recovered.',
     desc:'Last night at a glance in four same-size cards, with Flags as a tab beside it. Runners can submit after 8:50 AM. And nothing that gets deleted is gone for good.',
