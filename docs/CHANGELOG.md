@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.44.3 — Money totals are rounded to the cent — Oct 16, 2026
+
+**Why.** WO-1368 sat in **Balance due** showing a $0.00 balance. Paid 810 + 278.10 + 278.10 sums to 1366.1999999999998 in floating point against a 1366.20 total; the balance was 2e-13 — displayed as $0.00, but `deriveBucket` tests `balance > 0`. Any WO with card payments split across rows could do this. Eli: "round that always so this doesnt happen."
+
+`computeWoTotals` now returns every figure rounded to the cent (new exported `cents()`), and `balance` is derived from the rounded grand and paid. One choke point, so the hub buckets, WO screen and PDF all agree. Settled WOs read exactly 0.
+
+**Migrations:** none. **Files:** `lib/woTotals.ts`.
+
+---
+
 ## v1.44.2 — Tenant rooms show tenant aqua on the dashboard — Oct 14, 2026
 
 **Why.** Eli: *"we changed the color of the tenants (MBA and Camper) to the lighter blue. its just not showing lighter blue on the dashboard."* The calendar and WO already used `--c-st-tenant` (`#2ee8fd`); the Noir dashboard's room grid did not. No migration.

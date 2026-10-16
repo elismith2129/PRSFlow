@@ -170,6 +170,11 @@ export function cardTotalForBase(base: number): number {
   return parseFloat((base * (1 + CARD_FEE_RATE)).toFixed(2))
 }
 
+/** Round to the cent. Every total computeWoTotals returns goes through this. */
+export function cents(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
 /** Money coercion: accepts 1450, "1450", "$1,450.00", null. Non-numeric → 0. */
 function money(v: number | string | null | undefined): number {
   if (v === null || v === undefined || v === '') return 0
@@ -246,5 +251,18 @@ export function computeWoTotals(input: WoTotalsInput): WoTotals {
   // surcharges on money that actually moved, not a function of the invoice.
   const grand = subtotal - discount + cardFees
 
-  return { studio, engineer, rentals, food, cardFees, subtotal, discount, grand, paid, balance: grand - paid }
+  // EVERY FIGURE LEAVES HERE ROUNDED TO THE CENT (Eli, 2026-10-16: "round that
+  // always so this doesnt happen"). Binary floating point can't hold .10 exactly:
+  // WO-1368 paid 810 + 278.10 + 278.10 = 1366.1999999999998 against a 1366.20
+  // total, a balance of 2e-13 — shown as $0.00 but > 0, so the hub filed it under
+  // Balance due. Rounding the components AND deriving balance from the rounded
+  // grand/paid means every consumer (hub buckets, WO screen, PDF) sees the same
+  // cents, and a settled WO is exactly 0.
+  const c = cents
+  const g = c(grand), pd = c(paid)
+  return {
+    studio: c(studio), engineer: c(engineer), rentals: c(rentals), food: c(food),
+    cardFees: c(cardFees), subtotal: c(subtotal), discount: c(discount),
+    grand: g, paid: pd, balance: c(g - pd),
+  }
 }
