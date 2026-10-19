@@ -381,6 +381,48 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 19, 2026 — The Lakers game sheet, and a rule about bubbles (v1.45.0)
+
+**Where it started.** Eli: "going to work on the lakers section of the app. read all logs." Reading
+them turned up four things nobody had logged: the 26–27 schedule file slipped in with the rail
+rework and no changelog line; the page never subscribed to realtime; RLS said `owner` while the
+page gate said `owner OR Eli`, so a non-owner Eli would see an empty page with no error; and one
+seed row was split on a comma. All four fixed here.
+
+**The pop-up.** "all i need is basic game info at the top header. then a place to put who i
+offered to and a place to put who i gave them too. very simple." Autofill "just like the client
+sections… same rules… dont want these to create client accounts tho."
+
+**The bigger ask.** "this app across the board has a lot of bubbles in rounded sections. It's
+starting to kind of annoy me. I want to take this opportunity to work on how information is
+displayed. Just in this pop-up card… potentially apply site-wide… this is low stakes and only
+touches this one area." Three mocks (`docs/design-refs/lakers-game-popup-options.html`), all on
+the live soft-skin tokens:
+- **A · Sheet** — label left, fact right, no wells. **Picked.**
+- **B · Prose** — the card reads as sentences with the blanks as fields. Least chrome, best
+  read, but nothing else in the app reads like it, so it would not travel past small
+  single-record cards. Rejected on that.
+- **C · Ledger** — stanzas with detail on the right edge; the §16c text-chrome geometry. Was
+  the recommendation for travelling furthest; Eli chose A.
+
+**The rule the sheet tests (for site-wide use, not yet ruled):** a rounded fill means
+*pressable* or *openable*. Information sits on the surface — micro-label, fact, muted detail —
+and a field is plain text at rest with the wash fill only under the one being edited. Where it
+would go next, by how little it risks: task and flag modals, the lead profile, the client card,
+the WO session-info block. Tables and the calendar stay.
+
+**Eli's rulings inside A.** No strike-through on offered names ("just a section where we can
+list"); Mine / Theirs becomes **Claimed / Transferred**, on the row list too. The column names
+were left alone — a rename migration buys nothing.
+
+**Rejected.** *A "new client" row in the dropdown* (the WO box has one) — explicitly not wanted.
+*Keeping chips for offered names* — a chip looks pressable and these aren't. *Editable date /
+time / opponent wells in the header* — they change once a year; the header is text you tap.
+
+**Process.** Worked through the desktop bridge on `~/dev/prsflow`; GitHub isn't linked to this
+chat, so the push is Eli's (`./scripts/push.sh`). `tsc` + `selftest.mjs` clean, no new deltas.
+Not seen against the live app.
+
 ### October 14, 2026 — Tenant aqua on the dashboard (v1.44.2)
 
 **Report.** Eli: tenant rooms (MBA, Camper) had been changed to the lighter blue, but the dashboard still showed them green.

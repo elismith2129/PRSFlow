@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lakers game pop-up — three ways to lay out information</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens copied from styles/globals.css (soft skin, 2026-10) ─────────── */
+:root {
+  --c-bg: #0b0a09; --c-fg: #f2efe7;
+  --c-srf: #151412;
+  --c-wash: rgba(242,239,231,.06); --c-wash2: rgba(242,239,231,.12);
+  --c-fg-2: rgba(242,239,231,.72); --c-fg-3: rgba(242,239,231,.45);
+  --c-softsh: 0 2px 5px rgba(0,0,0,.25), 0 8px 22px rgba(0,0,0,.22);
+  --c-ctlsh: 0 1px 4px rgba(0,0,0,.3);
+  --c-chip-ink: #1c2626; --c-ivory: #d5d0c2;
+  --c-st-hot: #ff5a4d; --c-st-warm: #ffa94d; --c-st-booked: #43dfae;
+}
+[data-theme="light"] {
+  --c-bg: #fdfcf9; --c-fg: #1a1712; --c-srf: #f1efe9;
+  --c-wash: rgba(26,23,18,.055); --c-wash2: rgba(26,23,18,.105);
+  --c-fg-2: rgba(26,23,18,.72); --c-fg-3: rgba(26,23,18,.46);
+  --c-softsh: 0 1px 2px rgba(26,23,18,.05), 0 4px 12px rgba(26,23,18,.05);
+  --c-ctlsh: 0 1px 3px rgba(26,23,18,.14);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--c-bg); color: var(--c-fg); font-family: 'Inter', system-ui, sans-serif; font-size: 14.5px; line-height: 1.6; }
+.arch { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 400; }
+.mono { font-family: 'DM Mono', ui-monospace, monospace; }
+.lbl { font-size: 9.5px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; opacity: .45; }
+
+/* ── Page chrome ─────────────────────────────────────────────────────────── */
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; }
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; }
+.top h1 { font-size: 24px; letter-spacing: -.02em; margin: 0; }
+.top .sub { font-size: 13px; opacity: .6; max-width: 720px; }
+.toggle { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 7px 12px; border-radius: 99px; background: var(--c-srf); box-shadow: var(--c-ctlsh); cursor: pointer; border: 0; color: var(--c-fg); font-family: inherit; }
+.principle { margin: 18px 0 30px; padding: 16px 18px; border-radius: 16px; background: var(--c-srf); box-shadow: var(--c-softsh); max-width: 860px; }
+.principle b { font-weight: 800; }
+.principle p { margin: 0 0 6px; font-size: 13.5px; }
+.principle p:last-child { margin: 0; }
+
+.opt { margin: 0 0 54px; }
+.opt-head { display: grid; grid-template-columns: 54px 1fr; gap: 16px; align-items: start; margin-bottom: 14px; max-width: 860px; }
+.opt-head .k { font-size: 44px; line-height: 1; letter-spacing: -.03em; opacity: .9; }
+.opt-head h2 { margin: 0 0 2px; font-size: 17px; }
+.opt-head p { margin: 0; font-size: 13px; opacity: .7; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .pair { grid-template-columns: 1fr; } }
+.notes { font-size: 12.5px; line-height: 1.55; }
+.notes .lbl { display: block; margin: 12px 0 2px; }
+.notes .lbl:first-child { margin-top: 0; }
+.notes ul { margin: 0; padding-left: 16px; }
+.notes li { margin: 0 0 3px; }
+
+/* stage: the dimmed backdrop a modal sits on */
+.stage { background: rgba(0,0,0,.35); border-radius: 20px; padding: 28px; display: flex; justify-content: center; }
+[data-theme="light"] .stage { background: rgba(42,39,34,.14); }
+.modal { background: var(--c-srf); border-radius: 16px; width: 100%; max-width: 480px; box-shadow: var(--c-softsh), 0 18px 50px rgba(0,0,0,.3); }
+
+/* generic bits */
+.ink2 { color: var(--c-fg-2); } .ink3 { color: var(--c-fg-3); }
+.strike { text-decoration: line-through; text-decoration-color: var(--c-st-hot); text-decoration-thickness: 1.5px; }
+.ok { color: var(--c-st-booked); }
+.caret::after { content: ""; display: inline-block; width: 1.5px; height: 1em; background: var(--c-fg); vertical-align: -2px; margin-left: 1px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.btn { font-size: 10.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 7px 14px; border-radius: 99px; background: var(--c-srf); box-shadow: var(--c-ctlsh); color: var(--c-fg); border: 0; font-family: inherit; cursor: pointer; }
+.btn.primary { background: var(--c-ivory); color: #1b1a17; }
+[data-theme="light"] .btn.primary { background: var(--c-fg); color: var(--c-bg); }
+.btn.quiet { background: transparent; box-shadow: none; opacity: .6; }
+.btn.danger { background: transparent; box-shadow: none; color: var(--c-st-hot); }
+.foot { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.foot .danger { margin-right: auto; }
+
+/* ── AS-IS (what ships today, condensed) ─────────────────────────────────── */
+.asis { padding: 24px; }
+.asis .lbl { display: block; margin: 10px 0 3px; }
+.asis .well { height: 32px; border-radius: 12px; background: var(--c-wash); padding: 0 10px; font-size: 12.5px; font-weight: 500; display: flex; align-items: center; }
+.asis .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; }
+.chip { font-size: 10.5px; padding: 3px 9px; border-radius: 99px; background: var(--c-wash2); }
+.chip .s { opacity: .5; margin-left: 4px; }
+
+/* ── A · SHEET (label left, value right; no wells) ───────────────────────── */
+.sheet { padding: 22px 24px 20px; }
+.sheet .head { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: baseline; margin-bottom: 18px; }
+.sheet .head .date { font-size: 12px; line-height: 1.25; opacity: .7; }
+.sheet .head .opp { font-size: 20px; letter-spacing: -.02em; line-height: 1.1; }
+.sheet .head .meta { font-size: 11.5px; opacity: .5; margin-top: 3px; }
+.sheet .row { display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: baseline; padding: 7px 0; }
+.sheet .row .lbl { padding-top: 3px; }
+.sheet .val { font-size: 14px; font-weight: 600; min-height: 22px; }
+.sheet .val.empty { font-weight: 400; opacity: .35; }
+.sheet .val .co { font-weight: 400; opacity: .55; margin-left: 8px; font-size: 12.5px; }
+.sheet .names { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.sheet .names .n { display: flex; justify-content: space-between; gap: 12px; }
+.sheet .names .n .tag { font-size: 9.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .4; }
+.sheet .names .add { opacity: .35; font-weight: 400; }
+.sheet .ticks { display: flex; gap: 22px; font-size: 13px; font-weight: 600; }
+.sheet .ticks .t { display: inline-flex; align-items: center; gap: 7px; }
+.sheet .ticks .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-wash2); }
+.sheet .ticks .on .dot { background: var(--c-st-booked); }
+.sheet .ticks .off { opacity: .45; }
+.sheet .foot { margin-top: 18px; }
+/* focused field: the fill appears only when you're in it */
+.sheet .val.focus { background: var(--c-wash2); border-radius: 8px; margin: -3px -8px; padding: 3px 8px; }
+
+/* ── B · PROSE (the card reads as sentences) ─────────────────────────────── */
+.prose { padding: 24px 26px 20px; }
+.prose .kick { font-size: 11px; opacity: .55; margin-bottom: 2px; }
+.prose .opp { font-size: 24px; letter-spacing: -.025em; line-height: 1.05; margin-bottom: 22px; }
+.prose .opp .vs { font-family: 'Inter'; font-weight: 400; font-size: 13px; opacity: .45; letter-spacing: 0; margin-right: 6px; vertical-align: 5px; }
+.prose p { margin: 0 0 14px; font-size: 15px; line-height: 1.75; }
+.prose .blank { font-weight: 700; }
+.prose .blank.empty { font-weight: 400; opacity: .35; }
+.prose .blank.focus { background: var(--c-wash2); border-radius: 6px; padding: 1px 6px; margin: 0 -2px; }
+.prose .co { opacity: .55; font-weight: 400; }
+.prose .claim { font-size: 13px; }
+.prose .claim .t { display: inline-flex; align-items: center; gap: 6px; margin-right: 18px; font-weight: 600; }
+.prose .claim .off { opacity: .4; font-weight: 400; }
+.prose .foot { margin-top: 10px; }
+
+/* ── C · LEDGER (one column, alignment does the grouping) ────────────────── */
+.ledger { padding: 20px 24px 18px; }
+.ledger .head { margin-bottom: 16px; }
+.ledger .head .line1 { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ledger .head .opp { font-size: 18px; letter-spacing: -.02em; }
+.ledger .head .when { font-size: 12px; opacity: .6; white-space: nowrap; }
+.ledger .head .meta { font-size: 11px; opacity: .45; margin-top: 2px; }
+.ledger .stanza { margin: 0 0 14px; }
+.ledger .stanza .lbl { display: block; margin-bottom: 4px; }
+.ledger .ln { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: baseline; padding: 3px 0; font-size: 14px; }
+.ledger .ln .r { font-size: 11px; opacity: .45; white-space: nowrap; }
+.ledger .ln .r.mono { font-size: 11px; }
+.ledger .ln.hero { font-size: 16px; font-weight: 700; }
+.ledger .ln.add { opacity: .35; }
+.ledger .ln .co { opacity: .5; font-weight: 400; font-size: 12.5px; margin-left: 8px; }
+.ledger .ln.focus { background: var(--c-wash2); border-radius: 8px; margin: 0 -8px; padding: 3px 8px; }
+.ledger .claims { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.ledger .claims .ln { font-size: 13px; }
+.ledger .claims .mark { font-weight: 800; }
+.ledger .foot { margin-top: 14px; }
+
+/* ── Autofill dropdown (shared by all three) ─────────────────────────────── */
+.dd { margin-top: 6px; border-radius: 12px; background: var(--c-srf); box-shadow: var(--c-softsh), 0 10px 30px rgba(0,0,0,.35); padding: 6px 0; font-size: 13px; }
+.dd .hd { padding: 4px 12px 2px; }
+.dd .it { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 5px 12px; align-items: baseline; }
+.dd .it.hi { background: var(--c-wash2); }
+.dd .it .who { font-weight: 600; }
+.dd .it .who .what { font-weight: 400; opacity: .5; margin-left: 7px; font-size: 12px; }
+.dd .it .cnt { font-size: 10.5px; opacity: .45; white-space: nowrap; }
+.dd .it.typed { opacity: .55; }
+.dd .it.typed .who { font-weight: 400; }
+.dd.text { border-radius: 0; background: transparent; box-shadow: none; padding: 6px 0 0; }
+.dd.text .it { padding-left: 0; padding-right: 0; margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: 8px; }
+
+/* side-by-side mini for the dropdown section */
+.ddpair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 860px; }
+@media (max-width: 700px) { .ddpair { grid-template-columns: 1fr; } }
+.ddbox { background: var(--c-srf); border-radius: 16px; padding: 18px 20px; box-shadow: var(--c-softsh); }
+.ddbox .lbl { display: block; margin-bottom: 8px; }
+.ddbox .typing { font-size: 14px; font-weight: 600; padding: 3px 8px; margin: 0 -8px; background: var(--c-wash2); border-radius: 8px; display: inline-block; }
+
+.sitewide { max-width: 860px; margin-top: 40px; padding: 18px 20px; border-radius: 16px; background: var(--c-srf); box-shadow: var(--c-softsh); }
+.sitewide h3 { margin: 0 0 8px; font-size: 15px; }
+.sitewide p, .sitewide li { font-size: 13px; }
+.sitewide ul { padding-left: 18px; margin: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="top">
+  <div>
+    <h1 class="arch">The Lakers game pop-up, three ways</h1>
+    <div class="sub">Same content in each: the game at the top, who was offered, who got the pair, the two claims. The question is how much of it gets a container. Dark is the default register; flip to light to check the mirror.</div>
+  </div>
+  <button class="toggle" onclick="document.documentElement.toggleAttribute('data-theme') || document.documentElement.setAttribute('data-theme','light'); if(document.documentElement.getAttribute('data-theme')==='') document.documentElement.removeAttribute('data-theme')">Light / dark</button>
+</div>
+
+<div class="principle">
+  <p><b>The one rule all three test:</b> a rounded fill is for a thing you can <i>press</i>, or a <i>row you can open</i>. Information itself sits straight on the surface, and type does the grouping: a tracked micro-label above, a bigger weight for the fact, muted ink for the trailing detail.</p>
+  <p>Inputs are the biggest source of bubbles today, because every field is a well whether or not you're in it. In all three options a field is plain text until you click it; the wash fill appears only under the field you're editing, then goes away. One bubble at a time, and it's the one you're looking at.</p>
+  <p>Today's pop-up, for reference, has nine wells, two chip rows and a suggestion strip inside a 480px card. It is shown first.</p>
+</div>
+
+<!-- ═══════════════ AS-IS ═══════════════ -->
+<section class="opt">
+  <div class="opt-head">
+    <div class="k arch ink3">0</div>
+    <div><h2>As it is today</h2><p>Nine fields in wells, suggestions as a chip strip, passed names as struck chips. Everything you can read has a container, so nothing stands out.</p></div>
+  </div>
+  <div class="pair">
+    <div class="stage"><div class="modal asis">
+      <div class="arch" style="font-size:15px">Golden State Warriors</div>
+      <div style="font-size:11.5px;opacity:.55">Season 26-27</div>
+      <div class="grid2">
+        <div><span class="lbl">Date</span><div class="well">10/21/2026</div></div>
+        <div><span class="lbl">Time</span><div class="well">7:00 PM</div></div>
+      </div>
+      <span class="lbl">Opponent</span><div class="well">Golden State Warriors</div>
+      <span class="lbl">Tickets go to</span><div class="well" style="font-size:14px;font-weight:700">Ela Talu</div>
+      <div class="chips"><span class="chip">Fernando De Los Rios<span class="s">Paramount Staff · 1 this season · 4 all</span></span><span class="chip">Sesen<span class="s">0 · 2</span></span><span class="chip">Naim<span class="s">Columbia · 1 · 1</span></span></div>
+      <span class="lbl">Company</span><div class="well">Interscope</div>
+      <span class="lbl">Offered — passed</span>
+      <div class="chips"><span class="chip">Haiko (sixbill ×</span><span class="chip">sosocamo) ×</span><span class="chip">Gabi Kochlani ×</span><span class="chip">Sesen ×</span></div>
+      <div class="well ink3">Type a name, Enter to add</div>
+      <span class="lbl">Note</span><div class="well ink3">Playoffs, postponed, didn't go…</div>
+      <div class="foot" style="margin-top:16px"><button class="btn danger">Delete</button><button class="btn quiet">Cancel</button><button class="btn">Save</button></div>
+    </div></div>
+    <div class="notes">
+      <span class="lbl">What's wrong with it</span>
+      <ul>
+        <li>Date, time and opponent are editable wells even though they almost never change, so three of the first four things you see are chrome.</li>
+        <li>The recipient and the company are two wells that mean one thing.</li>
+        <li>Passed names and suggestions use the same chip, so a thing you can press looks like a thing you're told.</li>
+        <li>The split-on-comma bug lives here: "Haiko (sixbill, sosocamo)" became two chips.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ A · SHEET ═══════════════ -->
+<section class="opt">
+  <div class="opt-head">
+    <div class="k arch">A</div>
+    <div><h2>Sheet — label left, fact right</h2><p>The oldest readable form there is: a column of small labels and a column of answers. No wells. The game header is fixed text; click it if you ever need to correct it.</p></div>
+  </div>
+  <div class="pair">
+    <div class="stage"><div class="modal sheet">
+      <div class="head">
+        <div class="date mono">Tue<br>Oct 21<br>7:00 PM</div>
+        <div><div class="opp arch">Golden State Warriors</div><div class="meta">Crypto.com Arena · 26–27 season · tomorrow</div></div>
+      </div>
+
+      <div class="row"><span class="lbl">Went to</span>
+        <div class="val">Ela Talu<span class="co">Interscope · A&amp;R</span></div></div>
+
+      <div class="row"><span class="lbl">Offered</span>
+        <div class="names">
+          <div class="n"><span class="strike">Haiko (sixbill, sosocamo)</span><span class="tag">passed</span></div>
+          <div class="n"><span class="strike">Gabi Kochlani</span><span class="tag">passed</span></div>
+          <div class="n"><span class="strike">Sesen</span><span class="tag">passed</span></div>
+          <div class="n add"><span>+ name</span></div>
+        </div></div>
+
+      <div class="row"><span class="lbl">Claimed</span>
+        <div class="ticks"><span class="t on"><span class="dot"></span>Mine</span><span class="t on"><span class="dot"></span>Theirs</span></div></div>
+
+      <div class="row"><span class="lbl">Note</span>
+        <div class="val empty">—</div></div>
+
+      <div class="foot"><button class="btn danger">Delete</button><button class="btn quiet">Cancel</button><button class="btn primary">Save</button></div>
+    </div></div>
+    <div class="notes">
+      <span class="lbl">How it works</span>
+      <ul>
+        <li>"Went to" is one field. Type a name; the company comes with the match and sits after it in muted ink. If you just typed a name, it stands alone.</li>
+        <li>"Offered" is a list, one name per line. Enter adds the next line. Every name here is someone who passed; that's what the column means, so there's no second state to show.</li>
+        <li>The claims are two dots. Green is on. Click to flip, no save needed (same as the row ticks today).</li>
+        <li>The header is read-only. Tap the opponent to open the date/time/opponent fields the one time a year they need editing.</li>
+      </ul>
+      <span class="lbl">Site-wide</span>
+      <ul>
+        <li>This is the lead profile and the client card, done without wells. The same 92px label column would carry every detail panel in the app.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ B · PROSE ═══════════════ -->
+<section class="opt">
+  <div class="opt-head">
+    <div class="k arch">B</div>
+    <div><h2>Prose — the card reads as sentences</h2><p>Fill in the blanks. There are no labels at all; the sentence is the label. The least chrome of the three, and the most different from the rest of the app.</p></div>
+  </div>
+  <div class="pair">
+    <div class="stage"><div class="modal prose">
+      <div class="kick mono">Tue, Oct 21 · 7:00 PM · Crypto.com Arena</div>
+      <div class="opp arch"><span class="vs">vs</span>Golden State Warriors</div>
+
+      <p>Offered to <span class="blank strike">Haiko (sixbill, sosocamo)</span>, <span class="blank strike">Gabi Kochlani</span> and <span class="blank strike">Sesen</span>, who passed. <span class="blank empty">+ another</span></p>
+
+      <p>The tickets went to <span class="blank focus">Ela Talu<span class="caret"></span></span> <span class="co">at Interscope.</span></p>
+
+      <div class="claim"><span class="t"><span class="ok">●</span> Claimed on my account</span><span class="t"><span class="ok">●</span> Claimed by them</span></div>
+
+      <p class="ink3" style="font-size:13px;margin-top:12px">No note. <span class="blank empty">Add one</span></p>
+
+      <div class="foot"><button class="btn danger">Delete</button><button class="btn quiet">Cancel</button><button class="btn primary">Save</button></div>
+    </div></div>
+    <div class="notes">
+      <span class="lbl">How it works</span>
+      <ul>
+        <li>Each bold phrase is a field. Click it, it gets the wash fill and a caret (shown on Ela). Click away, the fill goes.</li>
+        <li>An empty blank is muted text that says what goes there: "+ another", "Add one".</li>
+        <li>The sentence changes with the data: "Nobody was offered yet" / "Not given yet". The grammar is the empty state.</li>
+        <li>Company appears automatically from the client match ("at Interscope"); if you typed a plain name it just ends at the name.</li>
+      </ul>
+      <span class="lbl">Risks</span>
+      <ul>
+        <li>Nothing else in PRSFlo reads like this, so it won't travel to tables or the WO. It fits small single-record cards: this one, a flag, a task, a memo.</li>
+        <li>Fields that aren't in a sentence (a date) need a sentence invented for them.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ C · LEDGER ═══════════════ -->
+<section class="opt">
+  <div class="opt-head">
+    <div class="k arch">C</div>
+    <div><h2>Ledger — one column, alignment does the grouping</h2><p>A heading, then stanzas. Facts on the left, their detail on the right edge in small ink, like a receipt. This is closest to how the WO day block and the billing rows already read, so it would travel.</p></div>
+  </div>
+  <div class="pair">
+    <div class="stage"><div class="modal ledger">
+      <div class="head">
+        <div class="line1"><span class="opp arch">Golden State Warriors</span><span class="when mono">Tue Oct 21 · 7:00 PM</span></div>
+        <div class="meta">Crypto.com Arena · 26–27 · home</div>
+      </div>
+
+      <div class="stanza">
+        <span class="lbl">Went to</span>
+        <div class="ln hero"><span>Ela Talu<span class="co">Interscope</span></span><span class="r">A&amp;R · on file</span></div>
+      </div>
+
+      <div class="stanza">
+        <span class="lbl">Offered first · passed</span>
+        <div class="ln"><span class="strike">Haiko (sixbill, sosocamo)</span><span class="r mono">Oct 14</span></div>
+        <div class="ln"><span class="strike">Gabi Kochlani</span><span class="r mono">Oct 15</span></div>
+        <div class="ln"><span class="strike">Sesen</span><span class="r mono">Oct 16</span></div>
+        <div class="ln add"><span>+ name</span><span class="r"></span></div>
+      </div>
+
+      <div class="stanza">
+        <span class="lbl">Claimed</span>
+        <div class="claims">
+          <div class="ln"><span>On my account</span><span class="mark ok">✓</span></div>
+          <div class="ln"><span>By Ela</span><span class="mark ok">✓</span></div>
+        </div>
+      </div>
+
+      <div class="stanza">
+        <span class="lbl">Note</span>
+        <div class="ln add"><span>—</span></div>
+      </div>
+
+      <div class="foot"><button class="btn danger">Delete</button><button class="btn quiet">Cancel</button><button class="btn primary">Save</button></div>
+    </div></div>
+    <div class="notes">
+      <span class="lbl">How it works</span>
+      <ul>
+        <li>The recipient is the hero line: bigger and bold, because it's the answer the row exists for. Everything else is 14px.</li>
+        <li>The right edge carries the detail you'd otherwise put in a chip: "on file" for a client match, the date each offer went out (new, cheap to keep, useful next year).</li>
+        <li>"By Ela" uses the recipient's first name, so "Theirs" never has to be explained.</li>
+        <li>Click a line to edit it; the wash fill appears on that line only.</li>
+      </ul>
+      <span class="lbl">Site-wide</span>
+      <ul>
+        <li>This is the same geometry as §16c table chrome (text headers, no bars): micro-label, then lines. The lead profile, the client card, the task modal and the WO's session-info block could all drop their wells for this.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ AUTOFILL ═══════════════ -->
+<section class="opt">
+  <div class="opt-head">
+    <div class="k arch ink3">+</div>
+    <div><h2>The autofill, two treatments</h2><p>Same search as the work order's client box: clients by name, A&amp;R contacts by name, artists by name; past Lakers recipients ranked first. Free text is always allowed and never creates a client. The difference is whether the results float in a box or sit in the text.</p></div>
+  </div>
+  <div class="ddpair">
+    <div class="ddbox">
+      <span class="lbl">Floating list (today's pattern, cleaned up)</span>
+      <div class="typing">Ela<span class="caret"></span></div>
+      <div class="dd">
+        <div class="hd lbl">Had tickets before</div>
+        <div class="it hi"><span class="who">Ela Talu<span class="what">A&amp;R · Interscope</span></span><span class="cnt">1 this season · 3 all</span></div>
+        <div class="hd lbl" style="margin-top:4px">On file</div>
+        <div class="it"><span class="who">Elan Wright<span class="what">COD client</span></span><span class="cnt"></span></div>
+        <div class="it"><span class="who">Elasticity<span class="what">artist · 10K Projects</span></span><span class="cnt"></span></div>
+        <div class="it typed"><span class="who">Use "Ela" as typed</span><span class="cnt">no client made</span></div>
+      </div>
+    </div>
+    <div class="ddbox">
+      <span class="lbl">In the text (no box)</span>
+      <div class="typing">Ela<span class="caret"></span></div>
+      <div class="dd text">
+        <div class="hd lbl">Had tickets before</div>
+        <div class="it hi"><span class="who">Ela Talu<span class="what">A&amp;R · Interscope</span></span><span class="cnt">1 this season · 3 all</span></div>
+        <div class="hd lbl" style="margin-top:4px">On file</div>
+        <div class="it"><span class="who">Elan Wright<span class="what">COD client</span></span><span class="cnt"></span></div>
+        <div class="it"><span class="who">Elasticity<span class="what">artist · 10K Projects</span></span><span class="cnt"></span></div>
+        <div class="it typed"><span class="who">Use "Ela" as typed</span><span class="cnt">no client made</span></div>
+      </div>
+      <div class="notes" style="margin-top:12px"><ul><li>Results push the content below down while you type, then collapse on pick. One less floating surface; the highlighted row is the only fill.</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<div class="sitewide">
+  <h3>If one of these goes site-wide, this is the rule it writes</h3>
+  <ul>
+    <li><b>A fill means pressable or openable.</b> Buttons, pills, list rows that open something, the one field you're editing. Nothing else.</li>
+    <li><b>Reading is done by type, not by boxes.</b> Micro-label above, the fact at 14px, the hero fact bigger, the trailing detail in muted ink at the right edge.</li>
+    <li><b>A field is text at rest.</b> The wash well appears on focus and leaves on blur. Forms stop looking like forms until you touch them.</li>
+    <li><b>Chips are for things you can press.</b> A name that was offered and passed is a line with a strike, not a chip. A result in a dropdown is a row, not a chip.</li>
+    <li>Where it would go next, in order of how little it risks: the task and flag modals, the lead profile, the client card, the WO's session-info block. Tables and the calendar stay as they are.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

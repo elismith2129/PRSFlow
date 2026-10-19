@@ -55,6 +55,56 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-19-2026-lakers-sheet',
+    title: 'Lakers: the game sheet',
+    version: 'v1.45.0',
+    date: 'Oct 19, 2026',
+    intro:
+      'Owners only (CRM → Lakers). The game card is now a short sheet with names that autofill from client profiles. Use a THROWAWAY game (+ Game, any opponent, today) and delete it at the end.',
+    items: [
+      {
+        id: 'v145-sheet-header', area: 'Lakers',
+        what: 'The game card shows the game as plain text at the top, and tapping it opens the date / time / opponent fields',
+        how: 'Open any game. The top shows the weekday, date and time on the left and the opponent big on the right, with the arena and season under it, no boxes. Tap the opponent: date, time and opponent become fields. Press Done: they go back to text.',
+      },
+      {
+        id: 'v145-went-to-autofill', area: 'Lakers',
+        what: 'Typing in "Went to" suggests past recipients first, then people on file, and picking one fills the company',
+        how: 'Open your throwaway game. In "Went to" type "ela". A list drops down: "Had tickets before" (Ela Talu, with a count) then "On file". Click Ela Talu. The name fills in bold and "Interscope" appears in small text under it.',
+      },
+      {
+        id: 'v145-typed-name', area: 'Lakers',
+        what: 'A typed name that matches nobody is kept as typed and does not create a client',
+        how: 'In "Went to" type "Zz Test Person". The only row offered is "Use … as typed · no client made". Press Enter, Save. Reopen: the name is there. Go to CRM → Clients and search "Zz Test": nothing.',
+      },
+      {
+        id: 'v145-offered-list', area: 'Lakers',
+        what: 'Offered is a plain list, one name per line, with × to remove, and Enter adds the next',
+        how: 'In the "+ name" line under Offered type "Sesen", press Enter: it becomes a line with an ×, and the "+ name" line is empty again. Add a second name. Click the × on the first: it goes. No strike-through anywhere.',
+      },
+      {
+        id: 'v145-offered-unsaved', area: 'Lakers',
+        what: 'A name left in the Offered box without pressing Enter is still saved',
+        how: 'Type "Gabi" in the "+ name" line and click Save straight away. Reopen the game: Gabi is in the Offered list.',
+      },
+      {
+        id: 'v145-claimed-dots', area: 'Lakers',
+        what: 'Claimed and Transferred are two dots on the card and two buttons on the row, and they agree',
+        how: 'On the card click the Claimed dot: it turns green. Save. On the list the row\'s "Claimed ✓" button is lit. Click the row\'s "Transferred" button: it lights. Open the card: the Transferred dot is green.',
+      },
+      {
+        id: 'v145-realtime', area: 'Lakers',
+        what: 'A change on another screen shows up without a reload',
+        how: 'Open CRM → Lakers in two browser windows. In one, click a row\'s Claimed button. In the other, within a few seconds and without reloading, the same button lights.',
+      },
+      {
+        id: 'v145-cleanup', area: 'Lakers',
+        what: 'Delete removes the throwaway game',
+        how: 'Open the throwaway game, press Delete, confirm. It is gone from the list.',
+      },
+    ],
+  },
+  {
     id: 'oct-13-2026-all-stars-billing-staff',
     title: 'All-Stars, closing out a day, calendar staff',
     version: 'v1.44.2',

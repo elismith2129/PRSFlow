@@ -5,6 +5,13 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## To run (Oct 19)
+
+- [ ] **Run `20261019120000_lakers_eli_and_passed_fix.sql` BEFORE the v1.45.0 push** — the page gate now matches the policy (owner OR Eli), and it repairs the Haiko row. *(Oct 19)*
+- [ ] **Confirm `20261012120000_lakers_2627_schedule.sql` ran** — if the 26–27 tab shows 43 games it did. Cup knockout games get added with + Game when the NBA sets them. *(Oct 19)*
+- [ ] **Look at the game sheet on the tablet** — the name dropdown hangs below the card; check it isn't clipped. *(Oct 19)*
+- [ ] **Decide whether the "text at rest / fill means pressable" rule goes site-wide** — the Lakers sheet is the trial; next candidates in order: task + flag modals, lead profile, client card, WO session-info. *(Oct 19)*
+
 ## To run (Oct 13)
 
 - [ ] **Delete `public/favicon-16x16-v2.png` and `public/favicon-32x32-v2.png`** (unused, left by a same-day experiment; the Cowork mount can't delete files). *(Oct 13)*
@@ -56,7 +63,7 @@ Newest at the top of each group.*
 - [x] ~~Run `20261005180000_deleted_work_orders.sql`~~ — Eli confirmed at wrap-up Oct 5; the code that depends on it is on `main`. *(Oct 5)*
 - [x] ~~Run `20261005120000_daily_ops_reviews_billing.sql`~~ — ran Oct 5; `dor_ins` and `dor_del` both list `billing` (Eli's screenshot of pg_policies). The Billing role can check items off on Daily Ops. *(Oct 5)*
 
-- [ ] **Run** `20261001150000_lakers_games.sql` before the v1.42.0 push. When the Lakers drop the 26–27 schedule: Admin → Lakers → 26–27 → Paste schedule. *(Oct 1)*
+- [x] ~~Run `20261001150000_lakers_games.sql`; paste the 26–27 schedule when it drops~~ — 26–27 arrived as `20261012120000_lakers_2627_schedule.sql` (Oct 12, from the team PDF); see Oct 19 to confirm it ran. *(Oct 19)*
 
 - [ ] **Run the SRS migrations** `20261001120000_srs_payouts.sql`, `…130000_srs_backfill_wo_flag.sql`, `…140000_srs_history.sql`. *(Oct 1)*
 - [ ] **SRS on a lease** (AG Cook was 10% of a $5,000/mo lockout) isn't modelled — build a % on the lease if it ever comes back. *(Oct 1)*

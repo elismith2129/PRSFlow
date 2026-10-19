@@ -32,7 +32,7 @@ insert into public.lakers_games
   (season, game_date, game_time, opponent, arena, recipient, company, passed, claimed_mine, claimed_theirs, note)
 values
   ('25-26', '2025-10-17', '7:30 PM', 'Kings', 'Crypto.com Arena', 'Fernando De Los Rios', 'Paramount Staff', array['Sesen'], true, true, null),
-  ('25-26', '2025-10-21', '7:00 PM', 'Golden State Warriors', 'Crypto.com Arena', 'Ela Talu', 'Interscope', array['Haiko (sixbill','sosocamo)','Gabi Kochlani','Sesen'], true, true, null),
+  ('25-26', '2025-10-21', '7:00 PM', 'Golden State Warriors', 'Crypto.com Arena', 'Ela Talu', 'Interscope', array['Haiko (sixbill, sosocamo)','Gabi Kochlani','Sesen'], true, true, null),
   ('25-26', '2025-10-24', '7:00 PM', 'Minnesota Timberwolves', 'Crypto.com Arena', 'Morgan Smith', 'Redbull Recirds Artist', array['Tick'], true, true, null),
   ('25-26', '2025-10-27', '7:30 PM', 'Portland Trail Blazers', 'Crypto.com Arena', 'Naim', 'Columbia', array['Benecio Wallraff'], true, true, null),
   ('25-26', '2025-11-02', '6:30 PM', 'Miami Heat', 'Crypto.com Arena', 'Se', null, array['Brett Sweeney (empire)','Benicio (10k)'], true, true, null),

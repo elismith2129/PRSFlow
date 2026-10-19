@@ -20,6 +20,30 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.45.0 — Lakers: the game sheet; Claimed / Transferred — Oct 19, 2026
+
+**Why.** Eli: *"all i need is basic game info at the top header. then a place to put who i offered to and a place to put who i gave them too. very simple."* And on the app at large: *"this app across the board has a lot of bubbles in rounded sections. It's starting to kind of annoy me… I'd like you to give me some mocks of something that we could do to make things more readable and be able to potentially apply site-wide."* Mock: `docs/design-refs/lakers-game-popup-options.html` (A Sheet · B Prose · C Ledger). Eli picked **A**, no strike-through, and renamed the ticks.
+
+1. **The game pop-up is a SHEET** (`app/(main)/lakers/page.tsx` → `GameModal`). Label column on the left (92px), the fact on the right. The header (weekday · date · time in mono, opponent in Archivo, arena · season · "tomorrow / played") is read-only text — tap it to open the date/time/opponent inputs; a new game opens with them already showing. Rows: **Went to** (one field; the company rides along from a client match in muted ink and can be typed over) · **Offered** (a list, one name per line, × to remove, no strike, no chips — every name here is someone it was offered to) · **Claimed** (two dots: Claimed / Transferred, green = on) · **Note**. Nine wells became zero.
+2. **A field is text at rest.** `NameField` and the plain inputs have no well; the `--c-wash2` fill appears on focus and leaves on blur. This is the rule the sheet tests for site-wide use: *a fill means pressable or openable; information sits on the surface and type does the grouping.*
+3. **Names autofill from client profiles** (`lib/lakers.ts` → `searchNames`): the same search as the work order's client box — clients by name/first/last, A&R contacts by first/last, artist names on either — merged under past ticket recipients, which rank first with "N this season · M all". Enter / click picks; a name that matches nothing is kept as typed ("Use … as typed · no client made"). **Nothing here ever creates a client.** Both Went to and Offered use it.
+4. **Mine / Theirs → Claimed / Transferred** on the row ticks and in the sheet. Columns stay `claimed_mine` / `claimed_theirs`.
+5. **Realtime** (`supabase.channel('lakers-page')` on `lakers_games`): the page loaded once and never subscribed, against the house rule. Any change reloads the season and the season list.
+6. **A name left in the Offered box is saved** — Save folds it in so nobody loses one for not pressing Enter. Comma-splitting on add is gone (it's what broke "Haiko (sixbill, sosocamo)" into two).
+7. **The 26–27 schedule file is now on record.** `20261012120000_lakers_2627_schedule.sql` (40 home games + 3 preseason from the team's printable PDF) landed inside the Oct 13 rail-rework commit with no changelog line; TODO still said "paste the schedule when it drops". Cup knockout games aren't scheduled yet — add with + Game.
+
+**Migrations:** `20261019120000_lakers_eli_and_passed_fix.sql` — (a) `get_my_email()` (SECURITY DEFINER, like `get_my_role()`) and the `lakers_games` policy becomes `owner OR eli@paramountrecording.com`, matching the page gate: if Eli's profile role isn't `owner` the page loaded empty with no error; (b) repairs the one seed row split on a comma. The Oct 1 seed file is corrected too (harmless: it's `on conflict do nothing`). Also confirm `20261012120000_lakers_2627_schedule.sql` has run — if 26–27 shows games, it has.
+
+**Watch-outs.**
+- `searchNames` fetches every `client_contacts` / `clients` row with a non-empty `artists[]` on each keystroke (debounced 160ms) — the same cost `ClientPanel` already pays. If the roster ever gets big, cache it per modal open.
+- The row list shows Offered names as one muted ellipsised line (`·`-joined); the sheet is where you read them all.
+- The dropdown is `position: absolute` inside the modal; the modal has no `overflow: hidden`, so it can hang below the card edge — fine on desktop, check on the tablet.
+- `confirm()` is still a native dialog on Delete (unchanged).
+
+**Files:** `app/(main)/lakers/page.tsx` · `lib/lakers.ts` · `supabase/migrations/20261019120000_lakers_eli_and_passed_fix.sql` · `supabase/migrations/20261001150000_lakers_games.sql` (seed row) · `docs/design-refs/lakers-game-popup-options.html`
+
+---
+
 ## v1.44.3 — Money totals are rounded to the cent — Oct 16, 2026
 
 **Why.** WO-1368 sat in **Balance due** showing a $0.00 balance. Paid 810 + 278.10 + 278.10 sums to 1366.1999999999998 in floating point against a 1366.20 total; the balance was 2e-13 — displayed as $0.00, but `deriveBucket` tests `balance > 0`. Any WO with card payments split across rows could do this. Eli: "round that always so this doesnt happen."

@@ -679,6 +679,27 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.45.0', date:'Oct 19, 2026',
+    headline:'Lakers: a simpler game card, with names that fill themselves in.',
+    desc:'Owners only. Tap a game and the card is now a short sheet: the game at the top, who it went to, who it was offered to, and the two claims.',
+    changes:[
+      'The game card lost its boxes. Game info sits at the top as plain text (tap it if a date or opponent ever needs fixing). Underneath: <b>Went to</b>, <b>Offered</b>, <b>Claimed</b>, <b>Note</b>.',
+      'Start typing a name and it suggests people who have had tickets before (with how many), then anyone on file as a client, A&amp;R or artist. Pick one or just keep typing &mdash; a typed name is fine and never creates a client.',
+      '<b>Offered</b> is a plain list, one name per line, with an &times; to remove. No more struck-through chips.',
+      'The two ticks are now <b>Claimed</b> (on our account) and <b>Transferred</b> (to them), on the card and on the list.',
+      'The list updates by itself when something changes on another screen.',
+    ],
+    affects:'Nothing to learn. If a name you type matches someone on file, pick them and the company fills in.',
+    dev:[
+      'GameModal rebuilt as the SHEET (mock A of docs/design-refs/lakers-game-popup-options.html): 92px label column, read-only header (tap to edit), zero wells. NameField = text-at-rest input; --c-wash2 only on focus. This is the trial of a possible site-wide rule: a fill means pressable or openable.',
+      'lib/lakers.ts searchNames(): same search as the WO client box (clients, A&amp;R contacts, artists) merged under past recipients; read-only, never inserts a client.',
+      'Mine / Theirs renamed Claimed / Transferred in the UI only; columns stay claimed_mine / claimed_theirs.',
+      'Realtime: supabase.channel(\'lakers-page\') on lakers_games (it never subscribed before).',
+      'Save folds a name still sitting in the Offered box into the list; comma-splitting on add removed.',
+      'Watch-out: the RLS policy is now owner OR eli@paramountrecording.com (get_my_email(), SECURITY DEFINER) to match the page gate. Watch-out: searchNames loads every row with a non-empty artists[] per keystroke, debounced 160ms, same as ClientPanel.',
+    ],
+  },
+  {
     ver:'v1.44.2', date:'Oct 14, 2026',
     headline:'Tenant rooms show light blue on the dashboard.',
     desc:'MBA and Camper now look the same on the dashboard as they do on the calendar.',

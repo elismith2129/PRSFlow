@@ -334,6 +334,7 @@ shadows are raised controls and the modal drop shadow.
 
 | Chunk | What shipped |
 |---|---|
+| **LAKERS GAME SHEET ✅ (Oct 19, 2026, v1.45.0)** | `GameModal` in `app/(main)/lakers/page.tsx` is a label-left / fact-right sheet with no wells (mock option A, `docs/design-refs/lakers-game-popup-options.html`); `NameField` = text-at-rest input with client-profile + past-recipient autofill (`lib/lakers.ts` → `searchNames`, read-only, never creates a client). Ticks renamed Claimed / Transferred. Realtime channel `lakers-page`. Migration `20261019120000` (policy owner OR Eli; seed-row repair). |
 | **TENANT AQUA ON THE DASHBOARD ✅ (Oct 14, 2026, v1.44.2)** | `roomFill()` in `app/(main)/page.tsx` gives tenant rooms `n-tenant` (reads `--c-st-tenant`) instead of booked-green `n-on`. |
 | **STAFF REMOVAL REACHES THE CARD ✅ (Oct 13, 2026, v1.44.1)** | `buildBookingProjection` → `staffFor` always writes `engineer_name` + `assistant_name` (name or null); the old omit-when-empty guard left the last-removed staffer on the calendar card forever (WO-1326 "SL"). |
 | **ALL-STARS ✅ (Oct 13, 2026, v1.44.0)** | `leads.all_star` + `clients.all_star` (migration `20261013120000`, three triggers keep a client and its leads on one star). ☆/★ on lead + client profiles (any admin), ★ in list rows, ★ All-Stars pill on All Leads and tab on Clients. `components/shared/AllStar.tsx`. |

@@ -1,9 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Lakers tickets (Eli, 2026-10-01; mock docs/design-refs/lakers-topclients-options.html).
 // Replaces the "Lakers Tickets Log" spreadsheet. One row per game: who got the
-// pair, who was offered and passed, and Eli's two ticks — claimed on his
-// account, claimed by the recipient. Owners only (RLS). A season is "25-26";
-// the first season shown is the newest one that exists.
+// pair, who was offered (one name per line - every name here passed, so there
+// is no second state), and Eli's two ticks: CLAIMED on his account and
+// TRANSFERRED to the recipient (renamed from Mine / Theirs, 2026-10-19; the
+// columns keep their names). Owners + Eli (RLS). A season is "25-26"; the
+// first season shown is the newest one that exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { supabase } from '@/lib/supabase'
@@ -63,6 +65,55 @@ export async function fetchRecipientCounts(): Promise<{ name: string; company: s
     if (!e.company && r.company) e.company = r.company as string
   }
   return Array.from(m.values())
+}
+
+/**
+ * Name suggestions for "Went to" and "Offered" (2026-10-19). The SAME search
+ * the work order's client box runs (components/shared/ClientPanel): clients by
+ * name / first / last, A&R contacts by first / last, and artist names on either.
+ * It only ever READS - picking a match fills a name and a company; typing a
+ * name that matches nothing is just a name. Nothing here creates a client.
+ * Past ticket recipients are merged in by the page (ranked first).
+ */
+export type NameHit = { name: string; what: string; company: string | null }
+
+export async function searchNames(q: string): Promise<NameHit[]> {
+  q = q.trim()
+  if (q.length < 2) return []
+  const like = `%${q}%`
+  const [clients, contacts, artistContacts, artistClients] = await Promise.all([
+    supabase.from('clients').select('id,type,name,fname,lname').or(`name.ilike.${like},fname.ilike.${like},lname.ilike.${like}`).limit(8),
+    supabase.from('client_contacts').select('id,fname,lname,contact_type,clients(name)').or(`fname.ilike.${like},lname.ilike.${like}`).limit(8),
+    supabase.from('client_contacts').select('id,fname,lname,artists,clients(name)').neq('artists', '{}'),
+    supabase.from('clients').select('id,name,type,artists').neq('artists', '{}'),
+  ])
+  const out: NameHit[] = []
+  const seen = new Set<string>()
+  const add = (h: NameHit) => { const k = h.name.toLowerCase(); if (!k || seen.has(k)) return; seen.add(k); out.push(h) }
+  const ql = q.toLowerCase()
+  for (const c of (clients.data ?? []) as any[]) {
+    const isLabel = c.type === 'label'
+    const person = [c.fname, c.lname].filter(Boolean).join(' ').trim()
+    if (isLabel) {
+      // A label match offers its primary A&R as the person, the label as the company.
+      if (person) add({ name: person, what: 'A&R', company: c.name })
+      else add({ name: c.name, what: 'label', company: null })
+    } else {
+      add({ name: person || c.name, what: 'COD client', company: null })
+    }
+  }
+  for (const ct of (contacts.data ?? []) as any[]) {
+    const person = [ct.fname, ct.lname].filter(Boolean).join(' ').trim()
+    if (!person) continue
+    add({ name: person, what: ct.contact_type === 'admin' ? 'admin' : 'A&R', company: ct.clients?.name ?? null })
+  }
+  for (const ct of (artistContacts.data ?? []) as any[]) {
+    for (const a of (ct.artists as string[]) ?? []) if (a.toLowerCase().includes(ql)) add({ name: a, what: 'artist', company: ct.clients?.name ?? null })
+  }
+  for (const c of (artistClients.data ?? []) as any[]) {
+    for (const a of (c.artists as string[]) ?? []) if (a.toLowerCase().includes(ql)) add({ name: a, what: 'artist', company: c.type === 'label' ? c.name : null })
+  }
+  return out.slice(0, 10)
 }
 
 export async function saveGame(g: Partial<LakersGame> & { season: string; game_date: string; opponent: string }): Promise<boolean> {
