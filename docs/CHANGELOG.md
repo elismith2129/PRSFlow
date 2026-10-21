@@ -20,6 +20,22 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.45.1 — Duties you can read; the review chip fits; "Reopened" in the billing hub — Oct 21, 2026
+
+**Why.** Three staff app notes Eli brought in (a fourth, the No show button, was looked at and left alone: it never prints and is marked internal; a fifth, a monthly LADWP/BWP duty, needs no code — Your List → recurring → add, monthly, which an owner adding makes the Billing seat's). Mock: `docs/design-refs/duties-and-review-chip-options.html`.
+
+1. **Duties: tap to open** (`components/dashboard/YourListModal.tsx`). A duty row is one line and ellipsised with nowhere to read it. Tapping the TEXT opens that row to the full label; tapping again folds it. Checkbox and × unchanged. Eli picked A (tap) over B (two lines always). The dashboard tile keeps its tap-to-toggle-done and gains a hover `title` with the whole label instead — the pop-up is where you read.
+2. **The day card's review chip says "Review ✓"** until it's done, "✓ Reviewed" after (`WorkOrderPopup.dayReviewPill`, small variant only). The money column is a fixed 120px (Oct 13: never widen it); "MARK REVIEWED" at that tracking is ~150px and overflowed 30px left onto the status pills even on its own line (Eli's screenshot). The sheet's big footer button keeps "Mark reviewed ✓".
+3. **"Reopened · recheck the invoice" chip in the billing hub** (`app/(main)/billing/page.tsx`, the flag column). Reopen on the work order sets it back to OPEN but only pulls it out of billing from Needs invoice; with an invoice already on file the row stayed at Needs approval looking like every other row. Now `handleComplete` stamps `work_orders.reopened_at` + `reopened_by_name` on reopen and clears both on Complete; the hub shows the chip (with the name) while the stamp is set and the work order is open. **Written, not derived** — "open + invoice on file" can't tell a reopen from an invoice attached before Complete, which is a legal path; there is exactly one reopen path, so one writer.
+
+**Migrations:** `20261021120000_wo_reopened_stamp.sql` — two nullable columns on `work_orders`. Run BEFORE the push: `handleComplete` writes them on every Complete / Reopen and the update fails without them.
+
+**Watch-outs.** The chip only appears for reopens that happen after this ships (no stamp on history). The flag column shows ONE chip per row, in order: never-submitted → not approved → reopened → drift → …; a reopened row that is also drifting shows Reopened (the more actionable one).
+
+**Files:** `components/dashboard/YourListModal.tsx` · `app/(main)/page.tsx` · `components/calendar/WorkOrderPopup.tsx` · `lib/billing.ts` · `app/(main)/billing/page.tsx` · `supabase/migrations/20261021120000_wo_reopened_stamp.sql` · `docs/design-refs/duties-and-review-chip-options.html`
+
+---
+
 ## v1.45.0 — Lakers: the game sheet; Claimed / Transferred — Oct 19, 2026
 
 **Why.** Eli: *"all i need is basic game info at the top header. then a place to put who i offered to and a place to put who i gave them too. very simple."* And on the app at large: *"this app across the board has a lot of bubbles in rounded sections. It's starting to kind of annoy me… I'd like you to give me some mocks of something that we could do to make things more readable and be able to potentially apply site-wide."* Mock: `docs/design-refs/lakers-game-popup-options.html` (A Sheet · B Prose · C Ledger). Eli picked **A**, no strike-through, and renamed the ticks.

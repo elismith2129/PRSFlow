@@ -96,6 +96,16 @@ export function YourListModal(p: YourListModalProps) {
   const isOwner = p.viewer?.role === 'owner'
 
   // ── Composer state ─────────────────────────────────────────────────────────
+  // TAP TO OPEN (Eli, 2026-10-21: "duties are cut-off, can't read on
+  // screen, can't be expanded"). A row is one line (density law) and a long
+  // label ellipsised with nowhere to read it. Tapping the TEXT opens that row
+  // to the full label; tapping again folds it. The checkbox and × are not
+  // touched, so nothing changes about marking a duty done. Mock option A of
+  // docs/design-refs/duties-and-review-chip-options.html (B, two lines
+  // always, was offered and not taken). The box is fixed; the list scrolls.
+  const [openId, setOpenId] = useState<string | null>(null)
+  const openTx = (id: string, base: React.CSSProperties): React.CSSProperties =>
+    openId === id ? { ...base, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', cursor: 'pointer' } : { ...base, cursor: 'pointer' }
   const [composing, setComposing] = useState(false)
   const [editing, setEditing] = useState<MyDayDuty | null>(null)
   const [text, setText] = useState('')
@@ -238,7 +248,7 @@ export function YourListModal(p: YourListModalProps) {
       <div key={d.id} style={{ ...S.it(dim, v.done), opacity: p.savingDutyId === d.id ? .5 : S.it(dim, v.done).opacity }}>
         <span style={S.bx(v.done)} onClick={() => p.isOwnSeat && p.onToggleDuty(v)} title={v.done ? 'Undo' : 'Done'}>{v.done ? '✓' : ''}</span>
         <span style={S.tag()}>duty</span>
-        <span style={S.tx(red, v.done)}>{d.label}</span>
+        <span style={openTx(d.id, S.tx(red, v.done))} title={openId === d.id ? 'Tap to fold' : 'Tap to read the whole thing'} onClick={() => setOpenId(o => o === d.id ? null : d.id)}>{d.label}</span>
         <span style={S.meta}>
           <span style={S.cad(mine)}>{cadenceLabel(d)}</span>
           {mn && <span style={S.mn(red)}>{mn}</span>}
@@ -422,7 +432,7 @@ export function YourListModal(p: YourListModalProps) {
                   <div key={d.id} style={S.it()}>
                     {editable ? <button type="button" style={S.xbtn} title="Edit" onClick={() => openComposer(d)}>✎</button> : <span />}
                     <span style={S.tag()}>duty</span>
-                    <span style={S.tx()}>{d.label}</span>
+                    <span style={openTx(d.id, S.tx())} title={openId === d.id ? 'Tap to fold' : 'Tap to read the whole thing'} onClick={() => setOpenId(o => o === d.id ? null : d.id)}>{d.label}</span>
                     <span style={S.meta}>
                       {c !== 'daily' && <span style={S.cad(mine)}>{cadenceLabel(d).replace(/^(Weekly|Monthly) · /, '')}</span>}
                       <span style={S.cad(mine)}>{mine ? 'Mine' : 'Set by Eli'}</span>

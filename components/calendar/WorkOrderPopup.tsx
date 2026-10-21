@@ -3507,6 +3507,12 @@ export function WorkOrderPopup({
       status: newStatus,
       admin_approved_at: newStatus === 'completed' ? now : null,
       completed_by_name: newStatus === 'completed' ? completedBy : null,
+      // REOPENED STAMP (2026-10-21, migration 20261021120000). The billing
+      // hub shows "Reopened · recheck the invoice" on a row carrying this
+      // while the work order is open. This is the only place a reopen
+      // happens, so it is the only writer; Complete clears it.
+      reopened_at: reopening ? now : null,
+      reopened_by_name: reopening ? completedBy : null,
     }).eq('id', woIdRef.current)
 
     // Reopening also takes it back OUT of billing — but only from
@@ -4370,6 +4376,13 @@ export function WorkOrderPopup({
   // only on days that have happened — a future night has nothing to review.
   // Sits beside the status pill on the card and the sheet; stops the tap so
   // the card underneath doesn't open.
+  // THE SMALL CHIP SAYS "Review ✓", NOT "Mark reviewed" (2026-10-21). The day
+  // card's money column is a fixed 120px (Oct 13: never widen it). "MARK
+  // REVIEWED" at 8px / .08em tracking is ~150px, so even on its own line it
+  // overflowed 30px leftward onto the CONFIRMED / TENTATIVE / CANCELLED pills
+  // (Eli's screenshot). "REVIEW ✓" is ~70px and fits; the sheet's big footer
+  // button keeps the full wording. Mock A of
+  // docs/design-refs/duties-and-review-chip-options.html.
   function dayReviewPill(date: string, small = false, big = false) {
     if (!wo || runner || readOnly || !date) return null
     if (date > getLocalToday()) return null
@@ -4404,7 +4417,7 @@ export function WorkOrderPopup({
           border: locked ? '1px solid transparent' : '1px dashed var(--c-fg-3)',
           whiteSpace: 'nowrap',
         }}
-      >{locked ? '✓ Reviewed' : 'Mark reviewed'}</button>
+      >{locked ? '✓ Reviewed' : 'Review ✓'}</button>
     )
   }
   // ONE PILL, DROPS DOWN (Eli, 2026-09-24: "one line please — the status

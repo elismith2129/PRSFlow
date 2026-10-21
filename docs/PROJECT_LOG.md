@@ -381,6 +381,32 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 21, 2026 — Five app notes from staff (v1.45.1)
+
+Eli brought five notes. Each was read in the code before anything was said.
+
+1. **"No show should not show up for the client."** It never prints (woPdf / wo-package skip it,
+   the code marks it internal); it is on the runner's screen in the day sheet, which the COD
+   client sees while signing. Proposed hiding the "Client actually here" block while the pad is
+   open. Eli: "dont change anything then." Left alone.
+2. **Duties cut off.** Two mocks: tap-to-open vs two lines always. Recommended B (nothing to
+   learn); Eli chose **A, tap to open**. The dashboard tile keeps tap-to-toggle; it gets a
+   hover title instead, because moving a habit on the tile is worse than a tooltip.
+3. **"Text notification when a WO is reopened."** Clarified: a visible TAG on the hub row,
+   not SMS. The hole was exact: Reopen leaves an invoiced row at Needs approval with no change.
+   First cut was a derived chip (open + invoice on file); withdrawn in-session because an
+   invoice can be attached before Complete, so the derivation would lie. Stamp written by the
+   one reopen path instead. Shows the name.
+4. **Monthly LADWP / BWP duty.** Already buildable in the app: Your List → recurring → add,
+   monthly; an owner adding makes it the seat's. Chose not to seed it — a seed would be a second
+   way of doing what the UI does. Noted that the add form makes point duties, not cumulative.
+5. **Mark reviewed on the status pills** (screenshot). The Oct 13 fix put the chip on its own
+   line, but the chip itself is wider than the 120px column. Mock A (shorter word) over B
+   (text, no pill); Eli chose A.
+
+**Rejected.** Widening the column (Oct 13 ruling stands). Moving the chip into the status row
+(fits, but Eli asked for top right). A derived Reopened chip (above).
+
 ### October 19, 2026 — The Lakers game sheet, and a rule about bubbles (v1.45.0)
 
 **Where it started.** Eli: "going to work on the lakers section of the app. read all logs." Reading

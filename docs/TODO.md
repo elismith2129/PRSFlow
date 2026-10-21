@@ -5,6 +5,11 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## To run (Oct 21)
+
+- [ ] **Run `20261021120000_wo_reopened_stamp.sql` BEFORE the v1.45.1 push** — Complete / Reopen write the two new columns. *(Oct 21)*
+- [ ] **Add the LADWP / BWP duty from the app** — Your List → recurring → add → monthly, day 1, on the Billing tab (no code). If it should carry a backlog instead of "missed is missed", say so: the add form only makes point duties. *(Oct 21)*
+
 ## To run (Oct 19)
 
 - [ ] **Run `20261019120000_lakers_eli_and_passed_fix.sql` BEFORE the v1.45.0 push** — the page gate now matches the policy (owner OR Eli), and it repairs the Haiko row. *(Oct 19)*

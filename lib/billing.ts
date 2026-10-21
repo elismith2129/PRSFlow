@@ -316,6 +316,10 @@ export type InvoiceRow = {
   unsubmittedBy: string | null
   /** The admin who pressed Complete WO. The green end of the trail. */
   completedBy: string | null
+  /** Stamped by the ONE reopen path (WorkOrderPopup.handleComplete), cleared
+   *  on the next Complete. Drives the hub's "Reopened" chip (2026-10-21). */
+  reopenedAt: string | null
+  reopenedBy: string | null
   /** Work order is completed. Carries the pre-2026-09-22 rows, which were
    *  completed before completed_by_name existed and so have no name to show. */
   woCompleted: boolean
@@ -624,7 +628,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, food_fee_pct, invoice_closed_note, completed_by_name')
+    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, food_fee_pct, invoice_closed_note, completed_by_name, reopened_at, reopened_by_name')
     .order('session_date', { ascending: false })
     // Secondary order = id: without it Postgres returns equal-date rows in
     // ARBITRARY order that can differ per refetch (the page-2 churn bug —
@@ -914,6 +918,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       unsubmittedDays,
       unsubmittedBy: null as string | null,
       completedBy: (w as any).completed_by_name ?? null,
+      reopenedAt: (w as any).reopened_at ?? null,
+      reopenedBy: (w as any).reopened_by_name ?? null,
       woCompleted: w.status === 'completed',
       invoiceDrift,
       dateRange,

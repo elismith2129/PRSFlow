@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two small fixes — duties that can be read, and a review chip that fits</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c-bg:#0b0a09; --c-fg:#f2efe7; --c-srf:#151412;
+  --c-wash:rgba(242,239,231,.06); --c-wash2:rgba(242,239,231,.12);
+  --c-fg-2:rgba(242,239,231,.72); --c-fg-3:rgba(242,239,231,.45);
+  --c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22);
+  --c-chip-ink:#1c2626; --c-st-booked:#43dfae; --c-st-warm:#ffa94d; --c-st-hot:#ff5a4d;
+  --n-stage:#0b0a09; --n-card:#151412; --n-ink:#f2efe7; --n-ink2:rgba(242,239,231,.6); --n-ink3:rgba(242,239,231,.34);
+  --n-wash:rgba(242,239,231,.06); --n-wash2:rgba(242,239,231,.12); --n-ok:#43dfae; --n-hot:#ff5a4d;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; background:var(--c-bg); color:var(--c-fg); font-family:'Inter',system-ui,sans-serif; font-size:14.5px; line-height:1.6; }
+.arch { font-family:'Archivo Black',system-ui,sans-serif; font-weight:400; }
+.mono { font-family:'DM Mono',ui-monospace,monospace; }
+.lbl { font-size:9.5px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; opacity:.45; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 20px 80px; }
+h1 { font-size:22px; letter-spacing:-.02em; margin:0 0 4px; }
+.sub { font-size:13px; opacity:.6; max-width:720px; margin-bottom:34px; }
+h2 { font-size:17px; margin:0 0 2px; }
+.opt { margin-bottom:46px; }
+.ohead { display:grid; grid-template-columns:48px 1fr; gap:14px; align-items:start; margin-bottom:12px; max-width:860px; }
+.ohead .k { font-size:38px; line-height:1; letter-spacing:-.03em; opacity:.9; }
+.ohead p { margin:0; font-size:13px; opacity:.7; }
+.row3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(560px,1fr)); gap:18px; align-items:start; }
+@media (max-width:620px){ .row3 { grid-template-columns:1fr; } }
+.pane { background:var(--c-srf); border-radius:16px; padding:16px; box-shadow:var(--c-softsh); }
+.pane .cap { font-size:12px; opacity:.6; margin-top:10px; line-height:1.5; }
+.pane .cap b { opacity:1; }
+.pick { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; background:var(--c-st-booked); color:var(--c-chip-ink); border-radius:99px; padding:3px 9px; margin-left:8px; vertical-align:2px; }
+.section-note { max-width:860px; font-size:13px; opacity:.75; margin:0 0 16px; }
+
+/* ── DUTY ROWS (Your List, noir) ───────────────────────────────────────── */
+.list { background:var(--n-stage); border-radius:14px; padding:10px; height:226px; overflow-y:auto; }
+.it { display:grid; grid-template-columns:20px 58px minmax(0,1fr) auto 26px; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:var(--n-wash); margin-bottom:5px; }
+.bx { width:18px; height:18px; border-radius:6px; background:var(--n-wash2); }
+.tag { font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--n-ink3); }
+.tx { font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tx.wrap { white-space:normal; overflow:visible; }
+.tx.clamp { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.35; }
+.tx.open { white-space:normal; }
+.cad { font-size:9px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--n-ink3); background:var(--n-stage); border-radius:99px; padding:3px 8px; white-space:nowrap; }
+.xb { color:var(--n-ink3); text-align:center; font-size:13px; }
+.hint { font-size:10px; color:var(--n-ink3); margin-top:2px; }
+
+/* ── WO DAY CARD ───────────────────────────────────────────────────────── */
+.card { background:var(--c-srf); border-radius:14px; padding:12px 14px; display:grid; grid-template-columns:130px minmax(0,1fr) 120px; gap:12px; min-height:150px; }
+.card .staff { font-size:11.5px; }
+.card .staff .nm { font-weight:600; }
+.card .staff .tm { font-size:10.5px; color:var(--c-fg-2); opacity:.75; }
+.card .notes { border-left:1px solid var(--c-wash2); padding-left:12px; min-width:0; }
+.pills { display:flex; gap:4px; align-items:center; margin-bottom:8px; flex-wrap:nowrap; }
+.pill { font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; border-radius:99px; padding:3px 7px; white-space:nowrap; background:transparent; color:var(--c-fg-3); }
+.pill.on { background:var(--c-st-booked); color:var(--c-chip-ink); }
+.kl { font-size:8px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; opacity:.42; }
+.song { font-size:11.5px; color:var(--c-fg-3); font-style:italic; }
+.right { width:120px; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; position:relative; }
+.editx { display:flex; gap:10px; align-items:center; }
+.editx .x { font-size:13px; opacity:.4; }
+.chip { font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; border-radius:99px; padding:3px 8px; white-space:nowrap; background:var(--c-wash2); color:var(--c-fg-2); border:1px dashed var(--c-fg-3); }
+.chip.done { background:var(--c-st-booked); color:var(--c-chip-ink); border-color:transparent; }
+.chip.over { position:absolute; top:22px; right:0; }
+.txtlink { font-size:8px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--c-fg); opacity:.55; border-bottom:1px dashed var(--c-fg-3); padding-bottom:1px; }
+.txtlink.done { color:var(--c-st-booked); opacity:1; border-bottom:none; }
+.total { margin-top:auto; }
+.total .amt { font-size:15px; letter-spacing:-.02em; }
+.bad { outline:1.5px solid var(--c-st-hot); outline-offset:3px; border-radius:99px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1 class="arch">Two small fixes</h1>
+<div class="sub">Duties you can't read in Your List, and the Mark reviewed chip sitting on the status pills in the work order's day card. Both are cheap; each has a recommended pick.</div>
+
+<!-- ═══════ #2 DUTIES ═══════ -->
+<section class="opt">
+  <div class="ohead"><div class="k arch">2</div><div><h2>Duties are cut off</h2><p>The row is one line, ellipsised, with no tooltip and no way to open it. A long label like the LADWP one is unreadable. Scroll the lists: the boxes are fixed height either way (the list scrolls inside), so none of these grow the card.</p></div></div>
+  <div class="row3">
+    <div class="pane">
+      <span class="lbl">As it is</span>
+      <div class="list" style="margin-top:8px">
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">Download the LADWP and BWP bills and file them in the utilities folder</span><span class="cad">monthly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">SRS round-up — check every session flagged SRS this month has a payout row</span><span class="cad">monthly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">Chase open POs</span><span class="cad">weekly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">Petty cash close</span><span class="cad">daily</span><span class="xb">×</span></div>
+      </div>
+      <div class="cap">Everything past the first few words is gone, and nothing you do on the row brings it back.</div>
+    </div>
+    <div class="pane">
+      <span class="lbl">A · Tap to open</span>
+      <div class="list" style="margin-top:8px">
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx open">Download the LADWP and BWP bills and file them in the utilities folder<div class="hint">tap to close</div></span><span class="cad">monthly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">SRS round-up — check every session flagged SRS this month has a payout row</span><span class="cad">monthly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">Chase open POs</span><span class="cad">weekly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx">Petty cash close</span><span class="cad">daily</span><span class="xb">×</span></div>
+      </div>
+      <div class="cap">Rows stay one line. Tap the text and that row opens to the full label; tap again, it folds. The checkbox and × are untouched. Rows you aren't reading stay compact, which keeps the ~10-rows-visible density rule.</div>
+    </div>
+    <div class="pane">
+      <span class="lbl">B · Two lines, always <span class="pick">Recommended</span></span>
+      <div class="list" style="margin-top:8px">
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx clamp">Download the LADWP and BWP bills and file them in the utilities folder</span><span class="cad">monthly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx clamp">SRS round-up — check every session flagged SRS this month has a payout row</span><span class="cad">monthly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx clamp">Chase open POs</span><span class="cad">weekly</span><span class="xb">×</span></div>
+        <div class="it"><span class="bx"></span><span class="tag">Billing</span><span class="tx clamp">Petty cash close</span><span class="cad">daily</span><span class="xb">×</span></div>
+      </div>
+      <div class="cap">Labels wrap to two lines, then clip. Short duties stay one line, so the list only gets taller where a label is actually long. Nothing to tap, nothing to learn, and it reads the same in the pop-up and on the dashboard tile. If a label is longer than two lines, it's a label that needs rewriting, not a bigger box.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ #5 REVIEW CHIP ═══════ -->
+<section class="opt">
+  <div class="ohead"><div class="k arch">5</div><div><h2>Mark reviewed sits on the status pills</h2><p>The right column of the day card is fixed at 120px (your call Oct 13, so it can't squeeze the notes). "✓ Reviewed" fits; "MARK REVIEWED" at that letter-spacing is about 150px, so it hangs 30px left over CANCELLED. Every option keeps the column at 120.</p></div></div>
+  <div class="row3">
+    <div class="pane">
+      <span class="lbl">As it is</span>
+      <div class="card" style="margin-top:8px">
+        <div class="staff"><span class="kl">1st</span> <span class="nm">Marcus T.</span><div class="tm mono">2:00 PM – 10:00 PM · 8h</div></div>
+        <div class="notes">
+          <div class="pills"><span class="pill on">Confirmed</span><span class="pill">Tentative</span><span class="pill">Cancelled</span></div>
+          <div class="kl">Song / session notes · 10-19</div><div class="song">—</div>
+        </div>
+        <div class="right">
+          <div class="editx"><span class="kl">✎ edit</span><span class="x">×</span></div>
+          <span class="chip over bad">Mark reviewed</span>
+          <div class="total"><div class="kl">Day total</div><div class="amt arch">$1,650.00</div></div>
+        </div>
+      </div>
+      <div class="cap">The chip is on its own line (the Oct 13 fix) but still too wide for the column, so it overflows left onto the pills.</div>
+    </div>
+    <div class="pane">
+      <span class="lbl">A · Shorter word, same spot <span class="pick">Recommended</span></span>
+      <div class="card" style="margin-top:8px">
+        <div class="staff"><span class="kl">1st</span> <span class="nm">Marcus T.</span><div class="tm mono">2:00 PM – 10:00 PM · 8h</div></div>
+        <div class="notes">
+          <div class="pills"><span class="pill on">Confirmed</span><span class="pill">Tentative</span><span class="pill">Cancelled</span></div>
+          <div class="kl">Song / session notes · 10-19</div><div class="song">—</div>
+        </div>
+        <div class="right">
+          <div class="editx"><span class="kl">✎ edit</span><span class="x">×</span></div>
+          <span class="chip">Review ✓</span>
+          <div class="total"><div class="kl">Day total</div><div class="amt arch">$1,650.00</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:8px;min-height:0">
+        <div class="staff"><span class="kl">1st</span> <span class="nm">Marcus T.</span></div>
+        <div class="notes"><div class="pills"><span class="pill on">Confirmed</span><span class="pill">Tentative</span><span class="pill">Cancelled</span></div></div>
+        <div class="right"><div class="editx"><span class="kl">👁 view</span><span class="x">×</span></div><span class="chip done">✓ Reviewed</span></div>
+      </div>
+      <div class="cap">Dashed <b>Review ✓</b> (~70px) until it's done, green <b>✓ Reviewed</b> after. Stays top right where you asked for it, and the sheet's big footer button keeps its full "Mark reviewed ✓" wording. One word changes.</div>
+    </div>
+    <div class="pane">
+      <span class="lbl">B · Text, not a chip</span>
+      <div class="card" style="margin-top:8px">
+        <div class="staff"><span class="kl">1st</span> <span class="nm">Marcus T.</span><div class="tm mono">2:00 PM – 10:00 PM · 8h</div></div>
+        <div class="notes">
+          <div class="pills"><span class="pill on">Confirmed</span><span class="pill">Tentative</span><span class="pill">Cancelled</span></div>
+          <div class="kl">Song / session notes · 10-19</div><div class="song">—</div>
+        </div>
+        <div class="right">
+          <div class="editx"><span class="kl">✎ edit</span><span class="x">×</span></div>
+          <span class="txtlink">mark reviewed</span>
+          <div class="total"><div class="kl">Day total</div><div class="amt arch">$1,650.00</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:8px;min-height:0">
+        <div class="staff"><span class="kl">1st</span> <span class="nm">Marcus T.</span></div>
+        <div class="notes"><div class="pills"><span class="pill on">Confirmed</span><span class="pill">Tentative</span><span class="pill">Cancelled</span></div></div>
+        <div class="right"><div class="editx"><span class="kl">👁 view</span><span class="x">×</span></div><span class="txtlink done">✓ reviewed</span></div>
+      </div>
+      <div class="cap">Same words, but as a small dashed-underlined label like "✎ edit" above it, no pill. Fits at full length (~95px) and matches the "text, not bubbles" direction from the Lakers sheet. Trade-off: it's quieter, and the reviewed state is only a colour change, which is easier to miss when scanning ten day cards.</div>
+    </div>
+  </div>
+  <p class="section-note" style="margin-top:16px"><b>Not offered:</b> widening the column (ruled out Oct 13), and moving the chip into the status row beside CANCELLED (it fits there, but you asked for top right where the × is, and the status row is the notes column's, not the money column's).</p>
+</section>
+</div>
+</body>
+</html>

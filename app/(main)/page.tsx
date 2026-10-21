@@ -1041,7 +1041,10 @@ export default function DashboardPage() {
               >
                 <span className="n-bx" />
                 <span className={`n-tag${r.kind === 'approve' ? ' n-ap' : ''}`}>{r.kind}</span>
-                <span className="n-tx">{r.text}</span>
+                {/* The whole label on hover (2026-10-21). A tap here toggles
+                    the duty done, so "tap to open" lives in the full pop-up
+                    (YourListModal), not on the tile. */}
+                <span className="n-tx" title={r.text}>{r.text}</span>
                 {r.mn && <span className="n-mn">{r.mn}</span>}
               </div>
             ))}

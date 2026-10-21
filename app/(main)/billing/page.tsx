@@ -1533,6 +1533,22 @@ function Row({
           <span className="c-bdrift" title={row.rejectNote ? `Owner: “${row.rejectNote}” — drop the corrected invoice on this row to send it back for approval` : 'The owner did not approve this package — drop the corrected invoice on this row to re-queue it'}>
             See note · drop the corrected invoice
           </span>
+        ) : row.reopenedAt && !row.woCompleted ? (
+          // REOPENED (Eli, 2026-10-21): "a visible tag on the WO in the
+          // billing hub when it's reopened from under needs approval, so if
+          // we need to update an invoice we don't lose track that it's
+          // reopened — it stays under needs approval with no outer change."
+          // Reopen on the work order sets it back to OPEN but only pulls it
+          // out of billing from Needs invoice; with an invoice already on
+          // file the row stayed at step 2 and looked like every other row.
+          // WRITTEN, not derived (unlike drift): "open + invoice on file"
+          // can't tell a reopen from an invoice attached before Complete,
+          // which is a legal path. There is exactly ONE reopen path
+          // (WorkOrderPopup.handleComplete), and it stamps reopened_at; the
+          // same function clears it on the next Complete.
+          <span className="c-bdrift" title={`Reopened ${fmtDayHeading(row.reopenedAt.slice(0, 10))}${row.reopenedBy ? ` by ${row.reopenedBy}` : ''} after the invoice was attached. Check the invoice still matches; completing the work order again clears this.`}>
+            Reopened{row.reopenedBy ? ` · ${row.reopenedBy}` : ''} · recheck the invoice
+          </span>
         ) : row.invoiceDrift ? (
           // DRIFT: edited after the invoice went out. Hot, because the
           // alternative to seeing it here is hearing it from the client.

@@ -679,6 +679,23 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.45.1', date:'Oct 21, 2026',
+    headline:'Read a long duty; the review chip fits; reopened work orders say so in the billing hub.',
+    desc:'Three small things staff asked for.',
+    changes:[
+      '<b>Your List:</b> tap the words of a duty to read the whole thing; tap again to fold it. The checkbox still marks it done.',
+      '<b>Work order day cards:</b> the little review chip now says <b>Review &check;</b> and no longer sits on top of the Confirmed / Tentative / Cancelled pills. It turns green <b>&check; Reviewed</b> as before.',
+      '<b>Billing hub:</b> if a work order that already has an invoice is reopened, its row now shows <b>Reopened &middot; recheck the invoice</b> with who reopened it, until it is completed again. Before, the row looked unchanged.',
+    ],
+    affects:'If you see Reopened on a row under Needs approval, open the package and make sure the invoice still matches before approving.',
+    dev:[
+      'YourListModal: openId state; tapping the label span toggles whiteSpace normal on that row. Dashboard tile unchanged except a title attribute.',
+      'WorkOrderPopup.dayReviewPill small variant: "Review &check;" (~70px) instead of "Mark reviewed" (~150px) inside the fixed 120px money column.',
+      'work_orders.reopened_at / reopened_by_name: written by handleComplete on reopen, cleared on Complete. lib/billing InvoiceRow.reopenedAt/By; hub flag column shows the chip while set and the WO is open. Written, not derived: an invoice can be attached before Complete, so open+doc cannot identify a reopen.',
+      'Watch-out: one chip per row; order never-submitted &rarr; not approved &rarr; reopened &rarr; drift.',
+    ],
+  },
+  {
     ver:'v1.45.0', date:'Oct 19, 2026',
     headline:'Lakers: a simpler game card, with names that fill themselves in.',
     desc:'Owners only. Tap a game and the card is now a short sheet: the game at the top, who it went to, who it was offered to, and the two claims.',

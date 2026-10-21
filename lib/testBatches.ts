@@ -55,6 +55,31 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-21-2026-duties-review-reopened',
+    title: 'Duties, the review chip, Reopened',
+    version: 'v1.45.1',
+    date: 'Oct 21, 2026',
+    intro:
+      'Three small fixes. Use a THROWAWAY work order for the last two and put it back how you found it.',
+    items: [
+      {
+        id: 'v1451-duty-open', area: 'Dashboard',
+        what: 'Tapping a long duty in Your List shows the whole label; tapping again folds it',
+        how: 'Open the dashboard, click the Your List box to open the full pop-up. Find a duty whose text is cut off with "…". Tap the words: the row grows to show the whole label. Tap the words again: it folds back to one line. Tap the checkbox: it still marks done (undo it).',
+      },
+      {
+        id: 'v1451-review-chip', area: 'Billing',
+        what: 'The day card review chip no longer overlaps the status pills',
+        how: 'Open a work order with a day that has already happened. On the day card, top right under "✎ edit ×", the chip reads "REVIEW ✓" and sits clear of CONFIRMED / TENTATIVE / CANCELLED. Tap it: it turns green "✓ REVIEWED". Tap again to undo.',
+      },
+      {
+        id: 'v1451-reopened-chip', area: 'Billing',
+        what: 'Reopening a work order that has an invoice shows a Reopened chip on its hub row',
+        how: 'On a throwaway work order: Complete it, drop any PDF on its billing hub row as the invoice (it goes to Needs approval). Open the work order and press Reopen, confirm. Back in the hub, the row is still under Needs approval and now shows "Reopened · <your name> · recheck the invoice". Complete the work order again: the chip is gone. Delete the throwaway from the hub.',
+      },
+    ],
+  },
+  {
     id: 'oct-19-2026-lakers-sheet',
     title: 'Lakers: the game sheet',
     version: 'v1.45.0',
