@@ -20,6 +20,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.45.4 — HOTFIX: the In progress rule applies only to stamped reopens — Oct 21, 2026
+
+**Why.** v1.45.2 sent any work order with `status !== 'completed'` at Needs approval / Approved to In progress, on the belief that attaching an invoice before Complete was rare. It is the normal billing path: on deploy a large number of invoiced, sent and COD-paid rows dropped to In progress and read "Needs invoice" (Eli: *"a million WOs… kicked back"*). **Nothing was written** — the step is derived — so this change puts every row back where it was.
+
+**Fix.** `lib/billing.ts`: the rule now requires `w.reopened_at` (written only by Reopen in `WorkOrderPopup.handleComplete`, cleared by Complete). Historical rows have no stamp and never move; a work order someone presses Reopen on from now on drops to In progress with the Reopened chip until completed again. No migration.
+
+**Lesson, recorded so it isn't repeated:** "invoice attached before Complete" is how billing works here, not an edge case. Any future rule on `work_orders.status` must be checked against the live distribution of statuses first.
+
+**Files:** `lib/billing.ts`
+
+---
+
 ## v1.45.3 — The dashboard greets you as you; the day arrows stop re-loading every lead — Oct 21, 2026
 
 **Why.** Lori: *"Lynair's name appears on my dashboard instead of mine, and now it's showing that I'm Fernando."* Eli: *"the phone app takes a long time to load the dashboard… the arrows on the cal… up to 10 seconds."* Both found in `app/(main)/page.tsx`. No migration.
@@ -41,7 +53,7 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 **Why.** Lori's second batch of app notes, same day. One was a real data-loss bug.
 
 1. **Complete WO now saves payment and rental rows** (`WorkOrderPopup.handleComplete` → `isDirtyAll()`). Complete saved first only when `isDirty()` said so, and that check never covered the payment or rental tables (they keep their own snapshots). A COD work order whose only change was the payment just taken read as clean, so Complete skipped the save and the payment was lost. Lori: *"completed WO for cod and noticed it didn't save until I redid it but pressed save."*
-2. **An open work order never sits at Needs approval or Approved** (`lib/billing.ts`, the step derivation). Eli: *"a reopened WO should be in progress."* Reopen set the WO to OPEN but only pulled it out of billing from Needs invoice; with an invoice on file the row stayed at step 2 looking finished. Now: `status !== 'completed'` and step 2 or 3 → step 1, derived like drift and "the client extended", never applied once sent. The v1.45.1 Reopened chip rides into In progress. **Side effect, accepted:** an invoice attached before Complete also reads In progress now — the honest step for it.
+2. **An open work order never sits at Needs approval or Approved** (`lib/billing.ts`, the step derivation). Eli: *"a reopened WO should be in progress."* Reopen set the WO to OPEN but only pulled it out of billing from Needs invoice; with an invoice on file the row stayed at step 2 looking finished. Now: `status !== 'completed'` and step 2 or 3 → step 1, derived like drift and "the client extended", never applied once sent. The v1.45.1 Reopened chip rides into In progress. **Side effect, accepted at the time:** an invoice attached before Complete also reads In progress. **WRONG — reverted in v1.45.4 the same afternoon:** that is the normal path, and the rule emptied Needs approval / Approved / COD paid on deploy. The rule is now keyed on the Reopened stamp.
 3. **Photos on manager shift notes** (`app/(main)/shift-notes/page.tsx`, `lib/myday.ts`). "+ Photo" under the two boxes (multi-select), thumbnails with ×, saved on the post and shown in the log at 84px with the lightbox link. They ride on the DRAFT (`myday_note_drafts.photo_paths`), so a photo added mid-shift survives leaving the page, same as the text. A post may be photos only. Private bucket `checklist-photos/shift-notes/`, `uploadNotePhoto()`, `SignedImage` on read.
 4. **Each saved payment row shows the date it was recorded** (`payment_rows.recorded_at`, read-only, small mono after the memo). Lori: *"add payment date on WO payment memo lines."*
 5. **Dashboard task lines from a work order or runner flag carry their source** (`app/(main)/page.tsx` → `taskLine`): "No show · PRS A · Artist / Client" instead of just "No show". The Flags page already had the second line; the tile didn't.

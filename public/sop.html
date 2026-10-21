@@ -679,6 +679,20 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.45.4', date:'Oct 21, 2026',
+    headline:'Fix: the billing hub is back the way it was.',
+    desc:'For about half an hour this afternoon, invoiced, sent and paid work orders showed under In progress / Needs invoice. Nothing was changed on them; it was a display rule that was too broad.',
+    changes:[
+      'Every work order is back in the bucket it was in before this afternoon. No invoice, payment or approval was touched.',
+      'From now on only a work order that someone actually presses <b>Reopen</b> on drops to In progress (with the Reopened tag), until it is completed again.',
+    ],
+    affects:'If you saw rows jump this afternoon, they are back. If anything still looks out of place, tell Eli which work order.',
+    dev:[
+      'lib/billing.ts: the v1.45.2 rule required only status !== completed; it now also requires reopened_at (written by Reopen, cleared by Complete). Derived; nothing was written during the window.',
+      'Lesson: attaching an invoice before Complete is the normal billing path, so most invoiced rows have status open.',
+    ],
+  },
+  {
     ver:'v1.45.3', date:'Oct 21, 2026',
     headline:'The dashboard greets you by your own name, and the day arrows are fast.',
     desc:'Two things Lori and Eli noticed on the phone.',

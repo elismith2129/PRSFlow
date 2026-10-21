@@ -381,6 +381,26 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 21, 2026 (late) — Hotfix v1.45.4: the In progress rule emptied the billing queue
+
+Minutes after v1.45.2 deployed, Eli: "i now have a million WOs that have been completed paid
+or waiting for payment that are now kicked back to in progress and 'need invoice'."
+
+**What I got wrong.** I keyed "a reopened WO is in progress" on `status !== 'completed'`
+and called invoice-before-Complete a rare, odd path. It is Lori's everyday path, so most
+invoiced, sent and COD-paid rows have status open, and the rule took all of them. I had the
+precise signal already (the v1.45.1 `reopened_at` stamp) and reached for the broad one
+because it felt more "honest". Honest about the wrong population.
+
+**Why it was harmless.** The step is derived at read time. No row was written, no state
+changed; the fix restores every row.
+
+**Fix.** Key the rule on `reopened_at`. Only a work order someone pressed Reopen on moves.
+
+**Rule for next time:** before any derivation keyed on `work_orders.status`, look at how the
+statuses are actually distributed in the live table. A "legal path" and a "common path" are
+different questions.
+
 ### October 21, 2026 (evening) — The name on the dashboard, and the 10-second arrows (v1.45.3)
 
 **The name was never a login problem.** The Oct 21 afternoon note guessed a shared browser or a

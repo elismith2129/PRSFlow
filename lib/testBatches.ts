@@ -57,7 +57,7 @@ export const TEST_BATCHES: TestBatch[] = [
   {
     id: 'oct-21-2026-complete-saves-inprogress-photos',
     title: 'Complete saves the payment; reopened = In progress; note photos',
-    version: 'v1.45.3',
+    version: 'v1.45.4',
     date: 'Oct 21, 2026',
     intro:
       'Use a THROWAWAY COD work order (made-up client) and delete it from the billing hub when done. The shift-notes item leaves a post — delete it after.',
@@ -66,6 +66,11 @@ export const TEST_BATCHES: TestBatch[] = [
         id: 'v1452-complete-payment', area: 'Billing',
         what: 'A payment entered and then Complete WO pressed is saved',
         how: 'Open the throwaway COD work order. Add a payment row: Cash, $100. Do NOT press Save. Press Complete WO (confirm if asked). Reopen the work order from the billing hub: the $100 Cash payment is there with today\'s date in small text after the memo.',
+      },
+      {
+        id: 'v1454-queue-intact', area: 'Billing',
+        what: 'Invoiced, sent and paid work orders are in their normal buckets, not In progress',
+        how: 'Open the billing hub. Look at Needs approval, Sent and Paid: the rows you expect are there. In progress holds only work orders that are genuinely still running or were reopened (those carry a Reopened tag).',
       },
       {
         id: 'v1452-reopened-progress', area: 'Billing',

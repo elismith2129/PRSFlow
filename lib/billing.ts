@@ -845,22 +845,24 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // stale until a corrected one is dropped. Not applied once SENT (step 4+)
     // — that invoice is with the client; Pull it back is the deliberate act.
     if (stillRunning && (step === 2 || step === 3)) step = 1
-    // AN OPEN WORK ORDER IS IN PROGRESS (Eli, 2026-10-21: "a reopened WO
-    // should be in progress"). Needs approval and Approved both mean "the
-    // office is done and the owner is looking"; a work order someone pressed
-    // Reopen on is by definition not done, so it has no business in either —
-    // and before this it sat at Needs approval looking finished (Lori, Oct 21:
-    // "once WO gets reopened it isn't moved back in the queue"). Same shape as
-    // the two rules above: DERIVED from w.status, never written, so no reopen
-    // path can forget it; the attached package stays on file and the row
-    // returns to step 2 the moment Complete is pressed again (drift then says
-    // whether the package is stale). Not applied once SENT — that invoice is
-    // with the client; Pull it back is the deliberate act. The v1.45.1
-    // "Reopened" chip rides along into In progress, so the reason is on the row.
-    // Side effect, accepted: an invoice attached BEFORE Complete (a legal but
-    // odd path) now also reads In progress instead of Needs approval, which
-    // is the honest step for it too.
-    if ((w.status ?? '') !== 'completed' && (step === 2 || step === 3)) step = 1
+    // A REOPENED WORK ORDER IS IN PROGRESS (Eli, 2026-10-21: "a reopened WO
+    // should be in progress"). Needs approval and Approved mean "the office is
+    // done and the owner is looking"; a work order someone pressed Reopen on
+    // is not done, so it drops to In progress until Complete is pressed
+    // again. Derived, never written, like drift and "the client extended";
+    // not applied once SENT (that invoice is with the client; Pull it back is
+    // the deliberate act). The v1.45.1 Reopened chip rides along.
+    //
+    // SCOPED TO THE REOPENED STAMP — v1.45.4, same afternoon. v1.45.2 keyed
+    // this on `status !== 'completed'` alone, on the belief that attaching an
+    // invoice before Complete was a rare path. It is Lori's NORMAL path: a
+    // very large number of invoiced, sent and COD-paid work orders carry
+    // status 'open', and the rule yanked every one of them to In progress /
+    // "Needs invoice" the moment it deployed (Eli: "a million WOs"). Nothing
+    // was written — it is a derivation — and keying on reopened_at (written
+    // only by the one Reopen path, cleared by Complete) says exactly what the
+    // ruling meant. Do not widen this to bare status again.
+    if (w.reopened_at && (w.status ?? '') !== 'completed' && (step === 2 || step === 3)) step = 1
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
     const notStarted = ((firstDate ?? w.session_date) ?? '') > today
