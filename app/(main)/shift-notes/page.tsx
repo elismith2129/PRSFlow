@@ -26,9 +26,10 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { opsToday } from '@/lib/time'
 import { fmtTaskTime } from '@/lib/tasks'
 import { RichNoteEditor, RichNoteView, noteIsEmpty } from '@/components/shared/RichNote'
+import { SignedImage } from '@/components/shared/SignedImage'
 import {
   fetchNoteLog, addNotePost, updateNotePost, deleteNotePost,
-  fetchNoteDraft, saveNoteDraft, clearNoteDraft, shortDayLabel,
+  fetchNoteDraft, saveNoteDraft, clearNoteDraft, shortDayLabel, uploadNotePhoto,
   type MyDayNotePost,
 } from '@/lib/myday'
 import { RunnerNotesChannel } from '@/components/runner/RunnerNotesChannel'
@@ -65,8 +66,9 @@ export default function ShiftNotesPage() {
   }, [])
   const [daysShown, setDaysShown] = useState(DAYS_PER_PAGE)
   const [noteLog, setNoteLog] = useState<MyDayNotePost[]>([])
-  const [drafts, setDrafts] = useState({ session: '', studio: '' })
+  const [drafts, setDrafts] = useState({ session: '', studio: '', photos: [] as string[] })
   const [posting, setPosting] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [editingPost, setEditingPost] = useState<MyDayNotePost | null>(null)
   const [draftReady, setDraftReady] = useState(false)
   const [draftState, setDraftState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -74,7 +76,7 @@ export default function ShiftNotesPage() {
 
   const draftsRef = useRef(drafts)
   const editingRef = useRef<MyDayNotePost | null>(editingPost)
-  const savedRef = useRef({ session: '', studio: '', editingId: null as string | null })
+  const savedRef = useRef({ session: '', studio: '', photos: '[]', editingId: null as string | null })
   const dirtyRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => { draftsRef.current = drafts }, [drafts])
@@ -101,10 +103,11 @@ export default function ShiftNotesPage() {
       const d = await fetchNoteDraft(profile.id)
       if (cancelled) return
       if (d) {
-        setDrafts({ session: d.session_notes, studio: d.studio_notes })
-        savedRef.current = { session: d.session_notes, studio: d.studio_notes, editingId: d.editing_post_id }
+        const photos = d.photo_paths ?? []
+        setDrafts({ session: d.session_notes, studio: d.studio_notes, photos })
+        savedRef.current = { session: d.session_notes, studio: d.studio_notes, photos: JSON.stringify(photos), editingId: d.editing_post_id }
         if (d.editing_post_id) setPendingEditId(d.editing_post_id)
-        if (d.session_notes || d.studio_notes) setDraftState('saved')
+        if (d.session_notes || d.studio_notes || photos.length) setDraftState('saved')
       }
       setDraftReady(true)
     })()
@@ -125,10 +128,11 @@ export default function ShiftNotesPage() {
     const next = {
       session: draftsRef.current.session,
       studio: draftsRef.current.studio,
+      photos: JSON.stringify(draftsRef.current.photos),
       editingId: editingRef.current?.id ?? null,
     }
     const prev = savedRef.current
-    if (next.session === prev.session && next.studio === prev.studio && next.editingId === prev.editingId) {
+    if (next.session === prev.session && next.studio === prev.studio && next.photos === prev.photos && next.editingId === prev.editingId) {
       dirtyRef.current = false
       return
     }
@@ -137,6 +141,7 @@ export default function ShiftNotesPage() {
       authorId: profile.id,
       sessionNotes: next.session,
       studioNotes: next.studio,
+      photoPaths: draftsRef.current.photos,
       editingPostId: next.editingId,
     })
     if (ok) { savedRef.current = next; dirtyRef.current = false; setDraftState('saved') }
@@ -147,7 +152,7 @@ export default function ShiftNotesPage() {
     if (!draftReady || !profile?.id) return
     const editingId = editingPost?.id ?? null
     const prev = savedRef.current
-    if (drafts.session === prev.session && drafts.studio === prev.studio && editingId === prev.editingId) return
+    if (drafts.session === prev.session && drafts.studio === prev.studio && JSON.stringify(drafts.photos) === prev.photos && editingId === prev.editingId) return
     dirtyRef.current = true
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => { flushDraft() }, 800)
@@ -178,15 +183,16 @@ export default function ShiftNotesPage() {
         filter: `author_id=eq.${profile.id}`,
       }, payload => {
         if (dirtyRef.current) return
-        const row = payload.new as { session_notes?: string; studio_notes?: string; editing_post_id?: string | null } | null
+        const row = payload.new as { session_notes?: string; studio_notes?: string; photo_paths?: string[] | null; editing_post_id?: string | null } | null
         if (!row || payload.eventType === 'DELETE') return
         const session = row.session_notes ?? ''
         const studio = row.studio_notes ?? ''
+        const photos = row.photo_paths ?? []
         const editingId = row.editing_post_id ?? null
         const prev = savedRef.current
-        if (session === prev.session && studio === prev.studio && editingId === prev.editingId) return
-        savedRef.current = { session, studio, editingId }
-        setDrafts({ session, studio })
+        if (session === prev.session && studio === prev.studio && JSON.stringify(photos) === prev.photos && editingId === prev.editingId) return
+        savedRef.current = { session, studio, photos: JSON.stringify(photos), editingId }
+        setDrafts({ session, studio, photos })
         setPendingEditId(editingId)
       })
       .subscribe()
@@ -195,16 +201,16 @@ export default function ShiftNotesPage() {
 
   async function postNotes() {
     if (!profile?.id || posting) return
-    if (noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio)) return
+    if (noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio) && drafts.photos.length === 0) return
     setPosting(true)
     const ok = editingPost
-      ? await updateNotePost({ id: editingPost.id, sessionNotes: drafts.session, studioNotes: drafts.studio })
-      : await addNotePost({ role: postRole, date: noteDay, sessionNotes: drafts.session, studioNotes: drafts.studio, createdBy: profile.id })
+      ? await updateNotePost({ id: editingPost.id, sessionNotes: drafts.session, studioNotes: drafts.studio, photoPaths: drafts.photos })
+      : await addNotePost({ role: postRole, date: noteDay, sessionNotes: drafts.session, studioNotes: drafts.studio, photoPaths: drafts.photos, createdBy: profile.id })
     if (ok) {
       if (timerRef.current) clearTimeout(timerRef.current)
       dirtyRef.current = false
-      savedRef.current = { session: '', studio: '', editingId: null }
-      setDrafts({ session: '', studio: '' })
+      savedRef.current = { session: '', studio: '', photos: '[]', editingId: null }
+      setDrafts({ session: '', studio: '', photos: [] })
       setEditingPost(null)
       setPendingEditId(null)
       setDraftState('idle')
@@ -216,12 +222,12 @@ export default function ShiftNotesPage() {
 
   function startEditPost(post: MyDayNotePost) {
     setEditingPost(post)
-    setDrafts({ session: post.session_notes, studio: post.studio_notes })
+    setDrafts({ session: post.session_notes, studio: post.studio_notes, photos: post.photo_paths ?? [] })
   }
   function cancelEditPost() {
     setEditingPost(null)
     setPendingEditId(null)
-    setDrafts({ session: '', studio: '' })
+    setDrafts({ session: '', studio: '', photos: [] })
   }
   async function removePost(post: MyDayNotePost) {
     if (!window.confirm('Delete these shift notes?')) return
@@ -236,7 +242,7 @@ export default function ShiftNotesPage() {
 
   if (profileLoading) return null
 
-  const empty = noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio)
+  const empty = noteIsEmpty(drafts.session) && noteIsEmpty(drafts.studio) && drafts.photos.length === 0
   const draftNote =
     draftState === 'error' ? 'not saved — check your connection'
     : draftState === 'saving' ? 'saving…'
@@ -320,6 +326,33 @@ export default function ShiftNotesPage() {
             />
           </div>
         </div>
+        {/* PHOTOS (Lori, 2026-10-21: "we should add pics to mgmt notes"). Same
+            private bucket and signed reads as flags. They ride on the draft,
+            so a photo added at 3 PM is still here at close. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          {drafts.photos.map((path, i) => (
+            <span key={path} style={{ position: 'relative', display: 'inline-block' }}>
+              <SignedImage path={path} alt="" style={{ height: 56, width: 56, objectFit: 'cover', borderRadius: 10, display: 'block' }} />
+              <button type="button" className="c-x" title="Remove photo"
+                onClick={() => setDrafts(d => ({ ...d, photos: d.photos.filter((_, j) => j !== i) }))}
+                style={{ position: 'absolute', top: -6, right: -6, background: 'var(--c-srf)', borderRadius: 99, width: 18, height: 18, fontSize: 11, opacity: 0.9, boxShadow: 'var(--c-ctlsh)' }}>×</button>
+            </span>
+          ))}
+          <label className="c-soft" style={{ cursor: uploadingPhoto ? 'default' : 'pointer', opacity: uploadingPhoto ? 0.5 : 1 }}>
+            {uploadingPhoto ? 'Uploading…' : '+ Photo'}
+            <input type="file" accept="image/*" multiple style={{ display: 'none' }} disabled={uploadingPhoto}
+              onChange={async e => {
+                const files = Array.from(e.target.files ?? [])
+                e.target.value = ''
+                if (!files.length) return
+                setUploadingPhoto(true)
+                const paths: string[] = []
+                for (const f of files) { const p = await uploadNotePhoto(f); if (p) paths.push(p) }
+                setUploadingPhoto(false)
+                if (paths.length) setDrafts(d => ({ ...d, photos: [...d.photos, ...paths] }))
+              }} />
+          </label>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: isMobile ? 'wrap' : undefined }}>
           <span style={{ flex: 1, fontSize: 10.5, opacity: 0.45, textAlign: 'right' }}>
             {editingPost
@@ -381,6 +414,13 @@ export default function ShiftNotesPage() {
                     <div>
                       <span className="c-label" style={{ display: 'block', marginBottom: 2 }}>Studio notes</span>
                       <RichNoteView className="c-mdnote-body" html={p.studio_notes} />
+                    </div>
+                  )}
+                  {(p.photo_paths?.length ?? 0) > 0 && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                      {p.photo_paths.map(path => (
+                        <SignedImage key={path} path={path} alt="" link style={{ height: 84, width: 84, objectFit: 'cover', borderRadius: 10, display: 'block' }} />
+                      ))}
                     </div>
                   )}
                 </div>

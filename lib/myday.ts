@@ -1224,12 +1224,16 @@ export type MyDayNotePost = {
   studio_notes: string
   created_by: string | null
   created_at: string
+  /** Photos on the post (Lori, 2026-10-21: "add pics to mgmt notes"). Paths
+   *  in the private checklist-photos bucket under shift-notes/; SignedImage
+   *  signs on read. Migration 20261021130000. */
+  photo_paths: string[]
   /** Embedded author row (PostgREST join on the created_by FK). */
   author: { display_name: string | null; initials: string | null } | null
 }
 
 const NOTE_POST_SELECT =
-  'id, role, date, shift, session_notes, studio_notes, created_by, created_at, author:user_profiles(display_name, initials)'
+  'id, role, date, shift, session_notes, studio_notes, photo_paths, created_by, created_at, author:user_profiles(display_name, initials)'
 
 /** All posts for one date, BOTH roles — the day everybody references. */
 export async function fetchNotePosts(date: string): Promise<MyDayNotePost[]> {
@@ -1270,16 +1274,19 @@ export async function addNotePost(args: {
   date: string
   sessionNotes: string
   studioNotes: string
+  photoPaths?: string[]
   createdBy: string
 }): Promise<boolean> {
   const session = args.sessionNotes.trim()
   const studio = args.studioNotes.trim()
-  if (!session && !studio) return false
+  const photos = args.photoPaths ?? []
+  if (!session && !studio && photos.length === 0) return false
   const { error } = await supabase.from('myday_note_posts').insert({
     role: args.role,
     date: args.date,
     session_notes: session,
     studio_notes: studio,
+    photo_paths: photos,
     created_by: args.createdBy,
   })
   return dbResult('Saving shift notes', error)
@@ -1295,13 +1302,16 @@ export async function updateNotePost(args: {
   id: string
   sessionNotes: string
   studioNotes: string
+  photoPaths?: string[]
 }): Promise<boolean> {
   const session = args.sessionNotes.trim()
   const studio = args.studioNotes.trim()
-  if (!session && !studio) return false
+  const photos = args.photoPaths ?? []
+  if (!session && !studio && photos.length === 0) return false
   const { error } = await supabase.from('myday_note_posts').update({
     session_notes: session,
     studio_notes: studio,
+    photo_paths: photos,
   }).eq('id', args.id)
   return dbResult('Updating shift notes', error)
 }
@@ -1324,15 +1334,26 @@ export type MyDayNoteDraft = {
   author_id: string
   session_notes: string
   studio_notes: string
+  /** Photos ride on the draft too — the paper never clears out. */
+  photo_paths: string[]
   editing_post_id: string | null
   updated_at: string
+}
+
+/** A photo for a manager note: private bucket, same as flags; the path is
+ *  what gets stored and SignedImage signs it on read. */
+export async function uploadNotePhoto(file: File): Promise<string | null> {
+  const path = `shift-notes/${Date.now()}-${file.name.replace(/\s+/g, '_')}`
+  const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+  if (!data || error) { dbResult('Uploading photo', error); return null }
+  return data.path
 }
 
 /** The author's in-progress note, or null when they have none. */
 export async function fetchNoteDraft(authorId: string): Promise<MyDayNoteDraft | null> {
   const { data, error } = await supabase
     .from('myday_note_drafts')
-    .select('author_id, session_notes, studio_notes, editing_post_id, updated_at')
+    .select('author_id, session_notes, studio_notes, photo_paths, editing_post_id, updated_at')
     .eq('author_id', authorId)
     .limit(1)
   // Never .maybeSingle() (project landmine: it returns null on multiple rows
@@ -1352,12 +1373,14 @@ export async function saveNoteDraft(args: {
   authorId: string
   sessionNotes: string
   studioNotes: string
+  photoPaths?: string[]
   editingPostId: string | null
 }): Promise<boolean> {
   const { error } = await supabase.from('myday_note_drafts').upsert({
     author_id: args.authorId,
     session_notes: args.sessionNotes,
     studio_notes: args.studioNotes,
+    photo_paths: args.photoPaths ?? [],
     editing_post_id: args.editingPostId,
   }, { onConflict: 'author_id' })
   return dbResult('Saving your notes', error, { silent: true })

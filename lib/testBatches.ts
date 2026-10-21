@@ -55,6 +55,36 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-21-2026-complete-saves-inprogress-photos',
+    title: 'Complete saves the payment; reopened = In progress; note photos',
+    version: 'v1.45.2',
+    date: 'Oct 21, 2026',
+    intro:
+      'Use a THROWAWAY COD work order (made-up client) and delete it from the billing hub when done. The shift-notes item leaves a post — delete it after.',
+    items: [
+      {
+        id: 'v1452-complete-payment', area: 'Billing',
+        what: 'A payment entered and then Complete WO pressed is saved',
+        how: 'Open the throwaway COD work order. Add a payment row: Cash, $100. Do NOT press Save. Press Complete WO (confirm if asked). Reopen the work order from the billing hub: the $100 Cash payment is there with today\'s date in small text after the memo.',
+      },
+      {
+        id: 'v1452-reopened-progress', area: 'Billing',
+        what: 'Reopening an invoiced work order moves it to In progress with the Reopened tag',
+        how: 'With the throwaway completed, drop any PDF on its hub row as the invoice (row goes to Needs approval). Open it, press Reopen, confirm. In the hub it is now under In progress and shows "Reopened · <your name> · recheck the invoice". Press Complete again: it returns to Needs approval.',
+      },
+      {
+        id: 'v1452-note-photo', area: 'Shift notes',
+        what: 'A photo added to shift notes survives leaving the page and posts with the note',
+        how: 'Shift Notes → Manager. Press "+ Photo", pick any image: a thumbnail appears. Go to another page and come back: the thumbnail is still there. Type a word in Session notes and Submit. In the log, the post shows the photo; tap it to open full size. Delete the post.',
+      },
+      {
+        id: 'v1452-task-source', area: 'Dashboard',
+        what: 'A runner-raised task on the dashboard says which session it is about',
+        how: 'On the dashboard Your List, find a task that came from a runner (the tag says task and the text is a runner note). The line reads "<note> · <studio> · <artist / client>", not the note alone.',
+      },
+    ],
+  },
+  {
     id: 'oct-21-2026-duties-review-reopened',
     title: 'Duties, the review chip, Reopened',
     version: 'v1.45.1',

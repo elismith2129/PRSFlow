@@ -20,6 +20,26 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.45.2 — Complete saves the payment; an open work order is In progress; photos on shift notes; two small reads — Oct 21, 2026
+
+**Why.** Lori's second batch of app notes, same day. One was a real data-loss bug.
+
+1. **Complete WO now saves payment and rental rows** (`WorkOrderPopup.handleComplete` → `isDirtyAll()`). Complete saved first only when `isDirty()` said so, and that check never covered the payment or rental tables (they keep their own snapshots). A COD work order whose only change was the payment just taken read as clean, so Complete skipped the save and the payment was lost. Lori: *"completed WO for cod and noticed it didn't save until I redid it but pressed save."*
+2. **An open work order never sits at Needs approval or Approved** (`lib/billing.ts`, the step derivation). Eli: *"a reopened WO should be in progress."* Reopen set the WO to OPEN but only pulled it out of billing from Needs invoice; with an invoice on file the row stayed at step 2 looking finished. Now: `status !== 'completed'` and step 2 or 3 → step 1, derived like drift and "the client extended", never applied once sent. The v1.45.1 Reopened chip rides into In progress. **Side effect, accepted:** an invoice attached before Complete also reads In progress now — the honest step for it.
+3. **Photos on manager shift notes** (`app/(main)/shift-notes/page.tsx`, `lib/myday.ts`). "+ Photo" under the two boxes (multi-select), thumbnails with ×, saved on the post and shown in the log at 84px with the lightbox link. They ride on the DRAFT (`myday_note_drafts.photo_paths`), so a photo added mid-shift survives leaving the page, same as the text. A post may be photos only. Private bucket `checklist-photos/shift-notes/`, `uploadNotePhoto()`, `SignedImage` on read.
+4. **Each saved payment row shows the date it was recorded** (`payment_rows.recorded_at`, read-only, small mono after the memo). Lori: *"add payment date on WO payment memo lines."*
+5. **Dashboard task lines from a work order or runner flag carry their source** (`app/(main)/page.tsx` → `taskLine`): "No show · PRS A · Artist / Client" instead of just "No show". The Flags page already had the second line; the tile didn't.
+
+**Migrations:** `20261021130000_note_post_photos.sql` — `photo_paths text[]` on `myday_note_posts` and `myday_note_drafts`. Run BEFORE the push (the note select names the column). Also still pending from v1.45.1: `20261021120000_wo_reopened_stamp.sql`.
+
+**Watch-outs.** The In progress rule moves existing rows: anything at Needs approval whose work order is not completed drops to In progress on deploy. The payment date is `recorded_at` from the insert; editing a row's amount later does not change it (that is the point). `isDirtyAll()` is Complete's test only; the Close button keeps `isDirty()` because a clean Close saves those tables anyway.
+
+**Looked at, not changed:** #1 Review submits in the office's name and un-review keeps it — both earlier rulings (Sep 23, Oct 6); Eli: skip. #2 someone else's name on Lori's dashboard — shared browser or a PIN collision; test is sign out + log in. #3 Molly Santana TBD / removed day — needs the WO number. #5 runner's actual times not showing on Lori's computer — live-merge exists and reads correctly; needs a reproduction (does reopen show them?).
+
+**Files:** `components/calendar/WorkOrderPopup.tsx` · `lib/billing.ts` · `app/(main)/shift-notes/page.tsx` · `lib/myday.ts` · `app/(main)/page.tsx` · `supabase/migrations/20261021130000_note_post_photos.sql`
+
+---
+
 ## v1.45.1 — Duties you can read; the review chip fits; "Reopened" in the billing hub — Oct 21, 2026
 
 **Why.** Three staff app notes Eli brought in (a fourth, the No show button, was looked at and left alone: it never prints and is marked internal; a fifth, a monthly LADWP/BWP duty, needs no code — Your List → recurring → add, monthly, which an owner adding makes the Billing seat's). Mock: `docs/design-refs/duties-and-review-chip-options.html`.

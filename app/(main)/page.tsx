@@ -184,6 +184,15 @@ export default function DashboardPage() {
     : 'eli'
   const isOwnerHere = isEli || profile?.role === 'owner'
 
+  // A flag raised from a work order or a runner checklist reads as the note
+  // alone on this tile — one said just "No show" (Lori, 2026-10-21). The
+  // source label (studio · artist / client) the Flags page shows under the
+  // note comes along here, after the note, so the line says what it's about.
+  const taskLine = (t: { text?: string | null; source?: string | null; source_label?: string | null }) => {
+    const text = t.text || ''
+    const src = (t.source === 'wo_flag' || t.source === 'runner_flag') ? (t.source_label || '') : ''
+    return src ? `${text} · ${src}` : text
+  }
   // ── The merged queue's tab (Eli gets Mine | Fernando | Aaron). ─────────────
   const [qTab, setQTab] = useState<QueueTab>('mine')
   useEffect(() => {
@@ -554,7 +563,7 @@ export default function DashboardPage() {
         })
       }
       for (const t of tasks) {
-        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/daily-ops?tab=flags&item=${t.id}` })
+        rows.push({ key: `t-${t.id}`, kind: 'task', text: taskLine(t), href: `/daily-ops?tab=flags&item=${t.id}` })
       }
       return rows
     }
@@ -575,7 +584,7 @@ export default function DashboardPage() {
     }
     if (qTab === effectiveView) {
       for (const t of tasks) {
-        rows.push({ key: `t-${t.id}`, kind: 'task', text: t.text || '', href: `/daily-ops?tab=flags&item=${t.id}` })
+        rows.push({ key: `t-${t.id}`, kind: 'task', text: taskLine(t), href: `/daily-ops?tab=flags&item=${t.id}` })
       }
     }
     return rows

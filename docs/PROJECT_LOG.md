@@ -381,6 +381,44 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 21, 2026 (later) — Lori's nine notes (v1.45.2)
+
+Nine notes relayed by Eli; each read in the code before an answer. Three real
+bugs fixed, one policy change, one feature, four parked with a question.
+
+**The data-loss one.** Complete only saved when `isDirty()` was true, and that
+test never covered payment or rental rows. A COD payment entered and then
+Complete pressed was gone. Fixed with `isDirtyAll()`; the dirty reporter for
+the host already did this, which is how it was found.
+
+**Policy: a reopened work order is In progress.** Eli asked what I thought.
+Agreed, and went one step further: an OPEN work order should never show at
+Needs approval or Approved at all, because those mean "the office is done".
+Done as a derived rule next to drift and "the client extended" so no reopen
+path can forget it. Accepted side effect: an invoice attached before Complete
+also reads In progress, which is more honest than the owner approving an
+unfinished work order. This supersedes the "it stays, with a chip" shape of
+v1.45.1 — the chip survives and now explains the row in In progress.
+
+**Photos on manager notes.** Lori asked; Eli: "sure." Same bucket and signed
+reads as flags. The photos ride on the draft, because the Aug 31 ruling is
+that the paper never clears out, and a photo taken at 3 PM for the closing
+note is exactly the thing that ruling protects.
+
+**Parked, with the question that unblocks each:**
+- *Review submits in the office's name; un-review keeps it* — two earlier
+  rulings (Sep 23, Oct 6). Eli: skip.
+- *Lynair's, then Fernando's, name on Lori's dashboard* — either a shared
+  browser with someone else signed in, or two people on one PIN (the PIN RPC
+  returns the first hash match). Test: sign out, log in with her own PIN. Eli:
+  come back to it.
+- *Molly Santana TBD / "removed from calendar but the timecard stayed"* —
+  needs the WO number; "removed" could be Remove hold, a cancelled day, or a
+  deleted card, and they differ.
+- *Runner's actual times not showing on Lori's computer* — the live merge
+  (per-field, Aug 16) is there and reads `actual_*` correctly; could not find
+  the break by reading. Needs: does closing and reopening show them?
+
 ### October 21, 2026 — Five app notes from staff (v1.45.1)
 
 Eli brought five notes. Each was read in the code before anything was said.

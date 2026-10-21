@@ -845,6 +845,22 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // stale until a corrected one is dropped. Not applied once SENT (step 4+)
     // — that invoice is with the client; Pull it back is the deliberate act.
     if (stillRunning && (step === 2 || step === 3)) step = 1
+    // AN OPEN WORK ORDER IS IN PROGRESS (Eli, 2026-10-21: "a reopened WO
+    // should be in progress"). Needs approval and Approved both mean "the
+    // office is done and the owner is looking"; a work order someone pressed
+    // Reopen on is by definition not done, so it has no business in either —
+    // and before this it sat at Needs approval looking finished (Lori, Oct 21:
+    // "once WO gets reopened it isn't moved back in the queue"). Same shape as
+    // the two rules above: DERIVED from w.status, never written, so no reopen
+    // path can forget it; the attached package stays on file and the row
+    // returns to step 2 the moment Complete is pressed again (drift then says
+    // whether the package is stale). Not applied once SENT — that invoice is
+    // with the client; Pull it back is the deliberate act. The v1.45.1
+    // "Reopened" chip rides along into In progress, so the reason is on the row.
+    // Side effect, accepted: an invoice attached BEFORE Complete (a legal but
+    // odd path) now also reads In progress instead of Needs approval, which
+    // is the honest step for it too.
+    if ((w.status ?? '') !== 'completed' && (step === 2 || step === 3)) step = 1
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
     const notStarted = ((firstDate ?? w.session_date) ?? '') > today

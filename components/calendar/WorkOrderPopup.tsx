@@ -305,6 +305,10 @@ type PayRow = {
    *  total, and that payment amount should calculate the 3% and add that to
    *  the amount we are going to charge, period." */
   base: string
+  /** When the row was first recorded (payment_rows.recorded_at). Read-only;
+   *  shown on the row (Lori, 2026-10-21: "add payment date on WO payment
+   *  memo lines"). Empty on a row not yet saved. */
+  recorded_at?: string
 }
 
 /** The base of a stored payment: what hit the card minus the fee inside it. */
@@ -1717,7 +1721,7 @@ export function WorkOrderPopup({
         rentSnapRef.current = JSON.stringify(arr)
       }
       if (pay?.length) {
-        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '', base: payBaseOf(p.amount, p.fee_amount) }))
+        const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '', base: payBaseOf(p.amount, p.fee_amount), recorded_at: p.recorded_at ?? undefined }))
         setPayRows(arr)
         paySnapRef.current = JSON.stringify(arr)
       }
@@ -1830,7 +1834,7 @@ export function WorkOrderPopup({
       })
     }
     if (pay) {
-      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '', base: payBaseOf(p.amount, p.fee_amount) }))
+      const arr = pay.map(p => ({ id: p.id, payment_type: p.payment_type ?? '', amount: p.amount != null ? formatCurrency(String(p.amount)) : '', memo: p.memo ?? '', last_four: p.last_four ?? '', fee_amount: p.fee_amount != null ? formatCurrency(String(p.fee_amount)) : '', base: payBaseOf(p.amount, p.fee_amount), recorded_at: p.recorded_at ?? undefined }))
       setPayRows(prev => {
         const untouched = paySnapRef.current
           ? JSON.stringify(prev) === paySnapRef.current
@@ -3491,7 +3495,15 @@ export function WorkOrderPopup({
     // `handleClose(false)` is the existing save path (save_work_order_atomic +
     // the booking projection). It returns having reported its own failure, so
     // if the save fails we must NOT go on to stamp it completed.
-    if (isDirty()) {
+    // ALL of it, including payments and rentals (Lori, 2026-10-21: "completed
+    // WO for cod and noticed it didn't save until I redid it but pressed
+    // save"). isDirty() covers the work order, the studio rows, deletions and
+    // bundles — NOT the payment and rental tables, which have their own
+    // snapshots (see the dirty reporter below). A COD work order whose only
+    // change was the payment just taken read as clean here, so Complete
+    // skipped the save and the payment was lost. isDirtyAll() is the same
+    // test the host's dirty flag uses.
+    if (isDirtyAll()) {
       const saved = await handleClose(false)
       if (!saved) { setCompleting(false); return }
     }
@@ -3959,6 +3971,22 @@ export function WorkOrderPopup({
     if (deletedRowsRef.current.length > 0) return true
     if (bundlesDirtyRef.current) return true
     return JSON.stringify(stRows) !== JSON.stringify(originalStRowsRef.current)
+  }
+  // isDirty() PLUS the payment and rental tables (2026-10-21). Those two keep
+  // their own load-time snapshots rather than dirtyFields; blank placeholder
+  // rows are ignored on both sides, like refreshFromDb does. Complete uses
+  // this; the Close button keeps isDirty() because a "clean" Close still
+  // saves those tables anyway (see handleClose).
+  function isDirtyAll(): boolean {
+    if (isDirty()) return true
+    const meaningful = (json: string, keep: (r: any) => boolean) => {
+      try { return JSON.stringify((JSON.parse(json || '[]') as any[]).filter(keep)) } catch { return '[]' }
+    }
+    const payKeep = (p: any) => !!(p.payment_type || p.amount)
+    const rentKeep = (r: any) => !!(r.item || r.charge)
+    if (JSON.stringify(payRows.filter(payKeep)) !== meaningful(paySnapRef.current, payKeep)) return true
+    if (JSON.stringify(rentRows.filter(rentKeep)) !== meaningful(rentSnapRef.current, rentKeep)) return true
+    return false
   }
 
   /**
@@ -7931,7 +7959,11 @@ export function WorkOrderPopup({
                             {p.amount || '$0.00'}
                           </span>
                         </div>
-                        <div style={{ ...cellIn, ...(isMobile ? { gridColumn: needsLast4 ? '1 / 2' : '1 / -1', order: 4 } : {}) }}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" /></div>
+                        <div style={{ ...cellIn, ...(isMobile ? { gridColumn: needsLast4 ? '1 / 2' : '1 / -1', order: 4 } : {}) }}><input value={p.memo} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, memo: e.target.value } : x))} placeholder="memo" className="c-tin c-tin-show" />
+                          {/* THE DATE IT WAS RECORDED (Lori, 2026-10-21). payment_rows.recorded_at,
+                              read-only, so a memo never has to carry the date by hand. */}
+                          {p.recorded_at && <span className="c-mono" style={{ fontSize: 9.5, color: 'var(--c-fg-3)', whiteSpace: 'nowrap', marginLeft: 6 }}>{new Date(p.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>}
+                        </div>
                         {needsLast4 && (
                           <div style={{ ...cellIn, ...(isMobile ? { gridColumn: '2 / -1', order: 5 } : {}) }}><input value={p.last_four} onChange={e => setPayRows(prev => prev.map(x => x.id === p.id ? { ...x, last_four: e.target.value.replace(/\D/g, '').slice(0, 4) } : x))} placeholder="last 4" maxLength={4} className="c-tin c-tin-mono c-tin-show" /></div>
                         )}

@@ -679,6 +679,26 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.45.2', date:'Oct 21, 2026',
+    headline:'Complete keeps your payment; reopened work orders go back to In progress; photos on shift notes.',
+    desc:'Lori&rsquo;s notes, same day. One of them was a real bug.',
+    changes:[
+      '<b>Complete WO saves everything first</b>, including a payment you just entered. Before, if the payment was the only change, Complete skipped the save and the payment was lost.',
+      '<b>A reopened work order moves back to In progress</b> in the billing hub, with the Reopened tag on it, until it is completed again. It no longer sits under Needs approval looking finished.',
+      '<b>Shift notes take photos.</b> &ldquo;+ Photo&rdquo; under the two boxes; they stay with your draft and post with the note. Tap one in the log to see it full size.',
+      'Each saved payment line on a work order now shows the date it was recorded.',
+      'On the dashboard, a task raised from a work order or checklist now says which studio and session it is about, not just the runner&rsquo;s note.',
+    ],
+    affects:'If you see a work order drop from Needs approval to In progress, someone reopened it, or an invoice was attached before it was completed. Complete it to send it back up.',
+    dev:[
+      'handleComplete gates its save on isDirtyAll() (isDirty + payment/rental snapshots). Close keeps isDirty() because a clean Close saves those tables anyway.',
+      'lib/billing step derivation: w.status !== completed and step 2|3 &rarr; 1; derived, never written; not applied once sent. Side effect: invoice-before-Complete rows read In progress.',
+      'myday_note_posts.photo_paths + myday_note_drafts.photo_paths (migration 20261021130000); uploadNotePhoto() &rarr; checklist-photos/shift-notes/; SignedImage on read; photos-only posts allowed.',
+      'PayRow.recorded_at from payment_rows, read-only on the row. Dashboard taskLine() appends source_label for wo_flag / runner_flag.',
+      'Watch-out: the In progress rule moves existing rows on deploy.',
+    ],
+  },
+  {
     ver:'v1.45.1', date:'Oct 21, 2026',
     headline:'Read a long duty; the review chip fits; reopened work orders say so in the billing hub.',
     desc:'Three small things staff asked for.',
