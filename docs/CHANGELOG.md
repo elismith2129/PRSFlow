@@ -20,6 +20,22 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.45.3 — The dashboard greets you as you; the day arrows stop re-loading every lead — Oct 21, 2026
+
+**Why.** Lori: *"Lynair's name appears on my dashboard instead of mine, and now it's showing that I'm Fernando."* Eli: *"the phone app takes a long time to load the dashboard… the arrows on the cal… up to 10 seconds."* Both found in `app/(main)/page.tsx`. No migration.
+
+1. **Greeting + Your List name the viewer.** `viewedName` / `listWho` resolved a manager or billing viewer to *the first `user_profiles` row with that role* (`fetchStaffGrid` → `nameFor`), written when each role had one person. Lynair's profile was `billing` for a week → Lori was greeted as Lynair. Now a staff viewer is always themselves; the role→name lookup serves Eli's peek tabs only (Eli viewing as Fernando still reads Fernando).
+2. **Leads and the day's bookings are separate effects.** They shared one effect keyed on `calDate`, so every arrow click (and every booking change) re-ran `fetchAllLeads()`: `select('*')`, five sequential 1,000-row pages, ~4,200 leads. Leads now load on `leadsVersion` only; the arrows load the day.
+3. **The lead fetch is narrow.** Six columns (`needsActionCounts` reads exactly those) and `status not in (booked, dead, leasing)` — those statuses can never count. Same page loop, far fewer rows.
+
+**Not changed, flagged:** Lori's "Your List" shows every non-private task in the company because billing (and manager) see all by RLS and the tile deliberately adds no client-side filter (CLAUDE.md, paired-roles rule). Eli to say whether the tile should narrow to assigned-to-me / by-me.
+
+**Watch-outs.** The pipeline count is unchanged in value (the dropped statuses never counted); if the CRM page ever disagrees, check the status list here first. `Lead[]` state now holds partial rows — nothing else on the dashboard reads a lead.
+
+**Files:** `app/(main)/page.tsx`
+
+---
+
 ## v1.45.2 — Complete saves the payment; an open work order is In progress; photos on shift notes; two small reads — Oct 21, 2026
 
 **Why.** Lori's second batch of app notes, same day. One was a real data-loss bug.

@@ -679,6 +679,21 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.45.3', date:'Oct 21, 2026',
+    headline:'The dashboard greets you by your own name, and the day arrows are fast.',
+    desc:'Two things Lori and Eli noticed on the phone.',
+    changes:[
+      'The dashboard greeting and the Your List header now show <b>your</b> name. Billing and manager staff were being shown another person with the same role.',
+      'The &lsaquo; &rsaquo; day arrows on the dashboard&rsquo;s sessions box no longer reload the whole lead list each click, which is what made them take up to ten seconds on a phone. The first load is lighter too.',
+    ],
+    affects:'Nothing to do. If the dashboard ever shows a name that is not yours, tell Eli.',
+    dev:[
+      'viewedName / listWho: own display_name unless isEli is peeking (effectiveView fernando/aaron). The role&rarr;first-profile lookup was the bug.',
+      'Leads effect on [leadsVersion] only; bookings effect on [calDate, dashDataVersion]. fetchAllLeads selects six columns and filters status not in (booked,dead,leasing).',
+      'Not changed: billing/manager see every non-private task on the Your List tile (RLS, by rule). Open question in TODO.',
+    ],
+  },
+  {
     ver:'v1.45.2', date:'Oct 21, 2026',
     headline:'Complete keeps your payment; reopened work orders go back to In progress; photos on shift notes.',
     desc:'Lori&rsquo;s notes, same day. One of them was a real bug.',

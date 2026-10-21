@@ -57,7 +57,7 @@ export const TEST_BATCHES: TestBatch[] = [
   {
     id: 'oct-21-2026-complete-saves-inprogress-photos',
     title: 'Complete saves the payment; reopened = In progress; note photos',
-    version: 'v1.45.2',
+    version: 'v1.45.3',
     date: 'Oct 21, 2026',
     intro:
       'Use a THROWAWAY COD work order (made-up client) and delete it from the billing hub when done. The shift-notes item leaves a post — delete it after.',
@@ -76,6 +76,16 @@ export const TEST_BATCHES: TestBatch[] = [
         id: 'v1452-note-photo', area: 'Shift notes',
         what: 'A photo added to shift notes survives leaving the page and posts with the note',
         how: 'Shift Notes → Manager. Press "+ Photo", pick any image: a thumbnail appears. Go to another page and come back: the thumbnail is still there. Type a word in Session notes and Submit. In the log, the post shows the photo; tap it to open full size. Delete the post.',
+      },
+      {
+        id: 'v1453-own-name', area: 'Dashboard',
+        what: 'The dashboard greets you by your own name',
+        how: 'Log in as yourself (billing or manager). The greeting at the top of the dashboard and the name on the Your List box are yours, not another person with your role.',
+      },
+      {
+        id: 'v1453-arrows-fast', area: 'Dashboard',
+        what: 'The day arrows on the sessions box respond in about a second on a phone',
+        how: 'On your phone, open the dashboard and tap › on the sessions box three times, then ‹ three times. Each tap changes the day within a second or two, not ten.',
       },
       {
         id: 'v1452-task-source', area: 'Dashboard',

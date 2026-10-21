@@ -381,6 +381,21 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 21, 2026 (evening) — The name on the dashboard, and the 10-second arrows (v1.45.3)
+
+**The name was never a login problem.** The Oct 21 afternoon note guessed a shared browser or a
+PIN collision. Reading `viewedName`: a billing viewer was shown *the first billing profile*,
+and Lynair had been billing for a week. The sign-out test and the PIN rerun in TODO are
+withdrawn. Lesson for the log: when two names appear, read where the name comes from before
+suspecting who is logged in.
+
+**The arrows.** Every day-arrow click re-paged every lead. The leads and the day's bookings had
+been put in one effect for tidiness on Oct 12 and nobody timed it on a phone. Split, and the
+lead fetch cut to six columns and three statuses out.
+
+**Not decided:** whether the Your List tile should show only Lori's own tasks. RLS lets billing
+see everything; the tile obeys RLS by rule. Left to Eli.
+
 ### October 21, 2026 (later) — Lori's nine notes (v1.45.2)
 
 Nine notes relayed by Eli; each read in the code before an answer. Three real

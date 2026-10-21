@@ -142,16 +142,27 @@ type QueueRow = {
   href?: string
 }
 
-/** Every lead, paged. A bare select stops at 1,000 rows (newest first), which
- *  would quietly drop older leads from the pipeline count and make it disagree
- *  with the CRM page, which has always paged. Same loop as the CRM's load. */
+/** The leads the pipeline count can see, paged. A bare select stops at 1,000
+ *  rows (newest first), which would quietly drop older leads from the count
+ *  and make it disagree with the CRM page, which has always paged.
+ *
+ *  NARROW ON PURPOSE (2026-10-21). This used to be select('*') over every
+ *  lead — five sequential pages of full rows, ~4,200 leads — and it ran on
+ *  every day-arrow click because it shared an effect with the day's
+ *  bookings. On a phone that was the "up to 10 seconds" per arrow (Eli). The
+ *  dashboard reads exactly six columns of a lead (needsActionCounts), and a
+ *  booked / dead / leasing lead can never count: the uncontacted branch
+ *  excludes those statuses by name and the hot / warm branches require
+ *  status hot / warm. So: six columns, three statuses out, and the effect
+ *  below no longer re-runs on the arrows. */
 async function fetchAllLeads(): Promise<{ data: Lead[] }> {
   let all: Lead[] = []
   let from = 0
   const BATCH = 1000
   while (true) {
     const { data, error } = await supabase
-      .from('leads').select('*')
+      .from('leads').select('id, status, last_contact, created_at, keep_hot_until, parked_until, needs_contact')
+      .not('status', 'in', '(booked,dead,leasing)')
       .order('created_at', { ascending: false })
       .range(from, from + BATCH - 1)
     if (error || !data || data.length === 0) break
@@ -420,7 +431,17 @@ export default function DashboardPage() {
     })
   }, [woVersion, dashDataVersion])
 
-  // ── Leads + the viewed day's bookings. ─────────────────────────────────────
+  // ── Leads: the pipeline count. Its own effect (2026-10-21) — it used to
+  //    share one with the day's bookings, so every arrow click and every
+  //    booking change re-paged every lead. Paired with WebInquiryProvider's
+  //    leads channel (leadsVersion).
+  useEffect(() => {
+    let live = true
+    fetchAllLeads().then(({ data }) => { if (live) setLeads(data || []) })
+    return () => { live = false }
+  }, [leadsVersion])
+
+  // ── The viewed day's bookings. ─────────────────────────────────────────────
   useEffect(() => {
     // The day arrows (2026-10-12) can be clicked faster than a day loads. Only
     // the LAST day asked for may land — an earlier day's answer arriving late
@@ -430,12 +451,8 @@ export default function DashboardPage() {
       const d = new Date(calDate)
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
       const today = d.toISOString().slice(0, 10)
-      const [{ data: leadsData }, { data: bookingsData }] = await Promise.all([
-        fetchAllLeads(),
-        supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true }),
-      ])
+      const { data: bookingsData } = await supabase.from('bookings').select('*').lte('start_date', today).gte('end_date', today).order('from_time', { ascending: true })
       if (!live) return
-      setLeads(leadsData || [])
       // Today's own times/staff per card (lib/dayTimes, 2026-09-28).
       const dayCards = await overlayDayTimes(bookingsData || [], today)
       if (!live) return
@@ -444,7 +461,7 @@ export default function DashboardPage() {
     }
     load()
     return () => { live = false }
-  }, [calDate, leadsVersion, dashDataVersion])
+  }, [calDate, dashDataVersion])
 
   // Realtime — bookings drive Tonight + landed + holds re-fetches.
   useEffect(() => {
@@ -506,9 +523,15 @@ export default function DashboardPage() {
   const now = new Date()
   const hour = now.getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-  const viewedName =
-    effectiveView === 'fernando' ? gridRows.find(g => g.role === 'manager')?.who
-    : effectiveView === 'aaron' ? gridRows.find(g => g.role === 'billing')?.who
+  // THE VIEWER'S OWN NAME, unless Eli is peeking at a seat (2026-10-21).
+  // This used to resolve a manager or billing viewer to "the first profile
+  // with that role" — fine while each role had one person, wrong the day it
+  // didn't: Lori (billing) was greeted as Lynair the week Lynair's profile
+  // was billing too. A seat name is for Eli's peek tabs only.
+  const viewedName = isEli
+    ? (effectiveView === 'fernando' ? gridRows.find(g => g.role === 'manager')?.who
+      : effectiveView === 'aaron' ? gridRows.find(g => g.role === 'billing')?.who
+      : profile?.display_name)
     : profile?.display_name
   const clockDate = clockNow.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const clockTime = clockNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
@@ -596,7 +619,9 @@ export default function DashboardPage() {
   // same views/tasks/approvals the box draws, so the two can't disagree; it
   // refreshes through the same loaders on any change.
   const [listOpen, setListOpen] = useState(false)
-  const listWho = qTab === 'mine'
+  // Own name for Mine, and for a staff viewer on their own seat; Eli viewing
+  // as Fernando still reads Fernando.
+  const listWho = (qTab === 'mine' || (!isEli && qTab === effectiveView))
     ? (profile?.display_name?.split(' ')[0] || 'Me')
     : (gridRows.find(g => g.role === dutyRole)?.who ?? (dutyRole === 'manager' ? 'Manager' : 'Billing'))
   const listRoleLabel = dutyRole === 'manager' ? 'Manager' : dutyRole === 'billing' ? 'Billing' : (isOwnerHere ? 'Owner' : '')

@@ -8,7 +8,8 @@ Newest at the top of each group.*
 ## To run (Oct 21)
 
 - [ ] **Run `20261021130000_note_post_photos.sql` BEFORE the v1.45.2 push** — the shift-notes select names `photo_paths`. *(Oct 21)*
-- [ ] **Lori: sign out, log in with her own PIN** — if she is still someone else, two people share a PIN: rerun `set-pins.mjs` for everyone and re-hand the table. *(Oct 21)*
+- [x] ~~Lori: sign out, log in with her own PIN~~ — not a login problem; the dashboard named the first profile of her role. Fixed v1.45.3. *(Oct 21)*
+- [ ] **Decide: should Lori's Your List tile show only her own tasks?** Billing sees every non-private task by RLS; the tile adds no filter by rule. *(Oct 21)*
 - [ ] **Ask Lori for the Molly Santana WO number** (TBD on the calendar / day removed but timecard stayed) and whether Tristan's actual times appear after closing and reopening the work order. *(Oct 21)*
 - [ ] **Run `20261021120000_wo_reopened_stamp.sql` BEFORE the v1.45.1 push** — Complete / Reopen write the two new columns. *(Oct 21)*
 - [ ] **Add the LADWP / BWP duty from the app** — Your List → recurring → add → monthly, day 1, on the Billing tab (no code). If it should carry a backlog instead of "missed is missed", say so: the add form only makes point duties. *(Oct 21)*
