@@ -679,6 +679,24 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.46.3', date:'Oct 22, 2026',
+    headline:'Ask Flo on a phone: fixed the sideways scroll, bigger ask bar, green Ask.',
+    desc:'Small fixes from the first phone test, plus Flo now gives the closest step instead of refusing when the guide covers your situation in different words.',
+    changes:[
+      'The guide chips under an answer are short (&ldquo;Runner guide &middot; Tonight&rsquo;s times&rdquo;) and wrap, so the screen no longer scrolls sideways.',
+      'The ask bar and the Ask button are bigger on a phone, and Ask is green.',
+      'If the guide covers what you are asking but not in your words, Flo gives you the closest step and says so.',
+      'Your questions are private: they are not shown to other staff.',
+      'When something is not in the guide, Flo says &ldquo;ask the office&rdquo; (runners) or &ldquo;ask a manager&rdquo; (office) &mdash; not &ldquo;ask Eli&rdquo;.',
+      'The top of the sheet (the ribbon, &ldquo;Flo&rdquo;, the &times;) is bigger on a phone.',
+    ],
+    affects:'Nothing to do.',
+    dev:[
+      'Chip label = short guide name + chapter nav; chips white-space normal; thread overflow-x hidden; sheet 100vw on phone. Input 16px/44px on mobile (iOS zoom). Ask = --c-st-booked + chip ink: a named Law 3 exception, Flo&rsquo;s one button only.',
+      'Prompt rule 1 gained the &ldquo;closest step&rdquo; clause. ask_log is owner-select only; the thread is component state.',
+    ],
+  },
+  {
     ver:'v1.46.2', date:'Oct 22, 2026',
     headline:'Runners can Ask Flo too.',
     desc:'The same wave button, on the runner app&rsquo;s first screen and the studio page.',

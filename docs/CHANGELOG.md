@@ -20,6 +20,23 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.46.3 — Ask Flo on a phone: chips wrap, bigger ask bar, green Ask; closest-step answers — Oct 22, 2026
+
+**Why.** Eli's first phone screenshot (runner surface): the chapter chip ran off the right edge and the whole sheet scrolled sideways; the ask bar was too small; "ask should be green." And Flo refused "an item on my checklist is wrong" although the runner guide covers that situation ("Could not finish something? Submit anyway, say what in Raise a flag"). No migration.
+
+1. **Chip labels are short** (`build-ask-corpus.mjs`): "Runner guide · Tonight's times", not the corpus's long guide title. Chips wrap (`white-space: normal`), the thread is `overflow-x: hidden`, question bubbles use `overflow-wrap: anywhere`, the phone sheet is pinned to `100vw`.
+2. **Phone sizes**: 16px input text (no iOS zoom on focus), 44px tall bar and button, 15px thread text, 11.5px footnote, safe-area padding under the footnote.
+3. **Ask is green**: `--c-st-booked` with chip ink. A named exception to Law 3 (colour is status only), the same shape as the ribbon: sea green is Flo's colour on the brand mark, and this is Flo's one button. Nothing else may borrow it.
+4. **Closest step beats a refusal** (prompt rule 1): when the guides cover the situation without the exact wording, Flo gives that step and says it is the closest the guide has; it refuses only when nothing applies.
+5. **No more "Ask Eli"** (Eli: *"i want to avoid the ask eli"*). A refusal now ends "Ask a manager." for the office and "Ask the office." for runners. The guide gets fixed from the log, not from Eli's inbox.
+6. **The sheet's head is phone-sized**: 28px ribbon, 20px "Flo", bigger ✕, safe-area padding at the top; the bubble is 52px on a phone.
+
+**Privacy, asked and confirmed:** a thread exists only on the device while the sheet is open; `ask_log` is owner-read only. Nobody sees anyone else's questions.
+
+**Files:** `components/ask/AskFlo.tsx` · `app/api/ask/route.ts` · `scripts/build-ask-corpus.mjs` · `lib/server/askCorpus.generated.ts`
+
+---
+
 ## v1.46.2 — Ask Flo for runners — Oct 22, 2026
 
 **Why.** Eli, right after the office version went live: *"we should do this with the runner manual too on the runner version on the phone."* No migration.

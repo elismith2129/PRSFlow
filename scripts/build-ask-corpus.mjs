@@ -64,11 +64,13 @@ function stepLine(step) {
   return `- ${text(step.h)}: ${text(step.b)}${why}`
 }
 
-function renderGuide(key, title, href, chapters, cites) {
+function renderGuide(key, short, title, href, chapters, cites) {
   const out = [`# GUIDE: ${title}`]
   for (const c of chapters) {
     const id = `${key}:${c.id}`
-    const label = `${title.replace(/ SOP| guide/i, '')} guide · ${c.nav}`
+    // The chip in the sheet: "Billing guide · Holds". Short on purpose — the
+    // first build used the long corpus title and the chip ran off a phone.
+    const label = `${short} guide · ${text(c.nav)}`
     cites[id] = { label, href: `${href}#${c.id}` }
     out.push(`\n## [${id}] Chapter ${c.n} · ${text(c.nav)} — ${text(c.h1)}`)
     if (c.lede) out.push(text(c.lede))
@@ -147,8 +149,8 @@ const runner = loadChapters('content_runner')
 const sop = loadSopData()
 
 const parts = [
-  renderGuide('billing', 'Billing SOP (the office: work orders, invoices, payments)', '/sop/billing', billing.chapters, cites),
-  renderGuide('runner', 'Runner App Guide (the phone app runners use at night)', '/runner/sop', runner.chapters, cites),
+  renderGuide('billing', 'Billing', 'Billing SOP (the office: work orders, invoices, payments)', '/sop/billing', billing.chapters, cites),
+  renderGuide('runner', 'Runner', 'Runner App Guide (the phone app runners use at night)', '/runner/sop', runner.chapters, cites),
   renderAppGuide(sop, cites),
   renderVersions(sop.VERSIONS, cites),
 ]

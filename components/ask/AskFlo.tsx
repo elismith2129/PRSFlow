@@ -96,10 +96,10 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
 
   const bubble: CSSProperties = {
     position: 'fixed', right: 18, bottom: isRunnerAsk ? 'calc(18px + env(safe-area-inset-bottom))' : 18, zIndex: Z,
-    width: 44, height: 44, borderRadius: 999, padding: 1.5, cursor: 'pointer', border: 'none', background: 'transparent',
+    width: isMobile ? 52 : 44, height: isMobile ? 52 : 44, borderRadius: 999, padding: 1.5, cursor: 'pointer', border: 'none', background: 'transparent',
   }
   const sheet: CSSProperties = isMobile
-    ? { position: 'fixed', inset: 0, zIndex: Z + 1, borderRadius: 0, padding: 0 }
+    ? { position: 'fixed', inset: 0, zIndex: Z + 1, borderRadius: 0, padding: 0, width: '100vw', maxWidth: '100vw', overflow: 'hidden' }
     : { position: 'fixed', right: 18, bottom: 74, zIndex: Z + 1, width: 360, height: 'min(480px, calc(100vh - 100px))' }
 
   return (
@@ -107,32 +107,35 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
       {open && (
         <div className="c-ringwrap" style={sheet} role="dialog" aria-label="Ask Flo">
           <div className="c-flo-inner" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, borderRadius: isMobile ? 0 : undefined }}>
-            <div className="c-flohead" style={{ padding: '12px 14px 6px', marginBottom: 0 }}>
-              <PRSFloIcon size={18} />
-              <span className="c-fname">Flo</span>
-              <span className="c-ftag">Ask · from the guides</span>
-              <button type="button" className="c-x" aria-label="Close" onClick={() => setOpen(false)} style={{ marginLeft: 'auto', border: 'none', fontSize: 15 }}>✕</button>
+            {/* BIGGER ON A PHONE (Eli, 2026-10-22: "the ribbon and the flo are
+                really small at the top"). The dashboard Flo box's 13px head
+                is right beside a mouse; a thumb needs more. */}
+            <div className="c-flohead" style={{ padding: isMobile ? 'calc(14px + env(safe-area-inset-top)) 16px 8px' : '12px 14px 6px', marginBottom: 0, gap: isMobile ? 10 : 8 }}>
+              <PRSFloIcon size={isMobile ? 28 : 18} />
+              <span className="c-fname" style={isMobile ? { fontSize: 20 } : undefined}>Flo</span>
+              <span className="c-ftag" style={isMobile ? { fontSize: 10 } : undefined}>Ask · from the guides</span>
+              <button type="button" className="c-x" aria-label="Close" onClick={() => setOpen(false)} style={{ marginLeft: 'auto', border: 'none', fontSize: isMobile ? 22 : 15, padding: isMobile ? '4px 6px' : undefined }}>✕</button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, lineHeight: 1.5 }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', gap: 10, fontSize: isMobile ? 15 : 13, lineHeight: 1.5, minWidth: 0 }}>
               {thread.length === 0 && (
-                <div style={{ color: 'var(--c-fg-3)', fontSize: 12.5, marginTop: 6 }}>
+                <div style={{ color: 'var(--c-fg-3)', fontSize: isMobile ? 15 : 12.5, marginTop: 6 }}>
                   {isRunnerAsk
                     ? <>Ask how to do something in the app — “how do I submit the work order”, “what if the client never showed up”. Answers come from the Runner guide; if it isn't in there, Flo says so.</>
                     : <>Ask how to do something in PRSFlo — “how do I take one day off a hold”, “what does the Reopened tag mean”. Answers come from the staff guides; if it isn't in them, Flo says so.</>}
                 </div>
               )}
               {thread.map((m, i) => m.role === 'user' ? (
-                <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '85%', background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 11px' }}>{m.content}</div>
+                <div key={i} style={{ alignSelf: 'flex-end', maxWidth: '85%', background: 'var(--c-wash2)', borderRadius: 12, padding: '7px 11px', overflowWrap: 'anywhere' }}>{m.content}</div>
               ) : (
-                <div key={i} style={{ maxWidth: '94%', color: m.failed ? 'var(--c-st-hot)' : undefined }}>
+                <div key={i} style={{ maxWidth: '94%', minWidth: 0, color: m.failed ? 'var(--c-st-hot)' : undefined }}>
                   {m.content.split('\n').filter(Boolean).map((p, j) => <p key={j} style={{ margin: '0 0 6px' }}>{p}</p>)}
                   {m.cites && m.cites.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                       {m.cites.map(c => (
                         <button key={c.id} type="button" className="c-soft c-raised"
                           onClick={() => { setOpen(false); router.push(c.href) }}
-                          style={{ fontSize: 9.5, padding: '5px 10px', borderRadius: 99, whiteSpace: 'nowrap', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
+                          style={{ fontSize: isMobile ? 11 : 9.5, padding: '6px 11px', borderRadius: 99, whiteSpace: 'normal', textAlign: 'left', maxWidth: '100%', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
                           {c.label} →
                         </button>
                       ))}
@@ -145,11 +148,20 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
             </div>
 
             <form onSubmit={e => { e.preventDefault(); ask() }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 4px' }}>
+              {/* PHONE SIZES (Eli, 2026-10-22: "the text bar at the bottom is
+                  too small"). 16px text so iOS does not zoom the page on
+                  focus; 44px tall, the thumb's minimum. */}
               <input ref={inputRef} className="c-input" value={q} onChange={e => setQ(e.target.value)} disabled={busy}
-                placeholder={isRunnerAsk ? 'Ask how to do something…' : 'Ask how to do something in PRSFlo…'} maxLength={600} style={{ flex: 1 }} />
-              <button type="submit" className="c-btn c-control c-raised-primary" disabled={busy || !q.trim()} style={{ opacity: busy || !q.trim() ? 0.5 : 1 }}>Ask</button>
+                placeholder={isRunnerAsk ? 'Ask how to do something…' : 'Ask how to do something in PRSFlo…'} maxLength={600}
+                style={{ flex: 1, minWidth: 0, ...(isMobile ? { height: 44, fontSize: 16, borderRadius: 14 } : {}) }} />
+              {/* GREEN ASK (Eli, 2026-10-22: "ask should be green"). A named
+                  exception to Law 3 (colour is status only), like the ribbon:
+                  sea green is Flo's colour on the brand mark, and this is
+                  Flo's one button. Nothing else may borrow it. */}
+              <button type="submit" className="c-btn c-control c-raised-primary" disabled={busy || !q.trim()}
+                style={{ opacity: busy || !q.trim() ? 0.5 : 1, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', ...(isMobile ? { height: 44, padding: '0 18px', fontSize: 12 } : {}) }}>Ask</button>
             </form>
-            <div style={{ fontSize: 10, color: 'var(--c-fg-3)', padding: '0 14px 10px' }}>
+            <div style={{ fontSize: isMobile ? 11.5 : 10, color: 'var(--c-fg-3)', padding: isMobile ? '0 14px calc(10px + env(safe-area-inset-bottom))' : '0 14px 10px' }}>
               {isRunnerAsk ? "Answers come only from the Runner guide. Flo can't see tonight's sessions." : "Answers come only from the staff guides. Flo can't see work orders or clients."}
             </div>
           </div>
@@ -159,7 +171,7 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
       {!open && (
         <button type="button" className="c-ringwrap" style={bubble} onClick={() => setOpen(true)} title="Ask Flo how to do something" aria-label="Ask Flo">
           <span className="c-flo-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', borderRadius: 999, padding: 0 }}>
-            <PRSFloIcon size={24} />
+            <PRSFloIcon size={isMobile ? 30 : 24} />
           </span>
         </button>
       )}
