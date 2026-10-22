@@ -99,7 +99,11 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
     width: isMobile ? 52 : 44, height: isMobile ? 52 : 44, borderRadius: 999, padding: 1.5, cursor: 'pointer', border: 'none', background: 'transparent',
   }
   const sheet: CSSProperties = isMobile
-    ? { position: 'fixed', inset: 0, zIndex: Z + 1, borderRadius: 0, padding: 0, width: '100vw', maxWidth: '100vw', overflow: 'hidden' }
+    // 100dvh, not inset:0 — on iOS the fixed box ran under the home-indicator
+    // strip and the footnote's last line was clipped (Eli's screenshot,
+    // 2026-10-22). env(safe-area-inset-bottom) is 0 without viewport-fit=cover,
+    // so the bottom padding below is a plain 28px plus env, not env alone.
+    ? { position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: Z + 1, borderRadius: 0, padding: 0, width: '100vw', maxWidth: '100vw', overflow: 'hidden' }
     : { position: 'fixed', right: 18, bottom: 74, zIndex: Z + 1, width: 360, height: 'min(480px, calc(100vh - 100px))' }
 
   return (
@@ -119,10 +123,9 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
 
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', gap: 10, fontSize: isMobile ? 15 : 13, lineHeight: 1.5, minWidth: 0 }}>
               {thread.length === 0 && (
-                <div style={{ color: 'var(--c-fg-3)', fontSize: isMobile ? 15 : 12.5, marginTop: 6 }}>
-                  {isRunnerAsk
-                    ? <>Ask how to do something in the app — “how do I submit the work order”, “what if the client never showed up”. Answers come from the Runner guide; if it isn't in there, Flo says so.</>
-                    : <>Ask how to do something in PRSFlo — “how do I take one day off a hold”, “what does the Reopened tag mean”. Answers come from the staff guides; if it isn't in them, Flo says so.</>}
+                // ONE LINE (Eli, 2026-10-22: "just make it very simple").
+                <div style={{ color: 'var(--c-fg-3)', fontSize: isMobile ? 16 : 13, marginTop: 6 }}>
+                  Not sure how to do something? Ask Flo.
                 </div>
               )}
               {thread.map((m, i) => m.role === 'user' ? (
@@ -147,7 +150,7 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
               <div ref={endRef} />
             </div>
 
-            <form onSubmit={e => { e.preventDefault(); ask() }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 4px' }}>
+            <form onSubmit={e => { e.preventDefault(); ask() }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 4px', flexShrink: 0 }}>
               {/* PHONE SIZES (Eli, 2026-10-22: "the text bar at the bottom is
                   too small"). 16px text so iOS does not zoom the page on
                   focus; 44px tall, the thumb's minimum. */}
@@ -161,9 +164,7 @@ export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) 
               <button type="submit" className="c-btn c-control c-raised-primary" disabled={busy || !q.trim()}
                 style={{ opacity: busy || !q.trim() ? 0.5 : 1, background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)', ...(isMobile ? { height: 44, padding: '0 18px', fontSize: 12 } : {}) }}>Ask</button>
             </form>
-            <div style={{ fontSize: isMobile ? 11.5 : 10, color: 'var(--c-fg-3)', padding: isMobile ? '0 14px calc(10px + env(safe-area-inset-bottom))' : '0 14px 10px' }}>
-              {isRunnerAsk ? "Answers come only from the Runner guide. Flo can't see tonight's sessions." : "Answers come only from the staff guides. Flo can't see work orders or clients."}
-            </div>
+            <div style={{ height: isMobile ? 'calc(26px + env(safe-area-inset-bottom))' : 10, flexShrink: 0 }} />
           </div>
         </div>
       )}
