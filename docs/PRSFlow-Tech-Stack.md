@@ -100,6 +100,7 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 
 | Path | Purpose |
 |---|---|
+| `components/ask/AskFlo.tsx` · `app/api/ask/route.ts` · `scripts/build-ask-corpus.mjs` | **(Oct 22, 2026, v1.46.0)** Ask Flo. The bubble, its route, and the corpus builder; `lib/server/askCorpus.generated.ts` is the built corpus (rebuild after editing a guide source; selftest warns). |
 | `components/shared/AllStar.tsx` | **(Oct 13, 2026, v1.44.0)** The All-Star star: `AllStarToggle` (profile ☆/★ button), `AllStarMark` (list-row ★), `canToggleAllStar(role)` (owner/manager/billing/asst_manager). Used by CRM lead profile + lists and the client profile + list. One-star-per-person sync is DB triggers (migration `20261013120000`), not this file. |
 | `lib/deleteSession.ts` | **(Oct 5, 2026, v1.43.2)** THE delete door. `deleteWorkOrderEverywhere(woId)` (billing hub) and `deleteBlock(booking)` (WO popup, blocks only) both call `delete_with_archive()`; `fetchDeleted()` / `recoverDeleted(id)` serve the log. ⚠ **No client-side `.delete()` on `work_orders` or `bookings` anywhere** — WO-1240 is why |
 | `components/billing/DeletedLog.tsx` | **(Oct 5, 2026, v1.43.2)** Billing hub page ⋯ → Deleted work orders. Who / when / what, two-step Recover → `recover_deleted_work_order()`. Fixed-height list. Owner / manager / billing |
@@ -334,6 +335,7 @@ shadows are raised controls and the modal drop shadow.
 
 | Chunk | What shipped |
 |---|---|
+| **ASK FLO — help bubble, session 1 ✅ (Oct 22, 2026, v1.46.0)** | `components/ask/AskFlo.tsx` (bottom-right, admin roles, Flo ring) → `POST /api/ask` (bearer gate, Haiku 4.5, cached corpus block, cites validated against `ASK_CITES`) → `ask_log`. Corpus: `scripts/build-ask-corpus.mjs` → `lib/server/askCorpus.generated.ts` (committed) from `docs/sop-build/content*.py` + `public/sop.html` data/VERSIONS. Brief `docs/ASK-FLO-BRIEF.md`. |
 | **HOTFIX: In progress rule keyed on reopened_at ✅ (Oct 21, 2026, v1.45.4)** | `lib/billing.ts` step derivation: `w.reopened_at && status !== completed && step 2|3 → 1`. v1.45.2's bare-status version emptied Needs approval / Approved / COD paid on deploy (invoice-before-Complete is the normal path). |
 | **DASHBOARD: OWN NAME; ARROWS DON'T RELOAD LEADS ✅ (Oct 21, 2026, v1.45.3)** | `app/(main)/page.tsx`: `viewedName`/`listWho` are the viewer's own name unless Eli is peeking; leads load in their own effect on `leadsVersion` (six columns, booked/dead/leasing excluded), the day's bookings on `calDate`. |
 | **COMPLETE SAVES PAYMENTS; OPEN = IN PROGRESS; NOTE PHOTOS ✅ (Oct 21, 2026, v1.45.2)** | `WorkOrderPopup.isDirtyAll()` (payments + rentals) gates Complete's save. `lib/billing` step derivation: an uncompleted WO at step 2/3 → 1, derived. `myday_note_posts.photo_paths` + `myday_note_drafts.photo_paths` (migration `20261021130000`), `uploadNotePhoto()` → `checklist-photos/shift-notes/`, SignedImage in the log. Payment rows show `recorded_at`. Dashboard `taskLine()` appends a flag's source label. |

@@ -5,6 +5,7 @@ import { WebInquiryToaster } from '@/components/notifications/WebInquiryToaster'
 import { SopGate } from '@/components/SopGate'
 import { MemoGate } from '@/components/memos/MemoGate'
 import TestingFloater from '@/components/dev/TestingFloater'
+import { AskFlo } from '@/components/ask/AskFlo'
 
 export default function MainLayout({
   children,
@@ -36,6 +37,10 @@ export default function MainLayout({
             keeps it off /login, /register and /inquiry. Renders nothing unless the
             DEV → Testing PIN has been entered this browser session. */}
         <TestingFloater />
+        {/* Ask Flo (2026-10-22) — the help bubble, bottom-right, admin roles
+            only. Answers from the staff guides via /api/ask; reads nothing
+            live, writes nothing but its log. docs/ASK-FLO-BRIEF.md. */}
+        <AskFlo />
         {/* DeviceToggle + /preview removed at go-live (2026-08-17) — they were
             TEMPORARY build-phase tooling (Eli, 2026-08-14). */}
       </WebInquiryProvider>

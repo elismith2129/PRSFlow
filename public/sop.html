@@ -679,6 +679,24 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.46.0', date:'Oct 22, 2026',
+    headline:'Ask Flo: a help button, bottom right, for &ldquo;how do I&hellip;&rdquo; questions.',
+    desc:'Office staff only. Tap the small wave button in the bottom-right corner of any page and ask in your own words.',
+    changes:[
+      'Ask things like &ldquo;how do I take one day off a hold&rdquo; or &ldquo;what does the Reopened tag mean&rdquo;. Flo answers from the staff guides and gives you a chip that opens the guide at the right chapter.',
+      'If it is not in the guides, Flo says so and tells you to ask Eli. It does not guess.',
+      'Flo cannot see work orders, clients or payments &mdash; it only knows how the app works. &ldquo;Where is WO-1214&rdquo; gets pointed at the billing hub search.',
+      'Every question is kept so the guides can be improved where people get stuck.',
+    ],
+    affects:'Try it when you would otherwise ask a colleague how something works. If an answer is wrong, tell Eli &mdash; that is how the guides get fixed.',
+    dev:[
+      'components/ask/AskFlo.tsx mounted in (main)/layout; owner/manager/billing/asst_manager; sheet 360&times;480, full-screen on phone; thread in component state only.',
+      'POST /api/ask: bearer gate, 20/user/hour, Haiku 4.5, temperature 0, cached corpus system block; only tags present in ASK_CITES become chips; writes ask_log only.',
+      'Corpus: scripts/build-ask-corpus.mjs &rarr; lib/server/askCorpus.generated.ts (committed) from the SOP build sources + sop.html data/VERSIONS (dev stripped). ~40k tokens, 90 sections. selftest warns when stale.',
+      'Not yet run against the model (no key locally). Session 2: 30-question check, prompt fixes, Admin &rarr; Ask log.',
+    ],
+  },
+  {
     ver:'v1.45.4', date:'Oct 21, 2026',
     headline:'Fix: the billing hub is back the way it was.',
     desc:'For about half an hour this afternoon, invoiced, sent and paid work orders showed under In progress / Needs invoice. Nothing was changed on them; it was a display rule that was too broad.',

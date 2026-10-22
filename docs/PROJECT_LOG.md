@@ -381,6 +381,33 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 22, 2026 — Ask Flo, session 1 (v1.46.0)
+
+**The ask.** A help chat bubble for admin, "based on all the logic and rules we've created…
+maybe not even AI really. you tell me." Three honest options were laid out: a plain search
+over the SOP steps (no AI, ~60% hit rate because people ask in their own words), AI over the
+docs only, and AI with live data. Recommended the middle; Eli: "this is just how to operate
+the app. we could build more of that later if needed."
+
+**Scope first, then mock, then build** (`docs/ASK-FLO-BRIEF.md`). Honest estimate given:
+two half-day sessions. Mock: A dock sheet (picked), B the dashboard's Flo box takes
+questions (rejected: you're never on the dashboard when the question comes up, and the box
+is fixed geometry), C ⌘K palette (rejected: nobody discovers ⌘K, Lori's tablet has no ⌘).
+
+**Decisions inside the build.**
+- *It is Flo.* Same ring, same name. A second AI presence would break "glow = AI, one place".
+- *Corpus from the guide SOURCES, not the rendered HTML,* so it cannot drift from what staff
+  read; and the generated file is committed because Vercel has no python3.
+- *Developer docs stay out.* CLAUDE.md et al. are full of superseded rulings in a developer
+  voice; the first time it told Lori about RLS would be the last time she used it.
+- *Haiku, not Sonnet.* Lookup-and-rephrase; speed in a chat box beats reasoning.
+- *Chapter-level citations.* The guides open at `#chapter`; step anchors would mean engine
+  work for a marginal gain.
+- *The log is the product.* Unanswered questions = SOP gaps. The page for it is session 2.
+
+**Not done, said plainly:** the prompt has never been run (no API key locally). Session 2
+starts with the 30-question check and will almost certainly change the prompt.
+
 ### October 21, 2026 (late) — Hotfix v1.45.4: the In progress rule emptied the billing queue
 
 Minutes after v1.45.2 deployed, Eli: "i now have a million WOs that have been completed paid

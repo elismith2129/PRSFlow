@@ -5,6 +5,11 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## To run (Oct 22)
+
+- [ ] **Run `20261022120000_ask_log.sql` BEFORE the v1.46.0 push** — Ask Flo logs every question there. *(Oct 22)*
+- [ ] **Ask Flo session 2:** the 30-question check (20 answer + chapter, 10 refuse) against the live route, prompt fixes from it, Admin → Ask log page, bubble nudge/hide over the hub's ⋯ column, and a phone check of the full-screen sheet. *(Oct 22)*
+
 ## To run (Oct 21)
 
 - [ ] **Run `20261021130000_note_post_photos.sql` BEFORE the v1.45.2 push** — the shift-notes select names `photo_paths`. *(Oct 21)*

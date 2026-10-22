@@ -20,6 +20,25 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.46.0 — Ask Flo: the help bubble (session 1 of 2) — Oct 22, 2026
+
+**Why.** Eli: *"the AI chat bot that lives in the bottom right corner on the desktop app for admin where they can ask questions… based on all the logic and rules we've created."* Scoped in `docs/ASK-FLO-BRIEF.md`; mock A (dock sheet) of `docs/design-refs/ask-flo-options.html` picked. This is "how to operate the app" only — live data is a later, separate decision.
+
+1. **The bubble** (`components/ask/AskFlo.tsx`, mounted in `app/(main)/layout.tsx`). 44px ribbon button bottom-right on every admin page (owner / manager / billing / asst_manager; the route gates again). Opens a 360×480 sheet in the Flo ring; phone = full-screen. Thread lives in component state (leave the page, it's gone). Esc closes. Answer chips open the guide at the chapter (`/sop/billing#<ch>`, `/runner/sop#<ch>`, `/sop`).
+2. **The route** (`app/api/ask/route.ts`, POST). Bearer-token gate like `/api/wo-package`; 20 questions/user/hour (in-memory). Haiku 4.5, `max_tokens` 600, temperature 0, last three exchanges carried for follow-ups. The corpus is a cached system block (`cache_control: ephemeral`), so a question costs the question and the answer. **The three rules are in the prompt AND enforced:** only citation tags that exist in `ASK_CITES` become chips; the route reads no table but `user_profiles` (gate) and writes only `ask_log`.
+3. **The corpus** (`scripts/build-ask-corpus.mjs` → `lib/server/askCorpus.generated.ts`, committed). Built from the same sources the guides are rendered from: `docs/sop-build/content.py` (Billing SOP), `content_runner.py` (Runner guide), `public/sop.html` STATUS_DATA + CRM / Clients / Petty step arrays, and `VERSIONS` with the `dev` arrays stripped. ~159k chars / ~40k tokens, 90 citable sections. **Excluded on purpose:** CLAUDE.md, CHANGELOG, PROJECT_LOG, the design spec. `selftest.mjs` warns when a source is newer than the generated file.
+4. **The log**: `ask_log` (asked_by, role, question, answer, cited[], answered, latency_ms, error). Service-role insert only; owner select. The Admin → Ask log page is session 2.
+
+**Migrations:** `20261022120000_ask_log.sql`. Run before the push (the route inserts on every question; a failed log never fails an answer, but there'd be no record).
+
+**Not verified against the model.** `.env.local` carries no `ANTHROPIC_API_KEY` (Vercel only), so the prompt has not been run once. The first live question is the first test; the 30-question check (20 it must answer with the right chapter, 10 it must refuse) is session 2, and the prompt will change from it.
+
+**Watch-outs.** The rate map is per-function-instance (cold starts reset it) — a courtesy cap, not a control. Citations are chapter-level because the guides' `location.hash` opens a chapter, not a step. The bubble sits over the bottom-right of the billing hub; if it covers a row's ⋯ in practice, nudge it (brief says 12px left or hide under a modal — not done yet). Rebuild the corpus after editing any of the four sources, or the bubble answers from an older guide than staff can read.
+
+**Files:** `components/ask/AskFlo.tsx` · `app/api/ask/route.ts` · `scripts/build-ask-corpus.mjs` · `lib/server/askCorpus.generated.ts` · `app/(main)/layout.tsx` · `scripts/selftest.mjs` · `supabase/migrations/20261022120000_ask_log.sql` · `docs/ASK-FLO-BRIEF.md` · `docs/design-refs/ask-flo-options.html`
+
+---
+
 ## v1.45.4 — HOTFIX: the In progress rule applies only to stamped reopens — Oct 21, 2026
 
 **Why.** v1.45.2 sent any work order with `status !== 'completed'` at Needs approval / Approved to In progress, on the belief that attaching an invoice before Complete was rare. It is the normal billing path: on deploy a large number of invoiced, sent and COD-paid rows dropped to In progress and read "Needs invoice" (Eli: *"a million WOs… kicked back"*). **Nothing was written** — the step is derived — so this change puts every row back where it was.

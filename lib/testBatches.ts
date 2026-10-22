@@ -55,6 +55,46 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-22-2026-ask-flo',
+    title: 'Ask Flo, first look',
+    version: 'v1.46.0',
+    date: 'Oct 22, 2026',
+    intro:
+      'The help bubble, bottom right. This batch checks it answers from the guides, refuses what it should, and opens the right chapter. Nothing here changes any data.',
+    items: [
+      {
+        id: 'v146-bubble-shows', area: 'Dashboard',
+        what: 'The Flo button is in the bottom-right corner on admin pages and opens a sheet',
+        how: 'Log in as billing or manager. On the dashboard, the small wave button is bottom right. Tap it: a sheet opens above it with "Flo · Ask · from the guides" and a question box. Press Esc: it closes.',
+      },
+      {
+        id: 'v146-answers-cites', area: 'Billing',
+        what: 'A how-to question gets a short answer with a chip that opens the right chapter',
+        how: 'Ask "how do I take one day off a hold". The answer mentions Remove hold and ticking days, and ends with a chip like "Billing guide · Holds →". Tap the chip: the Billing SOP opens on the holds chapter.',
+      },
+      {
+        id: 'v146-refuses-live', area: 'Billing',
+        what: 'A question about a specific record is refused and pointed at the right screen',
+        how: 'Ask "where is WO-1214". Flo says it cannot see work orders and names the billing hub search. No chip.',
+      },
+      {
+        id: 'v146-refuses-unknown', area: 'Dashboard',
+        what: 'A question the guides do not cover gets "not in the guides, ask Eli"',
+        how: 'Ask "how do I change the studio Wi-Fi password". Flo says that is not in the guides and to ask Eli. It does not invent steps.',
+      },
+      {
+        id: 'v146-whats-new', area: 'Dashboard',
+        what: 'A "what changed" question answers from the release notes',
+        how: 'Ask "what does the Reopened tag mean". The answer explains a reopened work order and shows a "What\'s new · v1.45.x" chip.',
+      },
+      {
+        id: 'v146-runner-hidden', area: 'Runner hub', device: 'phone',
+        what: 'Runners do not see the bubble',
+        how: 'On a phone, log in with a runner PIN. The runner hub and a studio page have no wave button in the corner.',
+      },
+    ],
+  },
+  {
     id: 'oct-21-2026-complete-saves-inprogress-photos',
     title: 'Complete saves the payment; reopened = In progress; note photos',
     version: 'v1.45.4',

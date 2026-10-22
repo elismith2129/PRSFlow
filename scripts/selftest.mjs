@@ -102,6 +102,22 @@ try {
   fails.push(`public/sop.html VERSIONS does not parse: ${e.message}`)
 }
 
+// ── 4b · Ask Flo corpus is not stale (2026-10-22) ────────────────────────────
+// lib/server/askCorpus.generated.ts is COMMITTED (Vercel has no python3). If a
+// guide source changed after it was built, the bubble answers from an older
+// guide than staff can read. Warn, don't fail: a doc edit shouldn't block a push.
+try {
+  const gen = readFileSync(join(process.cwd(), 'lib/server/askCorpus.generated.ts'), 'utf-8')
+  const built = Number((gen.match(/ASK_CORPUS_SOURCES_MTIME = (\d+)/) || [])[1] || 0)
+  const srcs = ['docs/sop-build/content.py', 'docs/sop-build/content_runner.py', 'public/sop.html']
+  const newest = Math.max(...srcs.map(f => statSync(join(process.cwd(), f)).mtimeMs))
+  if (!built) fails.push('askCorpus.generated.ts missing or unreadable — run node scripts/build-ask-corpus.mjs')
+  else if (newest > built + 1000) warns.push('Ask Flo corpus is OLDER than a guide source — run node scripts/build-ask-corpus.mjs before pushing')
+  else oks.push('Ask Flo corpus is current')
+} catch (e) {
+  fails.push(`Ask Flo corpus check failed: ${e.message}`)
+}
+
 // ── 5 · Landmine counters (warn on presence; watch the DELTA) ───────────────
 function countAcross(re, exclude = () => false) {
   let n = 0

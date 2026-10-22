@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask Flo — three shapes for the help panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c-bg:#0b0a09; --c-fg:#f2efe7; --c-srf:#151412;
+  --c-wash:rgba(242,239,231,.06); --c-wash2:rgba(242,239,231,.12);
+  --c-fg-2:rgba(242,239,231,.72); --c-fg-3:rgba(242,239,231,.45);
+  --c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22);
+  --c-ctlsh:0 1px 4px rgba(0,0,0,.3);
+  --c-chip-ink:#1c2626; --c-ivory:#d5d0c2; --c-st-booked:#43dfae; --c-st-warm:#ffa94d; --c-st-hot:#ff5a4d; --c-st-uncon:#7fb2e5;
+  --c-flo-ink:242,239,231;
+}
+[data-theme="light"] {
+  --c-bg:#fdfcf9; --c-fg:#1a1712; --c-srf:#f1efe9;
+  --c-wash:rgba(26,23,18,.055); --c-wash2:rgba(26,23,18,.105);
+  --c-fg-2:rgba(26,23,18,.72); --c-fg-3:rgba(26,23,18,.46);
+  --c-softsh:0 1px 2px rgba(26,23,18,.05),0 4px 12px rgba(26,23,18,.05);
+  --c-ctlsh:0 1px 3px rgba(26,23,18,.14); --c-flo-ink:26,23,18;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; background:var(--c-bg); color:var(--c-fg); font-family:'Inter',system-ui,sans-serif; font-size:14.5px; line-height:1.6; }
+.arch { font-family:'Archivo Black',system-ui,sans-serif; font-weight:400; }
+.mono { font-family:'DM Mono',ui-monospace,monospace; }
+.lbl { font-size:9.5px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; opacity:.45; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 20px 80px; }
+.top { display:flex; justify-content:space-between; align-items:baseline; gap:16px; flex-wrap:wrap; }
+h1 { font-size:22px; letter-spacing:-.02em; margin:0 0 4px; }
+.sub { font-size:13px; opacity:.6; max-width:760px; margin-bottom:28px; }
+.toggle { font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:7px 12px; border-radius:99px; background:var(--c-srf); box-shadow:var(--c-ctlsh); cursor:pointer; border:0; color:var(--c-fg); font-family:inherit; }
+.opt { margin-bottom:50px; }
+.ohead { display:grid; grid-template-columns:48px 1fr; gap:14px; align-items:start; margin-bottom:12px; max-width:860px; }
+.ohead .k { font-size:38px; line-height:1; letter-spacing:-.03em; }
+.ohead h2 { margin:0 0 2px; font-size:17px; }
+.ohead p { margin:0; font-size:13px; opacity:.7; }
+.pick { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; background:var(--c-st-booked); color:var(--c-chip-ink); border-radius:99px; padding:3px 9px; margin-left:8px; vertical-align:3px; }
+.pair { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:22px; align-items:start; }
+@media (max-width:900px){ .pair { grid-template-columns:1fr; } }
+.notes { font-size:12.5px; line-height:1.55; }
+.notes .lbl { display:block; margin:12px 0 2px; } .notes .lbl:first-child { margin-top:0; }
+.notes ul { margin:0; padding-left:16px; } .notes li { margin-bottom:3px; }
+
+/* ── the page behind: a faint billing hub ── */
+.screen { position:relative; height:580px; border-radius:18px; overflow:hidden; background:var(--c-bg); box-shadow:var(--c-softsh); }
+.rail { position:absolute; left:0; top:0; bottom:0; width:150px; padding:18px 14px; opacity:.5; }
+.rail .wm { font-size:15px; letter-spacing:-.02em; margin-bottom:18px; } .rail .wm span { opacity:.45; }
+.rail .it { font-size:11px; font-weight:600; opacity:.55; margin:7px 0; } .rail .it.on { opacity:1; }
+.page { position:absolute; left:170px; right:20px; top:18px; opacity:.5; }
+.page .ptitle { font-size:20px; letter-spacing:-.02em; margin-bottom:12px; }
+.page .row { height:34px; border-radius:12px; background:var(--c-srf); margin-bottom:6px; display:flex; align-items:center; gap:14px; padding:0 12px; font-size:11px; }
+.page .row .b { font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:99px; background:var(--c-st-warm); color:var(--c-chip-ink); }
+.page .row .b.ap { background:var(--c-st-uncon); }
+.page .row .w { opacity:.6; } .page .row .n { font-weight:700; }
+.dim { position:absolute; inset:0; background:rgba(0,0,0,.35); }
+[data-theme="light"] .dim { background:rgba(42,39,34,.18); }
+
+/* ── Flo ring (copied from globals: the one glow) ── */
+.ringwrap { position:relative; border-radius:15px; overflow:hidden; padding:1.5px; box-shadow:0 0 16px 3px rgba(var(--c-flo-ink),.045); }
+.ringwrap::before { content:""; position:absolute; inset:-120%; background:conic-gradient(rgba(var(--c-flo-ink),.06) 0deg, rgba(var(--c-flo-ink),.32) 90deg, rgba(var(--c-flo-ink),.06) 200deg, rgba(var(--c-flo-ink),.06) 360deg); animation:spin 8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg);} }
+.inner { position:relative; border-radius:13.5px; background:var(--c-srf); }
+.flohead { display:flex; align-items:center; gap:8px; }
+.fname { font-family:'Archivo Black',system-ui,sans-serif; font-size:13px; letter-spacing:-.01em; }
+.ftag { font-size:7.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.45; }
+.ribbon { width:18px; height:18px; display:inline-block; }
+.bubble { position:absolute; right:18px; bottom:18px; width:44px; height:44px; border-radius:50%; padding:1.5px; }
+.bubble .inner { border-radius:50%; width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+.bubble.ringwrap { border-radius:50%; }
+
+/* ── conversation bits ── */
+.thread { padding:12px 14px; display:flex; flex-direction:column; gap:10px; font-size:13px; line-height:1.5; overflow-y:auto; }
+.q { align-self:flex-end; max-width:85%; background:var(--c-wash2); border-radius:12px; padding:7px 11px; }
+.a { max-width:92%; }
+.a p { margin:0 0 6px; }
+.cites { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+.cite { font-size:9.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:5px 10px; border-radius:99px; background:var(--c-srf); box-shadow:var(--c-ctlsh); white-space:nowrap; }
+.refuse { color:var(--c-fg-2); }
+.ask { display:flex; align-items:center; gap:8px; padding:10px 12px; }
+.ask .in { flex:1; height:34px; border-radius:12px; background:var(--c-wash); padding:0 12px; font-size:12.5px; display:flex; align-items:center; color:var(--c-fg-3); }
+.ask .go { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:8px 12px; border-radius:99px; background:var(--c-ivory); color:#1b1a17; }
+[data-theme="light"] .ask .go { background:var(--c-fg); color:var(--c-bg); }
+.tiny { font-size:10px; opacity:.45; padding:0 14px 10px; }
+
+/* A · dock sheet */
+.sheet { position:absolute; right:18px; bottom:74px; width:360px; height:470px; display:flex; flex-direction:column; }
+.sheet .inner { display:flex; flex-direction:column; height:100%; }
+.sheet .flohead { padding:12px 14px 6px; }
+.sheet .thread { flex:1; }
+
+/* B · the Flo box grows an ask line */
+.flobox { position:absolute; left:170px; top:70px; width:560px; }
+.flobox .inner { padding:10px 12px; }
+.flob { display:flex; gap:8px; align-items:baseline; font-size:12px; line-height:1.45; margin-bottom:4px; }
+.flob .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; position:relative; top:-1px; background:var(--c-st-hot); }
+.flob.calm .dot { background:var(--c-wash2); }
+.flob.alert { color:var(--c-st-hot); font-weight:600; }
+.askline { display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; }
+.askline .in { flex:1; height:30px; border-radius:10px; background:var(--c-wash); padding:0 10px; font-size:12px; display:flex; align-items:center; color:var(--c-fg-3); }
+.answer { margin-top:8px; padding:8px 10px; border-radius:10px; background:var(--c-wash); font-size:12.5px; line-height:1.5; }
+
+/* C · palette */
+.pal { position:absolute; left:50%; top:60px; transform:translateX(-50%); width:620px; }
+.pal .inner { padding:0; }
+.pal .ask { padding:12px 14px; }
+.pal .ask .in { height:40px; font-size:14px; background:transparent; color:var(--c-fg); }
+.pal .thread { padding-top:0; }
+.kbd { font-family:'DM Mono',ui-monospace,monospace; font-size:10px; padding:2px 6px; border-radius:6px; background:var(--c-wash2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="top">
+  <div><h1 class="arch">Ask Flo — three shapes</h1>
+  <div class="sub">Same thing in each: a question in your own words, an answer from the staff guides, chips that open the guide at the step, and an honest "not in the guide" when it isn't. Admin roles only. The difference is where the conversation lives. The page behind is the billing hub, dimmed.</div></div>
+  <button class="toggle" onclick="var h=document.documentElement; h.getAttribute('data-theme')==='light'?h.removeAttribute('data-theme'):h.setAttribute('data-theme','light')">Light / dark</button>
+</div>
+
+<svg width="0" height="0" style="position:absolute"><defs><symbol id="rib" viewBox="0 0 24 24"><path d="M2 14c3-6 6-6 9 0s6 6 9 0c1-2 2-3 2-3v4c-3 6-6 6-9 0s-6-6-9 0c-1 2-2 3-2 3z" fill="#43dfae"/></symbol></defs></svg>
+
+<!-- ══════ A ══════ -->
+<section class="opt">
+  <div class="ohead"><div class="k arch">A</div><div><h2>Dock sheet <span class="pick">Recommended</span></h2><p>The bubble you described. Bottom-right, always there on admin pages; tap and a sheet opens above it. Closes with ✕ or Esc; the thread stays until you leave the page.</p></div></div>
+  <div class="pair">
+    <div class="screen">
+      <div class="rail"><div class="wm arch">PRS<span>Flo</span></div><div class="it">Dashboard</div><div class="it">Calendar</div><div class="it on">Billing</div><div class="it">CRM</div><div class="it">Daily Ops</div><div class="it">Shift Notes</div></div>
+      <div class="page"><div class="ptitle arch">Billing hub</div>
+        <div class="row"><span class="b ap">Needs approval</span><span class="w mono">WO-1214</span><span class="n">Neal Pogue</span><span class="w">Sep 21 · A</span></div>
+        <div class="row"><span class="b">Needs invoice</span><span class="w mono">WO-1239</span><span class="n">Andrew Yari</span><span class="w">Sep 24 · A</span></div>
+        <div class="row"><span class="b">Needs invoice</span><span class="w mono">WO-1208</span><span class="n">Ukon Castle</span><span class="w">Sep 19 · X</span></div>
+        <div class="row"><span class="b ap">Needs approval</span><span class="w mono">WO-1183</span><span class="n">Byron Blue</span><span class="w">Sep 26 · B</span></div>
+        <div class="row"><span class="b">Needs invoice</span><span class="w mono">WO-1229</span><span class="n">Ryder Morales</span><span class="w">Sep 25 · E</span></div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet ringwrap"><div class="inner">
+        <div class="flohead"><svg class="ribbon"><use href="#rib"/></svg><span class="fname">Flo</span><span class="ftag">Ask · from the guides</span><span style="margin-left:auto;opacity:.4;font-size:14px">✕</span></div>
+        <div class="thread">
+          <div class="q">how do I take one day off a hold</div>
+          <div class="a"><p>Open the hold's work order card and tap <b>Remove hold</b>. Tick only the days coming off and confirm — the rest of the hold stays. Removed days go to the <b>Removed holds</b> tab, where they can be recovered.</p>
+            <div class="cites"><span class="cite">Billing · Remove hold, step 3 →</span><span class="cite">Removed holds tab →</span></div></div>
+          <div class="q">where is WO-1214</div>
+          <div class="a refuse"><p>I can't see work orders — only the guides. The billing hub search at the top finds it by number or name.</p></div>
+        </div>
+        <div class="ask"><span class="in">Ask how to do something in PRSFlo…</span><span class="go">Ask</span></div>
+        <div class="tiny">Answers come only from the staff guides. Not in the guide? It says so.</div>
+      </div></div>
+      <div class="bubble ringwrap"><div class="inner"><svg class="ribbon" style="width:22px;height:22px"><use href="#rib"/></svg></div></div>
+    </div>
+    <div class="notes">
+      <span class="lbl">Why</span>
+      <ul><li>It's what you asked for, and it's the shape people already know from every other app, so nobody needs telling.</li><li>The sheet is the only new surface; the Flo ring on it says "this is AI" without a label.</li><li>Works on every admin page the same way, including inside the WO popup (z-index above the modal, below the nav).</li></ul>
+      <span class="lbl">Watch</span>
+      <ul><li>A 44px bubble sits over the bottom-right of the billing hub, where the last row's ⋯ lives. It nudges 12px left when a row is under it, or hides while a modal is open.</li><li>On a phone it's full-screen, not a sheet.</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ B ══════ -->
+<section class="opt">
+  <div class="ohead"><div class="k arch">B</div><div><h2>The Flo box takes questions</h2><p>No new surface. The dashboard's Flo box (the one AI surface already in the app) gets an ask line under the briefing; the answer appears inside the box. On other pages, the bubble is just a shortcut that jumps to the dashboard with the box focused.</p></div></div>
+  <div class="pair">
+    <div class="screen">
+      <div class="rail"><div class="wm arch">PRS<span>Flo</span></div><div class="it on">Dashboard</div><div class="it">Calendar</div><div class="it">Billing</div><div class="it">CRM</div><div class="it">Daily Ops</div></div>
+      <div class="page"><div class="ptitle arch">Good afternoon, Lori</div></div>
+      <div class="flobox ringwrap"><div class="inner">
+        <div class="flohead" style="margin-bottom:7px"><svg class="ribbon"><use href="#rib"/></svg><span class="fname">Flo</span><span class="ftag">Briefing · 8:50 AM</span></div>
+        <div class="flob alert"><span class="dot"></span>3 work orders need review before approval — WO-1208, WO-1229, WO-1239.</div>
+        <div class="flob calm"><span class="dot"></span>Landed today: Ukon Castle (X), Neal Pogue (A).</div>
+        <div class="flob calm"><span class="dot"></span>Quiet otherwise: 11 rooms, 6 booked.</div>
+        <div class="askline"><svg class="ribbon" style="width:14px;height:14px;opacity:.6"><use href="#rib"/></svg><span class="in">Ask Flo how to do something…</span><span class="go" style="font-size:9.5px;padding:6px 10px;border-radius:99px;background:var(--c-ivory);color:#1b1a17;font-weight:800;letter-spacing:.06em;text-transform:uppercase">Ask</span></div>
+        <div class="answer"><b style="opacity:.6;font-size:10px;letter-spacing:.06em;text-transform:uppercase">You asked</b> how do I take one day off a hold<br>Open the hold's work order card and tap <b>Remove hold</b>. Tick only the days coming off and confirm. Removed days go to the Removed holds tab.
+          <div class="cites"><span class="cite">Billing · Remove hold, step 3 →</span></div></div>
+      </div></div>
+    </div>
+    <div class="notes">
+      <span class="lbl">Why</span>
+      <ul><li>Purest reading of the design spec: Flo is one presence, one glow, one place. Nothing new on any other page.</li><li>The briefing and the help are the same voice in the same box, which is what they are.</li></ul>
+      <span class="lbl">Watch</span>
+      <ul><li>You're never on the dashboard when you have the question. Billing is where the "why is this orange" moment happens; jumping away to ask loses the thing you were looking at.</li><li>The Flo box is 140px of a fixed-geometry row; an answer has to scroll inside it, and a thread doesn't fit at all.</li><li>Only recommended if you'd rather not have a bubble anywhere.</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════ C ══════ -->
+<section class="opt">
+  <div class="ohead"><div class="k arch">C</div><div><h2>Palette</h2><p>No bubble. <span class="kbd">⌘K</span> (or a small "?" in the page top) opens a centered box over any page, like Spotlight. Type, read, Esc. Threads are one question deep; a follow-up starts fresh.</p></div></div>
+  <div class="pair">
+    <div class="screen">
+      <div class="rail"><div class="wm arch">PRS<span>Flo</span></div><div class="it">Dashboard</div><div class="it">Calendar</div><div class="it on">Billing</div><div class="it">CRM</div><div class="it">Daily Ops</div></div>
+      <div class="page"><div class="ptitle arch">Billing hub</div>
+        <div class="row"><span class="b ap">Needs approval</span><span class="w mono">WO-1214</span><span class="n">Neal Pogue</span><span class="w">Sep 21 · A</span></div>
+        <div class="row"><span class="b">Needs invoice</span><span class="w mono">WO-1239</span><span class="n">Andrew Yari</span><span class="w">Sep 24 · A</span></div>
+        <div class="row"><span class="b">Needs invoice</span><span class="w mono">WO-1208</span><span class="n">Ukon Castle</span><span class="w">Sep 19 · X</span></div>
+      </div>
+      <div class="dim"></div>
+      <div class="pal ringwrap"><div class="inner">
+        <div class="ask"><svg class="ribbon"><use href="#rib"/></svg><span class="in">what does the Reopened tag mean</span><span class="kbd">esc</span></div>
+        <div class="thread">
+          <div class="a"><p>Someone pressed Reopen on that work order after its invoice was attached. It sits in In progress until it's completed again; check the invoice still matches before approving.</p>
+            <div class="cites"><span class="cite">What's new · v1.45.2 →</span><span class="cite">Billing · Reopen, step 1 →</span></div></div>
+        </div>
+        <div class="tiny">From the staff guides only · <span class="kbd">⌘K</span> anywhere</div>
+      </div></div>
+    </div>
+    <div class="notes">
+      <span class="lbl">Why</span>
+      <ul><li>Zero chrome on the page; nothing covers a row. Fastest for a keyboard person.</li><li>Fits the "text, not bubbles" direction: a box appears when summoned and leaves.</li></ul>
+      <span class="lbl">Watch</span>
+      <ul><li>Nobody discovers ⌘K on their own. Lori on a tablet has no ⌘. It needs a visible "?" somewhere anyway, at which point you've built A with a different opening.</li><li>One-shot by design; no "and then what?" follow-ups.</li></ul>
+    </div>
+  </div>
+</section>
+
+<p style="max-width:860px;font-size:13px;opacity:.75"><b>Same in all three:</b> admin roles only; answers only from the guides with the step chips; "I can't see work orders" for anything live; every question logged with whether it was answered (Admin → Ask log). The panel skin follows whatever you rule on the Lakers sheet's "text at rest" question — these mocks keep today's wells.</p>
+</div>
+</body>
+</html>
