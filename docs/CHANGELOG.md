@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.46.2 — Ask Flo for runners — Oct 22, 2026
+
+**Why.** Eli, right after the office version went live: *"we should do this with the runner manual too on the runner version on the phone."* No migration.
+
+1. **The bubble on the runner app** (`components/ask/AskFlo.tsx` gains `surface="runner"`, mounted in `app/runner/layout.tsx`). Shows on **the runner landing and the studio hub only** (`/runner`, `/runner/<studio>`): the checklist, stock, petty cash and work order pages all carry a fixed Save / Submit bar across the bottom, and a bubble over Submit is worse than no bubble. Sits above the safe area. Any signed-in role may use it there (a manager testing on a phone included).
+2. **Runners get the Runner guide only** (`app/api/ask/route.ts`: `role === 'runner'` → `ASK_CORPUS_RUNNER`, a runner-voiced prompt, and citations restricted to `runner:*` sections). Not the Billing SOP, not the main guide, not the release notes — money, approvals and the owner's queue are not a runner's job, and a runner asking about them is told "that is the office's side — ask them." One to three sentences. The office keeps the full corpus. Two prompt caches now (office ~40k tokens, runner ~6.5k).
+3. **The runner guide mentions it** (`docs/sop-build/content_runner.py`, chapter 01, one step after App guide; guide rebuilt, 173 steps). Step-4 rule applied to itself.
+
+**Watch-outs.** `runner` is a shared-login-era role name but PINs are per person now, so the log's `asked_by` is a real runner. `test.py` not run (no Playwright on the Mac) and this one DID add a step — run it before the next runner-guide change. The route's rate limit is per user, so the old shared runner login, if anyone still uses it, shares 20/hour.
+
+**Files:** `components/ask/AskFlo.tsx` · `app/api/ask/route.ts` · `app/runner/layout.tsx` · `scripts/build-ask-corpus.mjs` · `lib/server/askCorpus.generated.ts` · `docs/sop-build/content_runner.py` · `public/runner-sop.html`
+
+---
+
 ## v1.46.1 — Billing SOP caught up with the week — Oct 22, 2026
 
 **Why.** Eli: *"a wrap up that makes sure the working guide is up to date."* The first run of the new step-4 rule: everything shipped Oct 19–22 that changed what the office DOES is now in the Billing SOP's step copy, not just in the release notes. No code, no migration.

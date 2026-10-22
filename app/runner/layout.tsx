@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 import AdminReturn from '@/components/runner/AdminReturn'
 import RunnerGuard from '@/components/runner/RunnerGuard'
 import { MemoGate } from '@/components/memos/MemoGate'
+import { AskFlo } from '@/components/ask/AskFlo'
 
 export default function RunnerLayout({
   children,
@@ -27,5 +28,7 @@ export default function RunnerLayout({
   // returning empty data, but a tablet being set up saw a hollow app instead
   // of a login. /runner/sop stays public (see the guard).
   // MemoGate (2026-09-14): the memo pop-up, on the studio hub only.
-  return <><AdminReturn /><RunnerGuard>{children}<MemoGate surface="runner" /></RunnerGuard></>
+  // Ask Flo on the runner landing + studio hub only (2026-10-22); it hides
+  // itself on pages with a fixed Save / Submit bar. Runner guide answers only.
+  return <><AdminReturn /><RunnerGuard>{children}<MemoGate surface="runner" /><AskFlo surface="runner" /></RunnerGuard></>
 }

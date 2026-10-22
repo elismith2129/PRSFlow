@@ -8,6 +8,7 @@ Newest at the top of each group.*
 ## To run (Oct 22)
 
 - [ ] **Ask Flo session 2 — Monday Oct 26** (reminder set in the chat): 30-question check from `ask_log`, prompt fixes, Admin → Ask log page, bubble/⋯ check. *(Oct 22)*
+- [ ] **Run `docs/sop-build/test.py` on both guides once Playwright is on the Mac** — v1.46.2 added a runner step (173) untested for layout. *(Oct 22)*
 - [ ] **Install Playwright for the SOP layout test on the Mac** (`pip3 install playwright && python3 -m playwright install chromium`) — `docs/sop-build/test.py` was skipped for v1.46.1. *(Oct 22)*
 - [ ] **Run `20261022120000_ask_log.sql` BEFORE the v1.46.0 push** — Ask Flo logs every question there. *(Oct 22)*
 - [ ] **Ask Flo session 2:** the 30-question check (20 answer + chapter, 10 refuse) against the live route, prompt fixes from it, Admin → Ask log page, bubble nudge/hide over the hub's ⋯ column, and a phone check of the full-screen sheet. *(Oct 22)*

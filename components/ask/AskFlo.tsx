@@ -19,22 +19,30 @@
 // nav (99999) and the welcome splash.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { PRSFloIcon } from '@/components/PRSFloIcon'
 
-const ALLOWED = ['owner', 'manager', 'billing', 'asst_manager']
+const ALLOWED_ADMIN = ['owner', 'manager', 'billing', 'asst_manager']
 const Z = 1200
+// RUNNER SURFACE (2026-10-22): the same bubble on the runner landing and the
+// studio hub only. The checklist, stock, petty cash and work order pages all
+// carry a fixed Save / Submit bar across the bottom, and a bubble over
+// Submit is worse than no bubble. Any signed-in role may use it there (a
+// manager testing on a phone included); the route picks the runner corpus by
+// the asker's role, not by the surface.
+const RUNNER_PATHS = /^\/runner(\/[^/]+)?\/?$/
 
 type Cite = { id: string; label: string; href: string }
 type Msg = { role: 'user' | 'assistant'; content: string; cites?: Cite[]; failed?: boolean }
 
-export function AskFlo() {
+export function AskFlo({ surface = 'admin' }: { surface?: 'admin' | 'runner' }) {
   const { profile } = useUserProfile()
   const isMobile = useIsMobile()
   const router = useRouter()
+  const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const [busy, setBusy] = useState(false)
@@ -42,7 +50,10 @@ export function AskFlo() {
   const inputRef = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
 
-  const allowed = !!profile && ALLOWED.includes(profile.role)
+  const allowed = !!profile && (surface === 'runner'
+    ? RUNNER_PATHS.test(pathname || '')
+    : ALLOWED_ADMIN.includes(profile.role))
+  const isRunnerAsk = surface === 'runner'
 
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 50) }, [open])
   useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }) }, [thread, busy])
@@ -84,7 +95,7 @@ export function AskFlo() {
   }
 
   const bubble: CSSProperties = {
-    position: 'fixed', right: 18, bottom: 18, zIndex: Z,
+    position: 'fixed', right: 18, bottom: isRunnerAsk ? 'calc(18px + env(safe-area-inset-bottom))' : 18, zIndex: Z,
     width: 44, height: 44, borderRadius: 999, padding: 1.5, cursor: 'pointer', border: 'none', background: 'transparent',
   }
   const sheet: CSSProperties = isMobile
@@ -106,7 +117,9 @@ export function AskFlo() {
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px 14px 10px', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, lineHeight: 1.5 }}>
               {thread.length === 0 && (
                 <div style={{ color: 'var(--c-fg-3)', fontSize: 12.5, marginTop: 6 }}>
-                  Ask how to do something in PRSFlo — “how do I take one day off a hold”, “what does the Reopened tag mean”. Answers come from the staff guides; if it isn't in them, Flo says so.
+                  {isRunnerAsk
+                    ? <>Ask how to do something in the app — “how do I submit the work order”, “what if the client never showed up”. Answers come from the Runner guide; if it isn't in there, Flo says so.</>
+                    : <>Ask how to do something in PRSFlo — “how do I take one day off a hold”, “what does the Reopened tag mean”. Answers come from the staff guides; if it isn't in them, Flo says so.</>}
                 </div>
               )}
               {thread.map((m, i) => m.role === 'user' ? (
@@ -133,11 +146,11 @@ export function AskFlo() {
 
             <form onSubmit={e => { e.preventDefault(); ask() }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px 4px' }}>
               <input ref={inputRef} className="c-input" value={q} onChange={e => setQ(e.target.value)} disabled={busy}
-                placeholder="Ask how to do something in PRSFlo…" maxLength={600} style={{ flex: 1 }} />
+                placeholder={isRunnerAsk ? 'Ask how to do something…' : 'Ask how to do something in PRSFlo…'} maxLength={600} style={{ flex: 1 }} />
               <button type="submit" className="c-btn c-control c-raised-primary" disabled={busy || !q.trim()} style={{ opacity: busy || !q.trim() ? 0.5 : 1 }}>Ask</button>
             </form>
             <div style={{ fontSize: 10, color: 'var(--c-fg-3)', padding: '0 14px 10px' }}>
-              Answers come only from the staff guides. Flo can't see work orders or clients.
+              {isRunnerAsk ? "Answers come only from the Runner guide. Flo can't see tonight's sessions." : "Answers come only from the staff guides. Flo can't see work orders or clients."}
             </div>
           </div>
         </div>

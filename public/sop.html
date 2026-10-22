@@ -679,6 +679,22 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.46.2', date:'Oct 22, 2026',
+    headline:'Runners can Ask Flo too.',
+    desc:'The same wave button, on the runner app&rsquo;s first screen and the studio page.',
+    changes:[
+      'Runners tap the wave button bottom right and ask in their own words &mdash; &ldquo;how do I submit the work order&rdquo;, &ldquo;the client never showed up&rdquo;. Answers come from the Runner guide only.',
+      'It is not on the checklist, stock, petty cash or work order pages, where the Save / Submit bar lives.',
+      'Anything about money, invoices or approvals gets &ldquo;that is the office&rsquo;s side &mdash; ask them.&rdquo;',
+    ],
+    affects:'Office: nothing changes for you. Runners: it is on your first screen; the guide has a step about it.',
+    dev:[
+      'AskFlo surface="runner" in app/runner/layout.tsx; shows only on /runner and /runner/[studio] (RUNNER_PATHS); bottom respects safe-area-inset.',
+      '/api/ask: role runner &rarr; ASK_CORPUS_RUNNER (runner guide only, ~6.5k tokens), runner prompt, cites limited to runner:* sections. ALLOWED now includes runner.',
+      'content_runner.py chapter 01 gained a step (173); runner-sop.html rebuilt; corpus rebuilt. test.py skipped (no Playwright on the Mac).',
+    ],
+  },
+  {
     ver:'v1.46.1', date:'Oct 22, 2026',
     headline:'The Billing guide is caught up with this week.',
     desc:'No new features. The step-by-step Billing SOP now describes the app as it is after this week&rsquo;s changes.',

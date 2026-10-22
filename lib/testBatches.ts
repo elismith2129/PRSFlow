@@ -57,7 +57,7 @@ export const TEST_BATCHES: TestBatch[] = [
   {
     id: 'oct-22-2026-ask-flo',
     title: 'Ask Flo, first look',
-    version: 'v1.46.0',
+    version: 'v1.46.2',
     date: 'Oct 22, 2026',
     intro:
       'The help bubble, bottom right. This batch checks it answers from the guides, refuses what it should, and opens the right chapter. Nothing here changes any data.',
@@ -88,9 +88,14 @@ export const TEST_BATCHES: TestBatch[] = [
         how: 'Ask "what does the Reopened tag mean". The answer explains a reopened work order and shows a "What\'s new · v1.45.x" chip.',
       },
       {
-        id: 'v146-runner-hidden', area: 'Runner hub', device: 'phone',
-        what: 'Runners do not see the bubble',
-        how: 'On a phone, log in with a runner PIN. The runner hub and a studio page have no wave button in the corner.',
+        id: 'v1462-runner-bubble', area: 'Runner hub', device: 'phone',
+        what: 'Runners see the bubble on the first screen and the studio page, and it answers from the Runner guide',
+        how: 'On a phone, log in with a runner PIN. The wave button is bottom right on the first screen and on a studio page. Ask "how do I submit the work order": a short answer with a "Runner guide · …" chip. Ask "how do I approve an invoice": it says that is the office\'s side.',
+      },
+      {
+        id: 'v1462-runner-no-bubble-on-forms', area: 'Runner hub', device: 'phone',
+        what: 'The bubble is NOT on pages with a Save / Submit bar',
+        how: 'From a studio page open the opening checklist, then Stock, then a work order. None of them show the wave button; the Save / Submit bar at the bottom is uncovered.',
       },
     ],
   },

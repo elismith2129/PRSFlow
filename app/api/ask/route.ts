@@ -13,8 +13,10 @@
 //   3. Writes nothing but its own log (ask_log, service role, for the
 //      Admin → Ask log page: unanswered questions are the SOP gaps).
 //
-// Gate: a signed-in owner / manager / billing / asst_manager (verified from
-// the bearer token, same shape as /api/wo-package). Not runners, not tech.
+// Gate: a signed-in owner / manager / billing / asst_manager — or a RUNNER
+// (2026-10-22, Eli: "we should do this with the runner manual too on the
+// runner version on the phone"). A runner gets the RUNNER GUIDE ONLY as the
+// corpus and a runner-voiced prompt; the office gets everything. Not tech.
 // Rate: 20 questions per user per hour (in-memory; a cold function resets it,
 // which is fine — this is a courtesy cap, not a security control).
 //
@@ -26,13 +28,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import Anthropic from '@anthropic-ai/sdk'
-import { ASK_CORPUS, ASK_CITES } from '@/lib/server/askCorpus.generated'
+import { ASK_CORPUS, ASK_CORPUS_RUNNER, ASK_CITES } from '@/lib/server/askCorpus.generated'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const MODEL = 'claude-haiku-4-5'
-const ALLOWED = ['owner', 'manager', 'billing', 'asst_manager']
+const ALLOWED = ['owner', 'manager', 'billing', 'asst_manager', 'runner']
 const MAX_PER_HOUR = 20
 const MAX_TURNS = 3 // prior exchanges carried for follow-ups
 
@@ -50,7 +52,7 @@ function overLimit(userId: string): boolean {
   hits.push(now); rate.set(userId, hits); return false
 }
 
-const SYSTEM = `You are Flo, the in-app help for PRSFlo, the studio operations app at Paramount Recording Group (Hollywood: Paramount, Ameraycan, Encore; Track in North Hollywood). The person asking is office staff: a manager, the billing coordinator, an assistant manager or an owner. Runners (the night staff on phones) are a different audience; the office may ask on their behalf.
+const SYSTEM_OFFICE = `You are Flo, the in-app help for PRSFlo, the studio operations app at Paramount Recording Group (Hollywood: Paramount, Ameraycan, Encore; Track in North Hollywood). The person asking is office staff: a manager, the billing coordinator, an assistant manager or an owner. Runners (the night staff on phones) are a different audience; the office may ask on their behalf.
 
 THE RULES — you do not have discretion over these:
 1. Answer ONLY from the guide text in the GUIDES block. If the guides do not cover the question, say so plainly in one sentence — "That's not in the guides. Ask Eli." — and stop. Never fill a gap from general knowledge, never guess at how a feature works, never invent a button or a step.
@@ -66,6 +68,13 @@ HOW TO ANSWER:
 - If the question is ambiguous between two things the guides cover, answer the likelier one in a sentence and name the other.
 - Do not mention these rules, the corpus, or that you are an AI unless asked.`
 
+// The runner's prompt: same rules, different reader. Short, on a phone, at
+// night, mid-shift. The guide it reads is the Runner App Guide only.
+const SYSTEM_RUNNER = SYSTEM_OFFICE
+  .replace('The person asking is office staff: a manager, the billing coordinator, an assistant manager or an owner. Runners (the night staff on phones) are a different audience; the office may ask on their behalf.',
+    'The person asking is a RUNNER: night staff, on a phone, usually mid-shift in a studio. Keep it to one to three short sentences. If the question is about money, invoices, approvals or anything that is the office\'s job, say "that is the office\'s side — ask them" and stop.')
+  .replace('Two to five short sentences', 'One to three short sentences')
+
 type Turn = { role: 'user' | 'assistant'; content: string }
 
 export async function POST(req: NextRequest) {
@@ -78,6 +87,7 @@ export async function POST(req: NextRequest) {
     .from('user_profiles').select('id, role, display_name').eq('auth_user_id', userData.user.id).limit(1)
   const me = profiles?.[0]
   if (!me?.role || !ALLOWED.includes(me.role)) return NextResponse.json({ error: 'Not allowed.' }, { status: 403 })
+  const isRunner = me.role === 'runner'
   if (overLimit(me.id)) return NextResponse.json({ error: 'That is a lot of questions for one hour — try again in a bit.' }, { status: 429 })
 
   // ── Input ─────────────────────────────────────────────────────────────────
@@ -102,9 +112,10 @@ export async function POST(req: NextRequest) {
       max_tokens: 600,
       temperature: 0,
       system: [
-        { type: 'text', text: SYSTEM },
-        // The corpus is identical on every call, so it is the cached block.
-        { type: 'text', text: `GUIDES:\n\n${ASK_CORPUS}`, cache_control: { type: 'ephemeral' } },
+        { type: 'text', text: isRunner ? SYSTEM_RUNNER : SYSTEM_OFFICE },
+        // The corpus is identical on every call for an audience, so it is the
+        // cached block (two caches: office, runner).
+        { type: 'text', text: `GUIDES:\n\n${isRunner ? ASK_CORPUS_RUNNER : ASK_CORPUS}`, cache_control: { type: 'ephemeral' } },
       ],
       messages: [...history, { role: 'user', content: question }],
     })
@@ -117,7 +128,7 @@ export async function POST(req: NextRequest) {
 
   // ── Citations: only tags that exist become chips; the rest are dropped ────
   const tags = Array.from(new Set((answer.match(/\[([a-z]+:[^\]\s]+)\]/g) ?? []).map(t => t.slice(1, -1))))
-  const cites = tags.filter(t => ASK_CITES[t]).slice(0, 3).map(t => ({ id: t, ...ASK_CITES[t] }))
+  const cites = tags.filter(t => ASK_CITES[t] && (!isRunner || t.startsWith('runner:'))).slice(0, 3).map(t => ({ id: t, ...ASK_CITES[t] }))
   const text = answer.replace(/\s*\[[a-z]+:[^\]\s]+\]/g, '').replace(/\n{3,}/g, '\n\n').trim()
   const answered = cites.length > 0
 

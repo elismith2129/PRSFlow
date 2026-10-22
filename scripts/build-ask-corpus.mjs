@@ -153,6 +153,12 @@ const parts = [
   renderVersions(sop.VERSIONS, cites),
 ]
 const corpus = parts.join('\n\n')
+// RUNNERS GET THE RUNNER GUIDE ONLY (2026-10-22). A runner on a phone at
+// night should not be told about invoices, approvals or the owner's queue —
+// the Billing SOP is not their job and the main guide is the office's. The
+// release notes are left out too: they are written for the office. If a
+// runner-facing note ever matters, the runner guide's own step is the place.
+const corpusRunner = parts[1]
 
 const sources = ['docs/sop-build/content.py', 'docs/sop-build/content_runner.py', 'public/sop.html']
 const newest = Math.max(...sources.map(f => statSync(path.join(ROOT, f)).mtimeMs))
@@ -164,6 +170,7 @@ export const ASK_CORPUS_BUILT_AT = ${JSON.stringify(new Date().toISOString())}
 export const ASK_CORPUS_SOURCES_MTIME = ${Math.round(newest)}
 export const ASK_CITES: Record<string, { label: string; href: string }> = ${JSON.stringify(cites, null, 2)}
 export const ASK_CORPUS = ${JSON.stringify(corpus)}
+export const ASK_CORPUS_RUNNER = ${JSON.stringify(corpusRunner)}
 `
 writeFileSync(OUT, ts)
-console.log(`askCorpus: ${corpus.length.toLocaleString()} chars (~${Math.round(corpus.length / 4).toLocaleString()} tokens), ${Object.keys(cites).length} sections → ${path.relative(ROOT, OUT)}`)
+console.log(`askCorpus: ${corpus.length.toLocaleString()} chars (~${Math.round(corpus.length / 4).toLocaleString()} tokens), ${Object.keys(cites).length} sections; runner-only ${corpusRunner.length.toLocaleString()} chars → ${path.relative(ROOT, OUT)}`)
