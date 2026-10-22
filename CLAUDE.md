@@ -102,7 +102,7 @@ Rules:
 
 ## End-of-session wrap-up (do all five)
 
-When Eli says to update logs / wrap up / push everything, ALL of these happen together — they're one ritual, not five optional chores:
+When Eli says to update logs / wrap up / push everything, ALL of these happen together — they're one ritual, not seven optional chores:
 
 > **No manual backup step. Deliberately.** One briefly existed here (2026-08-11) because
 > the rewritten `scripts/backup.mjs` lived only on `redesign/carved`, and a scheduled
@@ -120,6 +120,8 @@ When Eli says to update logs / wrap up / push everything, ALL of these happen to
 4. **`public/sop.html` → `VERSIONS`** — a **staff-facing** release note at the TOP of the array, plain English, per **release**. Never technical; it is not a substitute for the changelog. Each entry also carries a **`dev: [...]`** array, rendered as a collapsed "Dev notes — under the hood" disclosure at the bottom of that version. **`dev` MIRRORS the `docs/CHANGELOG.md` entry for that version — copy the bullets, don't write new prose.** Keep the changelog's Migrations/Files lines out of it (they belong in the repo copy) but everything else should read the same. CHANGELOG stays canonical; the SOP copy exists only so the notes are reachable from inside the app. Update both in the same pass or they drift.
 5. **`lib/testBatches.ts`** — ONE new test batch per **working session**, at the top of `TEST_BATCHES`.
 **Status per day (v1.36.0):** `studio_time_rows.day_status` overrides the WO's `session_status` per day; `effDayStatus()` in WorkOrderPopup is the one derivation. The projection splits runs on effective status, so `bookings.status` per card stays the truth every daily surface reads — never add a second status read. `computeWoTotals` zeroes explicitly-cancelled days; the row is never rewritten.
+
+7. **`node scripts/build-ask-corpus.mjs`** — rebuild what Ask Flo answers from (2026-10-22). Step 4 edits `sop.html` → VERSIONS on every release, and the guides' step copy (`docs/sop-build/content*.py`) changes whenever a flow does, so the corpus is stale after every wrap-up by construction. `lib/server/askCorpus.generated.ts` is committed (Vercel has no python3); commit the rebuilt file with the release. **`selftest.mjs` FAILS, not warns, when a source is newer than the corpus** — a push with a stale corpus means the bubble explains last week's app. Eli, Oct 22: "want to make sure that what this pulls from is always up to date. we'll need to build that into our wrap ups."
 
 6. **`docs/TODO.md`** — the ONE standing to-do list. Read it at the start of a session. Anything parked, deferred, or handed to Eli goes there with a date; strike it when it ships. Per-session "Open" lists in PROJECT_LOG are history — TODO.md is the live one.
 

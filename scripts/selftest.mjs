@@ -112,7 +112,9 @@ try {
   const srcs = ['docs/sop-build/content.py', 'docs/sop-build/content_runner.py', 'public/sop.html']
   const newest = Math.max(...srcs.map(f => statSync(join(process.cwd(), f)).mtimeMs))
   if (!built) fails.push('askCorpus.generated.ts missing or unreadable — run node scripts/build-ask-corpus.mjs')
-  else if (newest > built + 1000) warns.push('Ask Flo corpus is OLDER than a guide source — run node scripts/build-ask-corpus.mjs before pushing')
+  // FAIL, not warn (Eli, 2026-10-22): a stale corpus means the bubble explains
+  // last week's app. The fix is one command, so blocking is cheap.
+  else if (newest > built + 1000) fails.push('Ask Flo corpus is OLDER than a guide source — run node scripts/build-ask-corpus.mjs and commit the result')
   else oks.push('Ask Flo corpus is current')
 } catch (e) {
   fails.push(`Ask Flo corpus check failed: ${e.message}`)
