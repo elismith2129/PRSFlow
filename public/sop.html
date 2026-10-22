@@ -679,6 +679,23 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.46.1', date:'Oct 22, 2026',
+    headline:'The Billing guide is caught up with this week.',
+    desc:'No new features. The step-by-step Billing SOP now describes the app as it is after this week&rsquo;s changes.',
+    changes:[
+      'The day-card chip is called <b>Review &check;</b> in the guide, as it is on screen.',
+      'Complete WO: the guide says it saves everything first (payments included) and that pressing it again reopens the work order to In progress with a Reopened tag.',
+      'The hub&rsquo;s flags: the guide now names <b>Reopened &middot; recheck the invoice</b> alongside the others.',
+      'Your list: how to open the full list, read a long duty, and add your own recurring item.',
+      'Ask Flo now knows all of the above, because it reads from the same guide.',
+    ],
+    affects:'If you read the Billing guide last week, the Review chip and the Reopened tag are the two things that changed.',
+    dev:[
+      'docs/sop-build/content.py edited; public/billing-sop.html rebuilt; corpus rebuilt. The first run of CLAUDE.md step 4&rsquo;s &ldquo;fix the step, not just the note&rdquo; rule.',
+      'test.py skipped (no Playwright on the Mac); step and screen counts unchanged.',
+    ],
+  },
+  {
     ver:'v1.46.0', date:'Oct 22, 2026',
     headline:'Ask Flo: a help button, bottom right, for &ldquo;how do I&hellip;&rdquo; questions.',
     desc:'Office staff only. Tap the small wave button in the bottom-right corner of any page and ask in your own words.',

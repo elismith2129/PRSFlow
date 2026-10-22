@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.46.1 — Billing SOP caught up with the week — Oct 22, 2026
+
+**Why.** Eli: *"a wrap up that makes sure the working guide is up to date."* The first run of the new step-4 rule: everything shipped Oct 19–22 that changed what the office DOES is now in the Billing SOP's step copy, not just in the release notes. No code, no migration.
+
+**Steps changed** (`docs/sop-build/content.py` → `public/billing-sop.html` rebuilt, corpus rebuilt): Complete WO saves everything first including payments, and pressing it on a completed work order reopens it to In progress with the Reopened tag (v1.45.2 / v1.45.4); the day-card chip reads **Review ✓** / **✓ Reviewed** everywhere "Mark reviewed" was named, with the glossary noting the old name (v1.45.1); the hub flag step names **Reopened · recheck the invoice** beside the other flags (v1.45.1); each saved payment line shows its recorded date (v1.45.2); Your list: the full list, tap a long duty to read it, + Add for your own recurring items (v1.45.1); the Flo step points at the Ask Flo bubble (v1.46.0). Still 198 steps, 24 screens.
+
+**Not changed, on purpose:** Lakers (owners only, not a billing flow); shift-note photos (manager's page — the Manager SOP is not written yet, TODO Oct 7); the runner guide (nothing runner-facing changed this week).
+
+**Not run:** `docs/sop-build/test.py` needs Playwright on the Mac and it isn't installed there; no step count or screen changed, so the layout test was skipped. Run it before the next guide change that adds a step.
+
+**Files:** `docs/sop-build/content.py` · `public/billing-sop.html` · `lib/server/askCorpus.generated.ts`
+
+---
+
 ## v1.46.0 — Ask Flo: the help bubble (session 1 of 2) — Oct 22, 2026
 
 **Why.** Eli: *"the AI chat bot that lives in the bottom right corner on the desktop app for admin where they can ask questions… based on all the logic and rules we've created."* Scoped in `docs/ASK-FLO-BRIEF.md`; mock A (dock sheet) of `docs/design-refs/ask-flo-options.html` picked. This is "how to operate the app" only — live data is a later, separate decision.
