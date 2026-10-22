@@ -120,6 +120,32 @@ try {
   fails.push(`Ask Flo corpus check failed: ${e.message}`)
 }
 
+// ── 4c · The walkthrough guides match their content files (2026-10-22) ──────
+// public/billing-sop.html and public/runner-sop.html are the SERVED copies of
+// docs/sop-build/content.py / content_runner.py. Edit the content without
+// rebuilding and staff (and Ask Flo's chips) open a guide that says the old
+// thing. Checked by REBUILDING to a temp file and comparing bytes — file
+// times lie after a checkout (first run of this check: a false alarm). The
+// build is deterministic (its "as of" date is a literal in META). Fails on a
+// real difference; warns if python3 is missing.
+try {
+  const { mkdtempSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const dir = mkdtempSync(join(tmpdir(), 'sopcheck-'))
+  const stale = []
+  for (const [name, served] of [['billing', 'public/billing-sop.html'], ['runner', 'public/runner-sop.html']]) {
+    const out = join(dir, `${name}.html`)
+    const r = spawnSync('python3', ['docs/sop-build/build.py', name, out], { cwd: process.cwd(), encoding: 'utf-8' })
+    if (r.status !== 0) throw new Error(`python3 build failed for ${name}: ${(r.stderr || r.stdout || '').trim().slice(0, 200)}`)
+    if (readFileSync(out, 'utf-8') !== readFileSync(join(process.cwd(), served), 'utf-8')) stale.push(`${served} (python3 docs/sop-build/build.py ${name} ${served})`)
+  }
+  rmSync(dir, { recursive: true, force: true })
+  if (stale.length) fails.push(`Guide served copy does not match its content file — rebuild: ${stale.join('; ')}`)
+  else oks.push('Walkthrough guides match their content files')
+} catch (e) {
+  warns.push(`Guide match check skipped: ${e.message}`)
+}
+
 // ── 5 · Landmine counters (warn on presence; watch the DELTA) ───────────────
 function countAcross(re, exclude = () => false) {
   let n = 0
