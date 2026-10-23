@@ -1255,7 +1255,8 @@ function leadStatusKey(l: Lead): StatusFilter {
 }
 
 const ALL_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm', 'cold', 'leasing', 'dnb', 'booked']
-const DEFAULT_STATUS_FILTERS: StatusFilter[] = ['uncontacted', 'hot', 'warm']
+// Eli 2026-10-22: All Leads opens with every category on.
+const DEFAULT_STATUS_FILTERS: StatusFilter[] = ALL_STATUS_FILTERS
 
 function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouched, onKeepHot, onUpdateStatus, loading }: {
   leads: Lead[]
