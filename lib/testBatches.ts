@@ -55,6 +55,36 @@ export type TestBatch = {
 
 export const TEST_BATCHES: TestBatch[] = [
   {
+    id: 'oct-23-2026-follow-up-list',
+    title: 'Follow-up list',
+    version: 'v1.47.0',
+    date: 'Oct 23, 2026',
+    intro:
+      'The new Follow-up box under Needs Action. Rating a lead and logging a follow-up both save for real, so use a lead you were going to follow up anyway.',
+    items: [
+      {
+        id: 'v147-box-shows', area: 'CRM',
+        what: 'The Follow-up box sits under Needs Action and lists leads that did not book',
+        how: 'CRM → Leads → Needs Action. Under the Needs Action box there is a Follow-up box with a count and "N of M this week · last 90 days". Groups read Unranked (red), 3, 2, 1. No booked lead is on it.',
+      },
+      {
+        id: 'v147-rate-moves', area: 'CRM',
+        what: 'Rating a lead moves it to that group, and tapping it again clears it',
+        how: 'On an Unranked row tap 3: the row jumps to the 3 group. Open the lead: the profile shows 3 lit next to "Rating". Tap 3 on the profile: it goes back to Unranked and "Rating" turns red.',
+      },
+      {
+        id: 'v147-tick-popup', area: 'CRM',
+        what: 'The tick opens the follow-up pop-up with history, and Save logs it',
+        how: 'Tick a row. A pop-up shows the lead name, Call / Text / Email, a note line and History. Save stays dim until you pick a method. Pick Text, type "test note", Save: the row greys out, shows "today" and your initials, and the lead\'s Activity has "XX - Follow-up · Text - test note".',
+      },
+      {
+        id: 'v147-new-lead-rating', area: 'CRM',
+        what: 'The new-lead form asks "How good is this lead?" and it is optional',
+        how: '+ New lead. Under Lead Temperature there is "How good is this lead?" with three buttons. Create one lead with 2 picked and one with nothing: the first lands in the 2 group, the second in Unranked.',
+      },
+    ],
+  },
+  {
     id: 'oct-22-2026-ask-flo',
     title: 'Ask Flo, first look',
     version: 'v1.46.2',

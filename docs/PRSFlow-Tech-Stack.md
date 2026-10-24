@@ -100,6 +100,7 @@ You don't need to restart `npm run dev` when you edit files — it hot-reloads a
 
 | Path | Purpose |
 |---|---|
+| `components/crm/FollowUpList.tsx` | **(Oct 23, 2026, v1.47.0)** The follow-up list, its row, the shared `FollowRating` 1–3 buttons (list / lead profile / new-lead form) and the follow-up pop-up. |
 | `components/ask/AskFlo.tsx` · `app/api/ask/route.ts` · `scripts/build-ask-corpus.mjs` | **(Oct 22, 2026, v1.46.0)** Ask Flo. The bubble, its route, and the corpus builder; `lib/server/askCorpus.generated.ts` is the built corpus (rebuild after editing a guide source; selftest warns). |
 | `components/shared/AllStar.tsx` | **(Oct 13, 2026, v1.44.0)** The All-Star star: `AllStarToggle` (profile ☆/★ button), `AllStarMark` (list-row ★), `canToggleAllStar(role)` (owner/manager/billing/asst_manager). Used by CRM lead profile + lists and the client profile + list. One-star-per-person sync is DB triggers (migration `20261013120000`), not this file. |
 | `lib/deleteSession.ts` | **(Oct 5, 2026, v1.43.2)** THE delete door. `deleteWorkOrderEverywhere(woId)` (billing hub) and `deleteBlock(booking)` (WO popup, blocks only) both call `delete_with_archive()`; `fetchDeleted()` / `recoverDeleted(id)` serve the log. ⚠ **No client-side `.delete()` on `work_orders` or `bookings` anywhere** — WO-1240 is why |
@@ -335,6 +336,7 @@ shadows are raised controls and the modal drop shadow.
 
 | Chunk | What shipped |
 |---|---|
+| **FOLLOW-UP LIST ✅ (Oct 23, 2026, v1.47.0)** | `components/crm/FollowUpList.tsx` — box under Needs Action; `leads.follow_rating` 1–3 (migration `20261023120000`); follow-ups are `lead_activity` type `followup`; tick opens a pop-up (method + note + history). |
 | **ASK FLO — help bubble, session 1 ✅ (Oct 22, 2026, v1.46.0)** | `components/ask/AskFlo.tsx` (bottom-right, admin roles, Flo ring) → `POST /api/ask` (bearer gate, Haiku 4.5, cached corpus block, cites validated against `ASK_CITES`) → `ask_log`. Corpus: `scripts/build-ask-corpus.mjs` → `lib/server/askCorpus.generated.ts` (committed) from `docs/sop-build/content*.py` + `public/sop.html` data/VERSIONS. Brief `docs/ASK-FLO-BRIEF.md`. |
 | **HOTFIX: In progress rule keyed on reopened_at ✅ (Oct 21, 2026, v1.45.4)** | `lib/billing.ts` step derivation: `w.reopened_at && status !== completed && step 2|3 → 1`. v1.45.2's bare-status version emptied Needs approval / Approved / COD paid on deploy (invoice-before-Complete is the normal path). |
 | **DASHBOARD: OWN NAME; ARROWS DON'T RELOAD LEADS ✅ (Oct 21, 2026, v1.45.3)** | `app/(main)/page.tsx`: `viewedName`/`listWho` are the viewer's own name unless Eli is peeking; leads load in their own effect on `leadsVersion` (six columns, booked/dead/leasing excluded), the day's bookings on `calDate`. |

@@ -69,6 +69,8 @@ export interface Lead {
   work_order_id?: string | null
   tags: string[]
   email_opt_out: boolean
+  /** FOLLOW-UP LIST (v1.47.0): manual 1–3 rating, size + seriousness together. NULL = unranked. Migration 20261023120000. */
+  follow_rating?: number | null
   created_at: string
   updated_at: string | null
 }

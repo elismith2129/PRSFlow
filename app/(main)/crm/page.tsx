@@ -29,6 +29,7 @@ import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
 import { AllStarToggle, AllStarMark, canToggleAllStar } from '@/components/shared/AllStar'
+import { FollowUpList, FollowRating, parseFollowUpNote, FollowUpMap } from '@/components/crm/FollowUpList'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--c-st-hot)', warm: 'var(--c-st-warm)', cold: 'var(--c-fg-3)',
@@ -397,6 +398,8 @@ export default function CRMPage() {
 
   const [leads, setLeads] = useState<Lead[]>([])
   const [latestTouches, setLatestTouches] = useState<TouchMap>({})
+  // FOLLOW-UP LIST (v1.47.0): newest 'followup' activity row per lead.
+  const [followUps, setFollowUps] = useState<FollowUpMap>({})
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [view, setView] = useState<CrmView>('all-leads')
   const [loading, setLoading] = useState(true)
@@ -508,6 +511,17 @@ export default function CRMPage() {
       }
     }
     setLatestTouches(touchMap)
+    // FOLLOW-UP LIST (v1.47.0): newest follow-up per lead — drives "last
+    // followed up" and the weekly tick. Same 5,000-row ceiling as the touches.
+    const { data: followData } = await supabase
+      .from('lead_activity').select('lead_id, note, created_at')
+      .eq('type', 'followup').order('created_at', { ascending: false })
+      .range(0, 4999)
+    const followMap: FollowUpMap = {}
+    for (const row of (followData || [])) {
+      if (!followMap[row.lead_id]) followMap[row.lead_id] = parseFollowUpNote(row.note || '', row.created_at)
+    }
+    setFollowUps(followMap)
     setLoading(false)
   }, [])
 
@@ -633,6 +647,16 @@ export default function CRMPage() {
     const { error } = await supabase.from('leads').update({ status }).eq('id', id)
     if (!dbResult('Updating status', error)) return
     setLeads(prev => prev.map(l => l.id === id ? { ...l, status: status as LeadStatus } : l))
+  }
+
+  // FOLLOW-UP LIST (v1.47.0): the one manual 1–3 rating. null = unranked.
+  async function rateLead(id: number, rating: number | null) {
+    const prev = leads.find(l => l.id === id)?.follow_rating ?? null
+    setLeads(ls => ls.map(l => l.id === id ? { ...l, follow_rating: rating } : l))
+    const { error } = await supabase.from('leads').update({ follow_rating: rating }).eq('id', id)
+    if (!dbResult('Saving rating', error)) {
+      setLeads(ls => ls.map(l => l.id === id ? { ...l, follow_rating: prev } : l))
+    }
   }
 
   function selectAndFocus(id: number, field?: string) {
@@ -778,17 +802,35 @@ export default function CRMPage() {
               : { display: 'grid', gridTemplateColumns: '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
               {!(isMobile && selected) && (
                 view === 'needs-action' ? (
-                  <NeedsActionSection
-                    leads={leads}
-                    latestTouches={latestTouches}
-                    selectedId={selectedId}
-                    onSelect={selectAndFocus}
-                    onMarkTouched={markTouched}
-                    onKeepHot={keepHot}
-                    onUpdateStatus={updateStatus}
-                    loading={loading}
-                    isMobile={isMobile}
-                  />
+                  // FOLLOW-UP LIST (v1.47.0, option C1): its own box on the
+                  // Needs Action view so the office sees it every day. Two
+                  // fixed halves, each scrolling inside (Eli's fixed-box rule).
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0 }}>
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+                      <NeedsActionSection
+                        leads={leads}
+                        latestTouches={latestTouches}
+                        selectedId={selectedId}
+                        onSelect={selectAndFocus}
+                        onMarkTouched={markTouched}
+                        onKeepHot={keepHot}
+                        onUpdateStatus={updateStatus}
+                        loading={loading}
+                        isMobile={isMobile}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+                      <FollowUpList
+                        leads={leads}
+                        followUps={followUps}
+                        selectedId={selectedId}
+                        onSelect={id => setSelectedId(id)}
+                        onRate={rateLead}
+                        onLogged={load}
+                        loading={loading}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <AllLeadsView
                     leads={leads}
@@ -2131,6 +2173,17 @@ const parsedLoc0 = parseLocation(lead.location || '')
             </div>
           )}
         </div>
+        {/* FOLLOW-UP RATING (v1.47.0): 1–3, size + seriousness together.
+            Tap the lit one again to clear it back to Unranked. */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0 }} title="Follow-up rating — 3 big and real · 2 maybe · 1 small or a long shot">
+          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: lead.follow_rating ? 'var(--c-fg-3)' : 'var(--c-st-hot)' }}>Rating</span>
+          {/* Reads the lead prop, not local: the list can re-rate this lead
+              while the panel is open, and the parent copy is the live one. */}
+          <FollowRating
+            value={lead.follow_rating ?? null}
+            onRate={r => save('follow_rating', lead.follow_rating === r ? null : r)}
+          />
+        </span>
         {priorSessions !== null && priorSessions > 0 && returningClientId && (
           <a href={`/crm?clientId=${returningClientId}`} className="c-returning" title="Open this client's profile">
             Returning <small>· {priorSessions} session{priorSessions === 1 ? '' : 's'} →</small>
@@ -2995,6 +3048,8 @@ function NewLeadModal({ leads, onClose, onSave }: {
   const [mode, setMode] = useState<'cod' | 'label'>('cod')
   const [form, setForm] = useState(emptyForm)
   const [temperature, setTemperature] = useState<'hot' | 'warm' | 'booking'>('hot')
+  // FOLLOW-UP RATING (v1.47.0): optional — skip it and the lead waits in Unranked.
+  const [followRating, setFollowRating] = useState<number | null>(null)
   const [bookingError, setBookingError] = useState('')
   const [needsContact, setNeedsContact] = useState(false)
   const [rateType, setRateType] = useState<'hourly' | 'daily'>('hourly')
@@ -3341,6 +3396,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
         status,
         needs_contact: needsContact,
         tags: newLeadTags,
+        follow_rating: followRating,
       }
       const leadId = await onSave(data)
       setSaving(false)
@@ -3357,7 +3413,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
       setSaving(false)
       return
     }
-    const data: Partial<Lead> = { ...form, status, needs_contact: needsContact, tags: newLeadTags }
+    const data: Partial<Lead> = { ...form, status, needs_contact: needsContact, tags: newLeadTags, follow_rating: followRating }
     if (matchedClientId) data.client_id = matchedClientId
     const leadId = await onSave(data)
     setSaving(false)
@@ -3399,6 +3455,14 @@ function NewLeadModal({ leads, onClose, onSave }: {
           </button>
         ))}
       </div>
+    </div>
+  )
+
+  const followRow = (
+    <div>
+      <label style={labelS}>How good is this lead?</label>
+      <FollowRating value={followRating} size="lg" onRate={r => setFollowRating(v => v === r ? null : r)} />
+      <div style={{ fontSize: 10, color: 'var(--c-fg-3)', marginTop: 5 }}>Size and seriousness together. Not sure? Skip it — it waits in Unranked on the follow-up list.</div>
     </div>
   )
 
@@ -3548,6 +3612,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
               </div>
               {temperatureRow}
+              {followRow}
               {needsContactToggle}
               {sessionDetails}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -3674,6 +3739,7 @@ function NewLeadModal({ leads, onClose, onSave }: {
                 <div><label style={labelS}>Phone</label><PhoneInput value={form.phone} onChange={v => set('phone', v)} variant="bordered" /></div>
               </div>
               {temperatureRow}
+              {followRow}
               {needsContactToggle}
               {sessionDetails}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>

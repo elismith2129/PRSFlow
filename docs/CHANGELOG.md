@@ -20,6 +20,29 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.0 — Follow-up list on Needs Action: 1–3 rating, weekly tick, follow-up pop-up with history — Oct 23, 2026
+
+**Why.** The owner wanted "a list of people that didn't book but that i think are potentials that we hit up once a week. say last 90 days" — separate from the active pipeline. Two mock rounds (`docs/design-refs/follow-up-list-options.html`); Eli picked C (a box on the Needs Action view, "so its visible for them") and colour C1.
+
+1. **`leads.follow_rating`** (smallint 1–3, NULL = unranked). One manual rating, size and seriousness together. Set on the new-lead form ("How good is this lead?", optional), the lead profile (beside Returning; the word "Rating" is red while unset), or in the list. Tap the lit number again to clear it.
+2. **Follow-up box** (`components/crm/FollowUpList.tsx`) stacked under Needs Action in the left column of the Needs Action view; two fixed halves, each scrolls inside. On it: leads created in the last 90 days that didn't book (status not `booked`/`leasing`, no `work_order_id`) — cold and DNB included. Groups Unranked (red heading) → 3 → 2 → 1; inside a group returning first (`client_id` set and not `first_time`), then longest since last follow-up. Status colour as a left-edge bar (C1). Last follow-up date on the right, red at 7+ days or never.
+3. **The tick opens a pop-up**: How (Call / Text / Email, required — with the → Dial / Text / Mail link), optional one-line note, Save. Writes `lead_activity` type **`followup`**, note `"XX - Follow-up · Text - note"`, so it shows in the lead's Activity. The pop-up lists the lead's whole activity history (all types, newest first, with the year). Ticked since Monday 00:00 local = done this week (greyed); resets by itself. Header counts "N of M this week".
+4. A follow-up does **not** touch `last_contact`, `keep_hot_until`, `needs_contact` or status — the list is separate from the pipeline timers by design.
+
+**Rejected.** A 0–100 score (owner's first idea): size data isn't reliably entered, and a number nobody can explain gets ignored. A bare tick with no note: six people work the list, the next one needs to know what was said. Option A (own tab) and B (flat table): the list has to be in front of the office daily.
+
+**Migration:** `20261023120000_lead_follow_rating.sql` — column + range check + partial index on `lead_activity (lead_id, created_at desc) where type='followup'`. The closing select must show `rating_column = 1` and `type_checks = 0`; a non-zero `type_checks` means a CHECK on `lead_activity.type` will reject `'followup'` rows.
+
+**Watch-outs.**
+- Deviation from the mock: the real view keeps the lead panel on the right, so Follow-up stacks *under* Needs Action instead of beside it.
+- Uncontacted/hot/warm leads under 90 days also appear on the list (as mocked), so a fresh lead can sit in both boxes. Watch whether that confuses anyone.
+- "Returning" here is the cheap test (`client_id && !first_time`), not the bookings count the lead profile's Returning link uses.
+- The followups map reads the newest 5,000 `followup` rows, same ceiling as the touches map.
+
+**Files:** `components/crm/FollowUpList.tsx` (new) · `app/(main)/crm/page.tsx` · `lib/supabase.ts` · `supabase/migrations/20261023120000_lead_follow_rating.sql` · `public/sop.html` · `docs/design-refs/follow-up-list-options.html`
+
+---
+
 ## v1.46.3 — Ask Flo on a phone: chips wrap, bigger ask bar, green Ask; closest-step answers — Oct 22, 2026
 
 **Why.** Eli's first phone screenshot (runner surface): the chapter chip ran off the right edge and the whole sheet scrolled sideways; the ask bar was too small; "ask should be green." And Flo refused "an item on my checklist is wrong" although the runner guide covers that situation ("Could not finish something? Submit anyway, say what in Raise a flag"). No migration.

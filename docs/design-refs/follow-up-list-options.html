@@ -1,0 +1,233 @@
+<!doctype html>
+<!--
+  FOLLOW-UP LIST — round 2 (Oct 23, 2026)
+
+  Round 1 (Oct 22): A = own tab grouped by rating (recommended), B = flat table,
+  C = second box on the Needs Action page.
+  Eli picked C: "I like the C option so its visible for them."
+
+  Round 2 asks (Eli, Oct 23):
+  - "is there a way to incorporate colors?"
+  - "ranking these leads as they come in so that the followup list is organized by 3s
+    at the top and 1s at the bottom. with a subsection at the top for unranked leads,
+    just so they dont fall through."
+  - "a way to indicate when the last time we followed up with them was."
+
+  Standing rulings carried over: one manual rating 1–3 (size + seriousness together),
+  no 0–100; last 90 days; didn't book; cold and DNB included; booking drops a lead off;
+  weekly check per row.
+
+  Round 2 decisions shown here:
+  - The weekly tick and "last followed up" are the SAME act: ticking logs a follow-up
+    (who + when). "Done this week" = last follow-up since Monday. One tap, not two.
+  - Rating is set on the new-lead form (as they come in) and on the lead profile; still
+    tappable in the list so the "Unranked" group can be cleared.
+  - Colour: three ways shown (C1–C3). Status colours keep their meaning (warm = warm,
+    never a warning), so rating gets its own neutral steps. Recommended: C1.
+
+  Round 2 rulings (Eli, Oct 23) — BUILT as v1.47.0:
+  - "a on color" → C1, the status colour down each row's left edge.
+  - The tick opens "a little pop up that shows the thread of notes as well — we'll be
+    hitting these people over the years": How (Call/Text/Email) + optional note + Save,
+    with the lead's whole activity history underneath.
+  - A follow-up adds a line to the lead's activity: yes.
+  - Who works it: "the office admin. everyone. sam, isaac, lori, fernando, adam and me."
+  - Build deviation: the real Needs Action view keeps the lead panel on the right, so the
+    Follow-up box stacks UNDER Needs Action in the left column instead of beside it.
+
+  Tokens from styles/globals.css (dark).
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Follow-up list — round 2</title>
+<style>
+:root{
+  --c-bg:#0b0a09;--c-fg:#f2efe7;--c-wash:rgba(242,239,231,.06);--c-wash2:rgba(242,239,231,.12);
+  --c-fg-2:rgba(242,239,231,.72);--c-fg-3:rgba(242,239,231,.45);--c-ivory:#d5d0c2;
+  --c-st-hot:#ff5a4d;--c-st-warm:#ffa94d;--c-st-cold:#5fc9e8;--c-st-uncon:#7fb2e5;--c-st-dead:#cfd6d4;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--c-bg);color:var(--c-fg);font:14px/1.4 Inter,system-ui,sans-serif;padding:32px 16px 80px}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+.lede{color:var(--c-fg-2);margin:0 0 28px;max-width:780px}
+.opt{margin:0 0 56px}
+.opt h2{font-size:15px;margin:0 0 4px}
+.rec{font-size:10px;letter-spacing:.12em;text-transform:uppercase;background:var(--c-ivory);color:#1b1a17;padding:2px 7px;border-radius:999px;margin-left:8px;vertical-align:2px}
+.why{color:var(--c-fg-2);margin:0 0 14px;max-width:780px}
+.mono{font-family:"DM Mono",ui-monospace,monospace}
+
+.page{border:1px solid var(--c-wash2);border-radius:10px;overflow:hidden}
+.ptitle{display:flex;align-items:baseline;gap:22px;padding:16px 20px 0}
+.ptitle .t{font-size:20px;font-weight:600}
+.tabs{display:flex;gap:18px}
+.tabs span{padding:0 0 10px;color:var(--c-fg-3);font-size:13px}
+.tabs span.on{color:var(--c-fg);border-bottom:1px solid var(--c-fg)}
+.tabs .n{font-family:"DM Mono",monospace;font-size:11px;margin-left:5px;opacity:.7}
+.split{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);border-top:1px solid var(--c-wash)}
+.split>div{height:500px;display:flex;flex-direction:column;min-height:0}
+.split>div+div{border-left:1px solid var(--c-wash)}
+.bx-h{padding:14px 20px 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-fg-3);display:flex;justify-content:space-between;align-items:baseline}
+.bx-h .prog{letter-spacing:0;text-transform:none;font:12px "DM Mono",monospace;color:var(--c-fg-2)}
+.list{flex:1;min-height:0;overflow-y:auto;padding:0 20px 14px}
+.fake{color:var(--c-fg-3);font-size:13px;padding:11px 0;border-top:1px solid var(--c-wash)}
+.fake:first-child{border-top:0}
+
+.grp{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-fg-3);padding:14px 0 6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grp .gl{display:flex;align-items:center;gap:8px}
+.row{display:grid;grid-template-columns:22px minmax(0,1fr) 112px 88px;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--c-wash);position:relative}
+.grp+.row{border-top:0}
+.name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.sub{color:var(--c-fg-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:1px}
+.row.done .name,.row.done .sub{opacity:.45}
+
+/* last followed up */
+.last{font-size:12px;line-height:1.25;text-align:right}
+.last .d{font-family:"DM Mono",monospace}
+.last .w{color:var(--c-fg-3);font-size:11px}
+.last.never .d{color:var(--c-fg-3)}
+
+/* rating — neutral steps, pressable so filled */
+.rate{display:inline-flex;gap:3px;justify-self:end}
+.rate button{width:26px;height:24px;border:0;border-radius:6px;background:var(--c-wash);color:var(--c-fg-2);font:12px "DM Mono",monospace;cursor:pointer}
+.rate button:hover{background:var(--c-wash2)}
+.rate button.on.r3{background:var(--c-ivory);color:#1b1a17}
+.rate button.on.r2{background:rgba(213,208,194,.6);color:#1b1a17}
+.rate button.on.r1{background:rgba(213,208,194,.3);color:var(--c-fg)}
+
+.chk{width:18px;height:18px;border:1.5px solid var(--c-fg-3);border-radius:4px;cursor:pointer;display:grid;place-items:center;background:none;padding:0}
+.chk.on{background:var(--c-fg);border-color:var(--c-fg)}
+.chk.on::after{content:"";width:8px;height:4px;border-left:2px solid var(--c-bg);border-bottom:2px solid var(--c-bg);transform:rotate(-45deg) translate(1px,-1px)}
+
+/* ---- colour treatments ---- */
+/* C1: status colour as a left edge on every row + overdue in red */
+.c1 .row{padding-left:10px}
+.c1 .row::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--edge)}
+.c1 .row.done::before{opacity:.35}
+.c1 .grp{padding-left:10px}
+/* C2: rating groups get a heading band, status as a dot */
+.c2 .grp{background:var(--c-wash);margin:10px -20px 0;padding:8px 20px;color:var(--c-fg-2)}
+.c2 .grp.g0{background:rgba(255,90,77,.12);color:var(--c-st-hot)}
+.c2 .grp.g3{background:rgba(213,208,194,.16);color:var(--c-fg)}
+/* C3: no added colour except overdue + unranked */
+/* shared: overdue = red (hot already means urgent) */
+.over .d{color:var(--c-st-hot)}
+.unr-note{color:var(--c-st-hot)}
+
+/* new-lead form strip */
+.form{border:1px solid var(--c-wash2);border-radius:10px;padding:18px 20px;max-width:560px}
+.form .lab{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--c-fg-3);margin:0 0 6px}
+.form .fld{background:var(--c-wash);border-radius:8px;padding:9px 12px;color:var(--c-fg-2);margin:0 0 12px;font-size:13px}
+.big .rate button{width:auto;padding:0 12px;height:32px;font:13px Inter,system-ui,sans-serif}
+.hint{color:var(--c-fg-3);font-size:12px;margin-top:6px}
+
+.notes{border-top:1px solid var(--c-wash2);padding-top:18px;color:var(--c-fg-2);max-width:780px}
+.notes li{margin:0 0 6px}
+</style></head><body><div class="wrap">
+
+<h1>Follow-up list · round 2</h1>
+<p class="lede">Option C from round 1: the list sits on the Needs Action page so everyone sees it. Unranked at the top, then 3s, 2s, 1s. Ticking a row logs the follow-up — that's what fills "last followed up". Click ratings and ticks to try it. Three ways to bring in colour below.</p>
+
+<section class="opt">
+  <h2>C1 · Status colour down the left edge <span class="rec">Recommended</span></h2>
+  <p class="why">Every row carries its lead colour (warm, cold, DNB) as a thin bar, so the list reads at a glance. Last follow-up turns red once it's more than 7 days old. Unranked heading is red too — it's the "don't let these fall through" signal.</p>
+  <div class="page c1"><div class="ptitle"><span class="t">Leads</span><div class="tabs"><span class="on">Needs Action<span class="n">7</span></span><span>All Leads</span></div></div>
+    <div class="split"><div><div class="bx-h"><span>Needs action</span><span class="mono">7</span></div><div class="list"><div class="fake">(today's Needs Action list, unchanged)</div><div class="fake">…</div><div class="fake">…</div><div class="fake">…</div></div></div>
+    <div><div class="bx-h"><span>Follow-up · last 90 days</span><span class="prog" data-prog></span></div><div class="list" data-list="c1"></div></div></div></div>
+</section>
+
+<section class="opt">
+  <h2>C2 · Colour on the group headings</h2>
+  <p class="why">Rows stay plain with a small status dot; the colour lives in the group bands — red band for Unranked, brightest band for 3s. Calmer rows, but the lead colour is easy to miss.</p>
+  <div class="page c2"><div class="ptitle"><span class="t">Leads</span><div class="tabs"><span class="on">Needs Action<span class="n">7</span></span><span>All Leads</span></div></div>
+    <div class="split"><div><div class="bx-h"><span>Needs action</span><span class="mono">7</span></div><div class="list"><div class="fake">(today's Needs Action list, unchanged)</div><div class="fake">…</div><div class="fake">…</div></div></div>
+    <div><div class="bx-h"><span>Follow-up · last 90 days</span><span class="prog" data-prog></span></div><div class="list" data-list="c2"></div></div></div></div>
+</section>
+
+<section class="opt">
+  <h2>C3 · Colour only where it means "act"</h2>
+  <p class="why">Status dot per row, red only for Unranked and overdue follow-ups. Quietest version — the red does all the talking.</p>
+  <div class="page c3"><div class="ptitle"><span class="t">Leads</span><div class="tabs"><span class="on">Needs Action<span class="n">7</span></span><span>All Leads</span></div></div>
+    <div class="split"><div><div class="bx-h"><span>Needs action</span><span class="mono">7</span></div><div class="list"><div class="fake">(today's Needs Action list, unchanged)</div><div class="fake">…</div><div class="fake">…</div></div></div>
+    <div><div class="bx-h"><span>Follow-up · last 90 days</span><span class="prog" data-prog></span></div><div class="list" data-list="c3"></div></div></div></div>
+</section>
+
+<section class="opt">
+  <h2>Ranking as they come in · new-lead form</h2>
+  <p class="why">One row added to the new-lead form. Not required — skip it and the lead lands in Unranked, so nobody's blocked on the phone. Same three buttons on the lead profile.</p>
+  <div class="form big">
+    <div class="lab">Name</div><div class="fld">Maya Ortiz</div>
+    <div class="lab">Notes</div><div class="fld">Wants a day to track an EP, flexible on dates</div>
+    <div class="lab">How good is this lead?</div>
+    <span class="rate" data-formrate></span>
+    <div class="hint">Size and seriousness together. Skip it if you're not sure — it'll wait in Unranked.</div>
+  </div>
+</section>
+
+<div class="notes">
+  <b>How it works, all three</b>
+  <ul>
+    <li><b>Order:</b> Unranked → 3 → 2 → 1. Inside a group, longest since last follow-up goes first, so the list works itself top-down.</li>
+    <li><b>The tick = a follow-up.</b> Ticking stamps who and when ("2d · EL"). Ticked since Monday = done this week, greyed out. Next Monday it un-greys on its own; the date stays.</li>
+    <li><b>Red date</b> = no follow-up in 7+ days, or never.</li>
+    <li><b>Status colours keep their jobs</b> (warm is warm, never a warning), so the rating uses its own light-to-bright steps instead of new colours.</li>
+    <li>Books → drops off. Older than 90 days → drops off.</li>
+  </ul>
+  <b>Still open:</b> who works the list — you, managers, or both. And should a tick also write a line to the lead's activity log? (I'd say yes.)
+</div>
+
+</div>
+<script>
+const ST={warm:'var(--c-st-warm)',cold:'var(--c-st-cold)',uncontacted:'var(--c-st-uncon)',dead:'var(--c-st-dead)'};
+const LBL={warm:'Warm',cold:'Cold',uncontacted:'New',dead:'DNB'};
+const data=[
+ {n:'Atlantic / Jess Moreno',a:'Kaytee',st:'warm',ret:true,r:3,why:'Album, ~2 weeks',last:9,by:'EL'},
+ {n:'Derek Paulson',st:'cold',ret:true,r:3,why:'Lockout ask',last:3,by:'FR'},
+ {n:'RCA / Tom Fiel',a:'LVNDR',st:'cold',ret:false,r:3,why:'5 days, ARS A',last:null},
+ {n:'Maya Ortiz',st:'warm',ret:false,r:0,why:'EP, a day',last:null},
+ {n:'Benji K',st:'uncontacted',ret:false,r:0,why:'Called Tues',last:null},
+ {n:'Interscope / Ray Dunn',a:'Hollow Coast',st:'cold',ret:true,r:2,why:'2 days mixing',last:12,by:'EL'},
+ {n:'Sol Rivera',st:'warm',ret:false,r:2,why:'Single, 8 hrs',last:5,by:'QN'},
+ {n:'Nia Brooks',st:'dead',ret:true,r:2,why:'Went elsewhere',last:21,by:'EL'},
+ {n:'Andre Wills',st:'cold',ret:false,r:2,why:'',last:1,by:'FR'},
+ {n:'Lil Petey',st:'cold',ret:false,r:1,why:'4 hrs, price shopping',last:16,by:'IS'},
+ {n:'Carla Mendes',st:'dead',ret:false,r:1,why:'',last:null},
+ {n:'Jay Tran',st:'warm',ret:false,r:1,why:'Wants cheapest rate',last:4,by:'QN'},
+];
+const DOW_SINCE_MON=4; // mock "today" = Friday
+data.forEach((x,i)=>x.id=i);
+const done=x=>x.last!==null&&x.last<=DOW_SINCE_MON;
+const age=x=>x.last===null?999:x.last;
+function sorted(){return [...data].sort((a,b)=>{
+  if((a.r===0)!==(b.r===0)) return a.r===0?-1:1;
+  if(b.r!==a.r) return b.r-a.r;
+  return age(b)-age(a);});}
+function rate(x){return `<span class="rate">${[1,2,3].map(v=>`<button class="r${v} ${x.r===v?'on':''}" onclick="setR(${x.id},${v})">${v}</button>`).join('')}</span>`}
+function last(x){
+  if(x.last===null) return `<div class="last never over"><span class="d">never</span><div class="w">followed up</div></div>`;
+  const d=x.last===0?'today':x.last+'d ago';
+  return `<div class="last ${x.last>7?'over':''}"><span class="d">${d}</span><div class="w">${x.by}</div></div>`;}
+function row(x,mode){
+  const sub=[x.a, x.ret?'Returning':'New', x.why].filter(Boolean).join(' · ');
+  const dot=mode==='c1'?'':`<span class="dot" style="background:${ST[x.st]}"></span>`;
+  return `<div class="row ${done(x)?'done':''}" style="--edge:${ST[x.st]}">
+    <button class="chk ${done(x)?'on':''}" onclick="tog(${x.id})" title="Followed up — logs who and when"></button>
+    <div style="min-width:0"><div class="name">${dot}${x.n}</div><div class="sub">${mode==='c1'?LBL[x.st]+' · ':''}${sub}</div></div>
+    ${rate(x)}${last(x)}</div>`;}
+const G=[[0,'Unranked','rate these so they don\'t fall through'],[3,'3',''],[2,'2',''],[1,'1','']];
+function render(){
+  const s=sorted();
+  document.querySelectorAll('[data-list]').forEach(el=>{
+    const m=el.dataset.list;
+    el.innerHTML=G.map(([r,l,h])=>{const rows=s.filter(x=>x.r===r);if(!rows.length)return '';
+      const red=r===0&&m!=='c2'?' unr-note':'';
+      return `<div class="grp g${r}"><span class="gl"><span class="${red}">${l}</span>${h?`<span style="letter-spacing:0;text-transform:none" class="${red}">— ${h}</span>`:''}</span><span class="mono">${rows.length}</span></div>`+rows.map(x=>row(x,m)).join('');}).join('');
+  });
+  const n=data.filter(done).length;
+  document.querySelectorAll('[data-prog]').forEach(e=>e.textContent=`${n} of ${data.length} this week`);
+}
+function setR(id,v){const x=data[id];x.r=x.r===v?0:v;render()}
+function tog(id){const x=data[id];if(done(x)){x.last=x._prev??null;x.by=x._pby}else{x._prev=x.last;x._pby=x.by;x.last=0;x.by='EL'}render()}
+let fr=0;function formRate(){document.querySelector('[data-formrate]').innerHTML=[[1,'1 · small / long shot'],[2,'2 · maybe'],[3,'3 · big and real']].map(([v,l])=>`<button class="r${v} ${fr===v?'on':''}" onclick="fr=fr===${v}?0:${v};formRate()">${l}</button>`).join('')}
+render();formRate();
+</script></body></html>

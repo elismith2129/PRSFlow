@@ -381,6 +381,34 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 23, 2026 — Follow-up list (v1.47.0)
+
+**The ask.** A voice note from the owner, relayed by Eli: a rolling list of leads that didn't
+book, last 90 days, hit up once a week, prioritised by how big and how serious they are —
+"we gotta hit the big sessions first and then work our way down." His first idea was an AI
+0–100 score combining hours, seriousness and been-here-before.
+
+**Rulings, in order (Oct 22–23).** No 0–100 — one manual 1–3 folding size and seriousness
+together (Eli: size isn't reliably entered, so there is nothing to derive). Unranked leads sit
+at the top so none fall through. 90 days fixed; cold and DNB on it. A weekly tick per lead.
+Placement C (a box on Needs Action, not its own tab) "so its visible for them". Colour C1
+(status bar down the left edge). Rank as leads come in (new-lead form). Show when each was
+last followed up. The tick writes a line to the lead's activity. Who works it: every office
+admin — Sam, Isaac, Lori, Fernando, Adam, Eli. The tick opens "a little pop up that shows the
+thread of notes as well, we'll be hitting these people over the years".
+
+**Decisions inside the build.** A follow-up is a `lead_activity` row (type `followup`), not a
+new table — the lead's Activity already shows every type, and history over years comes free.
+It deliberately leaves `last_contact` / Keep Hot timers alone: the list is separate from the
+pipeline. The tick and "last followed up" are one act. Rating gets no colour (warm/cold
+already mean something). Stacked under Needs Action because the real view has the lead panel
+on the right; the mock showed side by side.
+
+**Rejected.** 0–100 score; option A (own tab — out of sight, once-a-week job forgotten);
+option B (flat table); a bare tick with no method/note.
+
+**Not verified in a browser** — no login from the sandbox. tsc + selftest clean.
+
 ### October 22, 2026 — Ask Flo, session 1 (v1.46.0)
 
 **The ask.** A help chat bubble for admin, "based on all the logic and rules we've created…
