@@ -336,7 +336,7 @@ shadows are raised controls and the modal drop shadow.
 
 | Chunk | What shipped |
 |---|---|
-| **FOLLOW-UP LIST ✅ (Oct 23, 2026, v1.47.0)** | `components/crm/FollowUpList.tsx` — box under Needs Action; `leads.follow_rating` 1–3 (migration `20261023120000`); follow-ups are `lead_activity` type `followup`; tick opens a pop-up (method + note + history). |
+| **FOLLOW-UP LIST ✅ (Oct 23, 2026, v1.47.0)** | `components/crm/FollowUpList.tsx` — own Leads tab (v1.47.1; under Needs Action in v1.47.0); `leads.follow_rating` 1–3 (migration `20261023120000`); follow-ups are `lead_activity` type `followup`; tick opens a pop-up (method + note + history). |
 | **ASK FLO — help bubble, session 1 ✅ (Oct 22, 2026, v1.46.0)** | `components/ask/AskFlo.tsx` (bottom-right, admin roles, Flo ring) → `POST /api/ask` (bearer gate, Haiku 4.5, cached corpus block, cites validated against `ASK_CITES`) → `ask_log`. Corpus: `scripts/build-ask-corpus.mjs` → `lib/server/askCorpus.generated.ts` (committed) from `docs/sop-build/content*.py` + `public/sop.html` data/VERSIONS. Brief `docs/ASK-FLO-BRIEF.md`. |
 | **HOTFIX: In progress rule keyed on reopened_at ✅ (Oct 21, 2026, v1.45.4)** | `lib/billing.ts` step derivation: `w.reopened_at && status !== completed && step 2|3 → 1`. v1.45.2's bare-status version emptied Needs approval / Approved / COD paid on deploy (invoice-before-Complete is the normal path). |
 | **DASHBOARD: OWN NAME; ARROWS DON'T RELOAD LEADS ✅ (Oct 21, 2026, v1.45.3)** | `app/(main)/page.tsx`: `viewedName`/`listWho` are the viewer's own name unless Eli is peeking; leads load in their own effect on `leadsVersion` (six columns, booked/dead/leasing excluded), the day's bookings on `calDate`. |

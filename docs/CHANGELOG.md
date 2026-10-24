@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.1 — Follow-up gets its own tab — Oct 23, 2026
+
+**Why.** Eli, minutes after v1.47.0: "below needs action isnt going to work. itll never get seen. probably just need its own tab." Stacked under Needs Action it sat below the fold of a list people only scroll until it's empty.
+
+1. `CrmView` gains `'follow-up'`; the Leads sub-nav reads Needs Action · **Follow-up** · All Leads · Analytics. `FollowUpList` renders in the 60% list column with the lead panel on the right, like the other two lists.
+2. Tab badge = leads on the list with no follow-up since Monday — the week's to-do, falling to zero as rows are ticked.
+3. Needs Action is back to a single box.
+
+**Note.** This reverses round 1's pick of C over A. The reason C won ("so its visible for them") is now carried by the tab badge instead.
+
+**Migration:** none. **Files:** `app/(main)/crm/page.tsx` · `public/sop.html` · `lib/testBatches.ts` · docs
+
+---
+
 ## v1.47.0 — Follow-up list on Needs Action: 1–3 rating, weekly tick, follow-up pop-up with history — Oct 23, 2026
 
 **Why.** The owner wanted "a list of people that didn't book but that i think are potentials that we hit up once a week. say last 90 days" — separate from the active pipeline. Two mock rounds (`docs/design-refs/follow-up-list-options.html`); Eli picked C (a box on the Needs Action view, "so its visible for them") and colour C1.

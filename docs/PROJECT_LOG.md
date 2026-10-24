@@ -409,6 +409,10 @@ option B (flat table); a bare tick with no method/note.
 
 **Not verified in a browser** — no login from the sandbox. tsc + selftest clean.
 
+**Reversed same day (v1.47.1).** After the push Eli ruled the stacked box would never get seen —
+"probably just need its own tab". It is now Needs Action · Follow-up · All Leads; the tab's
+count (not hit up this week) does the "visible" job that placement C was picked for.
+
 ### October 22, 2026 — Ask Flo, session 1 (v1.46.0)
 
 **The ask.** A help chat bubble for admin, "based on all the logic and rules we've created…

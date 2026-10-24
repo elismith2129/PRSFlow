@@ -29,7 +29,7 @@ import { useWebInquiries } from '@/components/notifications/WebInquiryProvider'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
 import { AllStarToggle, AllStarMark, canToggleAllStar } from '@/components/shared/AllStar'
-import { FollowUpList, FollowRating, parseFollowUpNote, FollowUpMap } from '@/components/crm/FollowUpList'
+import { FollowUpList, FollowRating, parseFollowUpNote, FollowUpMap, isFollowUpLead } from '@/components/crm/FollowUpList'
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'var(--c-st-hot)', warm: 'var(--c-st-warm)', cold: 'var(--c-fg-3)',
@@ -371,7 +371,7 @@ function toSegments(groups: Record<string, number>) {
 }
 
 type TouchMap = Record<number, { initials: string, method: string, created_at: string }>
-type CrmView = 'needs-action' | 'all-leads' | 'analytics'
+type CrmView = 'needs-action' | 'follow-up' | 'all-leads' | 'analytics'
 type LabelSuggestion = Client & { _anrName?: string; _anrContactId?: string; _anrEmail?: string | null; _anrPhone?: string | null }
 
 // Universal client search result (label mode) — one row per label / A&R / artist match.
@@ -675,6 +675,12 @@ export default function CRMPage() {
   // ONE SOURCE since 2026-10-12: lib/crm needsActionCounts — the rail's
   // "Leads & clients" badge reads the same function, so the two always agree.
   const needsActionCount = needsActionCounts(leads).total
+  // FOLLOW-UP TAB badge (v1.47.1): on the list and not followed up since Monday.
+  const followUpOpen = (() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    const monday = d.getTime()
+    return leads.filter(l => isFollowUpLead(l) && !(followUps[l.id] && new Date(followUps[l.id].created_at).getTime() >= monday)).length
+  })()
 
   return (
     // 90% ZOOM ON DESKTOP (Eli, 2026-08-20): at 100% "it's too large and
@@ -776,8 +782,8 @@ export default function CRMPage() {
           {/* Sub-nav */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'nowrap', marginBottom: 14, flexShrink: 0 }}>
             <div className={isMobile ? 'hide-scrollbar' : undefined} style={{ display: 'flex', gap: 6, maxWidth: '100%', flex: isMobile ? 1 : undefined, minWidth: isMobile ? 0 : undefined, overflowX: isMobile ? 'auto' : undefined }}>
-              {(['needs-action', 'all-leads', 'analytics'] as CrmView[]).map(v => {
-                const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
+              {(['needs-action', 'follow-up', 'all-leads', 'analytics'] as CrmView[]).map(v => {
+                const labels: Record<CrmView, string> = { 'needs-action': 'Needs Action', 'follow-up': 'Follow-up', 'all-leads': 'All Leads', 'analytics': 'Analytics' }
                 const active = view === v
                 // The billing hub's pill tabs (.c-btab) under the title words.
                 return (
@@ -786,13 +792,17 @@ export default function CRMPage() {
                     {v === 'needs-action' && needsActionCount > 0 && (
                       <span className="c-bn">{needsActionCount > 99 ? '99+' : needsActionCount}</span>
                     )}
+                    {/* FOLLOW-UP TAB (v1.47.1): count = leads not yet hit up this week. */}
+                    {v === 'follow-up' && followUpOpen > 0 && (
+                      <span className="c-bn">{followUpOpen > 99 ? '99+' : followUpOpen}</span>
+                    )}
                   </span>
                 )
               })}
             </div>
           </div>
 
-          {(view === 'needs-action' || view === 'all-leads') && (
+          {(view === 'needs-action' || view === 'follow-up' || view === 'all-leads') && (
             // On mobile this is a single-panel flow: the list and the detail panel
             // never show at once — the list is hidden once a lead is selected, and
             // the detail panel is hidden until one is. On desktop both render in the
@@ -802,35 +812,30 @@ export default function CRMPage() {
               : { display: 'grid', gridTemplateColumns: '60fr 40fr', gap: 14, flex: 1, minHeight: 0 }}>
               {!(isMobile && selected) && (
                 view === 'needs-action' ? (
-                  // FOLLOW-UP LIST (v1.47.0, option C1): its own box on the
-                  // Needs Action view so the office sees it every day. Two
-                  // fixed halves, each scrolling inside (Eli's fixed-box rule).
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, flex: 1, minHeight: 0 }}>
-                    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-                      <NeedsActionSection
-                        leads={leads}
-                        latestTouches={latestTouches}
-                        selectedId={selectedId}
-                        onSelect={selectAndFocus}
-                        onMarkTouched={markTouched}
-                        onKeepHot={keepHot}
-                        onUpdateStatus={updateStatus}
-                        loading={loading}
-                        isMobile={isMobile}
-                      />
-                    </div>
-                    <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-                      <FollowUpList
-                        leads={leads}
-                        followUps={followUps}
-                        selectedId={selectedId}
-                        onSelect={id => setSelectedId(id)}
-                        onRate={rateLead}
-                        onLogged={load}
-                        loading={loading}
-                      />
-                    </div>
-                  </div>
+                  <NeedsActionSection
+                    leads={leads}
+                    latestTouches={latestTouches}
+                    selectedId={selectedId}
+                    onSelect={selectAndFocus}
+                    onMarkTouched={markTouched}
+                    onKeepHot={keepHot}
+                    onUpdateStatus={updateStatus}
+                    loading={loading}
+                    isMobile={isMobile}
+                  />
+                ) : view === 'follow-up' ? (
+                  // FOLLOW-UP LIST — its own tab (v1.47.1). v1.47.0 stacked it
+                  // under Needs Action; Eli: "itll never get seen". The tab
+                  // carries a count of leads not hit up this week.
+                  <FollowUpList
+                    leads={leads}
+                    followUps={followUps}
+                    selectedId={selectedId}
+                    onSelect={id => setSelectedId(id)}
+                    onRate={rateLead}
+                    onLogged={load}
+                    loading={loading}
+                  />
                 ) : (
                   <AllLeadsView
                     leads={leads}

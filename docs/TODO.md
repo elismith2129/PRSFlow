@@ -7,8 +7,8 @@ Newest at the top of each group.*
 
 ## To run (Oct 23)
 
-- [ ] **Run `20261023120000_lead_follow_rating.sql` BEFORE the v1.47.0 push** — the CRM selects `*` from leads and the list writes `follow_rating`. Result must show rating_column 1, type_checks 0. *(Oct 23)*
-- [ ] **Look at the Needs Action view after the push** — Follow-up box under Needs Action, rate one lead, log one follow-up, check it shows in that lead's Activity. Not seen in a browser before shipping. *(Oct 23)*
+- [x] ~~Run `20261023120000_lead_follow_rating.sql` BEFORE the v1.47.0 push~~ (pushed b831e9e) — the CRM selects `*` from leads and the list writes `follow_rating`. Result must show rating_column 1, type_checks 0. *(Oct 23)*
+- [ ] **Look at the Follow-up tab after the push** (own tab since v1.47.1) — rate one lead, log one follow-up, check it shows in that lead's Activity. Not seen in a browser before shipping. *(Oct 23)*
 - [ ] **Watch:** fresh uncontacted/hot/warm leads appear in both Needs Action and Follow-up. If that confuses the office, limit Follow-up to cold + DNB. *(Oct 23)*
 
 ## To run (Oct 22)

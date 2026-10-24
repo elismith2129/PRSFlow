@@ -60,12 +60,12 @@ export const TEST_BATCHES: TestBatch[] = [
     version: 'v1.47.0',
     date: 'Oct 23, 2026',
     intro:
-      'The new Follow-up box under Needs Action. Rating a lead and logging a follow-up both save for real, so use a lead you were going to follow up anyway.',
+      'The new Follow-up tab next to Needs Action. Rating a lead and logging a follow-up both save for real, so use a lead you were going to follow up anyway.',
     items: [
       {
         id: 'v147-box-shows', area: 'CRM',
-        what: 'The Follow-up box sits under Needs Action and lists leads that did not book',
-        how: 'CRM → Leads → Needs Action. Under the Needs Action box there is a Follow-up box with a count and "N of M this week · last 90 days". Groups read Unranked (red), 3, 2, 1. No booked lead is on it.',
+        what: 'Follow-up is its own tab and lists leads that did not book',
+        how: 'CRM → Leads → Follow-up (between Needs Action and All Leads). The tab shows how many are not hit up this week; the box shows a count and "N of M this week · last 90 days". Groups read Unranked (red), 3, 2, 1. No booked lead is on it.',
       },
       {
         id: 'v147-rate-moves', area: 'CRM',
