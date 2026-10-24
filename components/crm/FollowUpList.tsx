@@ -5,9 +5,12 @@
 // potentials that we hit up once a week. say last 90 days."
 // Mock + every ruling: docs/design-refs/follow-up-list-options.html (round 2, C1).
 //
-// WHAT IS ON IT: leads created in the last 90 days that didn't book — cold and
-// DNB included (ruled Oct 22). A lead drops off when it books (status booked,
-// or it already became a work order) or ages past 90 days. Leasing is not a
+// WHAT IS ON IT: leads created 30 to 110 days ago that didn't book — cold and
+// DNB included (ruled Oct 22). WINDOW (v1.47.2, Eli): "this list is so
+// redundant … from 30 days ago to 110 days ago. this way it'll remove the
+// leads that we are actively booking in the pipeline." Under 30 days a lead
+// belongs to Needs Action. It drops off when it books (status booked, or it
+// already became a work order) or ages past 110 days. Leasing is not a
 // follow-up lead.
 //
 // ORDER: Unranked first ("so they don't fall through"), then 3 → 2 → 1. Inside
@@ -40,7 +43,8 @@ import { AllStarMark } from '@/components/shared/AllStar'
 export type FollowUpEntry = { initials: string; method: string; note: string; created_at: string }
 export type FollowUpMap = Record<number, FollowUpEntry>
 
-export const FOLLOW_UP_WINDOW_DAYS = 90
+export const FOLLOW_UP_MIN_DAYS = 30
+export const FOLLOW_UP_MAX_DAYS = 110
 const OVERDUE_DAYS = 7
 const DAY_MS = 86400000
 const METHODS = ['Call', 'Text', 'Email'] as const
@@ -70,7 +74,9 @@ export function isFollowUpLead(l: Lead, now = Date.now()): boolean {
   if (l.status === 'booked' || l.status === 'leasing') return false
   if (l.work_order_id) return false
   const created = new Date(l.created_at).getTime()
-  return Number.isFinite(created) && now - created <= FOLLOW_UP_WINDOW_DAYS * DAY_MS
+  if (!Number.isFinite(created)) return false
+  const age = now - created
+  return age >= FOLLOW_UP_MIN_DAYS * DAY_MS && age <= FOLLOW_UP_MAX_DAYS * DAY_MS
 }
 
 /** Monday 00:00, local time — the weekly tick resets here. */
@@ -126,14 +132,14 @@ export function FollowUpList({ leads, followUps, selectedId, onSelect, onRate, o
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <SectionHeader carved title="Follow-up" count={items.length > 0 ? items.length : undefined} />
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--c-fg-2)', whiteSpace: 'nowrap' }}>
-          {done} of {items.length} this week · last {FOLLOW_UP_WINDOW_DAYS} days
+          {done} of {items.length} this week · leads {FOLLOW_UP_MIN_DAYS}–{FOLLOW_UP_MAX_DAYS} days old
         </span>
       </div>
       <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {loading ? (
           <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>Loading…</div>
         ) : items.length === 0 ? (
-          <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>No leads to follow up in the last {FOLLOW_UP_WINDOW_DAYS} days.</div>
+          <div className="c-sub" style={{ padding: 20, textAlign: 'center' }}>No leads {FOLLOW_UP_MIN_DAYS}–{FOLLOW_UP_MAX_DAYS} days old to follow up.</div>
         ) : groups.map(g => g.rows.length === 0 ? null : (
           <React.Fragment key={g.key}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '12px 4px 4px 12px', fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: g.key === 'u' ? 'var(--c-st-hot)' : 'var(--c-fg-3)' }}>

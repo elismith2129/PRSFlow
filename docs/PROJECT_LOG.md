@@ -413,6 +413,10 @@ option B (flat table); a bare tick with no method/note.
 "probably just need its own tab". It is now Needs Action · Follow-up · All Leads; the tab's
 count (not hit up this week) does the "visible" job that placement C was picked for.
 
+**Window changed same day (v1.47.2).** Eli: "this list is so redundant" — the 0–90 window
+doubled up every fresh lead with Needs Action. Now 30–110 days old: under 30 days a lead is
+still in the active pipeline. Replaces the Oct 22 "last 90 days" ruling.
+
 ### October 22, 2026 — Ask Flo, session 1 (v1.46.0)
 
 **The ask.** A help chat bubble for admin, "based on all the logic and rules we've created…

@@ -20,6 +20,19 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.2 — Follow-up window is 30–110 days — Oct 23, 2026
+
+**Why.** Eli: "this list is so redundant … from 30 days ago to 110 days ago. this way it'll remove the leads that we are actively booking in the pipeline." The 0–90 window put every fresh uncontacted/hot/warm lead in both Needs Action and Follow-up (the v1.47.0 watch-out).
+
+1. `isFollowUpLead`: `FOLLOW_UP_MIN_DAYS = 30 ≤ age ≤ FOLLOW_UP_MAX_DAYS = 110` (by `created_at`), replacing `age ≤ 90`. Booked / leasing / has a work order still excluded. Box header reads "leads 30–110 days old". The tab badge uses the same function, so it follows.
+2. Guide step and test batch say 30–110.
+
+**Watch-outs.** Age is from `created_at`, not last contact — a 35-day-old lead still being actively worked will show on both lists. A lead rated at intake waits up to 30 days before it appears; the rating is kept.
+
+**Migration:** none. **Files:** `components/crm/FollowUpList.tsx` · `public/sop.html` · `lib/testBatches.ts` · docs
+
+---
+
 ## v1.47.1 — Follow-up gets its own tab — Oct 23, 2026
 
 **Why.** Eli, minutes after v1.47.0: "below needs action isnt going to work. itll never get seen. probably just need its own tab." Stacked under Needs Action it sat below the fold of a list people only scroll until it's empty.
