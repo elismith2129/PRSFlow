@@ -1024,6 +1024,19 @@ export async function renderExpenseReportPdf(input: {
   for (const r of input.receipts) {
     try {
       const type = (r.contentType || '').toLowerCase()
+      // PDF RECEIPTS (2026-10-26): emailed delivery receipts are PDFs. Their
+      // pages are copied in whole, captioned in the top margin, instead of
+      // being skipped as an image that won't embed.
+      const isPdf = type.includes('pdf') || (r.bytes[0] === 0x25 && r.bytes[1] === 0x50 && r.bytes[2] === 0x44 && r.bytes[3] === 0x46)
+      if (isPdf) {
+        const src = await PDFDocument.load(r.bytes, { ignoreEncryption: true })
+        const pages = await doc.copyPages(src, src.getPageIndices())
+        pages.forEach((pg, i) => {
+          doc.addPage(pg)
+          if (i === 0) pg.drawText(winAnsiSafe(`Receipt — ${r.caption}`).slice(0, 90), { x: 18, y: pg.getHeight() - 14, size: 8, font: bold, color: BLACK })
+        })
+        continue
+      }
       const img = type.includes('png') ? await doc.embedPng(r.bytes) : await doc.embedJpg(r.bytes)
       const page = doc.addPage(PAGE)
       page.drawText(winAnsiSafe(`Receipt — ${r.caption}`).slice(0, 90), { x: M, y: PAGE[1] - M, size: 9, font: bold, color: BLACK })

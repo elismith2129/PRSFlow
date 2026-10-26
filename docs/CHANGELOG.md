@@ -20,6 +20,21 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.3 — Food-budget receipts: any photo or PDF works; Replace / Remove — Oct 26, 2026
+
+**Why.** Lori: a $159.27 receipt showed as a broken image — "tried different ways of reuploading and changing format to jpg" — and "would be helpful to have a function where receipt can be deleted or changed out easily … instead of having to delete the whole line each time." Receipts were uploaded exactly as picked. An iPhone HEIC (or a renamed one — the extension changes nothing inside) renders nowhere but Safari, and pdf-lib silently skipped it in the WO package. Tested on Lori's own photo: brand `heic`, Chrome can't decode it natively.
+
+- **`lib/receiptFile.ts` (new) normalises before upload.** Any image → JPEG, longest side ≤ 2000px (HEIC detected by its bytes, converted with `heic2any`, loaded only when needed; Safari decodes HEIC itself). A PDF stays a PDF. Uploads set `contentType`. An unreadable file says so in a toast instead of uploading junk.
+- **Receipt viewer: Replace / Remove** (and "Open in new tab" for PDFs). Remove clears the receipt; the expense line stays. The file picker now also accepts PDF / HEIC.
+- **Thumbnails:** PDFs show a "PDF" tile; a file the browser can't draw (old HEIC uploads) shows a red **!** — tap it → Replace.
+- **WO package:** PDF receipts are merged in as real pages (captioned) instead of skipped (`lib/woPdf.ts`, `app/api/wo-package/route.ts`).
+
+**Existing broken receipts** stay broken until replaced — open the line's red **!** → Replace → pick the same file.
+
+**New dependency:** `heic2any` (pure JS, lazy-loaded). **Migrations:** none. **Files:** `lib/receiptFile.ts`, `components/calendar/WorkOrderPopup.tsx`, `lib/woPdf.ts`, `app/api/wo-package/route.ts`, `package.json`.
+
+---
+
 ## v1.47.2 — Follow-up window is 30–110 days — Oct 23, 2026
 
 **Why.** Eli: "this list is so redundant … from 30 days ago to 110 days ago. this way it'll remove the leads that we are actively booking in the pipeline." The 0–90 window put every fresh uncontacted/hot/warm lead in both Needs Action and Follow-up (the v1.47.0 watch-out).

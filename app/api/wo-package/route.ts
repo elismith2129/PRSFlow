@@ -213,7 +213,7 @@ export async function GET(req: NextRequest) {
         if (dl.data) {
           receipts.push({
             bytes: new Uint8Array(await dl.data.arrayBuffer()),
-            contentType: dl.data.type || (e.receipt_path.endsWith('.png') ? 'image/png' : 'image/jpeg'),
+            contentType: dl.data.type || (e.receipt_path.endsWith('.png') ? 'image/png' : e.receipt_path.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
             caption: [e.place, e.amount].filter(Boolean).join(' · ') || e.date || '',
           })
         }

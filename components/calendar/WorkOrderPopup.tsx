@@ -23,6 +23,7 @@ import {
 import { enterInvoicePipeline, downloadPackage } from '@/lib/billing'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
+import { normaliseReceipt, isPdfPath } from '@/lib/receiptFile'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
@@ -765,7 +766,11 @@ export function WorkOrderPopup({
   // the receipt log down with it.
   const [expenses, setExpenses] = useState<WoExpense[]>([])
   const [showExpenses, setShowExpenses] = useState(false)
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  // The receipt viewer carries which expense it belongs to, so it can offer
+  // Replace / Remove (Lori, 2026-10-26: "have a function where receipt can be
+  // deleted or changed out easily … instead of having to delete the whole line").
+  const [receiptPreview, setReceiptPreview] = useState<{ url: string; path: string; expenseId: string; pdf: boolean } | null>(null)
+  const [rcptBroken, setRcptBroken] = useState<Record<string, boolean>>({})
   const [rcptUploading, setRcptUploading] = useState<string | null>(null)
   // The Rcpt button IS the thumbnail once a photo exists (Eli, 2026-09-02):
   // signed URLs per attached receipt, resolved only while the panel is open.
@@ -2454,9 +2459,21 @@ export function WorkOrderPopup({
     const id = pendingExpenseId.current
     if (!id || !woIdRef.current) return
     setRcptUploading(id)
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `wo-receipts/${woIdRef.current}/${id}_${Date.now()}.${ext}`
-    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, file, { upsert: true })
+    // NORMALISED BEFORE UPLOAD (2026-10-26): every image becomes a JPEG (HEIC
+    // included — detected by its bytes, so a renamed HEIC is caught too), a
+    // PDF stays a PDF. See lib/receiptFile.ts.
+    let norm: Awaited<ReturnType<typeof normaliseReceipt>>
+    try {
+      norm = await normaliseReceipt(file)
+    } catch (err: any) {
+      toast(`That file couldn't be read as a photo or PDF (${err?.message ?? 'unknown format'}). Try a screenshot of the receipt.`, 'error')
+      setRcptUploading(null)
+      if (expenseFileRef.current) expenseFileRef.current.value = ''
+      pendingExpenseId.current = null
+      return
+    }
+    const path = `wo-receipts/${woIdRef.current}/${id}_${Date.now()}.${norm.ext}`
+    const { data, error } = await supabase.storage.from('checklist-photos').upload(path, norm.blob, { upsert: true, contentType: norm.contentType })
     if (dbResult('Uploading receipt', error) && data) {
       const { error: updErr } = await supabase.from('wo_expenses').update({ receipt_path: data.path }).eq('id', id)
       if (dbResult('Saving receipt', updErr)) {
@@ -2468,9 +2485,25 @@ export function WorkOrderPopup({
     pendingExpenseId.current = null
   }
 
-  async function viewReceipt(path: string) {
+  async function viewReceipt(path: string, expenseId: string) {
     const url = await signedPhotoUrl(path)
-    if (url) setReceiptPreview(url)
+    if (url) setReceiptPreview({ url, path, expenseId, pdf: isPdfPath(path) })
+    else toast('Could not open that receipt.', 'error')
+  }
+
+  /** Clear the receipt from an expense line; the line itself stays. */
+  async function removeReceipt(expenseId: string) {
+    if (!window.confirm('Remove this receipt? The expense line stays.')) return
+    const { error } = await supabase.from('wo_expenses').update({ receipt_path: null }).eq('id', expenseId)
+    if (!dbResult('Removing receipt', error)) return
+    setExpenses(prev => prev.map(e => e.id === expenseId ? { ...e, receipt_path: null } : e))
+    setReceiptPreview(null)
+  }
+
+  function replaceReceipt(expenseId: string) {
+    setReceiptPreview(null)
+    pendingExpenseId.current = expenseId
+    expenseFileRef.current?.click()
   }
 
   // Sign a thumbnail URL for every attached receipt while the panel is open.
@@ -5490,7 +5523,7 @@ export function WorkOrderPopup({
                       <button
                         type="button"
                         onClick={() => {
-                          if (e.receipt_path) { viewReceipt(e.receipt_path); return }
+                          if (e.receipt_path) { viewReceipt(e.receipt_path, e.id); return }
                           if (readOnly) return
                           pendingExpenseId.current = e.id
                           expenseFileRef.current?.click()
@@ -5511,10 +5544,18 @@ export function WorkOrderPopup({
                         {rcptUploading === e.id
                           ? '…'
                           : e.receipt_path
-                            ? (rcptThumbs[e.receipt_path]
-                              // eslint-disable-next-line @next/next/no-img-element
-                              ? <img src={rcptThumbs[e.receipt_path]} alt="Receipt" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                              : '🧾')
+                            ? (isPdfPath(e.receipt_path)
+                              ? <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em' }}>PDF</span>
+                              : rcptBroken[e.receipt_path]
+                                // A file the browser can't draw (an old HEIC upload) — say
+                                // so, and tapping it opens Replace / Remove.
+                                ? <span title="This receipt can't be shown — tap to replace it" style={{ fontSize: 13, color: 'var(--c-st-hot)', fontWeight: 800 }}>!</span>
+                                : rcptThumbs[e.receipt_path]
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  ? <img src={rcptThumbs[e.receipt_path]} alt="Receipt"
+                                      onError={() => setRcptBroken(prev => ({ ...prev, [e.receipt_path!]: true }))}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                  : '🧾')
                             : '📷'}
                       </button>
                       {!readOnly ? (
@@ -5538,10 +5579,30 @@ export function WorkOrderPopup({
 
           {/* Receipt lightbox */}
           {receiptPreview && (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 10008, background: 'rgba(0,0,0,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10008, background: 'rgba(0,0,0,0.82)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 16 }}
                  onClick={() => setReceiptPreview(null)}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={receiptPreview} alt="Receipt" style={{ maxWidth: '94vw', maxHeight: '88vh', borderRadius: 8 }} />
+              {receiptPreview.pdf
+                ? <iframe src={receiptPreview.url} title="Receipt" onClick={ev => ev.stopPropagation()}
+                    style={{ width: 'min(94vw, 760px)', height: '78vh', border: 'none', borderRadius: 8, background: '#fff' }} />
+                : rcptBroken[receiptPreview.path]
+                  ? <div onClick={ev => ev.stopPropagation()} style={{ color: '#fff', fontSize: 13, maxWidth: 360, textAlign: 'center', lineHeight: 1.5 }}>
+                      This receipt was saved in a format the browser can't show (usually an iPhone HEIC photo). Tap <b>Replace</b> and pick it again — it's converted automatically now.
+                    </div>
+                  // eslint-disable-next-line @next/next/no-img-element
+                  : <img src={receiptPreview.url} alt="Receipt" style={{ maxWidth: '94vw', maxHeight: '78vh', borderRadius: 8 }}
+                      onError={() => setRcptBroken(prev => ({ ...prev, [receiptPreview.path]: true }))} />}
+              <div style={{ display: 'flex', gap: 8 }} onClick={ev => ev.stopPropagation()}>
+                {receiptPreview.pdf && (
+                  <a className="c-btn c-control" href={receiptPreview.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>Open in new tab</a>
+                )}
+                {!readOnly && (
+                  <>
+                    <button type="button" className="c-btn c-control" onClick={() => replaceReceipt(receiptPreview.expenseId)}>Replace</button>
+                    <button type="button" className="c-btn c-control" style={{ color: 'var(--c-st-hot)' }} onClick={() => removeReceipt(receiptPreview.expenseId)}>Remove</button>
+                  </>
+                )}
+                <button type="button" className="c-btn c-control" onClick={() => setReceiptPreview(null)}>Close</button>
+              </div>
             </div>
           )}
 
@@ -5549,7 +5610,7 @@ export function WorkOrderPopup({
           <input
             ref={expenseFileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif,application/pdf,.pdf"
             capture="environment"
             style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) uploadReceipt(f) }}
