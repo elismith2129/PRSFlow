@@ -20,6 +20,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.4 — Approval queue cards; the hub shows every session's amount — Oct 26, 2026
+
+**Why.** Eli: (1) the approval strip "only shows 2, it seems small while the list is actually big"; (2) "i want a small nav at the top [of the approval pop-up] where i can see whats next and previous in the pipeline"; (3) "the billing hub line items dont always show the amount of the session … i do need to be able to quick scan and see amounts of every session." Mock: `docs/design-refs/approval-queue-options.html` (round 2 — "not a fan of the small bubbles, but maybe make them small cards").
+
+- **Approval strip** (owners, hub): same fixed 146px, but it leads with the pile — "Ready for your approval · 9 · $58,214" — a meta line (returned-and-fixed, changed since invoiced ⚠, awaiting PO), the first four as small carved **queue cards** (+N for the rest) and **Start approving →**. The strip's one-click Approve buttons are gone: approving happens in the window, with the package on screen.
+- **Queue bar in the package window**: when an owner opens an approval, the queue is snapshotted as a **sitting** (hub state). Cards across the top — client, artist, amount, place in line; the open one lifted and outlined; decided ones dim with APPROVED / RETURNED and stay put; CHANGED ⚠ / FIXED / COD on the card. ‹ Prev / Next ›, `n of N`, `n left`; ← → keys (not while typing). Jumping goes through the window's unsaved-WO guard (`leave`). Approve / Return still advances to the next undecided card, in the sitting's order, plus anything that joined the queue since. Phone: just ‹ n of N ›. Sitting clears on close.
+- **Amount column** (was "Balance"): always the session **total**; when only part is owed, "$X due" sits under it (hot on a COD balance-due row); settled rows dim. Sort by Amount sorts by total. A paid COD row no longer reads "—".
+
+**Migrations:** none. **Files:** `app/(main)/billing/page.tsx` (QueueCard, QueueBar, strip, sitting, amount cell), `lib/billing.ts` (sort), `styles/globals.css` (`.c-qcard`, `.c-qrail`).
+
+---
+
 ## v1.47.3 — Food-budget receipts: any photo or PDF works; Replace / Remove — Oct 26, 2026
 
 **Why.** Lori: a $159.27 receipt showed as a broken image — "tried different ways of reuploading and changing format to jpg" — and "would be helpful to have a function where receipt can be deleted or changed out easily … instead of having to delete the whole line each time." Receipts were uploaded exactly as picked. An iPhone HEIC (or a renamed one — the extension changes nothing inside) renders nowhere but Safari, and pdf-lib silently skipped it in the WO package. Tested on Lori's own photo: brand `heic`, Chrome can't decode it natively.

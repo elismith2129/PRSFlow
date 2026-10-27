@@ -1119,7 +1119,8 @@ export function sortByColumn(rows: InvoiceRow[], col: SortCol, dir: 'asc' | 'des
       case 'client':  return (b.client ?? '').localeCompare(a.client ?? '')
       // Status sorts by position on the ladder — step already IS that number.
       case 'status':  return b.step - a.step
-      case 'balance': return b.balance - a.balance
+      // The column is the session AMOUNT now (2026-10-26) — sort by it.
+      case 'balance': return b.total - a.total || b.balance - a.balance
       case 'age':     return (b.ageDays ?? -1) - (a.ageDays ?? -1)
       // Queue: lower rank first (desc is the default direction, so the sign
       // is flipped here rather than in every caller), date desc inside.

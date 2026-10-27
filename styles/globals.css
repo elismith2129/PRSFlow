@@ -2956,3 +2956,10 @@ html[data-theme="light"].n-page .c-frame { background: #fdfcf9; }
 .n-home .n-stile.n-coldt{background:var(--n-uncon)}
 .n-home .n-stile.n-warmt{background:var(--n-warm)}
 .n-home .n-stile.n-okt{background:var(--n-ok)}
+
+/* APPROVAL QUEUE CARDS (2026-10-26) — carved like .c-panel, smaller. */
+.c-qcard { box-shadow: inset 3px 3px 8px rgba(0, 0, 0, .35), inset -3px -3px 8px rgba(255, 255, 255, .025); transition: opacity .15s ease; }
+[data-theme="light"] .c-qcard { box-shadow: inset 3px 3px 8px rgba(42, 39, 34, .08), inset -3px -3px 8px rgba(255, 255, 255, .7); }
+.c-qcard:hover { opacity: .9 !important; }
+.c-qrail { scrollbar-width: none; }
+.c-qrail::-webkit-scrollbar { display: none; }

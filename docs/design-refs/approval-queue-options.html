@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Approval queue</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- APPROVAL QUEUE (Eli, 2026-10-26).
+     R1: "since it only shows 2, it seems small while the list is actually big … i want a
+     small nav at the top where i can see whats next and previous in the pipeline."
+     R2: "hard to tell because this is white and not in the style of the app. not a fan of
+     the small bubbles, but maybe make them small cards?" → rebuilt on the app's own CSS
+     (c-panel, c-seg, c-bact, c-label, --c-srf, NOIR tokens copied from styles/globals.css);
+     the package shows inside the dark PDF viewer as it really does; chips → small cards.
+     Clickable: Prev / Next, tap a card, Approve, Don't approve, Undo.
+     Rulings: pending. -->
+<style>
+/* ── tokens + classes copied from styles/globals.css ── */
+:root{--c-bg:#0b0a09;--c-fg:#f2efe7;--c-wash:rgba(242,239,231,.06);--c-wash2:rgba(242,239,231,.12);--c-chip-ink:#1c2626;
+  --c-st-hot:#ff5a4d;--c-st-warm:#ffa94d;--c-st-booked:#43dfae;--c-st-uncon:#7fb2e5;--c-fg-2:rgba(242,239,231,.72);--c-fg-3:rgba(242,239,231,.45);
+  --c-srf:#151412;--c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+[data-theme="light"]{--c-bg:#fdfcf9;--c-fg:#1a1712;--c-wash:rgba(26,23,18,.055);--c-wash2:rgba(26,23,18,.105);--c-fg-2:rgba(26,23,18,.72);--c-fg-3:rgba(26,23,18,.46);
+  --c-srf:#f1efe9;--c-softsh:0 1px 2px rgba(26,23,18,.05),0 4px 12px rgba(26,23,18,.05)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--c-bg);color:var(--c-fg);font-family:Inter,-apple-system,sans-serif;font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased;padding:24px 16px 80px;max-width:1180px;margin:0 auto}
+.c-arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.c-mono{font-family:'DM Mono',ui-monospace,monospace;font-size:12.5px}
+.c-label{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.c-panel{background:var(--c-bg);border-radius:16px;padding:12px;box-shadow:inset 5px 5px 15px rgba(0,0,0,.4),inset -5px -5px 15px rgba(255,255,255,.03)}
+[data-theme="light"] .c-panel{box-shadow:inset 5px 5px 14px rgba(42,39,34,.08),inset -5px -5px 14px rgba(255,255,255,.7)}
+.c-seg{display:inline-flex;background:var(--c-bg);border-radius:99px;padding:4px;gap:2px;box-shadow:3px 3px 9px rgba(0,0,0,.5),-3px -3px 9px rgba(255,255,255,.04)}
+[data-theme="light"] .c-seg{box-shadow:3px 3px 8px rgba(42,39,34,.14),-3px -3px 8px rgba(255,255,255,.7)}
+.c-seg>button{border-radius:99px;padding:6px 14px;font:800 10px Inter;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;opacity:.5;background:none;color:var(--c-fg);border:none}
+.c-seg>button.c-on{opacity:1;background:var(--c-wash2)}
+.c-bact{font:700 9.5px Inter;padding:4px 10px;border-radius:99px;background:var(--c-wash2);color:var(--c-fg);border:none;cursor:pointer;opacity:.8}
+.c-bact:hover{opacity:1}
+.c-bact.c-bmuted{background:transparent;opacity:.45}
+.c-bact:disabled{opacity:.2;cursor:default}
+.c-bnote{font-size:11px;opacity:.5;padding:9px 4px 0;line-height:1.5}
+.c-bpkg{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;width:100%;max-width:1120px;height:760px;display:flex;flex-direction:column;overflow:hidden}
+.c-bpkghd{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;flex-shrink:0}
+.c-bpkgbody{flex:1;min-height:0;overflow:auto;padding:0 14px 14px}
+/* ── mock scaffolding ── */
+.tg{float:right;font:800 10px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--c-wash2);padding:5px 11px;border-radius:99px;cursor:pointer}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;font-weight:400}
+.lede{font-size:13px;opacity:.6;margin:4px 0 20px;max-width:780px}
+.part{margin:28px 0 8px}
+.why{font-size:12.5px;opacity:.6;margin:2px 0 10px;max-width:800px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hubrow{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;cursor:pointer}
+.stage{background:rgba(0,0,0,.5);border-radius:18px;padding:22px;display:flex;justify-content:center}
+[data-theme="light"] .stage{background:rgba(26,23,18,.2)}
+/* queue cards */
+.qwrap{display:flex;align-items:stretch;gap:10px;padding:10px 14px 0;flex-shrink:0}
+.qarrow{flex-shrink:0;display:flex;flex-direction:column;justify-content:center;gap:4px;align-items:center;width:58px}
+.qrail{flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:4px 2px 8px}
+.qrail::-webkit-scrollbar{display:none}
+.qc{flex:0 0 156px;height:66px;border-radius:12px;padding:8px 10px;cursor:pointer;background:var(--c-bg);opacity:.6;position:relative;display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:inset 3px 3px 8px rgba(0,0,0,.35),inset -3px -3px 8px rgba(255,255,255,.025);transition:opacity .15s}
+[data-theme="light"] .qc{box-shadow:inset 3px 3px 8px rgba(42,39,34,.08),inset -3px -3px 8px rgba(255,255,255,.7)}
+.qc:hover{opacity:.9}
+.qc .n{font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.qc .s{font-size:10px;opacity:.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.qc .b{display:flex;justify-content:space-between;align-items:baseline}
+.qc .amt{font-family:'DM Mono',monospace;font-size:11px;font-weight:500}
+.qc .st{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.qc.on{opacity:1;background:var(--c-srf);box-shadow:var(--c-softsh),inset 0 0 0 1.5px var(--c-fg)}
+.qc.ok .st{color:var(--c-st-booked)} .qc.ret .st{color:var(--c-st-hot)}
+.qc.ok{opacity:.45} .qc.ret{opacity:.45}
+.qc .idx{position:absolute;top:7px;right:9px;font:500 9.5px 'DM Mono',monospace;opacity:.4}
+/* pdf viewer, as Chrome shows the package iframe */
+.viewer{height:100%;border-radius:12px;background:#525659;display:flex;flex-direction:column;overflow:hidden}
+.vbar{height:34px;background:#323639;display:flex;align-items:center;padding:0 12px;gap:14px;color:#f1f1f1;font-size:11.5px;flex-shrink:0}
+.vbar .p{opacity:.8}
+.vpage{flex:1;overflow:hidden;display:flex;justify-content:center;padding:16px}
+.sheet{background:#fff;color:#111;width:min(560px,92%);aspect-ratio:8.5/11;padding:30px 34px;font-size:10px;box-shadow:0 2px 8px rgba(0,0,0,.4);overflow:hidden}
+.sheet h3{font-family:'Archivo Black',sans-serif;font-weight:400;font-size:13px}
+.sheet table{width:100%;border-collapse:collapse;margin-top:12px}
+.sheet td,.sheet th{border-bottom:1px solid #ccc;padding:5px 3px;text-align:left}
+.sheet th{font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:#666}
+.sheet .r{text-align:right}
+.ft{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--c-wash2);flex-shrink:0}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.card{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px 16px;font-size:12.5px}
+.card li{margin:0 0 5px 16px;opacity:.85}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--c-fg);color:var(--c-bg);padding:8px 16px;border-radius:99px;font-weight:700;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media(max-width:820px){.cols,.notes{grid-template-columns:1fr}.c-bpkg{height:auto}.c-bpkgbody{height:460px}.qc{flex-basis:130px}}
+</style>
+</head>
+<body>
+<span class="tg" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</span>
+<h1>Approval queue</h1>
+<p class="lede">Round 2 — built on the app's own styles. The queue is small cards, not bubbles. The package shows inside the dark PDF viewer the way it really does (the page itself is white because it's the paper the client gets). Placeholder clients.</p>
+
+<div class="part c-label">1 · The strip on the billing hub</div>
+<p class="why">Same fixed height as today. Instead of two rows that hide the rest, it leads with how big the pile is, and shows the first few as the same small cards.</p>
+<div class="cols">
+  <div>
+    <div class="c-label" style="margin-bottom:6px">Today</div>
+    <div style="border-radius:14px;background:var(--c-wash);padding:12px 14px;height:146px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:3px">
+        <span style="min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--c-st-booked);color:var(--c-chip-ink)">9</span>
+        <span class="c-arch" style="font-size:12px">Ready for your approval</span>
+        <span style="margin-left:auto;font-size:10px;opacity:.45">click a row to read the package first</span>
+      </div>
+      <div style="flex:1;min-height:0;overflow-y:auto;margin:0 -4px;padding:0 4px 4px">
+        <div class="c-panel hubrow"><b style="font-size:12.5px">Epic Records — Kiana Ledé</b><span style="font-size:11px;opacity:.55">Oct 14–17 · PRS A</span><b style="margin-left:auto;font-size:12.5px">$12,400.00</b><button class="c-bact">Approve</button></div>
+        <div class="c-panel hubrow"><b style="font-size:12.5px">10K Projects — Koad</b><span style="font-size:11px;opacity:.55">Oct 9–11 · ARS A</span><b style="margin-left:auto;font-size:12.5px">$6,850.00</b><button class="c-bact">Approve</button></div>
+        <div class="c-panel hubrow"><b style="font-size:12.5px">Concord — writers camp</b><span style="font-size:11px;opacity:.55">Oct 2–4</span><b style="margin-left:auto;font-size:12.5px">$13,340.00</b><button class="c-bact">Approve</button></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="c-label" style="margin-bottom:6px">Proposed — same height</div>
+    <div style="border-radius:14px;background:var(--c-wash);padding:12px 14px;height:146px;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span class="c-arch" style="font-size:12px">Ready for your approval</span>
+        <span class="c-arch" style="font-size:12px;opacity:.5" id="stripSum"></span>
+        <button class="c-bact" style="margin-left:auto;background:var(--c-fg);color:var(--c-bg);opacity:1;padding:5px 12px" onclick="document.getElementById('win').scrollIntoView({behavior:'smooth'})">Start approving →</button>
+      </div>
+      <div style="font-size:10.5px;opacity:.5;margin:1px 0 6px" id="stripMeta"></div>
+      <div style="display:flex;gap:8px;overflow:hidden;flex:1;min-height:0" id="stripCards"></div>
+    </div>
+  </div>
+</div>
+
+<div class="part c-label" id="win">2 · The approval window, with the queue across the top</div>
+<p class="why">A row of small cards above the package — where you are, what's before, what's next. ‹ › step through without deciding; tap any card to jump. Approve still moves you on by itself.</p>
+<div class="stage">
+  <div class="c-bpkg">
+    <div class="qwrap">
+      <div class="qarrow"><button class="c-bact" id="prev" onclick="go(cur-1)">‹ Prev</button><span class="c-mono" style="font-size:10.5px;opacity:.6" id="pos"></span></div>
+      <div class="qrail" id="qrail"></div>
+      <div class="qarrow"><button class="c-bact" id="next" onclick="go(cur+1)">Next ›</button><span class="c-mono" style="font-size:10.5px;opacity:.6" id="left"></span></div>
+    </div>
+    <div class="c-bpkghd" style="border-top:1px solid var(--c-wash2)">
+      <div style="min-width:0">
+        <span class="c-label" style="display:block;margin-bottom:2px" id="wo"></span>
+        <b style="font-size:14px" id="cl"></b><span style="opacity:.5;font-size:12px" id="tot"></span>
+      </div>
+      <div style="flex:1"></div>
+      <div class="c-seg"><button class="c-on">Package</button><button>Work order</button><button>Invoice</button></div>
+      <div style="flex:1"></div>
+      <button class="c-bact c-bmuted">Close</button>
+    </div>
+    <div class="c-bpkgbody">
+      <div class="viewer"><div class="vbar"><span>☰</span><span class="p" id="fname"></span><span style="margin-left:auto" class="p">1 / 3</span><span class="p">— 100% +</span><span class="p">⤓</span></div>
+        <div class="vpage"><div class="sheet" id="sheet"></div></div></div>
+    </div>
+    <div class="ft" id="ft"></div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="card"><b class="c-arch" style="font-size:13px">The cards</b><ul style="margin-top:6px">
+    <li>Client, artist, amount — and the card's place in line (1–9).</li>
+    <li>The one you're on is lifted and outlined. Approved ones dim with a green APPROVED; returned ones dim with a red RETURNED. They stay put so you can see the run.</li>
+    <li>A work order that changed after it was invoiced shows <span style="color:var(--c-st-hot)">CHANGED ⚠</span> on its card before you open it.</li>
+    <li>← → arrow keys = Prev / Next.</li>
+  </ul></div>
+  <div class="card"><b class="c-arch" style="font-size:13px">Left out on purpose</b><ul style="margin-top:6px">
+    <li>The strip's one-click Approve buttons — approving happens in the window, where you see the package. (Say if you want them back for small ones.)</li>
+    <li>A package with no invoice on file has nothing to approve, so it's not in the cards; it stays a row in the hub list.</li>
+    <li>On a phone the cards row becomes just ‹ 3 of 9 ›.</li>
+  </ul></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const Q = [
+  {wo:'WO-1342',c:'Epic Records',a:'Kiana Ledé',d:'Oct 14–17 · PRS A',t:12400},
+  {wo:'WO-1338',c:'10K Projects',a:'Koad',d:'Oct 9–11 · ARS A',t:6850,drift:true},
+  {wo:'WO-1351',c:'Concord',a:'Writers camp',d:'Oct 2–4 · ERS A + B',t:13340},
+  {wo:'WO-1355',c:'Interscope',a:'Charlie Christie',d:'Oct 16 · PRS C',t:3600,ret:true},
+  {wo:'WO-1360',c:'Warner Records',a:'Liz Isik',d:'Oct 18–19 · TRK S',t:5400},
+  {wo:'WO-1361',c:'Atlantic',a:'Havelange',d:'Oct 19 · PRS B',t:2950},
+  {wo:'WO-1363',c:'Red Bull Records',a:'Morgan Smith',d:'Oct 20 · ARS B',t:2760,ret:true},
+  {wo:'WO-1366',c:'Columbia',a:'Naim Ali',d:'Oct 21–22 · PRS A',t:8174},
+  {wo:'WO-1367',c:'Capitol',a:'Ian Holder',d:'Oct 23 · ERS A',t:2740},
+]
+const state = Q.map(()=>null)
+let cur = 2
+const $ = id => document.getElementById(id)
+const money = n => '$' + n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+const short = n => '$' + n.toLocaleString('en-US')
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('on'),1600) }
+function cardHtml(x,i,extra){
+  const s = state[i]
+  const st = s==='ok' ? 'Approved' : s==='ret' ? 'Returned' : x.drift ? '<span style="color:var(--c-st-hot)">Changed ⚠</span>' : x.ret ? '<span style="opacity:.6">Fixed</span>' : ''
+  return `<div class="qc${i===cur&&!extra?' on':''}${s==='ok'?' ok':''}${s==='ret'?' ret':''}" ${extra||''} onclick="go(${i})">
+    <span class="idx">${i+1}</span>
+    <div><div class="n" style="padding-right:14px">${x.c}</div><div class="s">${x.a}</div></div>
+    <div class="b"><span class="amt">${short(x.t)}</span><span class="st">${st}</span></div></div>`
+}
+function render(){
+  const q = Q[cur], open = Q.map((_,i)=>i).filter(i=>!state[i])
+  $('pos').textContent = `${cur+1} of ${Q.length}`
+  $('left').textContent = open.length ? `${open.length} left` : 'done'
+  $('prev').disabled = cur===0; $('next').disabled = cur===Q.length-1
+  $('qrail').innerHTML = Q.map((x,i)=>cardHtml(x,i)).join('')
+  const on = $('qrail').querySelector('.on'); on && on.scrollIntoView({inline:'center',block:'nearest'})
+  $('wo').textContent = `${q.wo} · PO 45001${cur}2`
+  $('cl').textContent = `${q.c} — ${q.a}`
+  $('tot').textContent = ' · ' + money(q.t)
+  $('fname').textContent = `${q.wo}-package.pdf`
+  const d1=Math.round(q.t*.55), d2=Math.round(q.t*.3), e=q.t-d1-d2
+  $('sheet').innerHTML = `<h3>PARAMOUNT RECORDING STUDIOS</h3><div style="color:#666">Work order ${q.wo} · ${q.c} — ${q.a} · ${q.d}</div>
+    <table><tr><th>Date</th><th>Room</th><th>Rate</th><th class="r">Charge</th></tr>
+    <tr><td>Day 1</td><td>${q.d.split('·')[1]||''}</td><td>Day rate</td><td class="r">${money(d1)}</td></tr>
+    <tr><td>Day 2</td><td>${q.d.split('·')[1]||''}</td><td>Day rate</td><td class="r">${money(d2)}</td></tr>
+    <tr><td></td><td>Engineer</td><td>$75/hr</td><td class="r">${money(e)}</td></tr>
+    <tr><td></td><td></td><td><b>Total</b></td><td class="r"><b>${money(q.t)}</b></td></tr></table>`
+  $('ft').innerHTML = state[cur]
+    ? `<span style="font-size:10.5px;opacity:.55">${state[cur]==='ok'?'Approved — '+money(q.t):'Returned to billing'}</span><button class="c-bact" style="margin-left:auto" onclick="state[${cur}]=null;render()">Undo</button>`
+    : `<span style="font-size:10.5px;opacity:.55">${q.ret?'You returned this — approving accepts the fix.':'This is what the client receives.'}${q.drift?' <b style="color:var(--c-st-hot);opacity:1">Changed since invoiced ⚠</b>':''}</span>
+       <button class="c-bact" style="margin-left:auto" onclick="decide('ret')">Don't approve…</button>
+       <button class="c-bact" onclick="decide('ok')">Approve ${money(q.t)}</button>`
+  const sum = open.reduce((s,i)=>s+Q[i].t,0)
+  $('stripSum').textContent = open.length ? `${open.length} · ${short(sum)}` : 'all caught up'
+  $('stripMeta').textContent = 'Oldest waiting 6 days · 2 returned and fixed · 1 changed since invoiced'
+  $('stripCards').innerHTML = open.slice(0,4).map(i=>cardHtml(Q[i],i,`style="flex:1 1 0;min-width:0;opacity:1"`)).join('') +
+    (open.length>4?`<div class="qc" style="flex:0 0 64px;opacity:.6;align-items:center;justify-content:center" onclick="document.getElementById('win').scrollIntoView({behavior:'smooth'})"><span class="amt">+${open.length-4}</span></div>`:'')
+}
+function go(i){ if(i<0||i>=Q.length) return; cur=i; render() }
+function decide(k){
+  state[cur]=k; toast(k==='ok'?`Approved — ${money(Q[cur].t)}`:'Returned to billing')
+  const nxt = Q.map((_,i)=>i).find(i=>i>cur && !state[i]) ?? Q.map((_,i)=>i).find(i=>!state[i])
+  if (nxt!==undefined) setTimeout(()=>go(nxt),350); else render()
+}
+document.addEventListener('keydown',e=>{ if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return; if(e.key==='ArrowLeft') go(cur-1); if(e.key==='ArrowRight') go(cur+1) })
+render()
+</script>
+</body>
+</html>
