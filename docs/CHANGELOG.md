@@ -20,6 +20,12 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.6 — Lakers: picking a suggested name in Offered adds the full name — Oct 27, 2026
+
+**Why.** Eli: typing "will" in Offered and clicking "Will Cramer · Atlantic" added just "will". `onPick` deferred to `addOffered` with a setTimeout, but `addOffered` read `offerIn` from the render it was created in — the typed text, not the picked name. `addOffered` now takes the picked name and updates `passed` from the latest state. **Migrations:** none. **Files:** `app/(main)/lakers/page.tsx`.
+
+---
+
 ## v1.47.5 — Hub approval list back (5, Show all); billing can edit tenants — Oct 26, 2026
 
 **Approval strip, reverted.** v1.47.4 replaced the hub's "Ready for your approval" list with cards; Eli: "i wanted to only change the billing approval pop up … for the billing page that lists them in that little window, lets keep that. but expand it to 5 … a button to expand to all. but default is 5." The original rows (with their Approve buttons) are back, fixed at five rows tall; **Show all N** opens it to the whole queue (**Show 5** folds it). The queue cards stay only across the top of the approval window. `startApproving` removed.

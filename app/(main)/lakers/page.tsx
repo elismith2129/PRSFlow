@@ -308,9 +308,13 @@ function GameModal({ draft, recips, onClose, onSaved }: { draft: Draft; recips: 
   const set = (patch: Partial<Draft>) => setG(p => ({ ...p, ...patch }))
   const today = getLocalToday()
 
-  const addOffered = () => {
-    const v = offerIn.trim(); if (!v) return
-    if (!(g.passed ?? []).some(p => p.toLowerCase() === v.toLowerCase())) set({ passed: [...(g.passed ?? []), v] })
+  // Takes the name explicitly when a suggestion is picked (2026-10-27: picking
+  // "Will Cramer · Atlantic" added just "will"). The old onPick deferred to
+  // addOffered with a setTimeout, but addOffered read `offerIn` from the
+  // render it was made in — still the typed "will", not the picked name.
+  const addOffered = (picked?: string) => {
+    const v = (picked ?? offerIn).trim(); if (!v) return
+    setG(p => (p.passed ?? []).some(x => x.toLowerCase() === v.toLowerCase()) ? p : { ...p, passed: [...(p.passed ?? []), v] })
     setOfferIn('')
   }
   const ok = !!g.game_date && !!(g.opponent ?? '').trim()
@@ -381,7 +385,7 @@ function GameModal({ draft, recips, onClose, onSaved }: { draft: Draft; recips: 
                 <button type="button" className="c-x" title="Remove" onClick={() => set({ passed: (g.passed ?? []).filter((_, j) => j !== i) })}>×</button>
               </div>
             ))}
-            <NameField value={offerIn} onChange={setOfferIn} onPick={() => setTimeout(addOffered, 0)} onEnter={addOffered}
+            <NameField value={offerIn} onChange={setOfferIn} onPick={h => addOffered(h.name)} onEnter={() => addOffered()}
               placeholder="+ name" recips={recips} season={g.season} />
           </div>
         </div>
