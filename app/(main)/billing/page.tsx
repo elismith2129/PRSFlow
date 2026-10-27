@@ -200,6 +200,7 @@ export default function BillingPage() {
   // window stay put while they work — an approved package leaves `approvals`
   // on the next load, but keeps its card (dimmed, APPROVED) until the window
   // closes. Cleared on close. docs/design-refs/approval-queue-options.html.
+  const [approvalsAll, setApprovalsAll] = useState(false)
   const [sitting, setSitting] = useState<{ rows: InvoiceRow[]; decided: Record<string, 'ok' | 'ret'> } | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
   /** The page-level ⋯ menu. Rare actions that belong to the PAGE, not a row. */
@@ -476,11 +477,7 @@ export default function BillingPage() {
     setPkg({ row: fresh, booking })
   }
 
-  /** Start approving from the hub strip: the first package that can be opened. */
-  function startApproving() {
-    const first = approvals.find(a => a.hasInvoiceDoc) ?? approvals[0]
-    if (first) openRow(first)
-  }
+
 
   /**
    * AFTER A DECISION, THE NEXT ONE OPENS (Eli, 2026-10-06: "when i hit approve
@@ -768,56 +765,77 @@ export default function BillingPage() {
           NOT EVEN A SEARCH hides it (Eli, 2026-10-07: "I don't want the
           approval bin to ever disappear"). Its rows come from the full list,
           never the search, so typing changes nothing in it. */}
-      {isOwner && approvals.length > 0 && (() => {
+      {isOwner && approvals.length > 0 && (
         /* ONE FIXED SIZE (2026-10-12 — the fixed-box house rule, CLAUDE.md).
-           REWORKED 2026-10-26 (Eli: "since it only shows 2, it seems small
-           while the list is actually big"). Two rows that scrolled the rest
-           out of sight made nine waiting read as two. Same height, but it now
-           leads with the size of the pile — count and dollars — and shows the
-           first four as the same small cards as the package window's queue,
-           with "+N" for the rest. The one-click Approve buttons are gone:
-           approving happens in the window, where the package is on screen.
-           docs/design-refs/approval-queue-options.html. */
-        const sum = approvals.reduce((t, r) => t + r.total, 0)
-        const returned = approvals.filter(r => r.rejectedAt).length
-        const drifted = approvals.filter(r => r.invoiceDrift).length
-        const noPo = approvals.filter(r => r.awaitingPo).length
-        const meta = [
-          returned ? `${returned} returned and fixed` : null,
-          drifted ? `${drifted} changed since invoiced ⚠` : null,
-          noPo ? `${noPo} awaiting PO` : null,
-        ].filter(Boolean).join(' · ')
-        const shown = approvals.slice(0, isMobile ? 2 : 4)
-        const more = approvals.length - shown.length
-        return (
-          <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12, height: 146, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-              <span className="c-arch" style={{ fontSize: 12 }}>Ready for your approval</span>
-              <span className="c-arch" style={{ fontSize: 12, opacity: 0.5 }}>
-                {approvals.length} · {formatCurrency(String(Math.round(sum))).replace(/\.00$/, '')}
+           The bin used to grow a row per invoice and push the pills and the
+           list down the page. It is now the height of its heading plus two
+           rows, always: one waiting leaves room, a third scrolls inside. */
+        /* FIVE, THEN ALL (Eli, 2026-10-26: "keep that. but expand it to 5. also
+           have a button to expand to all. but default is 5"). Still one fixed
+           size by default — five rows tall; Show all opens it to the whole queue. */
+        <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column', ...(approvalsAll ? {} : { height: 286 }) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3, flexShrink: 0 }}>
+            <span style={{
+              minWidth: 19, height: 17, borderRadius: 99, padding: '0 6px',
+              fontSize: 9.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--c-st-booked)', color: 'var(--c-chip-ink)',
+            }}>{approvals.length}</span>
+            <span className="c-arch" style={{ fontSize: 12 }}>Ready for your approval</span>
+            {approvals.length > 5 && (
+              <button className="c-bact" onClick={() => setApprovalsAll(v => !v)} style={{ marginLeft: 4 }}>
+                {approvalsAll ? 'Show 5' : `Show all ${approvals.length}`}
+              </button>
+            )}
+            {!isMobile && (
+              <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.45 }}>
+                click a row to read the package first
               </span>
-              <button className="c-bact" onClick={startApproving}
-                style={{ marginLeft: 'auto', background: 'var(--c-fg)', color: 'var(--c-bg)', opacity: 1, padding: '5px 12px' }}>
-                Start approving →
+            )}
+          </div>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', margin: '0 -4px', padding: '0 4px 4px' }}>
+          {(approvalsAll ? approvals : approvals.slice(0, 5)).map(r => (
+            <div
+              key={r.workOrderId}
+              className="c-panel"
+              onClick={() => openRow(r)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', marginTop: 6, cursor: 'pointer' }}
+            >
+              <span style={{ fontWeight: 700, fontSize: 12.5, minWidth: isMobile ? 0 : 150, flexShrink: 1 }}>
+                {r.client}{r.artist ? ` — ${r.artist}` : ''}
+              </span>
+              {r.isCod && (
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.05em', background: 'var(--c-wash2)', padding: '3px 8px', borderRadius: 99, opacity: 0.8, flexShrink: 0 }}>COD</span>
+              )}
+              {!isMobile && (
+                <span style={{ fontSize: 11, opacity: 0.55 }}>
+                  {[r.dateRange, r.rooms].filter(Boolean).join(' · ')}
+                </span>
+              )}
+              {r.awaitingPo && (
+                <span
+                  title="No PO on the work order yet — approving is fine; sending is what it blocks"
+                  style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.05em', background: 'var(--c-wash2)', padding: '3px 8px', borderRadius: 99, opacity: 0.8, flexShrink: 0 }}
+                >AWAITING PO</span>
+              )}
+              <span
+                title={r.invoiceDrift ? `The work order changed after the invoice was attached — invoiced ${formatCurrency(String(r.invoicedTotal ?? 0))}, now ${formatCurrency(String(r.total))}. Approving re-snapshots the total.` : undefined}
+                style={{ marginLeft: 'auto', fontWeight: 800, fontSize: 12.5, whiteSpace: 'nowrap', color: r.invoiceDrift ? 'var(--c-st-hot)' : undefined }}
+              >
+                {formatCurrency(String(r.total))}{r.invoiceDrift ? ' ⚠' : ''}
+              </span>
+              <button
+                className="c-bact"
+                disabled={busy === r.workOrderId}
+                onClick={e => { e.stopPropagation(); run(r.workOrderId, () => approveInvoice(r, profile?.id ?? null, profile?.display_name || undefined)) }}
+                onDoubleClick={e => e.stopPropagation()}
+              >
+                Approve
               </button>
             </div>
-            <div style={{ fontSize: 10.5, opacity: 0.5, margin: '1px 0 6px', minHeight: 16, flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {meta || 'Tap a card to read its package, or start from the top.'}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              {shown.map((r, j) => (
-                <QueueCard key={r.workOrderId} row={r} idx={j} grow onClick={() => openRow(r)} />
-              ))}
-              {more > 0 && (
-                <div className="c-qcard" onClick={startApproving}
-                  style={{ flex: '0 0 64px', height: 66, borderRadius: 12, background: 'var(--c-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.7 }}>
-                  <span className="c-mono" style={{ fontSize: 12 }}>+{more}</span>
-                </div>
-              )}
-            </div>
+          ))}
           </div>
-        )
-      })()}
+        </div>
+      )}
 
       {/* THE SEARCH BAR MOVED UP (2026-10-12): it is the page top's one bar
           now (PageTop, above the title). Same query, same reach — both

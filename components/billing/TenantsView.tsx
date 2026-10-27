@@ -79,7 +79,11 @@ export function TenantsView({ month, onMonth, newTenantRequest, onNewTenantReque
   const { profile } = useUserProfile()
   const isMobile = useIsMobile()
   const woVersion = useWoInvoicesVersion()
-  const canEdit = profile?.role === 'owner' || profile?.role === 'manager'
+  // Billing joined owners + managers (Eli, 2026-10-26: "lets have lori and studio
+  // manager able to do this") — change rents and due dates, add tenants.
+  // Deleting a lease stays owner-only (RLS too).
+  const canEdit = profile?.role === 'owner' || profile?.role === 'manager' || profile?.role === 'billing'
+  const canDelete = profile?.role === 'owner'
 
   const [leases, setLeases] = useState<Lease[]>([])
   const [ownMonth] = useState(currentMonth())
@@ -430,6 +434,7 @@ export function TenantsView({ month, onMonth, newTenantRequest, onNewTenantReque
       {editing && (
         <LeaseModal
           lease={editing === 'new' ? null : editing}
+          canDelete={canDelete}
           onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); await loadLeases(); await loadStamps() }}
         />
@@ -542,7 +547,7 @@ function LedgerModal({ lease, onClose }: { lease: Lease; onClose: () => void }) 
 
 // ── Add / edit a tenant ──────────────────────────────────────────────────────
 
-function LeaseModal({ lease, onClose, onSaved }: { lease: Lease | null; onClose: () => void; onSaved: () => Promise<void> }) {
+function LeaseModal({ lease, onClose, onSaved, canDelete }: { lease: Lease | null; onClose: () => void; onSaved: () => Promise<void>; canDelete: boolean }) {
   const [v, setV] = useState<LeaseInput>(lease
     ? { tenant: lease.tenant, venue: lease.venue, roomLabel: lease.roomLabel, amount: lease.amount, anchorDay: lease.anchorDay, startDate: lease.startDate, endDate: lease.endDate, hasWorkOrder: lease.hasWorkOrder, notes: lease.notes }
     : { tenant: '', venue: 'Paramount', roomLabel: '', amount: 0, anchorDay: 1, startDate: currentMonth() + '-01', endDate: null, hasWorkOrder: false, notes: null })
@@ -618,7 +623,7 @@ function LeaseModal({ lease, onClose, onSaved }: { lease: Lease | null; onClose:
           Changing the rent affects months from now on — stamped months keep the amount they were invoiced at. A tenant who leaves gets an end date; the row stays for their ledger.
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
-          {lease && !confirmDelete && (
+          {lease && canDelete && !confirmDelete && (
             <button className="c-bact" onClick={() => setConfirmDelete(true)} style={{ opacity: 0.6 }} title="Only for a tenant entered by mistake — refused once months are stamped">Delete</button>
           )}
           {lease && confirmDelete && (

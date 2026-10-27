@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.5 — Hub approval list back (5, Show all); billing can edit tenants — Oct 26, 2026
+
+**Approval strip, reverted.** v1.47.4 replaced the hub's "Ready for your approval" list with cards; Eli: "i wanted to only change the billing approval pop up … for the billing page that lists them in that little window, lets keep that. but expand it to 5 … a button to expand to all. but default is 5." The original rows (with their Approve buttons) are back, fixed at five rows tall; **Show all N** opens it to the whole queue (**Show 5** folds it). The queue cards stay only across the top of the approval window. `startApproving` removed.
+
+**Tenants: billing can edit leases** (Eli: "lets have lori and studio manager able to do this"). Billing joins owner + manager: ✎ on the Tenants tab — rent amount, due date, add a tenant. Delete stays owner-only (button hidden for others; RLS already owner-only). Studio manager = role `manager`, which already had it.
+
+**Migrations:** `20261026120000_leases_billing_edit.sql` (leases insert/update policies + billing). **Files:** `app/(main)/billing/page.tsx`, `components/billing/TenantsView.tsx`.
+
+---
+
 ## v1.47.4 — Approval queue cards; the hub shows every session's amount — Oct 26, 2026
 
 **Why.** Eli: (1) the approval strip "only shows 2, it seems small while the list is actually big"; (2) "i want a small nav at the top [of the approval pop-up] where i can see whats next and previous in the pipeline"; (3) "the billing hub line items dont always show the amount of the session … i do need to be able to quick scan and see amounts of every session." Mock: `docs/design-refs/approval-queue-options.html` (round 2 — "not a fan of the small bubbles, but maybe make them small cards").
