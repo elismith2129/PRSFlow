@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.48.0 — The 3% card fee follows the payment, not the client — Oct 28, 2026
+
+**Why.** Eli (WO-1432): "did we make a rule where there's never a 3% added to billing invoices? … the 3% fee needs to be available for all payments. its a payment thing, not client type. billing is 99% ACH and wire so thats why we may have built this." No such ruling exists — the fee was SCOPED to COD when it was built (2026-08-26, migration `20260826160000`: "3% card surcharge on COD work orders"), because labels pay by ACH/wire.
+
+**What.** Four `isCodWo &&` gates removed in `WorkOrderPopup.tsx`: `collectCard`, `collectAmountFor`, `withCardFee`, `payRowWarning`. A Credit/Debit payment on ANY work order now gets the 3% on top (still waivable per payment, same as COD). The Collect box on a billing WO now shows the card line too, and its first line reads "ACH · wire · check — invoiced, nothing to collect at the desk".
+
+**Already right, untouched:** `computeWoTotals` adds Σ `fee_amount` on any WO; the invoice PDF prints "Card fees (3%)" whenever present; the hub/My Day loaders select `fee_amount`.
+
+**Watch-outs.** Old billing card payments keep the $0 fee they were saved with — loading never re-derives a fee (`withCardFee` runs only on method pick / amount blur / the warning's fix tap). Retyping the amount on such a row WILL add the 3%; waive it on the row if that payment shouldn't carry one.
+
+**Migrations:** none (the column comment on `payment_rows.fee_amount` still says "COD + Credit/Debit only" — stale wording, harmless). **Files:** `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
 ## v1.47.9 — Day → Hour toggle keeps the hours (WO-1113 showed $0) — Oct 28, 2026
 
 **Why.** Eli: WO-1113 (Invoke recording), first two days $375/hr 9a–1p showed $0 for the day. The rows (SQL in chat) were `row_rate_type 'hour'`, `rate 375`, `rate_daily 3750`, **`total_hours NULL`, `charge NULL`**; the third day, whose times had been retyped, had 4 / 1500.

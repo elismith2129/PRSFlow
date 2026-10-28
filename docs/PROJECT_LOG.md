@@ -381,6 +381,14 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 28, 2026 — Card fee on billing work orders (v1.48.0)
+
+Eli noticed no 3% option on WO-1432 (a billing WO) and asked whether a "never on billing" rule
+existed. It didn't: the Aug 26 build scoped the fee to COD because labels pay by ACH/wire, and
+that scope lived as four `isCodWo` gates in the payments section. Ruling: "its a payment thing,
+not client type" — gates removed; totals/PDF/hub already handled fees on any WO. Loading never
+re-prices a stored payment, so old billing card payments keep their $0 fee.
+
 ### October 28, 2026 — WO-1113 $0 studio days (v1.47.9)
 
 Side quest during the readable-backup session. Eli's SQL paste showed hourly rows with

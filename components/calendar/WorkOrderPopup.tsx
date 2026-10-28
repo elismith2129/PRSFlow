@@ -4242,8 +4242,12 @@ export function WorkOrderPopup({
   })
   /** What the client owes now, by cash / Zelle / check. */
   const collectBase = collectTotals.balance > 0 ? parseFloat(collectTotals.balance.toFixed(2)) : 0
-  /** What to run on the card so the base above is what the studio keeps. COD only. */
-  const collectCard = isCodWo && collectBase > 0 ? cardTotalForBase(collectBase) : 0
+  /** What to run on the card so the base above is what the studio keeps. Any work order. */
+  // THE FEE FOLLOWS THE PAYMENT, NOT THE CLIENT (Eli, 2026-10-28, WO-1432:
+  // "the 3% fee needs to be available for all payments. its a payment thing,
+  // not client type"). Built COD-only on 2026-08-26 because labels pay by
+  // ACH/wire — a label paying by card owes the 3% the same as anyone.
+  const collectCard = collectBase > 0 ? cardTotalForBase(collectBase) : 0
   const collectPaidCount = payRows.filter(p => (stripCurrency(p.amount) ?? 0) > 0).length
   const collectUnsaved = payRows.filter(p => (stripCurrency(p.amount) ?? 0) > 0 && !persistedPay.some(q => q.id === p.id)).length
   /** The balance with ONE row taken out — what that row should be pre-filled
@@ -4256,7 +4260,7 @@ export function WorkOrderPopup({
    *  the card total of the balance excluding that row. */
   function collectAmountFor(method: string, rowId: string): number {
     const base = collectBaseExcluding(rowId)
-    return CARD_PAY_TYPES.includes(method) && isCodWo && base > 0 ? cardTotalForBase(base) : base
+    return CARD_PAY_TYPES.includes(method) && base > 0 ? cardTotalForBase(base) : base
   }
   /** A row that is not yet in the database — the collection in progress. */
   const isUnsavedPay = (id: string) => !persistedPay.some(p => p.id === id)
@@ -4270,7 +4274,7 @@ export function WorkOrderPopup({
   })()
 
   /** Re-derive a payment row's amount + fee FROM ITS BASE (Eli, 2026-09-24).
-   *  Card + COD → the 3% goes on top: amount = base × 1.03, fee = the
+   *  Card (any work order, since 2026-10-28) → the 3% goes on top: amount = base × 1.03, fee = the
    *  difference — so a 30% deposit typed as $333.00 runs $342.99 on the card
    *  and the balance drops by exactly $333.00. Anything else → amount = base,
    *  no fee. (Before this the runner typed what the terminal charged and the
@@ -4278,7 +4282,7 @@ export function WorkOrderPopup({
   function withCardFee(row: PayRow): PayRow {
     const base = stripCurrency(row.base) ?? 0
     const baseStr = base > 0 ? formatCurrency(String(base)) : ''
-    if (!isCodWo || !CARD_PAY_TYPES.includes(row.payment_type) || !(base > 0)) {
+    if (!CARD_PAY_TYPES.includes(row.payment_type) || !(base > 0)) {
       return { ...row, amount: baseStr, fee_amount: '' }
     }
     const charged = cardTotalForBase(base)
@@ -4305,7 +4309,7 @@ export function WorkOrderPopup({
    *  COD card rows carrying a fee only — a waived fee or a cash row has no
    *  second number to confuse. Reads the row as it stands after blur. */
   function payRowWarning(row: PayRow): { text: string; fix: number | null } | null {
-    if (!isCodWo || !CARD_PAY_TYPES.includes(row.payment_type) || !row.fee_amount) return null
+    if (!CARD_PAY_TYPES.includes(row.payment_type) || !row.fee_amount) return null
     const base = stripCurrency(row.base) ?? 0
     if (!(base > 0)) return null
     const fmt = (n: number) => formatCurrency(String(parseFloat(n.toFixed(2))))
@@ -7943,7 +7947,7 @@ export function WorkOrderPopup({
                     {collectBase > 0 ? (
                       <>
                         {([
-                          { key: 'cash', amt: collectBase, how: isCodWo ? <><b style={{ color: 'var(--c-fg)' }}>cash</b> · Zelle · check</> : <>invoiced — nothing to collect at the desk</> },
+                          { key: 'cash', amt: collectBase, how: isCodWo ? <><b style={{ color: 'var(--c-fg)' }}>cash</b> · Zelle · check</> : <><b style={{ color: 'var(--c-fg)' }}>ACH</b> · wire · check — invoiced, nothing to collect at the desk</> },
                           ...(collectCard > 0 ? [{ key: 'card', amt: collectCard, how: <><b style={{ color: 'var(--c-fg)' }}>card</b> · incl. 3% fee ${(collectCard - collectBase).toFixed(2)}</> }] : []),
                         ] as { key: 'cash' | 'card'; amt: number; how: React.ReactNode }[]).map(line => {
                           const dimmed = collectPicked !== null && collectPicked !== line.key

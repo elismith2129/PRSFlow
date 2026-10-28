@@ -680,6 +680,19 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.48.0', date:'Oct 28, 2026',
+    headline:'The 3% card fee now works on billing work orders too.',
+    desc:'Any payment by credit or debit card gets the 3% fee on top, whether the client is COD or billing.',
+    changes:[
+      'Pick Credit Card or Debit Card on a payment &mdash; the 3% is added, the same as on COD.',
+      'You can still waive the fee on a single payment.',
+      'On a billing work order, the Collect box now shows the card amount as well.',
+      'Payments already saved are not changed.',
+    ],
+    affects:'Billing, and anyone taking a card payment from a label.',
+    dev:['WorkOrderPopup: isCodWo gates removed from collectCard / collectAmountFor / withCardFee / payRowWarning. No migration.'],
+  },
+  {
     ver:'v1.47.9', date:'Oct 28, 2026',
     headline:'Switching a studio day from Day rate to Hourly no longer zeroes it out.',
     desc:'After switching a day from Day to Hr, the money could later drop to $0 even though the times and rate were right.',
