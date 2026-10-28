@@ -1,4 +1,5 @@
-# Daily automated backup of all key Supabase tables to Google Drive.
+# Daily automated backup of all key Supabase tables to Google Drive,
+# plus the readable Google Sheet for staff (second step).
 #
 # Required GitHub secrets (Settings → Secrets and variables → Actions):
 #   NEXT_PUBLIC_SUPABASE_URL
@@ -36,4 +37,21 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      # The READABLE copy (2026-10-28): a Google Sheet staff can open when the
+      # app is down — Leads, Calendar, Billing, Tenants. See the header of
+      # scripts/readable-backup.ts. `if: always()` because backup.mjs exits 1
+      # on any single failed file; one bad photo must not cost the staff sheet.
+      #
+      # NEXT_PUBLIC_SUPABASE_ANON_KEY is the SERVICE-ROLE key on purpose: the
+      # script reuses the billing hub's own loaders, which build their client
+      # from that name. With the real anon key RLS would hand them nothing.
+      - name: Readable backup (Google Sheet)
+        if: always()
+        run: npm run backup:readable
+        env:
+          TZ: America/Los_Angeles
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}

@@ -1422,14 +1422,24 @@ export async function fetchStaffGrid(days = 14): Promise<GridRow[]> {
   // seat is vacant — billing is a ROLE (Aaron is leaving; the card outlives him).
   const { data: profiles, error } = await supabase
     .from('user_profiles')
-    .select('display_name, role')
+    .select('display_name, role, position_title')
     .in('role', ['manager', 'billing'])
     .is('deleted_at', null)
   dbResult('Loading staff names', error)
 
-  const nameFor = (role: MyDayRole) =>
-    (profiles ?? []).find(p => p.role === role)?.display_name ||
-    (role === 'manager' ? 'Manager' : 'Billing')
+  // WHO SITS IN THE SEAT, NOT WHO HAS THE PERMISSION (2026-10-27). The billing
+  // card's misses read "Lynair missed …" once HR (Lynair) was given the billing
+  // ROLE for access — this took the first profile with the role. A role is a
+  // set of permissions; the duty card belongs to the POSITION. So: the one
+  // person whose position_title names the seat; else the only holder of the
+  // role; else (several, none titled) the seat's own name — never a guess.
+  const SEAT_TITLE: Record<MyDayRole, RegExp> = { manager: /manager/i, billing: /billing/i }
+  const nameFor = (role: MyDayRole) => {
+    const holders = (profiles ?? []).filter(p => p.role === role)
+    const titled = holders.filter(p => SEAT_TITLE[role].test((p as any).position_title ?? ''))
+    const pick = titled.length === 1 ? titled[0] : holders.length === 1 ? holders[0] : null
+    return pick?.display_name || (role === 'manager' ? 'Manager' : 'Billing')
+  }
 
   const roles: MyDayRole[] = ['manager', 'billing']
   return roles.map(role => {

@@ -5,6 +5,13 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## To run (Oct 28) — readable backup sheet (v1.47.8)
+
+- [ ] **After the push: GitHub → Actions → Daily Backup → Run workflow**, then open the "Readable backup (Google Sheet)" step's log. It should end "Readable backup complete". This is the first test of the Drive upload — the sandbox couldn't reach Drive or Supabase. *(Oct 28)*
+- [ ] **Open "PRSFlo Backup – Latest" in Drive** (folder "PRSFlo – Readable Backup", next to the JSON backups) — check the Billing tab against the hub for two or three work orders. *(Oct 28)*
+- [ ] **Share the "PRSFlo – Readable Backup" folder** with the staff who should see it — the folder, NOT the whole Shared Drive (Shared Drive members see the raw dumps and ID scans). *(Oct 28)*
+- [ ] **`npm install` once on the Mac** after pulling — new dev deps `exceljs` + `esbuild`; until then `tsc` there can't find `exceljs`. *(Oct 28)*
+
 ## To run (Oct 23)
 
 - [x] ~~Run `20261023120000_lead_follow_rating.sql` BEFORE the v1.47.0 push~~ (pushed b831e9e) — the CRM selects `*` from leads and the list writes `follow_rating`. Result must show rating_column 1, type_checks 0. *(Oct 23)*

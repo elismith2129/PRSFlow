@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.47.8', date:'Oct 28, 2026',
+    headline:'A backup copy of PRSFlo you can open in Google Sheets.',
+    desc:'Every night PRSFlo saves a plain spreadsheet to Google Drive, so if the app is ever down you can still see what is going on.',
+    changes:[
+      'It is called <b>PRSFlo Backup &ndash; Latest</b>, in the Drive folder <b>PRSFlo &ndash; Readable Backup</b>.',
+      'Tabs: Leads, Calendar, Billing and Tenants. The first tab says when it was made.',
+      'It is read-only &mdash; typing in it changes nothing in PRSFlo.',
+    ],
+    affects:'Only if Eli shares the folder with you. Bookmark "Latest" on your phone.',
+    dev:['scripts/readable-backup.ts, second step of daily-backup.yml. Reuses fetchInvoices/billingStage + lib/tenants. No migration.'],
+  },
+  {
     ver:'v1.47.2', date:'Oct 23, 2026',
     headline:'Follow-up now holds leads 30 to 110 days old.',
     desc:'Newer leads are still being worked on Needs Action, so they no longer show on Follow-up too.',

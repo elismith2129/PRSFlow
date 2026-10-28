@@ -42,3 +42,6 @@ imports-scratch/
 
 # python caches from docs/sop-build (the SOP build scripts)
 __pycache__/
+
+# Readable-backup bundle (npm run backup:readable)
+scripts/.build/

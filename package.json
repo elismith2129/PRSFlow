@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "backup:readable": "esbuild scripts/readable-backup.ts --bundle --platform=node --format=esm --packages=external --tsconfig=tsconfig.json --outfile=scripts/.build/readable-backup.mjs --log-level=error && node --env-file-if-exists=.env.local scripts/.build/readable-backup.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
@@ -26,8 +27,10 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
     "bcryptjs": "^3.0.3",
+    "esbuild": "^0.25.12",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",
+    "exceljs": "^4.4.0",
     "playwright": "^1.60.0",
     "postcss": "^8",
     "sharp": "^0.35.2",

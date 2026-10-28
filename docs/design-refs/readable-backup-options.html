@@ -1,0 +1,37 @@
+<!--
+  READABLE BACKUP — mock record (Oct 27–28, 2026). Shipped as v1.47.8.
+
+  Eli's words: "I wanna have one more [backup] … something that's not just backed up as
+  code or database — something that's safe if Vercel or Supabase or GitHub goes down … a
+  simple spreadsheet … leads, calendar and all of the billing hub, backed up to an easy to
+  read spreadsheet that anybody at my staff could read, backed up every day."
+  Then: "this would live in a google drive folder and ill be able to determine access."
+  Then: "i already have a google service account for the backups can we just use that?
+  whats the best way you tell me."
+
+  ROUNDS / RULINGS
+  1. Emailed .xlsx, two files (ops for staff, full for owners)  → REJECTED: Drive folder, Eli sets access, one file.
+  2. Apps Script in Eli's Drive vs PRSFlo → Drive               → REJECTED Apps Script: the existing
+     service account already writes to a Shared Drive; ride the same nightly job.
+  3. Sample workbook (sent as "PRSFlo Backup – SAMPLE.xlsx")    → APPROVED as-is ("cool sounds good").
+     Invoices folded into Billing (an invoice is a WO stage). Windows: leads 90d closed,
+     calendar −30/+60, billing 90d paid/closed, tenants last/this/next period.
+
+  The real thing is a Google Sheet; this page only records the approved tab layout.
+-->
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Readable Backup — approved layout</title>
+<style>
+ body{font:14px/1.45 Arial,sans-serif;margin:24px;color:#1b2430;background:#fff}
+ h1{color:#1F3A5F;font-size:20px} h2{font-size:15px;margin:22px 0 6px;color:#1F3A5F}
+ table{border-collapse:collapse;font-size:12px} th{background:#1F3A5F;color:#fff;text-align:left;padding:6px 8px}
+ td{border-bottom:1px solid #D9DEE5;padding:5px 8px} p{max-width:760px;color:#5A6472}
+</style></head><body>
+<h1>PRSFlo — Readable Backup (approved layout)</h1>
+<p>Nightly Google Sheet in Shared Drive › PRSFlo – Readable Backup. "PRSFlo Backup – Latest" replaced in place; dated copies kept 90 days.</p>
+<h2>Read Me</h2><p>Pulled time · what this is · where · one line per tab with its row count · "if Pulled is more than a day old, tell Eli".</p>
+<h2>Leads</h2><table><tr><th>Name</th><th>Company / Label</th><th>Status</th><th>Source</th><th>COD or Billing</th><th>Phone</th><th>Email</th><th>Venue</th><th>Session date</th><th>Quote</th><th>Follow-up rating</th><th>Last contact</th><th>Added</th><th>Notes</th></tr></table>
+<h2>Calendar</h2><table><tr><th>Date</th><th>Start</th><th>End</th><th>Venue</th><th>Room</th><th>Status</th><th>Client</th><th>Artist</th><th>Label</th><th>Engineer</th><th>Assistant</th><th>WO #</th><th>PO #</th><th>Notes</th></tr></table>
+<h2>Billing</h2><table><tr><th>WO #</th><th>Session date</th><th>Client</th><th>Artist</th><th>COD or Billing</th><th>PO #</th><th>Stage</th><th>Total</th><th>Paid</th><th>Balance</th><th>Invoice #</th><th>Invoice sent</th><th>Paid on</th><th>Latest collection note</th></tr></table>
+<h2>Tenants</h2><table><tr><th>Tenant</th><th>Venue</th><th>Room</th><th>Rent</th><th>Rent period</th><th>Email sent</th><th>Paid on</th><th>Amount paid</th><th>Status</th><th>In QuickBooks</th></tr></table>
+</body></html>

@@ -381,6 +381,32 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 27–28, 2026 — Readable backup sheet (v1.47.8)
+
+**The ask.** Eli wanted one more backup that isn't code or a database dump: something that
+survives Vercel, Supabase or GitHub going down, readable by anyone on staff, covering leads,
+the calendar and the whole billing hub, refreshed every day.
+
+**Rulings, in order.** First pitch was an emailed .xlsx (two files: ops for all staff, full
+for owners/office). Eli: it lives in a Google Drive folder and he decides who sees it — one
+file. Then Apps Script in his Drive vs. PRSFlo pushing to Drive; Eli: "I already have a Google
+service account for the backups, can we just use that? what's the best way, you tell me."
+Read `scripts/backup.mjs`: it already writes to a Shared Drive with that account (the one
+setup where a service account CAN create files), so the answer was a second step on the same
+nightly job. Mock (`docs/design-refs/readable-backup-options.html` → the sample .xlsx) approved
+as-is: "cool sounds good" — five tabs, Invoices folded into Billing, 90/30/60-day windows.
+
+**Decisions inside the build.** Reuse the hub's loaders rather than re-query (the money rule).
+That forced the esbuild step (lib/ is TS with `@/` imports) and the service-role-as-anon-key
+env trick. Upload via Drive conversion, not the Sheets API, so no Google Cloud change. The
+readable folder is a sibling of the JSON folder, not inside it, so sharing it doesn't expose
+the raw dumps. `if: always()` because backup.mjs exits 1 on a single failed photo.
+
+**Tested** against a mock PostgREST in the sandbox (the sandbox can't reach Supabase): the real
+loaders ran end to end; a failed `payment_rows` read and a failed `tenant_rent_months` read
+each stopped the run before anything was written. **Not tested:** the Drive upload — the first
+manual Actions run is that test.
+
 ### October 23, 2026 — Follow-up list (v1.47.0)
 
 **The ask.** A voice note from the owner, relayed by Eli: a rolling list of leads that didn't

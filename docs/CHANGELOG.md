@@ -20,6 +20,39 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.8 — Readable backup: a nightly Google Sheet staff can open when the app is down — Oct 28, 2026
+
+**Why.** Eli: "one more [backup] … not just backed up as code or database, something that's safe if Vercel or Supabase goes down or GitHub goes down … leads, calendar and all of the billing hub, backed up to an easy-to-read spreadsheet that anybody at my staff could read, every day." The JSON dump is a restore copy nobody can read; this is the read copy.
+
+**What.** `scripts/readable-backup.ts`, a second step in `.github/workflows/daily-backup.yml` (`if: always()`, after the JSON backup). Writes a native Google Sheet to **"PRSFlo – Readable Backup"**, a folder it creates as a SIBLING of the JSON folder in the same Shared Drive (so staff can be shared on it without seeing the raw dumps / ID scans). Two files: **"PRSFlo Backup – Latest"** (replaced in place every night — same file id, bookmarks and sharing survive) and **"PRSFlo Backup – YYYY-MM-DD"** (trashed after 90 days). Tabs: Read Me (pulled time + row counts), Leads (open + booked/dead touched in 90 days), Calendar (−30 / +60 days, one row per room per day), Billing (not paid/closed + paid/closed in 90 days, with a SUM row), Tenants (last/this/next rent period).
+
+**Same numbers as the app — by construction.** Billing rows are `fetchInvoices()` + `billingStage()` from `lib/billing.ts`; tenant status is `periodFor` / `leaseActiveIn` / `isRentPartial` / `isRentLate` from `lib/tenants.ts`. Nothing re-derives money. If the sheet ever disagrees with the hub, fix `lib/`, not the script.
+
+**How it runs.** `npm run backup:readable` bundles the script with esbuild (resolves the `@/` imports, `--packages=external`) into `scripts/.build/` (gitignored), then runs it. The workflow passes the **service-role key as `NEXT_PUBLIC_SUPABASE_ANON_KEY`** because `lib/supabase.ts` builds its client from that name at import; with the real anon key RLS hands the loaders nothing. Uploads as .xlsx with Drive conversion (`files.create` with the Sheets mimeType; `files.update` with media to replace) — no Sheets API, no new Google setup, the existing service account.
+
+**Rejected:** a Vercel cron + Resend email (Eli wants a Drive folder he controls access on); Apps Script in Eli's own Drive (the existing service account + Shared Drive already works and is already monitored by the Actions run); two files split by audience (Eli: "I'll be able to determine access" — one file, folder-level sharing); a separate Invoices tab (an invoice is a stage of a work order — it would duplicate Billing's rows); writing totals as sheet formulas over row cells (Balance is the hub's figure, not Total−Paid — the two differ once discounts/card fees exist).
+
+**Watch-outs.**
+- **lib/ loaders swallow read errors** (`dbResult` → `[]`). The script intercepts `/api/log-error` and fails the run on any, and separately fails if `fetchInvoices()` is empty while `work_orders` isn't. Tested both against a mock PostgREST. Don't remove either.
+- `TZ=America/Los_Angeles` is set in the step and at the top of the script — `getLocalToday()` and the late/partial rules use local time and the runner is UTC.
+- The workflow file changed → the push needs a PAT with the `workflow` scope (June 26 lesson).
+- New dev deps `exceljs`, `esbuild`. `npm install` on the Mac once after pulling, or `tsc` there can't find `exceljs`.
+- Runs on Node 24 in CI, so `@supabase/supabase-js` is fine here (the June 26 "never supabase-js" rule was a Node 20 WebSocket problem).
+
+**Migrations:** none. **Files:** `scripts/readable-backup.ts` (new), `.github/workflows/daily-backup.yml`, `package.json`, `package-lock.json`, `.gitignore`.
+
+---
+
+## v1.47.7 — The billing duty card is named for the seat, not whoever has the role — Oct 27, 2026
+
+**Why.** Eli: the briefing read "Lynair missed ADP runner timecards…", "Lynair missed 6 duties yesterday" — those are Lori's billing duties. It started when HR (Lynair) was given the billing ROLE for access: `fetchStaffGrid` named the card after the first profile with the role. A role is permissions; the duty card belongs to the position.
+
+`nameFor` now picks the one profile whose `position_title` names the seat (/billing/i, /manager/i); else the only holder of the role; else the seat's own label ("Billing") — never a guess. The grid and the briefing both read it. **Needs** Lori's `user_profiles.position_title` to say Billing (SQL in the chat) — until then the card says "Billing", which is right, just not personal.
+
+**Migrations:** none (one data UPDATE given in chat). **Files:** `lib/myday.ts`.
+
+---
+
 ## v1.47.6 — Lakers: picking a suggested name in Offered adds the full name — Oct 27, 2026
 
 **Why.** Eli: typing "will" in Offered and clicking "Will Cramer · Atlantic" added just "will". `onPick` deferred to `addOffered` with a setTimeout, but `addOffered` read `offerIn` from the render it was created in — the typed text, not the picked name. `addOffered` now takes the picked name and updates `passed` from the latest state. **Migrations:** none. **Files:** `app/(main)/lakers/page.tsx`.
