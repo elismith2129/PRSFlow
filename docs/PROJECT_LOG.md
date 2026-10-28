@@ -381,6 +381,15 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 28, 2026 — WO-1113 $0 studio days (v1.47.9)
+
+Side quest during the readable-backup session. Eli's SQL paste showed hourly rows with
+`rate_daily 3750` and NULL hours/charge — a day row toggled to hourly. The toggle computed
+hours for one charge and dropped them. Fixed forward-only (toggle + any hourly edit fills
+NULL hours from the clocks). **Rejected:** deriving hours on LOAD in `normalizeStRow` — it
+would silently re-price old work orders, including ones already invoiced (CLAUDE.md: never
+retroactively rewrite money). WO-1113 itself: retype a time and save.
+
 ### October 27–28, 2026 — Readable backup sheet (v1.47.8)
 
 **The ask.** Eli wanted one more backup that isn't code or a database dump: something that

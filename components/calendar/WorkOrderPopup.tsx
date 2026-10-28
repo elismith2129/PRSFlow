@@ -2054,6 +2054,14 @@ export function WorkOrderPopup({
       } else {
         // Hourly: charge = total_hours × rate
         if ('total_hours' in updates || 'rate' in updates || 'from_time' in updates || 'to_time' in updates || 'row_rate_type' in updates) {
+          // A NULL total_hours on an hourly row is a hole, not "no hours" — it
+          // is what a day row toggled to hourly before 2026-10-28 was left
+          // with (WO-1113). Fill it from the clocks on this edit, so the edit
+          // itself repairs the row. Only on an edit: opening an old work order
+          // still never rewrites money (CLAUDE.md).
+          if (u.total_hours == null && !('total_hours' in updates)) {
+            u.total_hours = calcHours(u.from_time, u.to_time)
+          }
           u.charge = calcCharge(u.total_hours, u.rate)
         }
         // Twin-field sync (house law, DAY_HOUR_RATIO): editing the hourly rate
@@ -2308,6 +2316,11 @@ export function WorkOrderPopup({
           ...r,
           row_rate_type: 'hour' as const,
           rate: finalRate,
+          // WRITE THE HOURS BACK (WO-1113, 2026-10-28). A day row carries
+          // total_hours NULL; this branch derived hrs for the charge below but
+          // left the NULL on the row, so the next rate edit or reload priced
+          // the day as NULL × $375 = $0. An hourly row's hours are its money.
+          total_hours: hrs,
           charge: hrs != null && hrs > 0 && finalRateNum > 0 ? parseFloat((hrs * finalRateNum).toFixed(2)) : null,
           ot_hours: '0',
           ot_charge: null,

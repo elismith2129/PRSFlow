@@ -5,12 +5,18 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## WO $0 hourly days (Oct 28, v1.47.9)
+
+- [ ] **Fix WO-1113's first two days** (Sep 10, Oct 27): retype the end time, save — each should read $1,500. *(Oct 28)*
+- [ ] **Find other work orders hit by the same bug** — run the query in the Oct 28 chat (hourly rows, NULL total_hours, times set). Any on a SENT invoice is Eli's call, not a silent fix. *(Oct 28)*
+
 ## To run (Oct 28) — readable backup sheet (v1.47.8)
 
 - [ ] **After the push: GitHub → Actions → Daily Backup → Run workflow**, then open the "Readable backup (Google Sheet)" step's log. It should end "Readable backup complete". This is the first test of the Drive upload — the sandbox couldn't reach Drive or Supabase. *(Oct 28)*
 - [ ] **Open "PRSFlo Backup – Latest" in Drive** (folder "PRSFlo – Readable Backup", next to the JSON backups) — check the Billing tab against the hub for two or three work orders. *(Oct 28)*
 - [ ] **Share the "PRSFlo – Readable Backup" folder** with the staff who should see it — the folder, NOT the whole Shared Drive (Shared Drive members see the raw dumps and ID scans). *(Oct 28)*
-- [ ] **`npm install` once on the Mac** after pulling — new dev deps `exceljs` + `esbuild`; until then `tsc` there can't find `exceljs`. *(Oct 28)*
+- [x] ~~`npm install` once on the Mac~~ done in the v1.47.8 push. *(Oct 28)*
+- [ ] **Look at `npm audit` (19: 5 moderate, 13 high, 1 critical) in its own session** — mostly exceljs's old sub-deps (dev-only, backup job only), some pre-existing. Never `npm audit fix --force` (breaking upgrades, can break the Next build). *(Oct 28)*
 
 ## To run (Oct 23)
 

@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.47.9 — Day → Hour toggle keeps the hours (WO-1113 showed $0) — Oct 28, 2026
+
+**Why.** Eli: WO-1113 (Invoke recording), first two days $375/hr 9a–1p showed $0 for the day. The rows (SQL in chat) were `row_rate_type 'hour'`, `rate 375`, `rate_daily 3750`, **`total_hours NULL`, `charge NULL`**; the third day, whose times had been retyped, had 4 / 1500.
+
+**Cause.** `toggleRowRateType` Day → Hour derived `hrs` for the charge but never wrote `total_hours` — a day row carries NULL there. The next hourly recompute (`updateStRow` on a rate edit, or `normalizeStRow` on load) priced NULL × rate = null → $0.
+
+**Fix (forward-only).** The toggle writes `total_hours: hrs`. `updateStRow`'s hourly branch fills a NULL `total_hours` from the clocks before pricing, so any edit repairs an already-broken row. **Not** done on load (`normalizeStRow`): opening a work order must never rewrite money, and some of these rows may sit on sent invoices.
+
+**Repair for existing rows:** retype a time on the day and save. A query for other affected rows is in TODO.
+
+**Migrations:** none. **Files:** `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
 ## v1.47.8 — Readable backup: a nightly Google Sheet staff can open when the app is down — Oct 28, 2026
 
 **Why.** Eli: "one more [backup] … not just backed up as code or database, something that's safe if Vercel or Supabase goes down or GitHub goes down … leads, calendar and all of the billing hub, backed up to an easy-to-read spreadsheet that anybody at my staff could read, every day." The JSON dump is a restore copy nobody can read; this is the read copy.

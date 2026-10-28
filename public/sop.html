@@ -680,6 +680,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.47.9', date:'Oct 28, 2026',
+    headline:'Switching a studio day from Day rate to Hourly no longer zeroes it out.',
+    desc:'After switching a day from Day to Hr, the money could later drop to $0 even though the times and rate were right.',
+    changes:[
+      'Switching Day &rarr; Hr now keeps the hours, so the day shows hours &times; rate.',
+      'A day that already shows $0 this way: retype its start or end time and save &mdash; it fixes itself.',
+    ],
+    affects:'Billing and managers editing work orders.',
+    dev:['toggleRowRateType Day->Hour writes total_hours; updateStRow hourly fills NULL total_hours from clocks. Not on load (never re-price old WOs).'],
+  },
+  {
     ver:'v1.47.8', date:'Oct 28, 2026',
     headline:'A backup copy of PRSFlo you can open in Google Sheets.',
     desc:'Every night PRSFlo saves a plain spreadsheet to Google Drive, so if the app is ever down you can still see what is going on.',
