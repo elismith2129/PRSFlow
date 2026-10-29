@@ -5,6 +5,11 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Day-rate open deleted rows (Oct 29, v1.48.1)
+
+- [ ] **Re-add Rob on WO-1113 day 1** after the deploy, save, close, reopen — he should stay. *(Oct 29)*
+- [ ] **Find other work orders that lost a staff line or second room** — compare a JSON backup's `studio_time_rows` against live (query/approach in the Oct 29 chat). *(Oct 29)*
+
 ## WO $0 hourly days (Oct 28, v1.47.9)
 
 - [ ] **Fix WO-1113's first two days** (Sep 10, Oct 27): retype the end time, save — each should read $1,500. *(Oct 28)*

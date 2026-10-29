@@ -1619,24 +1619,37 @@ export function WorkOrderPopup({
         if (isDay) {
           // 1. Fresh DB read — ignore in-memory rows entirely
           const { data: freshSt } = await supabase.from('studio_time_rows')
-            .select('id, date, created_at')
+            .select('id, date, studio, created_at')
             .eq('work_order_id', existing.id)
             .order('created_at', { ascending: true })
 
-          // 2. Dedup: keep the earliest row per date, delete later duplicates
-          const keepByDate: Record<string, string> = {}
+          // 2. Dedup: keep the earliest row per DATE + ROOM, delete later
+          //    duplicates of that same room on that same day.
+          //
+          //    WAS KEYED ON DATE ALONE (fixed 2026-10-29, WO-1113 — Lori: "Rob
+          //    is still not being saved … once you exit and go back in it
+          //    removes him from the first day"). A day legitimately holds more
+          //    than one row: a separate STAFF line (studio '') and a second
+          //    ROOM. Keyed on date, every open of a day-rate booking's work
+          //    order silently DELETED them from the database — the staff line
+          //    Lori added for Rob, and any second room. Staff lines (studio '')
+          //    are never duplicates of anything and are never touched.
+          const keepByKey: Record<string, string> = {}
           const dupeIds: string[] = []
           for (const r of freshSt ?? []) {
-            if (keepByDate[r.date]) dupeIds.push(r.id)
-            else keepByDate[r.date] = r.id
+            const room = (r.studio ?? '').trim()
+            if (!room || !r.date) continue
+            const key = `${r.date}|${toStudioLetter(room)}`
+            if (keepByKey[key]) dupeIds.push(r.id)
+            else keepByKey[key] = r.id
           }
           if (dupeIds.length > 0) {
             await supabase.from('studio_time_rows').delete().in('id', dupeIds)
           }
 
-          // 3. Insert rows for dates not yet in DB
+          // 3. Insert rows for dates not yet in DB (any row on a date covers it)
           const allDates = dateRange(booking.start_date, booking.end_date)
-          const coveredDates = new Set(Object.keys(keepByDate))
+          const coveredDates = new Set((freshSt ?? []).map(r => r.date).filter(Boolean))
           const missingDates = allDates.filter(d => !coveredDates.has(d))
           if (missingDates.length > 0) {
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))

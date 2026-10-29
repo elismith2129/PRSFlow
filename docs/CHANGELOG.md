@@ -20,6 +20,20 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.48.1 — Opening a day-rate work order no longer deletes staff lines and second rooms — Oct 29, 2026
+
+**Why.** Lori (WO-1113): "Rob is still not being saved … once you exit and go back in it removes him from first day."
+
+**Cause.** `initWO`'s day-rate reconciliation (runs on EVERY open when the booking is day-rate) de-duplicated `studio_time_rows` by **date alone**, keeping the earliest row per date and DELETING the rest from the database. A day legitimately has more than one row — a separate staff line (`studio ''`) and/or a second room — so every open silently deleted them. WO-1113's booking is day-rate (its rows carried `rate_daily 3750`), so Rob's staff line on day 1 was deleted each time it was reopened.
+
+**Fix.** Dedup keys on **date + room** (`toStudioLetter`), and rows with no room (staff lines) are skipped entirely. "Missing dates" coverage now counts any row on a date.
+
+**Watch-outs.** Rows already deleted are GONE from the live DB — they exist only in the nightly JSON backups. Any day-rate WO with a second room on the same day or a separate staff line, opened since this code shipped, may have lost them. A check query is in the Oct 29 chat / TODO.
+
+**Migrations:** none. **Files:** `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
 ## v1.48.0 — The 3% card fee follows the payment, not the client — Oct 28, 2026
 
 **Why.** Eli (WO-1432): "did we make a rule where there's never a 3% added to billing invoices? … the 3% fee needs to be available for all payments. its a payment thing, not client type. billing is 99% ACH and wire so thats why we may have built this." No such ruling exists — the fee was SCOPED to COD when it was built (2026-08-26, migration `20260826160000`: "3% card surcharge on COD work orders"), because labels pay by ACH/wire.

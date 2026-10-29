@@ -680,6 +680,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.48.1', date:'Oct 29, 2026',
+    headline:'Staff you add to a day now stay there when you reopen the work order.',
+    desc:'On some day-rate sessions, a staff line (or a second room) on a day was removed every time the work order was opened again.',
+    changes:[
+      'Staff lines and second rooms on the same day are kept when you close and reopen.',
+      'If someone went missing before this fix, add them again and save &mdash; they will stay now.',
+    ],
+    affects:'Billing and managers editing work orders.',
+    dev:['initWO day-rate dedup keyed on date+room (was date only), staff rows (studio empty) skipped. It deleted rows on every open.'],
+  },
+  {
     ver:'v1.48.0', date:'Oct 28, 2026',
     headline:'The 3% card fee now works on billing work orders too.',
     desc:'Any payment by credit or debit card gets the 3% fee on top, whether the client is COD or billing.',

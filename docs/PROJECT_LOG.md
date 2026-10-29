@@ -381,6 +381,15 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 29, 2026 — Day-rate open deleted staff lines (v1.48.1)
+
+Lori: Rob disappears from WO-1113 day 1 after closing and reopening. The day-rate branch of
+initWO de-duplicated rows by date alone and deleted every extra row on a date — staff lines
+and second rooms included — on every open. Re-keyed on date + room, staff lines exempt.
+**Rejected:** removing the dedup outright. It was added for concurrent-initWO duplicates;
+WO creation has been centralised since June 30 so it is probably dead, but deleting a guard
+during a bug fix is a second change — narrowing it is enough to stop the damage.
+
 ### October 28, 2026 — Card fee on billing work orders (v1.48.0)
 
 Eli noticed no 3% option on WO-1432 (a billing WO) and asked whether a "never on billing" rule
