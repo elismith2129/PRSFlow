@@ -32,13 +32,14 @@ const RUNNERS = [
   { name: 'Tristan Telischuk', initials: 'TT', email: 'tristan.telischuk@gmail.com' },
   { name: 'Jesus Guzman',     initials: 'JG', email: 'jguzma126@gmail.com' },
   { name: 'Sam Jauregui',     initials: 'SJ', email: 'sjauregui11301@gmail.com' },
-  { name: 'Kovan Eskerie',    initials: 'KE', email: 'kovaneskerie@gmail.com' },
+  // Kovan Eskerie (kovaneskerie@gmail.com) removed 2026-10-29 — PIN deleted, auth banned, profile soft-deleted.
   { name: 'Elie Elrichani',   initials: 'EE', email: 'elie.wav04@gmail.com' },
   { name: 'Terren Lee',       initials: 'TL', email: 'cras.tgallegos@gmail.com' },
   { name: 'Lori Beth',        initials: 'LS', email: 'loribeth417@gmail.com' },
   { name: 'Hunter Tedeschi',  initials: 'HT', email: 'huntertedeschi12@gmail.com' },
   { name: 'Ezra Miller',      initials: 'EZ', email: 'cras.emiller1@gmail.com' },
   { name: 'Cris Martinez',    initials: 'CM', email: 'cras.cmartinez1@gmail.com' }, // added 2026-09-18
+  { name: 'Maya Clark',       initials: 'MC', email: 'cras.mclark6@gmail.com' },    // added 2026-10-29
 ];
 
 // ONE PERSON AT A TIME (2026-09-18): re-running the whole list rotates every

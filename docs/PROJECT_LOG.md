@@ -381,6 +381,15 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### October 29, 2026 — Runner roster: Maya Clark in, Kovan Eskerie out
+
+Maya Clark (MC, cras.mclark6@gmail.com) added with `set-pins.mjs --only … --name` (one
+person — nobody else's PIN moved). Kovan removed by SQL in the chat: staff_pins row deleted,
+auth user `banned_until = 'infinity'`, `user_profiles.deleted_at` set; history keeps his name.
+Roster in `scripts/create-runners.mjs` updated so a full re-run can't recreate him.
+**Note:** `verify_staff_pin` does not check `deleted_at` — deleting the staff_pins row is what
+stops a removed person's PIN. Always do that step when offboarding.
+
 ### October 29, 2026 — Day-rate open deleted staff lines (v1.48.1)
 
 Lori: Rob disappears from WO-1113 day 1 after closing and reopening. The day-rate branch of
