@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.48.3 — Readable backup: folder goes inside the JSON folder when its parent is hidden — Oct 30, 2026
+
+**Why.** Second live run: data loaded (leads 625, calendar 365, billing 223, tenants 24), then `Could not find the parent of the JSON backup folder`. The service account is shared on the JSON folder only; Drive omits `parents` for a folder you were shared into.
+
+**Fix.** Fall back to creating "PRSFlo – Readable Backup" INSIDE the JSON folder. Sharing that subfolder with staff exposes only it (Drive access is inherited down, never up). Read Me "Where" line reworded. **Still untested live:** the Sheets upload/convert and, from the second night, `files.update` replacing "Latest" in place.
+
+**Migrations:** none. **Files:** `scripts/readable-backup.ts`.
+
+---
+
 ## v1.48.2 — Readable backup: first live run fixed — Oct 29, 2026
 
 **Why.** The first nightly run failed: `Loading leads: column leads.updated_at does not exist`. The script's column list was built from `lib/supabase.ts`'s `Lead` type, which lists `updated_at` — the table never got it.

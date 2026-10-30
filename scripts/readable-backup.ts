@@ -362,7 +362,7 @@ function buildWorkbook(d: Data, today: string, pulledAt: Date): ExcelJS.Workbook
   const lines: Array<[string, string, boolean?]> = [
     ['Pulled', pulled],
     ['What this is', 'A read-only copy of PRSFlo, made every night. If PRSFlo is down, use this to see leads, the calendar, billing and tenants. Do not edit it — changes here go nowhere, and tonight\'s copy replaces "Latest" anyway.'],
-    ['Where', `Shared Drive › ${FOLDER_NAME}. "${LATEST_NAME}" is replaced every night; a dated copy is kept for ${KEEP_DAYS} days.`],
+    ['Where', `Google Drive › the backups Shared Drive › ${FOLDER_NAME} — or search Drive for "${LATEST_NAME}". It is replaced every night; a dated copy is kept for ${KEEP_DAYS} days.`],
     ['', ''],
     ['Tab', 'What\'s in it', true],
     ['Leads', `Every open lead (hot, uncontacted, warm, leasing, cold), plus booked and dead leads added or contacted in the last ${LEAD_CLOSED_DAYS} days.  ·  ${counts.leads} rows`],
@@ -409,9 +409,15 @@ async function findInFolder(dr: ReturnType<typeof drive>, folderId: string, name
 }
 
 async function readableFolder(dr: ReturnType<typeof drive>): Promise<string> {
+  // Next to the JSON folder when the service account can see the level above;
+  // otherwise INSIDE it (2026-10-30: the second live run failed here — the
+  // service account is shared on the JSON folder only, and Drive hides the
+  // parent of a folder you were shared into). Inside is still safe to share:
+  // Drive access flows down, never up, so sharing this subfolder with staff
+  // shows them this subfolder and nothing around it.
   const meta = await dr.files.get({ fileId: JSON_BACKUP_FOLDER_ID, fields: 'parents', supportsAllDrives: true })
-  const parent = meta.data.parents?.[0]
-  if (!parent) throw new Error('Could not find the parent of the JSON backup folder')
+  const parent = meta.data.parents?.[0] ?? JSON_BACKUP_FOLDER_ID
+  if (parent === JSON_BACKUP_FOLDER_ID) console.log('Parent of the JSON folder not visible — using a subfolder inside it.')
   const found = await findInFolder(dr, parent, FOLDER_NAME, 'application/vnd.google-apps.folder')
   if (found) return found
   const made = await dr.files.create({
