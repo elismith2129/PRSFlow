@@ -144,13 +144,18 @@ async function load(today: string): Promise<Data> {
   const calFrom = addDaysIso(today, -CAL_BACK_DAYS)
   const calTo = addDaysIso(today, CAL_AHEAD_DAYS)
 
+  // select('*'), NOT a column list (2026-10-29: the first live run died on
+  // "column leads.updated_at does not exist" — lib/supabase.ts's Lead type
+  // lists a column the table never got). A backup must not break because a
+  // TS type drifted from the schema; a missing column just prints blank.
+  // "Touched" = last contact or created, the two dates every lead really has.
   const leads = await all((a, b) => supabase.from('leads')
-    .select('id, fname, lname, company, label, status, source, billing, phone, email, location, session_date, quote, follow_rating, last_contact, created_at, updated_at, notes')
-    .or(`status.not.in.(booked,dead),updated_at.gte.${leadCut}`)
+    .select('*')
+    .or(`status.not.in.(booked,dead),created_at.gte.${leadCut},last_contact.gte.${leadCut}`)
     .order('id').range(a, b), 'leads')
 
   const bookings = await all((a, b) => supabase.from('bookings')
-    .select('id, status, location, studio, start_date, end_date, from_time, to_time, client_name, artist, label, po, engineer_name, assistant_name, wo_number, notes')
+    .select('*')
     .lte('start_date', calTo).gte('end_date', calFrom)
     .order('start_date').order('id').range(a, b), 'bookings')
 
@@ -360,7 +365,7 @@ function buildWorkbook(d: Data, today: string, pulledAt: Date): ExcelJS.Workbook
     ['Where', `Shared Drive › ${FOLDER_NAME}. "${LATEST_NAME}" is replaced every night; a dated copy is kept for ${KEEP_DAYS} days.`],
     ['', ''],
     ['Tab', 'What\'s in it', true],
-    ['Leads', `Every open lead (hot, uncontacted, warm, leasing, cold), plus booked and dead leads touched in the last ${LEAD_CLOSED_DAYS} days.  ·  ${counts.leads} rows`],
+    ['Leads', `Every open lead (hot, uncontacted, warm, leasing, cold), plus booked and dead leads added or contacted in the last ${LEAD_CLOSED_DAYS} days.  ·  ${counts.leads} rows`],
     ['Calendar', `Every booking from ${CAL_BACK_DAYS} days ago to ${CAL_AHEAD_DAYS} days ahead, all four venues, cancelled included. A multi-day booking has one row per day.  ·  ${counts.calendar} rows`],
     ['Billing', `Every work order that isn't paid or closed, plus paid/closed ones from the last ${BILLING_DONE_DAYS} days. Stage, total, paid and balance match the billing hub.  ·  ${counts.billing} rows`],
     ['Tenants', `Every active lease, with last month's, this month's and next month's rent period.  ·  ${counts.tenants} rows`],

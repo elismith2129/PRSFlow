@@ -387,6 +387,7 @@ Maya Clark (MC, cras.mclark6@gmail.com) added with `set-pins.mjs --only … --na
 person — nobody else's PIN moved). Kovan removed by SQL in the chat: staff_pins row deleted,
 auth user `banned_until = 'infinity'`, `user_profiles.deleted_at` set; history keeps his name.
 Roster in `scripts/create-runners.mjs` updated so a full re-run can't recreate him.
+**Never `banned_until = 'infinity'`** — Postgres takes it, but GoTrue can't parse it and every `listUsers` then fails ("Database error finding users"), which broke set-pins for Maya until it was changed to `'2999-12-31'`. Ban with a real date.
 **Note:** `verify_staff_pin` does not check `deleted_at` — deleting the staff_pins row is what
 stops a removed person's PIN. Always do that step when offboarding.
 

@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.48.2 — Readable backup: first live run fixed — Oct 29, 2026
+
+**Why.** The first nightly run failed: `Loading leads: column leads.updated_at does not exist`. The script's column list was built from `lib/supabase.ts`'s `Lead` type, which lists `updated_at` — the table never got it.
+
+**Fix.** Leads and bookings read with `select('*')`, so a type that drifts from the schema can't break the backup again (a missing column prints blank). "Closed leads touched in 90 days" now means created or last contacted in 90 days. **Watch-out:** the `Lead` type's `updated_at` is still wrong — anything else that selects it by name will fail the same way. Staff-facing: nothing (no VERSIONS entry).
+
+**Migrations:** none. **Files:** `scripts/readable-backup.ts`.
+
+---
+
 ## v1.48.1 — Opening a day-rate work order no longer deletes staff lines and second rooms — Oct 29, 2026
 
 **Why.** Lori (WO-1113): "Rob is still not being saved … once you exit and go back in it removes him from first day."
