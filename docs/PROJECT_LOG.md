@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 3, 2026 — Readable backup v2 (v1.49.0)
+
+The sheet went live Oct 30 after three fixes (v1.48.2 schema drift, v1.48.3 hidden Drive
+parent). Eli's verdict: works, but "very hard to read … my team is young", calendar worst,
+wants invoice # and the hub's bins. Rebuilt every tab as banded sections (see CHANGELOG
+v1.49.0). Billing reuses `tabsFor` / `bucketLabel` / `sortBucket` so the bins can never
+drift from the hub. Built in the real script and run against a sample fixture, rendered to
+PNG and checked — the render caught the month-long lockout repeating on every day and the
+Start-here rows clipping text (an exceljs merge on row 1 also wiped the title).
+
 ### October 29, 2026 — Runner roster: Maya Clark in, Kovan Eskerie out
 
 Maya Clark (MC, cras.mclark6@gmail.com) added with `set-pins.mjs --only … --name` (one

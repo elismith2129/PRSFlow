@@ -123,6 +123,8 @@ Newest at the top of each group.*
 
 ## Features parked
 
+- [ ] **Runner note photos upload in the background** — Send posts the note at once; photos shrink on the phone (lib/receiptFile normaliseReceipt), queue in IndexedDB, retry until they land, note shows "📷 2 photos uploading…" (needs a `photos_pending` column). Elie's photos "bugged out" on Nov 3. *(Nov 4)*
+
 - [ ] **Hiring part 2 — the letters:** offer letter + job description form on the case (title, effective date, pay, hours/week, vacation with the prorate shown), send via Resend, sign at `/sign/<token>` (typed name + intent box), PDF to `hr-documents`, Documents rows tick themselves. JD seeds: Asst. Manager and Billing Coordinator from the real docs; Studio Manager drafted from Asst. Manager (no paper JD exists). *(Sep 21)*
 - [ ] **Hiring: one-tap case actions** — "role changed in PRSFlo" and "deactivate + void PIN + reassign" call the real thing instead of being ticks. *(Sep 21)*
 - [ ] **Positions → profiles:** the "role and position changed in PRSFlo" step should set `user_profiles.role` + `position_title` from the case's position in one tap; until then set the position on the profile by hand (SQL) so the next promotion knows whether they already supervise. Also: a way to set `position_title` for everyone currently on staff (one-time). *(Sep 21)*

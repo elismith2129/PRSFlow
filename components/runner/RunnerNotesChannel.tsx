@@ -344,7 +344,13 @@ export function RunnerNotesChannel({
           ))}
         </div>
       )}
-      <RichNoteEditor value={text} onChange={typed} minHeight={room ? 40 : 44} placeholder={`Message ${CHANNEL_SHORT[channel]}…`} />
+      {/* CAPPED (2026-11-04). Elie's long closing note grew the box past the
+          bottom of the phone: Send, 📷 and the rest went off-screen, and the
+          room doesn't scroll (only the feed does), so he couldn't send, close
+          or scroll. The box now stops at about a third of the screen and the
+          text scrolls inside it — the buttons are always reachable. */}
+      <RichNoteEditor value={text} onChange={typed} minHeight={room ? 40 : 44} placeholder={`Message ${CHANNEL_SHORT[channel]}…`}
+        style={{ maxHeight: room ? '32dvh' : 240, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }} />
       {photos.length > 0 && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
           {photos.map(ph => (
@@ -404,7 +410,9 @@ export function RunnerNotesChannel({
     : null
 
   const feed = (
-    <div ref={feedRef} style={room
+    // Tapping the feed puts the keyboard away (2026-11-04) — on a phone there
+    // was no other way out of the note box.
+    <div ref={feedRef} onClick={() => { const a = document.activeElement as HTMLElement | null; if (a && a.isContentEditable) a.blur() }} style={room
       ? { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: '8px 12px 10px', background: 'var(--c-bg)' }
       : { maxHeight, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: '10px 13px 6px' }}>
       {room && haveOlder && (

@@ -20,6 +20,34 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.49.1 — Runner notes: the note box can't swallow the screen — Nov 4, 2026
+
+**Why.** Elie couldn't submit his closing notes ("wasn't able to close out of the text box … or scroll up or down"). Screenshot: the composer's rich-text box grows with every line and had no cap, so a long closing note made it taller than the phone. Send, 📷 and the task chip were pushed below the bottom edge, and the notes room is a fixed-height screen where only the feed scrolls — no way to send, close, or scroll. (He'd also attached photos; those upload full size with no timeout — background upload is parked in TODO.)
+
+- The editor caps at ~a third of the screen in the room (`32dvh`; 240px inline) and scrolls inside; the buttons always stay reachable.
+- Tapping the feed blurs the editor (puts the keyboard away).
+
+**Migrations:** none. **Files:** `components/runner/RunnerNotesChannel.tsx`.
+
+---
+
+## v1.49.0 — Readable backup v2: sections, bins, today first — Nov 3, 2026
+
+**Why.** Eli, after the first good runs: "we need the backup billing section to also show the invoice number … would be great to have bins in billing for each category … for cal, excel sheet too hard to read … overall very hard to read. i know its just reference, but my team is young."
+
+**What.** Every tab is now SECTIONS: a coloured band with a plain-English title + count, then a short table. No filters (they slice across sections); only the header row freezes (a frozen first column eats a phone screen). 11pt type, fewer columns.
+- **Start here** (was Read Me): Updated time on top, one line per tab, a phone tip.
+- **Calendar**: lockouts/tenants listed ONCE in a band at the top with their date range (a month lockout used to fill every day); then **Today**, Tomorrow, each day as a band ("TUESDAY, NOVEMBER 3 · 3 sessions"); the past 30 days below a divider, most recent first. Columns: Time · Studio ("Paramount – Studio A") · Client · Artist · Staff ("Eng: Tom · Asst: Sierra") · Status · WO # · Notes. Cancelled is crossed out.
+- **Billing → two tabs, Labels and COD**, in the hub's own bins (`tabsFor(pipeline)` order, + Closed) and the hub's own in-bin order (`sortBucket`). Band shows count, $ owed, and what the bin means. Per-bin totals. **Invoice # is column 2**, beside WO # (it was column 11 of 14).
+- **Leads**: bins by status, Hot → Not contacted → Warm → Leasing → Cold → Booked → Did not book.
+- **Tenants**: This month / Last month / Next month bands with $ not paid and late count.
+
+**Rejected:** a tab per billing bin (11 tabs — unusable on a phone); a room-by-day calendar grid (11 room columns don't fit a phone). Mock: `docs/design-refs/readable-backup-v2-sample.xlsx` (sample data, rendered and checked).
+
+**Migrations:** none. **Files:** `scripts/readable-backup.ts`.
+
+---
+
 ## v1.48.3 — Readable backup: folder goes inside the JSON folder when its parent is hidden — Oct 30, 2026
 
 **Why.** Second live run: data loaded (leads 625, calendar 365, billing 223, tenants 24), then `Could not find the parent of the JSON backup folder`. The service account is shared on the JSON folder only; Drive omits `parents` for a folder you were shared into.

@@ -42,10 +42,10 @@ import { google } from 'googleapis'
 import { Readable } from 'node:stream'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { supabase } from '@/lib/supabase'
-import { fetchInvoices, billingStage, type InvoiceRow } from '@/lib/billing'
+import { fetchInvoices, billingStage, tabsFor, bucketLabel, sortBucket, type InvoiceRow, type Pipeline, type BucketKey } from '@/lib/billing'
 import {
   fetchLeases, fetchRentStamps, periodFor, leaseActiveIn, stampKey,
-  isRentPartial, isRentLate, currentMonth, shiftMonth, type Lease, type RentStamp,
+  isRentPartial, isRentLate, currentMonth, shiftMonth, monthLabel, type Lease, type RentStamp,
 } from '@/lib/tenants'
 import { getLocalToday, timeToMins } from '@/lib/time'
 
@@ -184,207 +184,332 @@ async function load(today: string): Promise<Data> {
 
 const tenantMonths = () => [shiftMonth(currentMonth(), -1), currentMonth(), shiftMonth(currentMonth(), 1)]
 
-// ─── Rows per tab ────────────────────────────────────────────────────────────
+// ─── Layout (v2, Eli 2026-11-03) ─────────────────────────────────────────────
+// "overall very hard to read … my team is young." v1 was one flat table per
+// tab, 14 columns wide. v2: every tab is SECTIONS — a coloured band with a
+// plain-English title and a count, then a short table under it. Fewer
+// columns, bigger type, today at the top of Calendar, the hub's own bins on
+// Billing (one tab per side: Labels, COD), Invoice # beside WO #.
+// Section bands use merged cells; no filters (a filter would slice across
+// sections). Only the header row freezes — a frozen first column eats a
+// phone screen.
 
-const LEAD_ORDER: Record<string, number> = { hot: 0, uncontacted: 1, warm: 2, leasing: 3, cold: 4, booked: 5, dead: 6 }
+const NAVY = 'FF1F3A5F', INK = 'FF1B2430', MUTED = 'FF5A6472', LINE = 'FFE1E6EC', BAND_ROW = 'FFF6F8FA'
+const MONEY = '"$"#,##0.00;[Red]-"$"#,##0.00;"–"'
+const DATE = 'ddd, mmm d'
+const SIZE = 11
 
-function leadRows(d: Data) {
-  return [...d.leads]
-    .sort((a, b) => (LEAD_ORDER[a.status] ?? 9) - (LEAD_ORDER[b.status] ?? 9)
-      || String(b.created_at).localeCompare(String(a.created_at)))
-    .map(l => [
-      join(l.fname, l.lname) || '(no name)', join(l.company, l.label && l.label !== l.company ? l.label : ''),
-      cap(l.status), l.source ?? '', l.billing ?? '', l.phone ?? '', l.email ?? '', l.location ?? '',
-      day(l.session_date), l.quote ?? '', l.follow_rating ?? null, laDay(l.last_contact), laDay(l.created_at), l.notes ?? '',
-    ])
+/** Band colour per section kind — soft, so black text stays readable. */
+const TONE: Record<string, string> = {
+  hot: 'FFFDE2E1', warm: 'FFFFF1D6', cool: 'FFE3ECF7', good: 'FFDFF3E4', grey: 'FFEDEFF2', purple: 'FFEDE7F6', teal: 'FFE0F2F1', today: 'FFFFF1D6',
 }
 
-function calendarRows(d: Data, today: string) {
-  const from = addDaysIso(today, -CAL_BACK_DAYS), to = addDaysIso(today, CAL_AHEAD_DAYS)
-  const out: any[][] = []
-  for (const b of d.bookings) {
-    const start = b.start_date, end = b.end_date && b.end_date >= start ? b.end_date : start
-    const total = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1
-    for (let i = 0, dt = start; dt <= end && i < 400; i++, dt = addDaysIso(dt, 1)) {
-      if (dt < from || dt > to) continue
-      out.push([
-        day(dt), clock(b.from_time), clock(b.to_time), b.location ?? '', b.studio ?? '', cap(b.status),
-        b.client_name ?? '', b.artist ?? '', b.label ?? '', b.engineer_name ?? '', b.assistant_name ?? '',
-        b.wo_number ?? '', b.po ?? '', join(total > 1 ? `Day ${i + 1} of ${total}.` : '', b.notes),
-      ])
+type Col = { h: string; w: number; fmt?: string; wrap?: true; right?: true; indent?: number }
+type Section = { title: string; note?: string; tone: string; rows: any[][]; totals?: Record<number, number>; dim?: (row: any[]) => boolean; divider?: true }
+
+function sheet(wb: ExcelJS.Workbook, name: string, intro: string, cols: Col[], sections: Section[]): number {
+  const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', ySplit: 2, showGridLines: false }] })
+  cols.forEach((c, i) => { ws.getColumn(i + 1).width = c.w })
+  const n = cols.length
+  const font = (o: Partial<ExcelJS.Font> = {}): Partial<ExcelJS.Font> => ({ name: 'Arial', size: SIZE, color: { argb: INK }, ...o })
+
+  ws.mergeCells(1, 1, 1, n)
+  ws.getCell(1, 1).value = intro
+  ws.getCell(1, 1).font = font({ italic: true, size: 10, color: { argb: MUTED } })
+  ws.getRow(1).height = 20
+
+  cols.forEach((c, i) => {
+    const cell = ws.getCell(2, i + 1)
+    cell.value = c.h
+    cell.font = font({ bold: true, color: { argb: 'FFFFFFFF' } })
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }
+    cell.alignment = { vertical: 'middle', horizontal: c.right ? 'right' : 'left', wrapText: true }
+  })
+  ws.getRow(2).height = 26
+
+  let r = 3, total = 0
+  for (const s of sections) {
+    r++ // breathing room above every band
+    ws.mergeCells(r, 1, r, n)
+    const band = ws.getCell(r, 1)
+    band.value = s.note ? `${s.title}   ·   ${s.note}` : s.title
+    band.font = font({ bold: true, size: 12 })
+    band.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TONE[s.tone] ?? TONE.grey } }
+    band.alignment = { vertical: 'middle', indent: 1 }
+    ws.getRow(r).height = 26
+    r++
+    if (s.divider) continue
+    if (s.rows.length === 0) {
+      ws.getCell(r, 1).value = 'Nothing here.'
+      ws.getCell(r, 1).font = font({ italic: true, color: { argb: MUTED } })
+      r++
+      continue
+    }
+    s.rows.forEach((row, i) => {
+      const dim = s.dim?.(row) ?? false
+      cols.forEach((c, ci) => {
+        const cell = ws.getCell(r, ci + 1)
+        const v = row[ci]
+        cell.value = v === '' || v === undefined ? null : v
+        cell.font = font(dim ? { color: { argb: MUTED }, strike: true } : {})
+        cell.alignment = { vertical: 'top', wrapText: !!c.wrap, horizontal: c.right ? 'right' : 'left', indent: c.indent }
+        cell.border = { bottom: { style: 'thin', color: { argb: LINE } } }
+        if (c.fmt) cell.numFmt = c.fmt
+        if (i % 2) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND_ROW } }
+      })
+      ws.getRow(r).height = 20
+      r++; total++
+    })
+    if (s.totals) {
+      const first = Math.min(...Object.keys(s.totals).map(Number))
+      ws.getCell(r, first).value = 'Total'
+      ws.getCell(r, first).font = font({ bold: true })
+      ws.getCell(r, first).alignment = { horizontal: 'right' }
+      for (const [k, v] of Object.entries(s.totals)) {
+        const cell = ws.getCell(r, Number(k) + 1)
+        cell.value = Math.round(v * 100) / 100
+        cell.numFmt = MONEY
+        cell.font = font({ bold: true })
+        cell.alignment = { horizontal: 'right' }
+        cell.border = { top: { style: 'medium', color: { argb: NAVY } } }
+      }
+      r++
     }
   }
-  const studioKey = (r: any[]) => `${r[3]}|${r[4]}`
-  return out.sort((a, b) => a[0] - b[0] || studioKey(a).localeCompare(studioKey(b)))
+  return total
 }
 
-function billingRows(d: Data, today: string) {
+const money = (n: number) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`
+const longDay = (iso: string) => {
+  const d = day(iso)!
+  return d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase()
+}
+
+// ─── Leads ───────────────────────────────────────────────────────────────────
+
+const LEAD_BINS: Array<{ key: string; title: string; tone: string }> = [
+  { key: 'hot', title: 'HOT', tone: 'hot' },
+  { key: 'uncontacted', title: 'NOT CONTACTED YET', tone: 'purple' },
+  { key: 'warm', title: 'WARM', tone: 'warm' },
+  { key: 'leasing', title: 'LEASING (room rental talks)', tone: 'teal' },
+  { key: 'cold', title: 'COLD', tone: 'cool' },
+  { key: 'booked', title: `BOOKED (last ${LEAD_CLOSED_DAYS} days)`, tone: 'good' },
+  { key: 'dead', title: `DID NOT BOOK (last ${LEAD_CLOSED_DAYS} days)`, tone: 'grey' },
+]
+
+function leadsSheet(wb: ExcelJS.Workbook, d: Data) {
+  const row = (l: any) => [
+    join(l.fname, l.lname) || '(no name)',
+    join(l.company, l.label && l.label !== l.company ? l.label : ''),
+    l.phone ?? '', l.email ?? '', day(l.session_date), l.location ?? '', l.quote ?? '',
+    laDay(l.last_contact), laDay(l.created_at), l.source ?? '', l.notes ?? '',
+  ]
+  const known = new Set(LEAD_BINS.map(b => b.key))
+  const bins = [...LEAD_BINS, { key: '__other', title: 'OTHER', tone: 'grey' }]
+  const sections = bins.map(b => {
+    const list = d.leads
+      .filter(l => (b.key === '__other' ? !known.has(l.status) : l.status === b.key))
+      .sort((a, z) => String(z.created_at).localeCompare(String(a.created_at)))
+    return { title: b.title, note: plural(list.length, 'lead'), tone: b.tone, rows: list.map(row) }
+  }).filter(s => s.rows.length || s.title !== 'OTHER')
+  return sheet(wb, 'Leads', 'Grouped by status, hottest first. Newest lead at the top of each group.', [
+    { h: 'Name', w: 24 }, { h: 'Company / Label', w: 20 }, { h: 'Phone', w: 16 }, { h: 'Email', w: 28 },
+    { h: 'Session wanted', w: 15, fmt: DATE }, { h: 'Studio', w: 12 }, { h: 'Quote', w: 13 },
+    { h: 'Last contact', w: 14, fmt: DATE }, { h: 'Added', w: 13, fmt: DATE }, { h: 'Came from', w: 14 },
+    { h: 'Notes', w: 44, wrap: true },
+  ], sections)
+}
+
+// ─── Calendar ────────────────────────────────────────────────────────────────
+
+const VENUE_ORDER = ['Paramount', 'Ameraycan', 'Encore', 'Track']
+
+function calendarSheet(wb: ExcelJS.Workbook, d: Data, today: string) {
+  const from = addDaysIso(today, -CAL_BACK_DAYS), to = addDaysIso(today, CAL_AHEAD_DAYS)
+  type Ev = { date: string; venueRank: number; room: string; cancelled: boolean; row: any[] }
+  const evs: Ev[] = []
+  // LOCKOUTS + TENANTS ONCE, NOT DAILY (2026-11-03 render: a month-long
+  // lockout filled every day of the list with the same line). They get one
+  // row each, in a band above Today, with their date range.
+  const short = (iso: string) => day(iso)!.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+  const standing: any[][] = []
+  for (const b of d.bookings) {
+    const start = b.start_date, end = b.end_date && b.end_date >= start ? b.end_date : start
+    if (b.status === 'lockout' || b.status === 'tenant') {
+      standing.push([start === end ? short(start) : `${short(start)} – ${short(end)}`, join(b.location, b.studio ? `– ${b.studio}` : ''),
+        b.client_name ?? '', b.artist ?? '', '', cap(b.status), b.wo_number ?? '', b.notes ?? ''])
+      continue
+    }
+    const span = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1
+    for (let i = 0, dt = start; dt <= end && i < 400; i++, dt = addDaysIso(dt, 1)) {
+      if (dt < from || dt > to) continue
+      const time = [clock(b.from_time), clock(b.to_time)].filter(Boolean).join(' – ')
+      const staff = [b.engineer_name ? `Eng: ${b.engineer_name}` : '', b.assistant_name ? `Asst: ${b.assistant_name}` : ''].filter(Boolean).join('  ·  ')
+      const note = join(span > 1 ? `Day ${i + 1} of ${span}.` : '', b.notes)
+      const room = b.studio ?? ''
+      evs.push({
+        date: dt, venueRank: VENUE_ORDER.indexOf(b.location) < 0 ? 9 : VENUE_ORDER.indexOf(b.location), room,
+        cancelled: b.status === 'cancelled',
+        row: [time || 'Time TBD', join(b.location, room ? `– ${room}` : ''), b.client_name ?? '', b.artist ?? '',
+          staff, cap(b.status), b.wo_number ?? '', note],
+      })
+    }
+  }
+  const byDay = new Map<string, Ev[]>()
+  for (const e of evs) byDay.set(e.date, [...(byDay.get(e.date) ?? []), e])
+  const sortDay = (list: Ev[]) => list.sort((a, z) =>
+    Number(a.cancelled) - Number(z.cancelled) || a.venueRank - z.venueRank || a.room.localeCompare(z.room))
+  const tomorrow = addDaysIso(today, 1)
+  const section = (date: string): Section => {
+    const list = sortDay(byDay.get(date) ?? [])
+    const live = list.filter(e => !e.cancelled).length
+    const tag = date === today ? 'TODAY  ·  ' : date === tomorrow ? 'TOMORROW  ·  ' : ''
+    return {
+      title: tag + longDay(date), note: plural(live, 'session'),
+      tone: date === today ? 'today' : date < today ? 'grey' : 'cool',
+      rows: list.map(e => e.row), dim: row => row[5] === 'Cancelled',
+    }
+  }
+  const upcoming = [...byDay.keys()].filter(k => k >= today).sort()
+  const past = [...byDay.keys()].filter(k => k < today).sort().reverse()
+  if (!upcoming.includes(today)) upcoming.unshift(today) // "Today · nothing booked" beats a missing day
+  const sections = [
+    ...(standing.length ? [{ title: 'LOCKOUTS & TENANTS', note: `${plural(standing.length, 'room')} booked for a stretch — not repeated on each day below`, tone: 'teal', rows: standing }] : []),
+    ...upcoming.map(section),
+    ...(past.length ? [{ title: `PAST ${CAL_BACK_DAYS} DAYS  ·  most recent first`, tone: 'grey', rows: [] as any[][], divider: true as const }] : []),
+    ...past.map(section),
+  ].filter(s => s.rows.length || s.divider || s.title.startsWith('TODAY'))
+  return sheet(wb, 'Calendar', `Today at the top, then the next ${CAL_AHEAD_DAYS} days. The last ${CAL_BACK_DAYS} days are at the bottom. Cancelled sessions are crossed out.`, [
+    { h: 'Time / dates', w: 21 }, { h: 'Studio', w: 22 }, { h: 'Client', w: 24 }, { h: 'Artist', w: 20 },
+    { h: 'Staff', w: 30 }, { h: 'Status', w: 12 }, { h: 'WO #', w: 10 }, { h: 'Notes', w: 40, wrap: true },
+  ], sections)
+}
+
+// ─── Billing — the hub's own bins, one tab per side ──────────────────────────
+
+const BIN_TONE: Partial<Record<BucketKey, string>> = {
+  balance: 'hot', progress: 'warm', review: 'warm', notstarted: 'grey', po: 'purple', awaiting: 'cool', paid: 'good', closed: 'grey',
+}
+const BIN_NOTE: Partial<Record<BucketKey, string>> = {
+  balance: 'money still owed on a COD session — collect it',
+  progress: 'being worked on',
+  review: 'money is in — check the work order',
+  notstarted: 'first day is still in the future',
+  po: 'waiting on the client\'s PO number',
+  awaiting: 'invoice sent — waiting on payment',
+  paid: `paid in the last ${BILLING_DONE_DAYS} days`,
+  closed: `written off or voided in the last ${BILLING_DONE_DAYS} days`,
+}
+
+function billingSheet(wb: ExcelJS.Workbook, d: Data, today: string, pipeline: Pipeline) {
   const cut = addDaysIso(today, -BILLING_DONE_DAYS)
-  return d.invoices
-    .map(r => ({ r, stage: billingStage(r) }))
-    .filter(({ r, stage }) => {
-      if (stage.key !== 'paid' && stage.key !== 'closed') return true
-      const last = (r.paidAt ?? r.sessionDate ?? '').slice(0, 10)
-      return last >= cut
-    })
-    .sort((a, b) => String(b.r.sessionDate ?? '').localeCompare(String(a.r.sessionDate ?? '')))
-    .map(({ r, stage }) => [
-      r.woNumber ?? '', day(r.sessionDate), r.client ?? '', r.artist ?? '', r.isCod ? 'COD' : 'Billing',
-      r.poNumber ?? '', stage.label, r.total ?? 0, r.paid ?? 0, r.balance ?? 0,
-      r.invoiceNumber ?? '', laDay(r.sentAt), laDay(r.paidAt), d.collectionNotes[r.workOrderId] ?? '',
-    ])
+  const rows = d.invoices.filter(r => r.pipeline === pipeline).filter(r => {
+    if (r.bucket !== 'paid' && r.bucket !== 'closed') return true
+    return (r.paidAt ?? r.sessionDate ?? '').slice(0, 10) >= cut
+  })
+  const bins = [...tabsFor(pipeline).map(b => b.key)]
+  if (!bins.includes('closed')) bins.push('closed')
+  for (const r of rows) if (!bins.includes(r.bucket)) bins.push(r.bucket)
+  const sections: Section[] = bins.map(key => {
+    const list = sortBucket(rows.filter(r => r.bucket === key), key)
+    const owed = list.reduce((s, r) => s + (r.balance ?? 0), 0)
+    const t = { 7: 0, 8: 0, 9: 0 } as Record<number, number>
+    for (const r of list) { t[7] += r.total ?? 0; t[8] += r.paid ?? 0; t[9] += r.balance ?? 0 }
+    return {
+      title: bucketLabel(key).toUpperCase(),
+      note: [plural(list.length, 'work order'), owed > 0.005 ? `${money(owed)} owed` : '', BIN_NOTE[key] ?? ''].filter(Boolean).join('  ·  '),
+      tone: BIN_TONE[key] ?? 'grey',
+      rows: list.map(r => [
+        r.woNumber ?? '', r.invoiceNumber ?? '', day(r.sessionDate), r.client ?? '', r.artist ?? '',
+        billingStage(r).label, r.poNumber ?? '', r.total ?? 0, r.paid ?? 0, r.balance ?? 0,
+        laDay(r.sentAt), laDay(r.paidAt), d.collectionNotes[r.workOrderId] ?? '',
+      ]),
+      totals: list.length > 1 ? t : undefined,
+    }
+  })
+  const side = pipeline === 'cod' ? 'COD (paid at the studio)' : 'Labels (invoiced)'
+  return sheet(wb, pipeline === 'cod' ? 'Billing – COD' : 'Billing – Labels',
+    `${side}. Same bins and the same money as the billing hub. Oldest work first inside each bin.`, [
+      { h: 'WO #', w: 10 }, { h: 'Invoice #', w: 12 }, { h: 'Session', w: 13, fmt: DATE }, { h: 'Client', w: 24 },
+      { h: 'Artist', w: 18 }, { h: 'Stage', w: 16 }, { h: 'PO #', w: 12 },
+      { h: 'Total', w: 13, fmt: MONEY, right: true }, { h: 'Paid', w: 13, fmt: MONEY, right: true }, { h: 'Still owed', w: 14, fmt: MONEY, right: true },
+      { h: '   Invoice sent', w: 16, fmt: DATE, indent: 3 }, { h: 'Paid on', w: 13, fmt: DATE }, { h: 'Latest note', w: 42, wrap: true },
+    ], sections)
 }
 
-function tenantRows(d: Data) {
-  const out: any[][] = []
-  for (const month of tenantMonths()) {
+// ─── Tenants ─────────────────────────────────────────────────────────────────
+
+function tenantsSheet(wb: ExcelJS.Workbook, d: Data) {
+  const order: Array<[string, string]> = [
+    [currentMonth(), 'THIS MONTH'], [shiftMonth(currentMonth(), -1), 'LAST MONTH'], [shiftMonth(currentMonth(), 1), 'NEXT MONTH'],
+  ]
+  const sections: Section[] = order.map(([month, label]) => {
+    const rows: any[][] = []
+    let owed = 0
     for (const lease of d.leases) {
       const p = periodFor(lease, month)
       if (!leaseActiveIn(lease, p)) continue
       const s = d.stamps[stampKey(lease.id, month, 'rent')]
-      const status = s?.paidAt ? 'Paid' : isRentPartial(s) ? 'Partial' : isRentLate(s, p) ? 'Late' : 'Open'
-      out.push([
-        lease.tenant, lease.venue, lease.roomLabel, s?.amount ?? lease.amount, p.label,
-        laDay(s?.sentAt), laDay(s?.paidAt), s?.paidAmount ?? (s?.paidAt ? s?.amount ?? lease.amount : null),
-        status, s?.qbAt ? 'Yes' : 'No',
-      ])
+      const status = s?.paidAt ? 'Paid' : isRentPartial(s) ? 'Part paid' : isRentLate(s, p) ? 'LATE' : 'Not due yet'
+      const rent = s?.amount ?? lease.amount
+      const paid = s?.paidAmount ?? (s?.paidAt ? rent : 0)
+      if (!s?.paidAt) owed += Math.max(0, rent - (paid ?? 0))
+      rows.push([lease.tenant, join(lease.venue, `– ${lease.roomLabel}`), p.label, rent, status, paid || null,
+        laDay(s?.paidAt), laDay(s?.sentAt), s?.qbAt ? 'Yes' : 'No'])
     }
-  }
-  return out
-}
-
-// ─── Workbook ────────────────────────────────────────────────────────────────
-
-const NAVY = 'FF1F3A5F', BAND = 'FFF2F5F9', LINE = 'FFD9DEE5'
-const MONEY = '"$"#,##0.00;[Red]-"$"#,##0.00;"-"'
-const DATE = 'ddd mmm d, yyyy'
-const FILL: Record<string, string> = {
-  Hot: 'FDE2E1', Warm: 'FFF1D6', Cold: 'E3ECF7', Uncontacted: 'EDE7F6', Booked: 'DFF3E4', Dead: 'EEEEEE', Leasing: 'E0F2F1',
-  Confirmed: 'DFF3E4', Tentative: 'FFF1D6', Cancelled: 'EEEEEE', Lockout: 'E0F2F1', Tenant: 'E0F2F1', Tour: 'EDE7F6',
-  Paid: 'DFF3E4', Partial: 'FFF1D6', Open: 'E3ECF7', Late: 'FDE2E1',
-  'Balance due': 'FDE2E1', 'Not approved': 'FDE2E1', Sent: 'E3ECF7', 'Awaiting PO': 'FFF1D6',
-  'Needs invoice': 'FFF1D6', 'Needs review': 'FFF1D6', 'Needs approval': 'FFF1D6', 'Ready to send': 'E3ECF7', Approved: 'DFF3E4',
-}
-
-type Col = { h: string; w: number; fmt?: string; status?: true; wrap?: true }
-
-function tab(wb: ExcelJS.Workbook, name: string, note: string, cols: Col[], rows: any[][], totals?: number[]) {
-  const ws = wb.addWorksheet(name, { views: [{ state: 'frozen', xSplit: 1, ySplit: 2, showGridLines: false }] })
-  ws.getCell(1, 1).value = note
-  ws.getCell(1, 1).font = { name: 'Arial', italic: true, size: 9, color: { argb: 'FF5A6472' } }
-  cols.forEach((c, i) => {
-    const cell = ws.getCell(2, i + 1)
-    cell.value = c.h
-    cell.font = { name: 'Arial', bold: true, size: 10, color: { argb: 'FFFFFFFF' } }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }
-    cell.alignment = { vertical: 'middle', wrapText: true }
-    ws.getColumn(i + 1).width = c.w
-  })
-  ws.getRow(2).height = 30
-  rows.forEach((row, ri) => {
-    const r = ws.getRow(ri + 3)
-    cols.forEach((c, ci) => {
-      const cell = r.getCell(ci + 1)
-      const v = row[ci]
-      cell.value = v === '' || v === undefined ? null : v
-      cell.font = { name: 'Arial', size: 10 }
-      cell.border = { bottom: { style: 'thin', color: { argb: LINE } } }
-      cell.alignment = { vertical: 'top', wrapText: !!c.wrap }
-      if (c.fmt) cell.numFmt = c.fmt
-      if (ri % 2) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND } }
-      if (c.status && typeof v === 'string' && FILL[v]) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + FILL[v] } }
-        cell.font = { name: 'Arial', size: 10, bold: true }
-      }
-    })
-  })
-  if (rows.length === 0) {
-    ws.getCell(3, 1).value = '(nothing in this range)'
-    ws.getCell(3, 1).font = { name: 'Arial', italic: true, size: 10, color: { argb: 'FF5A6472' } }
-  } else {
-    ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: rows.length + 2, column: cols.length } }
-  }
-  if (totals && rows.length) {
-    const tr = ws.getRow(rows.length + 3)
-    tr.getCell(totals[0] - 1).value = 'TOTALS'
-    tr.getCell(totals[0] - 1).font = { name: 'Arial', bold: true, size: 10 }
-    for (const c of totals) {
-      const cell = tr.getCell(c)
-      const L = ws.getColumn(c).letter
-      const sum = rows.reduce((s, r) => s + (Number(r[c - 1]) || 0), 0)
-      cell.value = { formula: `SUM(${L}3:${L}${rows.length + 2})`, result: Math.round(sum * 100) / 100 }
-      cell.numFmt = MONEY
-      cell.font = { name: 'Arial', bold: true, size: 10 }
-      cell.border = { top: { style: 'medium', color: { argb: NAVY } } }
+    const late = rows.filter(r => r[4] === 'LATE').length
+    return {
+      title: `${label}  (${monthLabel(month)})`,
+      note: [plural(rows.length, 'tenant'), owed > 0.005 ? `${money(owed)} not paid yet` : 'all paid', late ? `${late} late` : ''].filter(Boolean).join('  ·  '),
+      tone: late ? 'hot' : owed > 0.005 ? 'cool' : 'good', rows,
     }
-  }
-  return rows.length
+  })
+  return sheet(wb, 'Tenants', 'Monthly room rentals. This month first, then last month, then next month.', [
+    { h: 'Tenant', w: 24 }, { h: 'Room', w: 24 }, { h: 'Rent period', w: 18 }, { h: 'Rent', w: 13, fmt: MONEY, right: true },
+    { h: '   Status', w: 15, indent: 3 }, { h: 'Amount paid', w: 13, fmt: MONEY, right: true }, { h: '   Paid on', w: 16, fmt: DATE, indent: 3 },
+    { h: '  Rent email sent', w: 18, fmt: DATE, indent: 2 }, { h: 'In QuickBooks', w: 15 },
+  ], sections)
 }
+
+// ─── Read Me + workbook ──────────────────────────────────────────────────────
 
 function buildWorkbook(d: Data, today: string, pulledAt: Date): ExcelJS.Workbook {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'PRSFlo'
-  const readMe = wb.addWorksheet('Read Me', { views: [{ showGridLines: false }] })
-
+  const readMe = wb.addWorksheet('Start here', { views: [{ showGridLines: false }] })
   const counts = {
-    leads: tab(wb, 'Leads', `Open leads + booked/dead from the last ${LEAD_CLOSED_DAYS} days · hottest first`, [
-      { h: 'Name', w: 22 }, { h: 'Company / Label', w: 18 }, { h: 'Status', w: 12, status: true },
-      { h: 'Source', w: 13 }, { h: 'COD or Billing', w: 12 }, { h: 'Phone', w: 15 }, { h: 'Email', w: 26 },
-      { h: 'Venue', w: 12 }, { h: 'Session date', w: 18, fmt: DATE }, { h: 'Quote', w: 12 },
-      { h: 'Follow-up rating', w: 10 }, { h: 'Last contact', w: 18, fmt: DATE }, { h: 'Added', w: 18, fmt: DATE },
-      { h: 'Notes', w: 40, wrap: true },
-    ], leadRows(d)),
-    calendar: tab(wb, 'Calendar', `${CAL_BACK_DAYS} days back through ${CAL_AHEAD_DAYS} days ahead · one row per room per day`, [
-      { h: 'Date', w: 18, fmt: DATE }, { h: 'Start', w: 10 }, { h: 'End', w: 10 }, { h: 'Venue', w: 12 },
-      { h: 'Room', w: 11 }, { h: 'Status', w: 12, status: true }, { h: 'Client', w: 20 }, { h: 'Artist', w: 18 },
-      { h: 'Label', w: 14 }, { h: 'Engineer', w: 14 }, { h: 'Assistant', w: 13 }, { h: 'WO #', w: 10 },
-      { h: 'PO #', w: 11 }, { h: 'Notes', w: 34, wrap: true },
-    ], calendarRows(d, today)),
-    billing: tab(wb, 'Billing', `Every work order not paid or closed, + paid/closed in the last ${BILLING_DONE_DAYS} days · same stage and money as the billing hub`, [
-      { h: 'WO #', w: 10 }, { h: 'Session date', w: 18, fmt: DATE }, { h: 'Client', w: 22 }, { h: 'Artist', w: 18 },
-      { h: 'COD or Billing', w: 12 }, { h: 'PO #', w: 12 }, { h: 'Stage', w: 15, status: true },
-      { h: 'Total', w: 13, fmt: MONEY }, { h: 'Paid', w: 13, fmt: MONEY }, { h: 'Balance', w: 13, fmt: MONEY },
-      { h: 'Invoice #', w: 12 }, { h: 'Invoice sent', w: 18, fmt: DATE }, { h: 'Paid on', w: 18, fmt: DATE },
-      { h: 'Latest collection note', w: 36, wrap: true },
-    ], billingRows(d, today), [8, 9, 10]),
-    tenants: tab(wb, 'Tenants', 'Active leases · last, this and next rent period', [
-      { h: 'Tenant', w: 22 }, { h: 'Venue', w: 12 }, { h: 'Room', w: 14 }, { h: 'Rent', w: 13, fmt: MONEY },
-      { h: 'Rent period', w: 18 }, { h: 'Email sent', w: 18, fmt: DATE }, { h: 'Paid on', w: 18, fmt: DATE },
-      { h: 'Amount paid', w: 13, fmt: MONEY }, { h: 'Status', w: 11, status: true }, { h: 'In QuickBooks', w: 13 },
-    ], tenantRows(d)),
+    calendar: calendarSheet(wb, d, today),
+    labels: billingSheet(wb, d, today, 'billing'),
+    cod: billingSheet(wb, d, today, 'cod'),
+    leads: leadsSheet(wb, d),
+    tenants: tenantsSheet(wb, d),
   }
-
-  readMe.getColumn(1).width = 24
-  readMe.getColumn(2).width = 84
-  readMe.getCell('A1').value = 'PRSFlo — Readable Backup'
-  readMe.getCell('A1').font = { name: 'Arial', bold: true, size: 16, color: { argb: NAVY } }
-  const pulled = pulledAt.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-  const lines: Array<[string, string, boolean?]> = [
-    ['Pulled', pulled],
-    ['What this is', 'A read-only copy of PRSFlo, made every night. If PRSFlo is down, use this to see leads, the calendar, billing and tenants. Do not edit it — changes here go nowhere, and tonight\'s copy replaces "Latest" anyway.'],
-    ['Where', `Google Drive › the backups Shared Drive › ${FOLDER_NAME} — or search Drive for "${LATEST_NAME}". It is replaced every night; a dated copy is kept for ${KEEP_DAYS} days.`],
-    ['', ''],
-    ['Tab', 'What\'s in it', true],
-    ['Leads', `Every open lead (hot, uncontacted, warm, leasing, cold), plus booked and dead leads added or contacted in the last ${LEAD_CLOSED_DAYS} days.  ·  ${counts.leads} rows`],
-    ['Calendar', `Every booking from ${CAL_BACK_DAYS} days ago to ${CAL_AHEAD_DAYS} days ahead, all four venues, cancelled included. A multi-day booking has one row per day.  ·  ${counts.calendar} rows`],
-    ['Billing', `Every work order that isn't paid or closed, plus paid/closed ones from the last ${BILLING_DONE_DAYS} days. Stage, total, paid and balance match the billing hub.  ·  ${counts.billing} rows`],
-    ['Tenants', `Every active lease, with last month's, this month's and next month's rent period.  ·  ${counts.tenants} rows`],
-    ['', ''],
-    ['If something looks wrong', 'Check "Pulled" first. If it is more than a day old, last night\'s backup failed — tell Eli.'],
-  ]
-  lines.forEach(([k, v, head], i) => {
-    const a = readMe.getCell(i + 3, 1), b = readMe.getCell(i + 3, 2)
-    a.value = k || null; b.value = v || null
-    a.font = { name: 'Arial', bold: true, size: 10 }
-    b.font = { name: 'Arial', size: 10 }
-    a.alignment = { vertical: 'top' }
-    b.alignment = { vertical: 'top', wrapText: true }
-    if (head) for (const c of [a, b]) {
-      c.font = { name: 'Arial', bold: true, size: 10, color: { argb: 'FFFFFFFF' } }
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } }
-    }
-  })
-  console.log(`Rows — leads ${counts.leads}, calendar ${counts.calendar}, billing ${counts.billing}, tenants ${counts.tenants}`)
+  const pulled = pulledAt.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  readMe.getColumn(1).width = 20
+  readMe.getColumn(2).width = 90
+  const put = (r: number, a: string, b: string, o: { head?: boolean; big?: boolean; tone?: string } = {}) => {
+    const A = readMe.getCell(r, 1), B = readMe.getCell(r, 2)
+    A.value = a || null; B.value = b || null
+    A.font = { name: 'Arial', size: o.big ? 16 : SIZE, bold: true, color: { argb: o.head ? 'FFFFFFFF' : (o.big ? NAVY : INK) } }
+    B.font = { name: 'Arial', size: SIZE, bold: !!o.head, color: { argb: o.head ? 'FFFFFFFF' : INK } }
+    A.alignment = { vertical: 'top' }; B.alignment = { vertical: 'top', wrapText: true }
+    const fill = o.head ? NAVY : o.tone ? TONE[o.tone] : null
+    if (fill) for (const c of [A, B]) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
+    // tall enough for two wrapped lines — 22 clipped the descriptions
+    readMe.getRow(r).height = o.big ? 32 : (b.length > 75 ? 36 : 22)
+  }
+  put(1, 'PRSFlo Backup', '', { big: true })
+  put(3, 'Updated', `${pulled}  —  if this is more than a day old, tell Eli.`, { tone: 'today' })
+  put(4, 'What this is', 'A read-only copy of PRSFlo for when the app is down. Typing here changes nothing in PRSFlo.')
+  put(6, 'Tab', 'What\'s in it', { head: true })
+  put(7, 'Calendar', `Every session, today first, then the next ${CAL_AHEAD_DAYS} days. Lockouts and tenants are listed once at the top.  ·  ${counts.calendar} rows`)
+  put(8, 'Billing – Labels', `Label work orders in the billing hub's bins — In progress, Awaiting PO, Awaiting payment, Paid…  ·  ${counts.labels} rows`)
+  put(9, 'Billing – COD', `COD work orders in the hub's bins — Balance due first.  ·  ${counts.cod} rows`)
+  put(10, 'Leads', `Every open lead, grouped Hot → Cold, plus booked / did-not-book from the last ${LEAD_CLOSED_DAYS} days.  ·  ${counts.leads} rows`)
+  put(11, 'Tenants', `Monthly room rent — this month, last month, next month.  ·  ${counts.tenants} rows`)
+  put(13, 'Tip', 'On a phone, the tabs are along the bottom of the screen. Swipe them sideways to see them all.')
+  console.log(`Rows — calendar ${counts.calendar}, labels ${counts.labels}, cod ${counts.cod}, leads ${counts.leads}, tenants ${counts.tenants}`)
   return wb
 }
 
