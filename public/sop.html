@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.50.1', date:'Nov 6, 2026',
+    headline:'A COD work order with a $0 total now reaches the owners&rsquo; approval bin.',
+    desc:'A few COD rows read Needs approval but never showed up under Ready for your approval, so nobody could approve them.',
+    changes:[
+      'Any COD work order with an invoice on it now waits in the approval bin, even when its total is $0.',
+      'Once an owner approves it, it reads Paid and is finished.',
+      'A $0 COD work order with no invoice still reads Needs review &mdash; nothing has been entered on it yet.',
+    ],
+    affects:'Owners: three rows (Joe Barresi, Neal Pogue, Jason Mater) will appear in the bin after this update. Check their totals are really $0 before approving.',
+    dev:['deriveBucket COD branch: step &ge; 2 &rarr; paid, the grand &gt; 0 gate removed. Badge, strip, package window and Rail count all derive from the same bucket, so they agree again.'],
+  },
+  {
     ver:'v1.48.1', date:'Oct 29, 2026',
     headline:'Staff you add to a day now stay there when you reopen the work order.',
     desc:'On some day-rate sessions, a staff line (or a second room) on a day was removed every time the work order was opened again.',

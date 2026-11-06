@@ -598,7 +598,17 @@ export function deriveBucket(args: {
     // A work order with nothing on it (grand <= 0) is NOT a balance — there is
     // nothing owed because nothing has been entered. It needs reviewing.
     if (grand > 0 && balance > 0) return 'balance'
-    return step >= 2 && grand > 0 ? 'paid' : 'review'
+    // AN INVOICE IS AN INVOICE (Eli, 2026-11-06): once a COD work order has
+    // its invoice on it (step 2) it goes to Paid, whatever the total — and
+    // Paid is where the approval bin looks. The old `grand > 0` gate sent a
+    // $0 COD with an invoice to Needs review, where its badge read Needs
+    // approval but nothing could approve it: not the strip, not the package
+    // window (both read nextAction, which only hands out Approve from Paid).
+    // "Every COD, even a zero balance COD, needs to be reviewed — the owners
+    // getting eyes on it that it's correct and we don't need to charge more."
+    // A $0 work order with NO invoice still needs reviewing (grand <= 0 is
+    // not a balance, it is nothing entered), so that branch is unchanged.
+    return step >= 2 ? 'paid' : 'review'
   }
 
   if (step >= 5) return 'paid'

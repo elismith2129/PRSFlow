@@ -5,6 +5,10 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## $0 COD rows in the approval bin (Nov 6, v1.50.1)
+
+- [ ] **Open WO-1294, WO-1214, WO-1079** before approving — all three show a $0 total. If a session was really worked, the charges are missing on the work order (a separate problem from the bin fix). *(Nov 6)*
+
 ## Day-rate open deleted rows (Oct 29, v1.48.1)
 
 - [ ] **Re-add Rob on WO-1113 day 1** after the deploy, save, close, reopen — he should stay. *(Oct 29)*

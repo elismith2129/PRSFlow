@@ -381,6 +381,18 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 6, 2026 — $0 COD rows stuck at Needs approval (v1.50.1)
+
+Three COD rows wore the Needs approval badge but never reached the approval bin, and
+could not be approved anywhere. Cause: two rules disagreed about a $0 total. The badge
+(`billingStage`) reads only the step — invoice attached = Needs approval. The bin rule
+(`deriveBucket`) only put a COD row in Paid when its total was above $0, and the bin,
+the package window and the Rail count all take their Approve from Paid. Ruling (Eli):
+every COD with an invoice on it goes to the owners, zero or not — approval is eyes on
+the numbers, not a receipt of money. Dropped the total gate. Rejected the alternative
+(change the badge to Needs review until charges exist) because a comp or a $0 session
+the office already invoiced is exactly the kind of thing the owner should see.
+
 ### November 5, 2026 — Blanket OT goes by the hour (v1.50.0)
 
 First blanket day with overtime (WO-1469: $15k covers 7a–7p, ran to 12a, $1,500/hr). The

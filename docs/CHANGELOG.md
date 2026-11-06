@@ -20,6 +20,15 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.50.1 — $0 COD work orders with an invoice reach the approval bin — Nov 6, 2026
+
+**Why.** Eli, Nov 5: three COD rows (WO-1294, WO-1214, WO-1079) read Needs approval but never showed in "Ready for your approval" and could not be approved from the package window either. All three have a $0 total.
+
+- `deriveBucket` (COD branch) sent a step-2 COD row to Paid only when `grand > 0`; a $0 total went to Needs review. `billingStage` has no total gate, so the badge said Needs approval; `nextAction` only hands out Approve from the Paid bin, so the strip, the package window and the Rail count all skipped it. Gate dropped: an invoice on a COD row means Paid, whatever the total. Eli: "every COD, even a zero balance COD, needs to be reviewed … once we approve it, it's marked paid and it's done." A $0 COD with NO invoice still goes to Needs review (nothing entered is not a balance).
+- Rejected: fixing the badge instead (Needs review until charges are entered). A COD the office completed and invoiced is the owner's to look at even when it is a comp.
+
+**Migrations:** none. **Watch-out:** `row.total > 0 ? … : '—'` still renders a dash for the amount on these rows — by design; if $0 is wrong on them, that is a missing-charges problem on the work order, not this fix. **Files:** `lib/billing.ts`.
+
 ## v1.50.0 — Blanket days: OT by the hour; no per-room math on screen; multi-room card header — Nov 5, 2026
 
 **Why.** Eli, WO-1469 Wed Nov 4 ($15k/day blanket, 7a–12a, 7a–7p covered, OT $1,500/hr): "I know that we worked it out to where it's allocated per room based on the rate of those rooms. But I think that's really confusing … for our financial analytics, yes, we need that, but I don't think that needs to be facing for my staff. It just needs to be super simple, 15K for the day … If they go overtime, you just put in the overtime and it calculates it just like a regular single day." Plus "some ui issues on multi room cards. spacing issue." Mock: `docs/design-refs/blanket-ot-options.html` ("yup its good").
