@@ -27,7 +27,7 @@ import { normaliseReceipt, isPdfPath } from '@/lib/receiptFile'
 import { signedPhotoUrl } from '@/lib/photos'
 import { STUDIO_LOCATIONS, STUDIO_SHORT, roomCode } from '@/lib/studios'
 import { PAYMENT_METHODS, CARD_PAYMENT_METHODS } from '@/lib/payments'
-import { allocateBundleShares, bundleReadout, proRataShares, type WoRateBundle } from '@/lib/woBundles'
+import { allocateBundleShares, bundleReadout, bundleOt, proRataShares, BLANKET_COVERED_DEFAULT, type WoRateBundle } from '@/lib/woBundles'
 import { fetchRoomRates, dayRateFor, hourlyFromDay, type RoomRate } from '@/lib/roomRates'
 import { WoHistoryModal } from '@/components/calendar/WoHistoryModal'
 import { RemoveHoldModal, type HoldDay } from '@/components/calendar/RemoveHoldModal'
@@ -503,6 +503,9 @@ function normalizeBundle(d: any): WoRateBundle {
     amount: d.amount != null ? formatCurrency(String(d.amount)) : '',
     ot_amount: d.ot_amount != null && Number(d.ot_amount) > 0 ? formatCurrency(String(d.ot_amount)) : '',
     label: d.label ?? '',
+    ot_rate: d.ot_rate != null && Number(d.ot_rate) > 0 ? formatCurrency(String(d.ot_rate)) : '',
+    covered_hours: d.covered_hours != null ? String(Number(d.covered_hours)) : '',
+    ot_hours: d.ot_hours_override != null ? String(Number(d.ot_hours_override)) : '',
   }
 }
 
@@ -2241,7 +2244,7 @@ export function WorkOrderPopup({
       }))
       // Membership + shares are the allocation effect's job — it runs on the
       // next render and writes every member's charge.
-      setBundles(prev => [...prev, { id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date, amount: '', ot_amount: '', label: '' }])
+      setBundles(prev => [...prev, { id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date, amount: '', ot_amount: '', label: '', ot_rate: '', covered_hours: '', ot_hours: '' }])
     } else {
       const b = bundles.find(x => x.date === date)
       if (!b) return
@@ -2268,6 +2271,11 @@ export function WorkOrderPopup({
     bundlesDirtyRef.current = true
     setBundles(prev => prev.map(b => b.id === id ? { ...b, ot_amount } : b))
   }
+  /** Blanket OT by the hour (2026-11-05): rate, covered hours, OT-hours override. */
+  function setBundleField(id: string, patch: Partial<Pick<WoRateBundle, 'ot_rate' | 'covered_hours' | 'ot_hours'>>) {
+    bundlesDirtyRef.current = true
+    setBundles(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b))
+  }
   /** One price for every day of the session (Eli, 2026-09-14: a 5-day blanket
    *  should not mean typing the price five times). Creates a bundle on every
    *  dated day that lacks one and copies this day's rate + OT onto all. */
@@ -2282,9 +2290,12 @@ export function WorkOrderPopup({
       return { ...r, row_rate_type: 'day' as const, rate_daily: daily > 0 ? String(daily) : r.rate_daily, ot_rate: hr > 0 ? String(hr) : r.ot_rate }
     }))
     setBundles(prev => {
-      const next = prev.map(b => ({ ...b, amount: from.amount, ot_amount: from.ot_amount }))
+      // OT rate + covered hours carry; a typed OT-hours override does not
+      // (each day's overrun is its own).
+      const carry = { amount: from.amount, ot_rate: from.ot_rate, covered_hours: from.covered_hours }
+      const next = prev.map(b => ({ ...b, ...carry, ot_amount: from.ot_rate ? b.ot_amount : from.ot_amount }))
       for (const d of dates) {
-        if (!next.some(b => b.date === d)) next.push({ id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date: d, amount: from.amount, ot_amount: from.ot_amount, label: from.label })
+        if (!next.some(b => b.date === d)) next.push({ id: crypto.randomUUID(), work_order_id: wo?.id ?? '', date: d, ...carry, ot_amount: from.ot_rate ? '' : from.ot_amount, label: from.label, ot_hours: '' })
       }
       return next
     })
@@ -3896,9 +3907,19 @@ export function WorkOrderPopup({
 
     // Blanket-rate bundles: upserted BEFORE the rows that reference them
     // (the RPC orders it), deleted after. Amount is numeric in the DB.
-    const bundlePayloads = bundles.filter(b => b.date).map(b => ({
-      id: b.id, date: b.date, amount: stripCurrency(b.amount) ?? 0, ot_amount: stripCurrency(b.ot_amount) ?? 0, label: oneLine(b.label) || null,
-    }))
+    // ot_amount is WRITTEN from bundleOt when an OT rate is set (2026-11-05),
+    // so billing, allocation-on-load and the PDF keep reading one number.
+    const bundlePayloads = bundles.filter(b => b.date).map(b => {
+      const ot = bundleOt(b, stRows.filter(r => r.date === b.date && (r.studio || '').trim()))
+      const covered = parseFloat((b.covered_hours || '').replace(/[^0-9.]/g, ''))
+      const ovh = parseFloat((b.ot_hours || '').replace(/[^0-9.]/g, ''))
+      return {
+        id: b.id, date: b.date, amount: stripCurrency(b.amount) ?? 0, ot_amount: ot.amount, label: oneLine(b.label) || null,
+        ot_rate: stripCurrency(b.ot_rate) || null,
+        covered_hours: isNaN(covered) ? null : covered,
+        ot_hours_override: isNaN(ovh) ? null : ovh,
+      }
+    })
     const bundleDeletes = deletedBundleIdsRef.current.filter(id => !bundles.some(b => b.id === id))
 
     // Rental + payment rows that have content — upserts.
@@ -6932,34 +6953,14 @@ export function WorkOrderPopup({
                                         style={{ width: 84, fontWeight: 700 }}
                                       />}
                                 </span>
-                                {/* OT is a TYPED amount for the day (Eli,
-                                    2026-09-14) — allocated across the rooms
-                                    like the rate. Never clocked on a blanket. */}
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
-                                  OT
-                                  {(runner || readOnly)
-                                    ? <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>{b.ot_amount || '—'}</span>
-                                    : <input
-                                        value={b.ot_amount}
-                                        onChange={e => setBundleOt(b.id, e.target.value)}
-                                        onBlur={e => setBundleOt(b.id, e.target.value ? formatCurrency(e.target.value) : '')}
-                                        placeholder="$0"
-                                        className="c-tin c-tin-mono c-tin-show"
-                                        style={{ width: 70 }}
-                                      />}
-                                </span>
-                                <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>
-                                  {ro.rooms} room{ro.rooms === 1 ? '' : 's'}
-                                  {ro.rackTotal > 0 ? ` · rack $${ro.rackTotal.toLocaleString('en-US')}` : ''}
-                                  {ro.offRackPct != null ? ` · ${ro.offRackPct >= 0 ? `${ro.offRackPct}% off rack` : `${Math.abs(ro.offRackPct)}% over rack`}` : ''}
-                                </span>
+                                {/* OT BY THE HOUR (Eli, 2026-11-05) — covered
+                                    hours + OT rate; hours from the booked times.
+                                    No rack, no % off rack, no per-room shares on
+                                    screen — the split is for Financials only. */}
+                                <BlanketOt b={b} rows={stRows.filter(x => x.date === b.date && (x.studio || '').trim())}
+                                  editable={!runner && !readOnly} onField={p => setBundleField(b.id, p)} onOt={v => setBundleOt(b.id, v)} />
                                 {!runner && !readOnly && ro.amount > 0 && new Set(stRows.filter(x => x.date && (x.studio || '').trim()).map(x => x.date)).size > 1 && (
-                                  <button type="button" onClick={() => applyBundleToAllDays(b)} title="Put this rate and OT on every day of the session" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>→ all days</button>
-                                )}
-                                {ro.amount > 0 && (
-                                  <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: balanced ? 'var(--c-st-booked)' : 'var(--c-st-hot)', fontWeight: 700 }}>
-                                    shares ${(ro.shareSum + ro.otShareSum).toFixed(2)} {balanced ? '✓' : '≠ rate'}
-                                  </span>
+                                  <button type="button" onClick={() => applyBundleToAllDays(b)} title="Put this rate, covered hours and OT rate on every day of the session" style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)', background: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>→ all days</button>
                                 )}
                                 {ro.amount === 0 && !runner && (
                                   <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'Inter', color: 'var(--c-st-warm)', fontWeight: 700 }}>type the day's price</span>
@@ -7447,6 +7448,13 @@ export function WorkOrderPopup({
                     // table and the PDF — no card-only math.
                     if (!isMobile) {
                       const otChargeTotal = g.rows.reduce((s, r) => s + (r.ot_charge ?? 0), 0)
+                      // A blanket day's OT (2026-11-05): its rows carry ot_hours 0
+                      // (the OT is the day's, not a room's), so the card reads it
+                      // from the bundle — hours × rate, or the old typed amount.
+                      const cardBundle = bundles.find(x => x.date === g.date) ?? null
+                      const cardBOt = cardBundle ? bundleOt(cardBundle, g.rows.filter(r => (r.studio || '').trim())) : null
+                      const showOt = otHrsTotal > 0 || !!(cardBOt && cardBOt.amount > 0)
+                      const manyRooms = studios.length >= 3
                       return (
                         <div
                           key={g.date || 'undated'}
@@ -7475,13 +7483,26 @@ export function WorkOrderPopup({
                             {/* nowrap (2026-10-02): the submitted tag shrinks and
                                 ellipsises rather than dropping to a second line,
                                 so it is in the same place on every card. */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', minWidth: 0 }}>
-                              {studios.length > 0 && (
+                            {/* THREE OR MORE ROOMS GET THEIR OWN LINE (Eli,
+                                2026-11-05: "some ui issues on multi room cards").
+                                Five rooms at 16px ran past the 340px column into
+                                the Confirmed / Tentative / Cancelled buttons and
+                                cut the date to "Wed, N". The rooms wrap on their
+                                own line; the date (+ Blanket) sits under them. */}
+                            {manyRooms && (
+                              <div className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                                {studios.join(' · ')}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', minWidth: 0, marginTop: manyRooms ? 2 : 0 }}>
+                              {!manyRooms && studios.length > 0 && (
                                 <span className="c-arch" style={{ fontSize: 16, letterSpacing: '-0.01em', flexShrink: 0 }}>
                                   {studios.join(' · ')}
                                 </span>
                               )}
-                              <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', whiteSpace: 'nowrap' }}>{weekdayDate(g.date)}</span>
+                              <span style={{ fontSize: 12, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)', whiteSpace: 'nowrap' }}>
+                                {weekdayDate(g.date)}{cardBundle ? ` · Blanket — all ${studios.length} rooms` : ''}
+                              </span>
                               {dayStateTag(g.rows, g.date)}
                             </div>
 
@@ -7514,7 +7535,8 @@ export function WorkOrderPopup({
                                 if (dayBundle) {
                                   return (
                                     <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
-                                      Blanket rate {dayBundle.amount || <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}>rate?</span>}/day
+                                      {dayBundle.amount || <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}>rate?</span>}/day
+                                      {cardBOt && cardBOt.mode === 'rate' ? ` covers ${cardBOt.covered}h` : ''}
                                     </span>
                                   )
                                 }
@@ -7533,6 +7555,15 @@ export function WorkOrderPopup({
                                 )
                               })()}
                             </div>
+                            {cardBOt && cardBOt.amount > 0 && (
+                              <div style={{ marginTop: 5 }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)', background: 'color-mix(in srgb, var(--c-st-warm) 12%, transparent)', borderRadius: 99, padding: '2px 10px' }}>
+                                  OT {cardBOt.mode === 'rate'
+                                    ? <span className="c-mono" style={{ fontSize: 11 }}>{cardBOt.hours}h × {formatCurrency(String(cardBOt.rate)).replace(/\.00$/, '')} = {formatCurrency(String(cardBOt.amount))}</span>
+                                    : <span className="c-mono" style={{ fontSize: 11 }}>{formatCurrency(String(cardBOt.amount))}</span>}
+                                </span>
+                              </div>
+                            )}
                             {/* Actual arrival/departure (2026-09-01) — quiet,
                                 times only (no percentage — Eli), internal only. */}
                             {first?.no_show && (
@@ -7698,12 +7729,14 @@ export function WorkOrderPopup({
                               )
                             )}
                             <div style={{ marginTop: 'auto' }}>
-                              {otHrsTotal > 0 && (
+                              {showOt && (
                                 <div style={{ fontSize: 10.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)' }}>
-                                  OT {otHrsTotal}h{otChargeTotal > 0 ? ` · $${otChargeTotal.toFixed(0)}` : ''}
+                                  {cardBOt && cardBOt.amount > 0
+                                    ? `OT ${cardBOt.mode === 'rate' ? `${cardBOt.hours}h · ` : ''}$${cardBOt.amount.toFixed(0)}`
+                                    : `OT ${otHrsTotal}h${otChargeTotal > 0 ? ` · $${otChargeTotal.toFixed(0)}` : ''}`}
                                 </div>
                               )}
-                              <div style={{ ...kLabel, marginTop: otHrsTotal > 0 ? 3 : 0 }}>
+                              <div style={{ ...kLabel, marginTop: showOt ? 3 : 0 }}>
                                 {dayCancelled ? 'Not billed' : 'Day total'}
                               </div>
                               <div className="c-arch" style={{ fontSize: 15, letterSpacing: '-0.02em', color: dayTotal > 0 ? 'var(--c-fg)' : 'var(--c-fg-3)' }}>
@@ -9024,13 +9057,8 @@ export function WorkOrderPopup({
                               {canEdit
                                 ? <input value={b.amount} onChange={e => setBundleAmount(b.id, e.target.value)} onBlur={e => setBundleAmount(b.id, e.target.value ? formatCurrency(e.target.value) : '')} placeholder="$0/day" className="c-tin c-tin-mono c-tin-show" style={{ width: 84, fontWeight: 700 }} />
                                 : <span className="c-tnum" style={{ fontWeight: 700 }}>{b.amount || '—'}</span>}
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'var(--c-fg-2)' }}>
-                                OT
-                                {canEdit
-                                  ? <input value={b.ot_amount} onChange={e => setBundleOt(b.id, e.target.value)} onBlur={e => setBundleOt(b.id, e.target.value ? formatCurrency(e.target.value) : '')} placeholder="$0" className="c-tin c-tin-mono c-tin-show" style={{ width: 70 }} />
-                                  : <span className="c-tnum">{b.ot_amount || '—'}</span>}
-                              </span>
-                              {ro && ro.offRackPct != null && <span style={{ fontSize: 10, color: 'var(--c-fg-3)' }}>{ro.rooms} room{ro.rooms === 1 ? '' : 's'} · {ro.offRackPct}% off rack</span>}
+                              <BlanketOt b={b} rows={stRows.filter(x => x.date === b.date && (x.studio || '').trim())}
+                                editable={canEdit} onField={p => setBundleField(b.id, p)} onOt={v => setBundleOt(b.id, v)} />
                               {ro && ro.amount === 0 && canEdit && <span style={{ fontSize: 10, color: 'var(--c-st-warm)', fontWeight: 700 }}>type the day's price</span>}
                             </>
                           )}
@@ -9230,5 +9258,62 @@ export function WorkOrderPopup({
       </div>
       </div>
     </div>
+  )
+}
+
+
+// ── BLANKET OT (Eli, 2026-11-05; docs/design-refs/blanket-ot-options.html) ──
+// "15K for the day. It includes all these rooms. If they go overtime, you just
+// put in the overtime and it calculates it just like a regular single day."
+// Covers __h · OT $__/hr · __h (auto from booked times) = $__. A blanket with no
+// OT rate keeps its old typed dollar OT until a rate is set.
+function BlanketOt({ b, rows, editable, onField, onOt }: {
+  b: WoRateBundle
+  rows: { from_time?: string | null; to_time?: string | null }[]
+  editable: boolean
+  onField: (p: Partial<Pick<WoRateBundle, 'ot_rate' | 'covered_hours' | 'ot_hours'>>) => void
+  onOt: (v: string) => void
+}) {
+  const ot = bundleOt(b, rows)
+  const lbl: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontFamily: 'Inter', color: 'var(--c-fg-2)' }
+  const fmt = (n: number) => formatCurrency(String(n))
+  if (!editable) {
+    if (ot.mode === 'typed') return ot.amount > 0 ? <span style={lbl}>OT <span className="c-tnum" style={{ color: 'var(--c-fg)' }}>{fmt(ot.amount)}</span></span> : null
+    return (
+      <span style={lbl}>
+        Covers {ot.covered}h · OT {fmt(ot.rate).replace(/\.00$/, '')}/hr
+        {ot.hours > 0 && <span style={{ color: 'var(--c-st-warm)', fontWeight: 700 }}> · {ot.hours}h = {fmt(ot.amount)}</span>}
+      </span>
+    )
+  }
+  return (
+    <>
+      <span style={lbl}>
+        Covers
+        <input value={b.covered_hours} onChange={e => onField({ covered_hours: e.target.value })} placeholder={String(BLANKET_COVERED_DEFAULT)}
+          className="c-tin c-tin-mono c-tin-show" style={{ width: 34, textAlign: 'right' }} />h
+      </span>
+      <span style={lbl}>
+        OT
+        <input value={b.ot_rate} onChange={e => onField({ ot_rate: e.target.value })}
+          onBlur={e => onField({ ot_rate: e.target.value ? formatCurrency(e.target.value) : '' })}
+          placeholder="$0" className="c-tin c-tin-mono c-tin-show" style={{ width: 70 }} />/hr
+      </span>
+      {ot.mode === 'rate' ? (
+        <span style={lbl}>
+          <input value={b.ot_hours} onChange={e => onField({ ot_hours: e.target.value })} placeholder={`${ot.auto}`}
+            title={b.ot_hours ? `Typed — auto would be ${ot.auto}h (booked ${ot.booked}h − covered ${ot.covered}h). Clear to go back to auto.` : `Auto: booked ${ot.booked}h − covered ${ot.covered}h. Type to override.`}
+            className="c-tin c-tin-mono c-tin-show" style={{ width: 36, textAlign: 'right' }} />h
+          <span style={{ color: ot.amount > 0 ? 'var(--c-st-warm)' : 'var(--c-fg-3)', fontWeight: 700 }}>= {fmt(ot.amount)}</span>
+          {!b.ot_hours && <span style={{ color: 'var(--c-fg-3)' }}>auto</span>}
+        </span>
+      ) : ot.amount > 0 ? (
+        // Legacy typed OT — stays until a rate replaces it.
+        <span style={lbl} title="Typed before OT went by the hour. Set an OT rate to replace it.">
+          typed <input value={b.ot_amount} onChange={e => onOt(e.target.value)} onBlur={e => onOt(e.target.value ? formatCurrency(e.target.value) : '')}
+            className="c-tin c-tin-mono c-tin-show" style={{ width: 70 }} />
+        </span>
+      ) : null}
+    </>
   )
 }

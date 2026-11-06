@@ -20,6 +20,18 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.50.0 — Blanket days: OT by the hour; no per-room math on screen; multi-room card header — Nov 5, 2026
+
+**Why.** Eli, WO-1469 Wed Nov 4 ($15k/day blanket, 7a–12a, 7a–7p covered, OT $1,500/hr): "I know that we worked it out to where it's allocated per room based on the rate of those rooms. But I think that's really confusing … for our financial analytics, yes, we need that, but I don't think that needs to be facing for my staff. It just needs to be super simple, 15K for the day … If they go overtime, you just put in the overtime and it calculates it just like a regular single day." Plus "some ui issues on multi room cards. spacing issue." Mock: `docs/design-refs/blanket-ot-options.html` ("yup its good").
+
+- **OT by the hour** (`lib/woBundles.bundleOt`): a blanket carries **OT rate**, **covered hours** (blank = 12) and an optional **OT-hours override**. Auto hours = longest booked span among the day's rooms − covered (booked, not "actually here" — the house rule). Amount = hours × rate. Allocation, the readout and the save all use it; `ot_amount` is WRITTEN from it on save so billing/PDF/allocation-on-load keep reading one number. A blanket with no OT rate keeps its old typed dollar OT (shown as "typed", replaced once a rate is set). → all days carries rate + covered + OT rate, not a typed override. Tested: 17h booked, 12 covered, $1,500 → 5h, $7,500; override 3h → $4,500; covers 10 → 7h, $10,500.
+- **Staff never see the split**: the blanket line in ✎ Edit (table view and day sheet) is Rate/day · Covers __h · OT $__/hr · __h = $__. Removed: rack total, "% off rack", per-room shares, the "shares $X ✓" check. The allocation itself is unchanged and still feeds Financials, room numbers and SRS.
+- **Day card (desktop)**: 3+ rooms get their own wrapping line with the date under it ("Wed, Nov 4 · Blanket — all 5 rooms") — five rooms used to run past the 340px column into the status buttons and cut the date to "Wed, N". Blanket rate reads "$15,000/day covers 12h"; an amber **OT 5h × $1,500 = $7,500** line under the times; the right panel's OT line shows the blanket's OT (bundled rows carry ot_hours 0, so it was hidden though the total included it). Phone card unchanged.
+
+**Migrations:** `20261105120000_wo_rate_bundles_ot_rate.sql` (ot_rate, covered_hours, ot_hours_override — run BEFORE the push: the save RPC writes these columns). **Watch-out:** the Seed panel's blanket path still writes typed `ot_amount` only. **Files:** `lib/woBundles.ts`, `components/calendar/WorkOrderPopup.tsx`.
+
+---
+
 ## v1.49.1 — Runner notes: the note box can't swallow the screen — Nov 4, 2026
 
 **Why.** Elie couldn't submit his closing notes ("wasn't able to close out of the text box … or scroll up or down"). Screenshot: the composer's rich-text box grows with every line and had no cap, so a long closing note made it taller than the phone. Send, 📷 and the task chip were pushed below the bottom edge, and the notes room is a fixed-height screen where only the feed scrolls — no way to send, close, or scroll. (He'd also attached photos; those upload full size with no timeout — background upload is parked in TODO.)

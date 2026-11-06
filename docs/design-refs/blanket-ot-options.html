@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Blanket rate + OT</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- BLANKET RATE + OT (Eli, 2026-11-05, WO-1469 Wed Nov 4).
+     "I'm trying to add OT of a blanket $1,500/hr … 7a-12a with 7a-7p being covered by the
+     $15k per day … it's allocated per room based on the rate of those rooms. But I think
+     that's really confusing … the way we set this up for how it allocates the money for our
+     financial analytics, yes, we need that, but I don't think that needs to be facing for my
+     staff. It just needs to be super simple, 15K for the day. It includes all these rooms.
+     If they go overtime, you just put in the overtime and it calculates it just like a
+     regular single day." Plus: "some ui issues on multi room cards. spacing issue."
+     Today: blanket OT is a typed DOLLAR total, only visible in ✎ Edit, shown next to rack /
+     % off rack / per-room shares. The 5-room header runs into the date + status buttons.
+     Colours/classes copied from styles/globals.css. Interactive: change the times, rate,
+     covered hours, OT rate, or override OT hours.
+     Rulings: pending. -->
+<style>
+:root{--c-bg:#0b0a09;--c-fg:#f2efe7;--c-wash:rgba(242,239,231,.06);--c-wash2:rgba(242,239,231,.12);--c-chip-ink:#1c2626;
+  --c-st-hot:#ff5a4d;--c-st-warm:#ffa94d;--c-st-booked:#43dfae;--c-fg-2:rgba(242,239,231,.72);--c-fg-3:rgba(242,239,231,.45);
+  --c-srf:#151412;--c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+[data-theme="light"]{--c-bg:#fdfcf9;--c-fg:#1a1712;--c-wash:rgba(26,23,18,.055);--c-wash2:rgba(26,23,18,.105);--c-fg-2:rgba(26,23,18,.72);--c-fg-3:rgba(26,23,18,.46);--c-srf:#f1efe9;--c-softsh:0 1px 2px rgba(26,23,18,.05),0 4px 12px rgba(26,23,18,.05)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--c-bg);color:var(--c-fg);font-family:Inter,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;padding:24px 16px 80px;max-width:1180px;margin:0 auto}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+.lab{font-size:10.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;opacity:.45}
+.tg{float:right;font:800 10px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--c-wash2);padding:5px 11px;border-radius:99px;cursor:pointer}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;font-weight:400}
+.lede{font-size:13px;opacity:.6;margin:4px 0 22px;max-width:820px}
+.part{margin:28px 0 8px}
+.why{font-size:12.5px;opacity:.6;margin:2px 0 12px;max-width:820px}
+/* day card */
+.card{background:var(--c-srf);border-radius:22px;padding:22px 26px;display:grid;grid-template-columns:1fr auto 1fr;gap:0;position:relative;margin-bottom:12px}
+.card .l{padding-right:22px;min-width:0}
+.card .div{width:1px;background:var(--c-wash2)}
+.card .r{padding-left:22px;display:grid;grid-template-columns:1fr auto;gap:8px;min-width:0}
+.rooms{font-family:'Archivo Black',sans-serif;font-size:22px;letter-spacing:.01em;white-space:nowrap}
+.date{font-size:18px;font-weight:700;opacity:.65;white-space:nowrap}
+.times{font-family:'DM Mono',monospace;font-size:26px;font-weight:600;margin-top:12px;white-space:nowrap}
+.meta{font-size:13px;color:var(--c-fg-2);margin-left:8px;font-family:Inter;font-weight:500}
+.sub{font-size:13px;color:var(--c-fg-3);margin-top:6px}
+.sub b{font-family:'DM Mono',monospace;color:var(--c-fg-2);font-weight:500}
+.staff{margin-top:10px;font-size:14px}
+.staff .tag{color:var(--c-st-warm);font-weight:800;font-size:12px;margin-right:8px}
+.chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.chip{font-size:12px;font-weight:700;color:var(--c-st-booked);background:var(--c-wash);border-radius:99px;padding:6px 14px}
+.seg{display:inline-flex;background:var(--c-bg);border-radius:99px;padding:4px;gap:2px;box-shadow:3px 3px 9px rgba(0,0,0,.5),-3px -3px 9px rgba(255,255,255,.04)}
+.seg span{border-radius:99px;padding:6px 14px;font:800 10px Inter;letter-spacing:.06em;text-transform:uppercase;opacity:.5}
+.seg span.on{opacity:1;background:var(--c-st-booked);color:var(--c-chip-ink)}
+.notes .k{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-top:14px}
+.notes .v{font-size:15px;color:var(--c-fg-2);margin-top:4px}
+.tot{text-align:right;align-self:end}
+.tot .k{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.45}
+.tot .v{font-family:'Archivo Black',sans-serif;font-size:22px;margin-top:2px}
+.tot .s{font-size:11px;opacity:.55;font-family:'DM Mono',monospace}
+.edit{font:800 10px Inter;letter-spacing:.08em;text-transform:uppercase;opacity:.5;text-align:right}
+.rev{font:800 10px Inter;letter-spacing:.08em;text-transform:uppercase;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:7px 14px;margin-top:10px;display:inline-block}
+.ot{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px;font-weight:700;color:var(--c-st-warm);background:color-mix(in srgb,var(--c-st-warm) 12%,transparent);border-radius:99px;padding:4px 12px}
+.ot .mono{font-weight:600}
+.broken .rooms{overflow:visible}
+.broken .seg{position:absolute;left:calc(50% - 175px);top:40px}
+/* edit panel */
+.panel{background:var(--c-srf);border-radius:18px;padding:16px 18px;max-width:760px}
+.prow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px}
+.fld .k{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.5;margin-bottom:4px}
+.fld input{width:100%;background:var(--c-wash);border:none;border-radius:9px;padding:8px 10px;color:var(--c-fg);font:600 14px 'DM Mono',monospace;outline:none}
+.fld input:focus{box-shadow:inset 0 0 0 1.5px var(--c-st-warm)}
+.fld .ro{background:transparent;padding:8px 0;font:700 15px 'DM Mono',monospace}
+.fld .hint{font-size:10px;opacity:.5;margin-top:3px}
+.toggle{font:800 8.5px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:5px 11px;display:inline-block}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.note{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px 16px;font-size:12.5px}
+.note li{margin:0 0 5px 16px;opacity:.85}
+.today{font-size:11px;opacity:.55;margin-top:10px;font-family:Inter}
+.today s{opacity:.8}
+@media(max-width:900px){.card{grid-template-columns:1fr}.card .div{display:none}.card .r{padding-left:0;margin-top:14px}.prow{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}.rooms{white-space:normal}}
+</style>
+</head>
+<body>
+<span class="tg" onclick="document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark'">theme</span>
+<h1>Blanket rate + overtime</h1>
+<p class="lede">WO-1469, Wed Nov 4. One price for the day, OT by the hour like a single room. The per-room split still happens for Financials — nobody sees it. Change the numbers in part 2 and the card in part 1 follows.</p>
+
+<div class="part lab">1 · The day card</div>
+<p class="why"><b>Today</b> (top): five rooms run into the date and the Confirmed / Tentative / Cancelled buttons, and blanket OT isn't on the card at all. <b>Proposed</b> (bottom): rooms on their own line, date under them, the OT shown in amber right under the times, and the day total includes it.</p>
+
+<div class="card broken" style="opacity:.75">
+  <div class="l">
+    <div><span class="rooms">PRS A · PRS B · PRS C · PRS E · PRS X</span> <span class="date">Wed, N</span></div>
+    <div class="times">7:00 AM – 12:00 AM<span class="meta">17h  Blanket rate $15,000.00/day</span></div>
+    <div class="sub">Actually here <b>9:00 AM – 12:00 AM</b></div>
+    <div class="staff"><span class="tag">2ND</span>Randy Brown <span class="mono" style="opacity:.6;font-size:13px">7:00 AM – 12:00 AM · 17h</span></div>
+  </div>
+  <div class="div"></div>
+  <div class="r">
+    <div class="notes"><span class="seg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span></span><div class="k">Song / session notes · 11-4</div><div class="v">Documentary filming - making of "drop it like it's hot"</div></div>
+    <div style="text-align:right"><div class="edit">✎ Edit</div><span class="rev">✓ Reviewed</span></div>
+    <div></div><div class="tot"><div class="k">Day total</div><div class="v">$15000.00</div></div>
+  </div>
+</div>
+<div class="lab" style="margin:-4px 0 14px 6px;opacity:.35">↑ today · ↓ proposed</div>
+
+<div class="card">
+  <div class="l">
+    <div class="rooms" style="font-size:20px">PRS A · PRS B · PRS C · PRS E · PRS X</div>
+    <div class="date" style="font-size:14px;margin-top:2px">Wed, Nov 4 · Blanket — all 5 rooms</div>
+    <div class="times"><span id="cTimes">7:00 AM – 12:00 AM</span><span class="meta" id="cMeta">17h · $15,000/day covers 12h</span></div>
+    <div id="cOt"></div>
+    <div class="sub">Actually here <b>9:00 AM – 12:00 AM</b></div>
+    <div class="staff"><span class="tag">2ND</span>Randy Brown <span class="mono" style="opacity:.6;font-size:13px">7:00 AM – 12:00 AM · 17h</span></div>
+    <div class="chips"><span class="chip">● Speakers</span><span class="chip">● Microphone</span><span class="chip">● Console</span></div>
+  </div>
+  <div class="div"></div>
+  <div class="r">
+    <div class="notes"><span class="seg"><span class="on">Confirmed</span><span>Tentative</span><span>Cancelled</span></span><div class="k">Song / session notes · 11-4</div><div class="v">Documentary filming - making of "drop it like it's hot"</div></div>
+    <div style="text-align:right"><div class="edit">✎ Edit</div><span class="rev">✓ Reviewed</span></div>
+    <div></div><div class="tot"><div class="k">Day total</div><div class="v" id="cTot">$22,500.00</div><div class="s" id="cTotS"></div></div>
+  </div>
+</div>
+
+<div class="part lab">2 · Setting it — the blanket line in ✎ Edit</div>
+<p class="why">Four things to fill in once; OT hours come from the booked times. "→ all days" copies rate, covered hours and OT rate to the rest of the session. No rack, no "% off rack", no per-room numbers.</p>
+<div class="panel">
+  <span class="toggle">Blanket rate</span> <span style="font-size:11.5px;opacity:.6;margin-left:8px">One price for every room on this day · 5 rooms</span>
+  <div class="prow">
+    <div class="fld"><div class="k">Booked</div><input id="iTimes" value="7:00 AM – 12:00 AM"><div class="hint">from the day</div></div>
+    <div class="fld"><div class="k">Rate / day</div><input id="iRate" value="$15,000"></div>
+    <div class="fld"><div class="k">Covers</div><input id="iCov" value="12h"></div>
+    <div class="fld"><div class="k">OT rate</div><input id="iOtr" value="$1,500/hr"></div>
+    <div class="fld"><div class="k">OT hours</div><input id="iOth" placeholder="auto"><div class="hint" id="hOth">auto from times</div></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px;border-top:1px solid var(--c-wash2);padding-top:10px">
+    <span style="font-size:12px;opacity:.6"><span style="text-decoration:underline;cursor:pointer">→ all days</span></span>
+    <span><span class="lab" style="margin-right:8px">Day</span><span class="mono" style="font-weight:700;font-size:15px" id="pTot"></span></span>
+  </div>
+</div>
+<p class="today">Today the same line reads: <s>Rate / day $15,000 · OT $____ · 5 rooms · rack $9,850 · 52% over rack</s> — OT a dollar box, and only here.</p>
+
+<div class="cols">
+  <div class="note"><b class="arch" style="font-size:13px">How OT works</b><ul style="margin-top:6px">
+    <li>OT hours = booked hours − covered hours (17 − 12 = 5). Booked, not "actually here" — the house rule.</li>
+    <li>Type a number in OT hours to override (a negotiated 3h, say); clear it to go back to auto.</li>
+    <li>No OT rate set → no OT, same as today.</li>
+    <li>Runners see the card read-only, OT line included — no prices to edit.</li>
+  </ul></div>
+  <div class="note"><b class="arch" style="font-size:13px">What stays invisible</b><ul style="margin-top:6px">
+    <li>The $15,000 and the OT are still split across the five rooms by their normal rates, behind the scenes — Financials, room numbers and SRS keep working.</li>
+    <li>Nothing on the work order, the PDF or the runner app shows the split. The invoice shows one line for the day + one OT line.</li>
+    <li>Existing blanket days with a typed OT dollar amount keep it until someone sets an OT rate.</li>
+  </ul></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id)
+const num = s => parseFloat(String(s).replace(/[^0-9.]/g,'')) || 0
+const money = n => '$' + n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+function hrs(t){ const m=[...String(t).matchAll(/(\d{1,2})(?::(\d{2}))?\s*([AP])M/gi)]; if(m.length<2) return 0
+  const v=x=>{let h=+x[1]%12; if(x[3].toUpperCase()==='P') h+=12; return h+(+(x[2]||0))/60}; let a=v(m[0]),b=v(m[1]); let d=b-a; if(d<=0) d+=24; return d }
+function calc(){
+  const t=$('iTimes').value, rate=num($('iRate').value), cov=num($('iCov').value), otr=num($('iOtr').value)
+  const h=hrs(t), auto=Math.max(0,h-cov), ov=$('iOth').value.trim(), oth= ov===''?auto:num(ov)
+  const ot= otr>0 ? oth*otr : 0
+  $('hOth').textContent = ov===''?`auto: ${auto}h`:`override · auto would be ${auto}h`
+  $('cTimes').textContent=t
+  $('cMeta').textContent=`${+h.toFixed(2)}h · ${money(rate).replace('.00','')}/day covers ${cov}h`
+  $('cOt').innerHTML = ot>0 ? `<span class="ot">OT <span class="mono">${oth}h × ${money(otr).replace('.00','')}</span> = <span class="mono">${money(ot)}</span></span>` : ''
+  $('cTot').textContent=money(rate+ot)
+  $('cTotS').textContent= ot>0 ? `${money(rate).replace('.00','')} + ${money(ot).replace('.00','')} OT` : ''
+  $('pTot').textContent= money(rate) + (ot>0?` + ${money(ot)} OT = ${money(rate+ot)}`:'')
+}
+document.querySelectorAll('input').forEach(i=>i.addEventListener('input',calc)); calc()
+</script>
+</body>
+</html>

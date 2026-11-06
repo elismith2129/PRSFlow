@@ -48,6 +48,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { stripCurrency } from '@/lib/format'
+import { calcHours } from '@/lib/time'
 
 export type WoRateBundle = {
   id: string
@@ -55,9 +56,41 @@ export type WoRateBundle = {
   date: string
   /** Display string on the screen ("$6,670"); numeric in the DB. */
   amount: string
-  /** Overtime for the whole day, typed. '' = none. Allocated like amount. */
+  /** Overtime for the whole day in dollars. With an ot_rate set it is DERIVED
+   *  (bundleOt) and written on save; without one it is typed, as before. */
   ot_amount: string
   label: string
+  /** OT BY THE HOUR (2026-11-05) — '' = not set. "$1,500" display string. */
+  ot_rate: string
+  /** Hours the day price covers. '' = 12 (the house lockout). */
+  covered_hours: string
+  /** Typed OT hours; '' = auto from the booked times. */
+  ot_hours: string
+}
+
+/** The house default for what a day price covers. */
+export const BLANKET_COVERED_DEFAULT = 12
+
+/**
+ * THE DAY'S OVERTIME (Eli, 2026-11-05: "If they go overtime, you just put in
+ * the overtime and it calculates it just like a regular single day").
+ *  · ot_rate set → hours = override, else booked hours − covered (never < 0);
+ *    amount = hours × rate. Booked = the longest booked span among the day's
+ *    rooms (the house rule bills booked, not "actually here").
+ *  · no ot_rate → the typed ot_amount, exactly as before.
+ */
+export function bundleOt(b: WoRateBundle, members: { from_time?: string | null; to_time?: string | null }[]): {
+  mode: 'rate' | 'typed'; rate: number; covered: number; booked: number; auto: number; hours: number; amount: number
+} {
+  const rate = money(b.ot_rate)
+  const coveredRaw = parseFloat(String(b.covered_hours ?? '').replace(/[^0-9.]/g, ''))
+  const covered = isNaN(coveredRaw) ? BLANKET_COVERED_DEFAULT : coveredRaw
+  const booked = Math.max(0, ...members.map(m => calcHours(m.from_time || '', m.to_time || '') ?? 0))
+  const auto = Math.max(0, parseFloat((booked - covered).toFixed(2)))
+  if (!(rate > 0)) return { mode: 'typed', rate: 0, covered, booked, auto, hours: 0, amount: money(b.ot_amount) }
+  const ov = parseFloat(String(b.ot_hours ?? '').replace(/[^0-9.]/g, ''))
+  const hours = isNaN(ov) ? auto : ov
+  return { mode: 'rate', rate, covered, booked, auto, hours, amount: Math.round(hours * rate * 100) / 100 }
 }
 
 /** The fields of a studio-time row that allocation reads and writes. */
@@ -71,6 +104,8 @@ export type BundleRow = {
   charge: number | null
   ot_hours: string
   ot_charge: number | null
+  from_time?: string | null
+  to_time?: string | null
 }
 
 function money(v: string | number | null | undefined): number {
@@ -131,7 +166,7 @@ export function allocateBundleShares<R extends BundleRow>(rows: R[], bundles: Wo
     if (idx.length === 0) continue
     const racks = idx.map(i => money(out[i].rate_daily))
     const shares = proRataShares(money(b.amount), racks)
-    const otShares = proRataShares(money(b.ot_amount), racks)
+    const otShares = proRataShares(bundleOt(b, idx.map(i => out[i])).amount, racks)
     idx.forEach((i, k) => {
       const r = out[i]
       const share = shares[k]
@@ -158,7 +193,7 @@ export function bundleReadout(bundle: WoRateBundle, rows: BundleRow[]): {
   const members = rows.filter(r => r.bundle_id === bundle.id)
   const rackTotal = members.reduce((s, r) => s + money(r.rate_daily), 0)
   const amount = money(bundle.amount)
-  const otAmount = money(bundle.ot_amount)
+  const otAmount = bundleOt(bundle, members).amount
   const shareSum = parseFloat(members.reduce((s, r) => s + (r.charge ?? 0), 0).toFixed(2))
   const otShareSum = parseFloat(members.reduce((s, r) => s + (r.ot_charge ?? 0), 0).toFixed(2))
   const offRackPct = rackTotal > 0 && amount > 0 ? parseFloat(((1 - amount / rackTotal) * 100).toFixed(2)) : null

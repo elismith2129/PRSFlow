@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 5, 2026 — Blanket OT goes by the hour (v1.50.0)
+
+First blanket day with overtime (WO-1469: $15k covers 7a–7p, ran to 12a, $1,500/hr). The
+OT existed — a typed dollar box, only in ✎ Edit, next to rack / % off rack / per-room
+shares. Eli: the allocation is for Financials, not for staff. So the blanket now reads
+like a single day: rate, hours it covers, OT rate; hours come from the booked times. The
+pro-rata split is untouched underneath. Kept the typed-OT path for existing blankets
+rather than migrating them (no rate to derive from). Multi-room header fixed in the same
+pass (5 rooms overflowed the 340px column).
+
 ### November 3, 2026 — Readable backup v2 (v1.49.0)
 
 The sheet went live Oct 30 after three fixes (v1.48.2 schema drift, v1.48.3 hidden Drive
