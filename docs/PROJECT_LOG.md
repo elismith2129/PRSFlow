@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 9, 2026 — The other owners get the business, not the office (v1.50.2)
+
+The dashboard had one idea of "owner" and it was Eli: a non-Eli owner got the owner
+briefing scope, which pulls in both staff seats. Adam and Mike were reading Fernando's
+and Lori Beth's misses on their phones. Eli's ruling: they are not managing staff and
+should not see staff failures. Kept the deterministic statement machinery and just
+gated it on `ownerLite` rather than adding a fourth viewer to `composeBriefing` — the
+numbers are still computed, only not shown to them. Chose a short approvals-or-nothing
+coda over hiding the synopsis entirely, so the briefing never ends on a blank.
+
 ### November 6, 2026 — $0 COD rows stuck at Needs approval (v1.50.1)
 
 Three COD rows wore the Needs approval badge but never reached the approval bin, and

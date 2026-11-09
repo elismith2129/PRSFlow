@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.50.2', date:'Nov 9, 2026',
+    headline:'Owners other than Eli no longer see staff items in the morning briefing.',
+    desc:'The red missed-duty lines and the orange review line are for the people who run the office. The other owners now get a briefing about the business.',
+    changes:[
+      'Owners (not Eli) see which clients we landed and how many work orders are waiting on their approval. That is all.',
+      'The Full briefing window shows them the shared part only.',
+      'Eli, the manager and billing see everything they saw before.',
+    ],
+    affects:'Owners. Nothing changes for staff.',
+    dev:['page.tsx ownerLite = owner &amp;&amp; !isEli: alertLines, reviewLine, calmLine and the synopsis are suppressed; approvals coda instead. Full-briefing seat slices are Eli-only.'],
+  },
+  {
     ver:'v1.50.1', date:'Nov 6, 2026',
     headline:'A COD work order with a $0 total now reaches the owners&rsquo; approval bin.',
     desc:'A few COD rows read Needs approval but never showed up under Ready for your approval, so nobody could approve them.',

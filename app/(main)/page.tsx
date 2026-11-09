@@ -194,6 +194,14 @@ export default function DashboardPage() {
     : profile?.role === 'billing' ? 'aaron'
     : 'eli'
   const isOwnerHere = isEli || profile?.role === 'owner'
+  // OWNERS WHO ARE NOT ELI (Adam, Mike — Eli, 2026-11-09): "they only use the
+  // phone to look at the cal, or stop in. I don't want them dealing with staff
+  // and I don't want them to see staff failures." Eli runs the staff; the
+  // other owners get the business, not the office. So the statement drops the
+  // red duty-miss lines, the orange review line and the "N things need you"
+  // tally for them, and the Full briefing window shows the shared part only.
+  // Landed clients and their approvals stay — that is their side of it.
+  const ownerLite = isOwnerHere && !isEli
 
   // A flag raised from a work order or a runner checklist reads as the note
   // alone on this tile — one said just "No show" (Lori, 2026-10-21). The
@@ -556,16 +564,22 @@ export default function DashboardPage() {
   // A data failure outranks queue pressure: anomalies always show, then up
   // to three of the rest.
   const alertsAll = (myDay?.briefing.bullets ?? []).filter(b => b.alert)
-  const alertLines = [...alertsAll.filter(b => b.anomaly), ...alertsAll.filter(b => !b.anomaly).slice(0, 3)]
+  const alertLines = ownerLite ? [] : [...alertsAll.filter(b => b.anomaly), ...alertsAll.filter(b => !b.anomaly).slice(0, 3)]
   // THE REVIEW LINE (Eli, 2026-09-07 — "Monday: he's got a ton from the
   // weekend; prioritize getting the WOs reviewed and ready for approval").
   // Same billingStage-derived count as the money tile, so Flo and the tile
   // can never disagree. Monday gets the weekend framing.
   const isMonday = clockNow.getDay() === 1
-  const reviewLine = pulse && pulse.review > 0
+  const reviewLine = !ownerLite && pulse && pulse.review > 0
     ? `${isMonday ? 'Weekend catch-up: ' : ''}${pulse.review} work order${pulse.review === 1 ? '' : 's'} need${pulse.review === 1 ? 's' : ''} review — get ${pulse.review === 1 ? 'it' : 'them'} ready for approval.`
     : null
   const calmLine = (myDay?.briefing.bullets ?? []).find(b => !b.alert)
+  // The owner-lite coda: their approvals, or nothing. Not the staff tally.
+  const synopsisLine = ownerLite
+    ? (approvals.length > 0
+      ? `${approvals.length} work order${approvals.length === 1 ? '' : 's'} waiting on your approval.`
+      : 'Nothing needs you today.')
+    : (myDay?.briefing.synopsis ?? '…')
   const landedNames = Array.from(new Set(landed.map(l => l.client)))
   const landedLine = landedNames.length > 0
     ? landedNames.length === 1
@@ -781,10 +795,10 @@ export default function DashboardPage() {
             We landed <span className="n-grad">{landedNames.slice(0, -1).join(', ')}{landedNames.length > 1 ? ' and ' : ''}{landedNames[landedNames.length - 1]}</span> today.
           </span>
         )}
-        {alertLines.length === 0 && !landedLine && calmLine && (
+        {alertLines.length === 0 && !landedLine && calmLine && !ownerLite && (
           <span className="n-ln" style={{ fontSize: isMobile ? 17 : undefined }}>{calmLine.text}</span>
         )}
-        <span className="n-ln n-dim">{myDay?.briefing.synopsis ?? '…'}</span>
+        <span className="n-ln n-dim">{synopsisLine}</span>
         </>)}
         {/* THE 8:50 BRIEFING (2026-09-07) — Flo's first real AI: the cron
             reads the night's notes, flags, holds and the duty/task record and
@@ -908,7 +922,9 @@ export default function DashboardPage() {
                 { key: 'asst_manager', label: 'Asst Mgr' },
               ]
               const role = profile?.role
-              const isOwnerRole = isEli || role === 'owner'
+              // ownerLite (Adam, Mike): the shared part above is their whole
+              // briefing — no seat slices, no "Across the seats".
+              const isOwnerRole = isEli
               const seats = isOwnerRole
                 ? seatDefs
                 : seatDefs.filter(s => s.key === role)

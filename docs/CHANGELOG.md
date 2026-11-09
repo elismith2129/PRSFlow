@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.50.2 — Owners other than Eli no longer see staff misses in the briefing — Nov 9, 2026
+
+**Why.** Eli, Nov 9, from his phone: the red "Fernando missed valley checks" / "Lori Beth missed the follow-up list" lines and the orange review line were showing to Adam and Mike. "They only use the phone to look at the cal, or stop in. I don't want them dealing with staff and I don't want them to see staff failures."
+
+- `app/(main)/page.tsx`: new `ownerLite = isOwnerHere && !isEli`. For them the statement drops `alertLines` (duty misses, anomalies, COD-balance line), the `reviewLine`, the neutral `calmLine`, and the "N things need you today" synopsis. In its place a coda of their own: "N work orders waiting on your approval." or "Nothing needs you today." The "We landed …" line stays.
+- Full briefing window: `isOwnerRole` is now `isEli` only, so a non-Eli owner sees the shared part and nothing else — no "Across the seats", no "What each seat was told".
+- Unchanged: the money tiles (COD out, WOs need review), approvals strip, calendar. The staff-miss lines still go to Eli, the manager and billing as before.
+
+**Migrations:** none. **Watch-out:** the 8:50 AI briefing's `shared` section is what the other owners now read in full — if the cron ever writes a staff miss into `shared` rather than a seat slice, they will see it. **Files:** `app/(main)/page.tsx`.
+
 ## v1.50.1 — $0 COD work orders with an invoice reach the approval bin — Nov 6, 2026
 
 **Why.** Eli, Nov 5: three COD rows (WO-1294, WO-1214, WO-1079) read Needs approval but never showed in "Ready for your approval" and could not be approved from the package window either. All three have a $0 total.
