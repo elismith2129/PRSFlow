@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Moving between pages</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- MOVING BETWEEN PAGES (Eli, 2026-11-09).
+     "Something my staff has mentioned would be helpful is while working in the app, being
+     able to go back and forth between different things. Say you're in the billing hub and
+     you need to look at the calendar real quick. It's difficult because when you come back
+     … you have to either go to drop-down menus from the rail or it just defaults to the
+     front page and it doesn't stick to where you are. Maybe tabs or something."
+     Then: "a simple open in new window option could be a helpful option."
+     Diagnosis: billing's view (Invoices/Financials/Tenants) and open bins live in React
+     state, not the URL. Leave the page and it is gone; the rail group closes too
+     (per-render). The app has no memory to forget with.
+     In-app browser-style tabs considered and steered off: pages would stay mounted
+     together (one-realtime-channel-per-table-per-page rule, iPad memory), and staff already
+     have real browser tabs — which is what option D leans on.
+     Colours/classes copied from styles/globals.css.
+     Rulings (Eli, 2026-11-09, 12:01): "yes lets do a-d" — all four built in v1.51.0, one push.
+     A: billing ?v/?tab/?bins, calendar ?cv/?d/?loc, CRM ?t/?cv; rail links carry the remembered
+     address. B: ReturnPill in the main layout. C: CalendarPeek on Billing Hub + CRM. D: MenuLink
+     (hover ↗, right-click, long-press) on every rail row; ↗ on the pill and the peek. -->
+<style>
+:root{--c-bg:#0b0a09;--c-fg:#f2efe7;--c-wash:rgba(242,239,231,.06);--c-wash2:rgba(242,239,231,.12);--c-chip-ink:#1c2626;
+  --c-st-hot:#ff5a4d;--c-st-warm:#ffa94d;--c-st-booked:#43dfae;--c-st-cold:#7fb2ff;--c-fg-2:rgba(242,239,231,.72);--c-fg-3:rgba(242,239,231,.45);
+  --c-srf:#151412;--c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--c-bg);color:var(--c-fg);font-family:Inter,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;padding:24px 16px 80px;max-width:1180px;margin:0 auto}
+.arch{font-family:'Archivo Black',system-ui,sans-serif;font-weight:400}
+.mono{font-family:'DM Mono',ui-monospace,monospace}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;font-weight:400}
+.lede{font-size:13px;opacity:.6;margin:4px 0 22px;max-width:820px}
+.part{margin:34px 0 6px;display:flex;align-items:baseline;gap:12px}
+.part h2{font-family:'Archivo Black',sans-serif;font-size:16px;font-weight:400}
+.pick{font:800 9.5px Inter;letter-spacing:.08em;text-transform:uppercase;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:4px 10px}
+.later{font:800 9.5px Inter;letter-spacing:.08em;text-transform:uppercase;background:var(--c-wash2);border-radius:99px;padding:4px 10px;opacity:.7}
+.why{font-size:12.5px;opacity:.65;margin:2px 0 14px;max-width:820px}
+.why b{opacity:1;color:var(--c-fg)}
+/* app frame */
+.frame{background:var(--c-srf);border-radius:18px;box-shadow:var(--c-softsh);overflow:hidden;display:grid;grid-template-columns:168px 1fr;min-height:250px;position:relative}
+.rail{background:var(--c-bg);padding:14px 10px;font-size:12.5px;font-weight:600}
+.rail .wm{font-weight:800;font-size:13px;margin:0 0 14px 8px}
+.rail .wm span{opacity:.5}
+.rl{padding:7px 9px;border-radius:9px;opacity:.7;display:flex;align-items:center;gap:8px;position:relative}
+.rl .ic{width:12px;opacity:.7;font-size:11px}
+.rl.on{opacity:1;background:var(--c-wash)}
+.rl .car{margin-left:auto;opacity:.5;font-size:10px}
+.rl .bdg{margin-left:auto;font:700 10px 'DM Mono';background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:1px 6px}
+.rl .nw{margin-left:auto;opacity:0;font-size:11px;padding:0 3px}
+.rl:hover .nw{opacity:.55}
+.rl.kid{padding-left:28px;font-size:12px;opacity:.6}
+.rl.kid.on{opacity:1;box-shadow:inset 2px 0 0 var(--c-fg)}
+.main{padding:16px 20px;position:relative;min-width:0}
+.url{font-family:'DM Mono',monospace;font-size:11px;color:var(--c-fg-3);background:var(--c-bg);border-radius:8px;padding:6px 10px;margin:-6px -8px 12px;display:inline-block}
+.url b{color:var(--c-st-booked);font-weight:500}
+.tabs{display:inline-flex;gap:14px;font-size:12px;font-weight:700;opacity:.6;margin-bottom:12px}
+.tabs .on{opacity:1;border-bottom:2px solid var(--c-fg);padding-bottom:2px}
+.bins{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.bin{font:700 11px Inter;background:var(--c-wash);border-radius:99px;padding:5px 11px;opacity:.6}
+.bin.on{opacity:1;background:var(--c-fg);color:var(--c-bg)}
+.bin i{font-style:normal;opacity:.6;margin-left:4px}
+.row{display:grid;grid-template-columns:auto 60px 1fr auto;gap:12px;align-items:center;padding:8px 0;font-size:12.5px;border-top:1px solid var(--c-wash)}
+.st{font:800 9px Inter;letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:4px 8px}
+.st.rev{background:var(--c-st-cold);color:var(--c-chip-ink)}
+.st.bal{background:var(--c-st-hot);color:#fff}
+.row .wo{font-family:'DM Mono';opacity:.6}
+.row .amt{font-family:'DM Mono';text-align:right}
+/* return pill */
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;background:var(--c-wash2);border-radius:99px;padding:6px 12px 6px 10px;margin-bottom:12px}
+.pill .arr{opacity:.6}
+.pill .ctx{opacity:.55;font-weight:500}
+.pill .x{opacity:.4;margin-left:6px;font-size:11px}
+.pill .nw{opacity:.45;margin-left:2px;font-size:11px}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.cal .col{background:var(--c-bg);border-radius:10px;padding:8px;min-height:120px;font-size:11px}
+.cal .col b{display:block;font:800 9.5px Inter;letter-spacing:.08em;text-transform:uppercase;opacity:.5;margin-bottom:6px}
+.sess{background:var(--c-wash2);border-radius:7px;padding:5px 7px;margin-bottom:5px;font-weight:600}
+.sess.hot{background:color-mix(in srgb,var(--c-st-hot) 25%,transparent)}
+/* peek drawer */
+.drawer{position:absolute;top:0;right:0;bottom:0;width:62%;background:var(--c-srf);box-shadow:-12px 0 40px rgba(0,0,0,.6);padding:14px 18px;border-left:1px solid var(--c-wash2)}
+.drawer .hd{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12.5px;font-weight:800}
+.drawer .hd .sp{flex:1}
+.drawer .hd .b{font:800 10px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--c-wash2);border-radius:99px;padding:5px 10px;opacity:.8}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.peekbtn{position:absolute;right:18px;top:14px;font:800 10px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--c-wash2);border-radius:99px;padding:6px 11px}
+/* phone */
+.phone{width:300px;background:var(--c-bg);border-radius:28px;padding:16px 14px;box-shadow:var(--c-softsh);border:1px solid var(--c-wash2)}
+.phone .top{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;margin-bottom:10px}
+.phone .top span{opacity:.5;font-weight:600;font-size:12px}
+.phone .top .burg{margin-left:auto;opacity:.7}
+.phone .pill{width:100%;justify-content:flex-start;border-radius:12px}
+.phone .row{grid-template-columns:auto 1fr auto;font-size:12px}
+.phone .row .wo{display:none}
+.menu{background:var(--c-srf);border-radius:14px;padding:6px;position:absolute;right:28px;top:120px;box-shadow:var(--c-softsh);font-size:12.5px;font-weight:600;min-width:170px}
+.menu div{padding:8px 10px;border-radius:8px}
+.menu div:hover{background:var(--c-wash)}
+.menu div.sep{border-top:1px solid var(--c-wash2);margin-top:4px;padding-top:10px;opacity:.75}
+/* notes */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.note{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px 16px;font-size:12.5px}
+.note .k{font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-bottom:8px}
+.note li{margin:0 0 6px 16px;opacity:.85}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cap{font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin:0 0 8px}
+.kbd{font-family:'DM Mono';font-size:11px;background:var(--c-wash2);border-radius:5px;padding:1px 6px}
+@media(max-width:900px){.frame{grid-template-columns:1fr}.rail{display:none}.pair,.cols{grid-template-columns:1fr}.drawer{width:88%}.cal{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+
+<h1>Moving between pages without losing your place</h1>
+<p class="lede">Staff: billing hub → calendar for a quick look → back, and you're on the front page or the default view with the rail group closed. Four pieces below. A fixes the actual fault; B and D are small and sit on top of A; C is the bigger add and can wait.</p>
+
+<!-- A -->
+<div class="part"><h2>A · Pages remember where you were</h2><span class="pick">Recommended · do first</span></div>
+<p class="why">Each page writes its position into the address: which view, which bins, which week. Three things then happen for free — the browser's <b>Back</b> button really goes back, the rail's <b>Billing</b> link returns you to the view you last had open, and the rail keeps the right group open because it follows the page instead of a click. Nothing new to learn. <b>No visible change</b> except that the app stops forgetting.</p>
+<div class="pair">
+<div>
+<p class="cap">Today — comes back to the default</p>
+<div class="frame">
+  <div class="rail">
+    <div class="wm">PRS<span>Flo</span></div>
+    <div class="rl"><span class="ic">▦</span>Dashboard</div>
+    <div class="rl"><span class="ic">▤</span>Calendar</div>
+    <div class="rl"><span class="ic">◎</span>CRM<span class="bdg">13</span></div>
+    <div class="rl on"><span class="ic">▽</span>Billing<span class="car">▸</span></div>
+    <div class="rl"><span class="ic">◔</span>Operations</div>
+    <div class="rl"><span class="ic">◔</span>HR</div>
+  </div>
+  <div class="main">
+    <div class="url">/billing</div>
+    <div class="tabs"><span class="on">Invoices</span><span>Financials</span><span>Tenants</span></div>
+    <div class="bins"><span class="bin on">Balance due <i>2</i></span><span class="bin">In progress <i>0</i></span><span class="bin on">Needs review <i>3</i></span><span class="bin">Paid <i>118</i></span></div>
+    <div class="row"><span class="st bal">Balance due</span><span class="wo">WO-1422</span><span>Cris Osorio · Oct 21 · B</span><span class="amt">$1,110.00</span></div>
+    <div class="row"><span class="st bal">Balance due</span><span class="wo">WO-1121</span><span>Crider · Sep 4 · X</span><span class="amt">$1,663.20</span></div>
+    <p style="font-size:11px;opacity:.5;margin-top:10px">You were in Financials with only Paid open. The group was open in the rail. All three reset.</p>
+  </div>
+</div>
+</div>
+<div>
+<p class="cap">With A — comes back to where you were</p>
+<div class="frame">
+  <div class="rail">
+    <div class="wm">PRS<span>Flo</span></div>
+    <div class="rl"><span class="ic">▦</span>Dashboard</div>
+    <div class="rl"><span class="ic">▤</span>Calendar</div>
+    <div class="rl"><span class="ic">◎</span>CRM<span class="bdg">13</span></div>
+    <div class="rl on"><span class="ic">▽</span>Billing<span class="car">▾</span></div>
+    <div class="rl kid on">Billing Hub</div>
+    <div class="rl kid">Petty Cash</div>
+    <div class="rl kid">SRS</div>
+    <div class="rl"><span class="ic">◔</span>Operations</div>
+  </div>
+  <div class="main">
+    <div class="url">/billing?<b>view=financials</b>&amp;<b>bins=paid</b></div>
+    <div class="tabs"><span>Invoices</span><span class="on">Financials</span><span>Tenants</span></div>
+    <div class="bins"><span class="bin">Balance due <i>2</i></span><span class="bin">In progress <i>0</i></span><span class="bin">Needs review <i>3</i></span><span class="bin on">Paid <i>118</i></span></div>
+    <div class="row"><span class="st" style="background:var(--c-wash2)">Paid</span><span class="wo">WO-1418</span><span>Sony Music · Pradabagshawty · Nov 3</span><span class="amt">$2,400.00</span></div>
+    <div class="row"><span class="st" style="background:var(--c-wash2)">Paid</span><span class="wo">WO-1417</span><span>10K Projects · KOAD · Nov 3</span><span class="amt">$1,950.00</span></div>
+    <p style="font-size:11px;opacity:.5;margin-top:10px">Same view, same bins, group still open. The address did the remembering, so a bookmark or a shared link lands here too.</p>
+  </div>
+</div>
+</div>
+</div>
+<div class="cols">
+  <div class="note"><div class="k">What each page carries</div>
+    <ul>
+      <li><b>Billing hub</b> — view (invoices / financials / tenants), open bins, month if Financials.</li>
+      <li><b>Calendar</b> — week or day shown, room if filtered.</li>
+      <li><b>CRM</b> — filter (hot / warm / uncontacted / all), open lead if a card is open.</li>
+      <li><b>Daily ops</b> — already does this (<span class="mono">?tab=flags</span>). The pattern exists; this spreads it.</li>
+      <li>Dashboard, Petty cash, SRS — nothing to carry.</li>
+    </ul>
+  </div>
+  <div class="note"><div class="k">Rail behaviour</div>
+    <ul>
+      <li>Group opens when you are on one of its pages. Stays open while you are there.</li>
+      <li><b>Billing</b> in the rail goes to your last billing address, not the bare page. Same for CRM and Calendar.</li>
+      <li>Remembered per device, so the iPad at the desk and Lori's laptop each keep their own.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- B -->
+<div class="part"><h2>B · The return pill</h2><span class="pick">Recommended · with A</span></div>
+<p class="why">When you arrive on a page from another page, a small pill at the top says where you came from and takes you straight back. It is A's remembered address with a label on it — the "how do I get back" moment stops being a hunt through the rail. Disappears after you use it or go somewhere else. On the phone it sits under the header, full width, where the thumb lands.</p>
+<div class="pair">
+<div>
+<p class="cap">Desktop — on the calendar, having come from billing</p>
+<div class="frame">
+  <div class="rail">
+    <div class="wm">PRS<span>Flo</span></div>
+    <div class="rl"><span class="ic">▦</span>Dashboard</div>
+    <div class="rl on"><span class="ic">▤</span>Calendar</div>
+    <div class="rl"><span class="ic">◎</span>CRM<span class="bdg">13</span></div>
+    <div class="rl"><span class="ic">▽</span>Billing<span class="bdg">9</span></div>
+    <div class="rl"><span class="ic">◔</span>Operations</div>
+  </div>
+  <div class="main">
+    <div class="pill"><span class="arr">←</span>Back to Billing hub <span class="ctx">· Needs review</span><span class="x">✕</span></div>
+    <div class="cal">
+      <div class="col"><b>Mon 9</b><div class="sess">10 Summers · A</div><div class="sess">Sony · B</div></div>
+      <div class="col"><b>Tue 10</b><div class="sess hot">Roadsterr · E</div></div>
+      <div class="col"><b>Wed 11</b><div class="sess">KOAD · A</div><div class="sess">Crider · X</div></div>
+      <div class="col"><b>Thu 12</b></div>
+      <div class="col"><b>Fri 13</b><div class="sess">Junior H · B</div></div>
+    </div>
+  </div>
+</div>
+</div>
+<div>
+<p class="cap">Phone — same thing, under the header</p>
+<div class="phone">
+  <div class="top">PRS<span>Flo</span> <span style="margin-left:10px">CRM</span><span>Calendar</span><span class="burg">☰</span></div>
+  <div class="pill"><span class="arr">←</span>Billing hub <span class="ctx">· Needs review</span></div>
+  <div class="cal" style="grid-template-columns:repeat(2,1fr)">
+    <div class="col"><b>Mon 9</b><div class="sess">10 Summers · A</div><div class="sess">Sony · B</div></div>
+    <div class="col"><b>Tue 10</b><div class="sess hot">Roadsterr · E</div></div>
+  </div>
+  <p style="font-size:11px;opacity:.5;margin-top:10px">One pill, one level. It does not stack into a breadcrumb trail — go three pages deep and it still says the one place you were last.</p>
+</div>
+</div>
+</div>
+
+<!-- D -->
+<div class="part"><h2>D · Open in a new window</h2><span class="pick">Recommended · with A</span></div>
+<p class="why">Your addition, and the honest answer to "tabs": staff already have browser tabs. The reason they don't feel useful today is A — a new tab opens on the bare page. With A in place, <b>every rail link, return pill and record opens in a new window at the exact view</b>. Three places to put it, all small. <span class="kbd">⌘</span>-click already works on every link in the app today; this just makes it visible.</p>
+<div class="pair">
+<div>
+<p class="cap">Desktop — ↗ appears on hover in the rail; right-click gets a menu</p>
+<div class="frame" style="min-height:230px">
+  <div class="rail">
+    <div class="wm">PRS<span>Flo</span></div>
+    <div class="rl"><span class="ic">▦</span>Dashboard<span class="nw">↗</span></div>
+    <div class="rl" style="background:var(--c-wash)"><span class="ic">▤</span>Calendar<span class="nw" style="opacity:.7">↗</span></div>
+    <div class="rl"><span class="ic">◎</span>CRM<span class="bdg">13</span></div>
+    <div class="rl on"><span class="ic">▽</span>Billing<span class="car">▾</span></div>
+    <div class="rl kid on">Billing Hub</div>
+    <div class="rl kid">Petty Cash</div>
+  </div>
+  <div class="main">
+    <div class="pill"><span class="arr">←</span>Back to Billing hub <span class="ctx">· Needs review</span><span class="nw" title="Open billing in a new window">↗</span></div>
+    <div class="menu">
+      <div>Open Calendar</div>
+      <div>Open in new window ↗</div>
+      <div class="sep">Copy link</div>
+    </div>
+    <p style="font-size:11px;opacity:.5;margin-top:130px">Hover the rail → ↗ at the right edge of the row. Right-click → menu. The pill carries its own ↗ so "keep billing open over there, work the calendar here" is one click.</p>
+  </div>
+</div>
+</div>
+<div>
+<p class="cap">Phone / iPad — long-press the rail row</p>
+<div class="phone" style="position:relative">
+  <div class="top">PRS<span>Flo</span> <span style="margin-left:10px">CRM</span><span>Calendar</span><span class="burg">☰</span></div>
+  <div style="background:var(--c-srf);border-radius:14px;padding:8px 6px;font-size:13px;font-weight:600">
+    <div class="rl"><span class="ic">▦</span>Dashboard</div>
+    <div class="rl" style="background:var(--c-wash2)"><span class="ic">▤</span>Calendar</div>
+    <div class="rl"><span class="ic">◎</span>CRM<span class="bdg">13</span></div>
+    <div class="rl"><span class="ic">▽</span>Billing<span class="bdg">9</span></div>
+  </div>
+  <div class="menu" style="right:24px;top:118px">
+    <div>Open Calendar</div>
+    <div>Open in new tab ↗</div>
+  </div>
+  <p style="font-size:11px;opacity:.5;margin-top:90px">iPad Split View already works with two PRSFlo tabs. This makes the second tab land somewhere useful. On the phone it matters less — one screen at a time — so long-press only, no visible ↗.</p>
+</div>
+</div>
+</div>
+
+<!-- C -->
+<div class="part"><h2>C · Peek at the calendar without leaving</h2><span class="later">Later · if still asked for after A</span></div>
+<p class="why">Your exact example. A button on the billing hub (and the CRM) slides the calendar's week over the page. You look, you close it, and you are exactly where you were because you never left. Nothing to remember because nothing moved. The bigger build of the four — the calendar has to work as a panel as well as a page — and it only helps the look-but-don't-touch case; the moment someone needs to edit a booking they are on the calendar page anyway, where A and B take over.</p>
+<div class="frame" style="min-height:270px">
+  <div class="rail">
+    <div class="wm">PRS<span>Flo</span></div>
+    <div class="rl"><span class="ic">▦</span>Dashboard</div>
+    <div class="rl"><span class="ic">▤</span>Calendar</div>
+    <div class="rl"><span class="ic">◎</span>CRM<span class="bdg">13</span></div>
+    <div class="rl on"><span class="ic">▽</span>Billing<span class="car">▾</span></div>
+    <div class="rl kid on">Billing Hub</div>
+    <div class="rl kid">Petty Cash</div>
+  </div>
+  <div class="main">
+    <div class="peekbtn">▤ Calendar</div>
+    <div class="tabs"><span class="on">Invoices</span><span>Financials</span><span>Tenants</span></div>
+    <div class="bins"><span class="bin on">Balance due <i>2</i></span><span class="bin on">Needs review <i>3</i></span><span class="bin">Paid <i>118</i></span></div>
+    <div class="row"><span class="st bal">Balance due</span><span class="wo">WO-1422</span><span>Cris Osorio · Oct 21 · B</span><span class="amt">$1,110.00</span></div>
+    <div class="row"><span class="st bal">Balance due</span><span class="wo">WO-1121</span><span>Crider · Sep 4 · X</span><span class="amt">$1,663.20</span></div>
+    <div class="row"><span class="st rev">Needs review</span><span class="wo">WO-1294</span><span>Joe Barresi · Oct 3 · B</span><span class="amt">—</span></div>
+    <div class="dim"></div>
+    <div class="drawer">
+      <div class="hd">▤ This week <span class="sp"></span><span class="b">Open calendar ↗</span><span class="b">✕</span></div>
+      <div class="cal" style="grid-template-columns:repeat(3,1fr)">
+        <div class="col"><b>Mon 9</b><div class="sess">10 Summers · A</div><div class="sess">Sony · B</div></div>
+        <div class="col"><b>Tue 10</b><div class="sess hot">Roadsterr · E</div></div>
+        <div class="col"><b>Wed 11</b><div class="sess">KOAD · A</div><div class="sess">Crider · X</div></div>
+      </div>
+      <p style="font-size:11px;opacity:.5;margin-top:10px">Read-only. Tap a session to open it on the real calendar (with a return pill back to billing).</p>
+    </div>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="note"><div class="k">The pick</div>
+    <ul>
+      <li><b>A + B + D in one build.</b> A is the repair, B makes the repair visible, D is one line per link once A exists.</li>
+      <li><b>C after</b>, only if staff still ask. Expect A alone to take most of the complaint away.</li>
+      <li>Not building in-app tabs. Pages would stay mounted together (realtime channels, iPad memory) and the browser already has tabs — D points at them.</li>
+    </ul>
+  </div>
+  <div class="note"><div class="k">What it costs / what to watch</div>
+    <ul>
+      <li>No migration. Addresses and one per-device memory; nothing in the database.</li>
+      <li>Billing page: view and bins move from React state into the address. Same for the calendar's date and the CRM filter. Each page is a contained change.</li>
+      <li>Rail: "open group follows the page" replaces "open group follows the click" — the Oct 12 single-page-group rule stays.</li>
+      <li>Return pill is one level deep by design. A trail (billing → calendar → lead → back → back) is a breadcrumb, and breadcrumbs are what the rail is for.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

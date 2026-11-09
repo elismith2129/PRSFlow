@@ -680,6 +680,19 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.51.0', date:'Nov 9, 2026',
+    headline:'Pages remember where you were. A Back pill, a calendar peek, and open-in-new-window.',
+    desc:'Go look at the calendar from the Billing Hub and come back &mdash; you land on the same view, same bins, same week.',
+    changes:[
+      'Billing Hub, Calendar and CRM keep their place in the web address. The rail&rsquo;s link takes you back to where you last were on that page, and the browser&rsquo;s Back button works properly.',
+      'A small &ldquo;&larr; Back to Billing hub&rdquo; pill appears at the top of a page you jumped to. One tap returns you. The &times; hides it.',
+      '&#9636; Calendar on the Billing Hub and CRM slides this week over the page without leaving. Tap a day to open it on the real calendar.',
+      'Open any rail page in a new window: hover for the &#8599; on a computer, right-click for a menu, or press and hold on an iPad.',
+    ],
+    affects:'Everyone in the office app. Nothing changes for runners.',
+    dev:['lib/navMemory.ts useAddress() + rememberedAddress(); ReturnPill in the main layout; LinkMenu wraps rail rows; CalendarPeek. No migration.'],
+  },
+  {
     ver:'v1.50.2', date:'Nov 9, 2026',
     headline:'Owners other than Eli no longer see staff items in the morning briefing.',
     desc:'The red missed-duty lines and the orange review line are for the people who run the office. The other owners now get a briefing about the business.',

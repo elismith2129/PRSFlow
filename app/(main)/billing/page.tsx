@@ -67,6 +67,7 @@ import { RemovedHoldsPanel } from '@/components/billing/RemovedHolds'
 import { Hint } from '@/components/ui/Hint'
 import { PageTop } from '@/components/layout/PageTop'
 import { DateStep } from '@/components/layout/DateStep'
+import { CalendarPeek } from '@/components/calendar/CalendarPeek'
 import { currentMonth, shiftMonth, monthLabel } from '@/lib/tenants'
 import { FinancialsView } from '@/components/billing/FinancialsView'
 import { TenantsView } from '@/components/billing/TenantsView'
@@ -83,6 +84,7 @@ import {
   CLOSED_REASONS, closedReasonLabel,
   type SortCol, type StageKey, stageGroup,
 } from '@/lib/billing'
+import { readParam, useAddress } from '@/lib/navMemory'
 
 export default function BillingPage() {
   const { profile, loading: profileLoading } = useUserProfile()
@@ -135,6 +137,46 @@ export default function BillingPage() {
   useEffect(() => {
     try { sessionStorage.setItem('prsflo-billing-cod-bins-v2', JSON.stringify([...codBins])) } catch { /* private mode */ }
   }, [codBins])
+  // NAV MEMORY (Eli, 2026-11-09 — lib/navMemory, nav-memory-options.html).
+  // The hub's position lives in the address: ?v=billing|cod|tenants|financials,
+  // ?tab=<bucket> on Billing, ?bins=a,b on COD. Restored once after mount
+  // (same shape as the sessionStorage restore above — a lazy initializer
+  // reading window would mismatch the server render); from then on every
+  // change rewrites the address in place, and the rail's Billing link brings
+  // you back to it. The bins stay in sessionStorage too: that is the
+  // "latch" memory for a fresh /billing with no query.
+  const addrRestored = useRef(false)
+  useEffect(() => {
+    if (addrRestored.current) return
+    addrRestored.current = true
+    const v = readParam('v')
+    if (v === 'tenants' || v === 'financials') setView(v)
+    else if (v === 'billing' || v === 'cod') {
+      setView('invoices'); setPipeline(v)
+      const t = readParam('tab') as BucketKey | null
+      const keys = tabsFor(v).map(b => b.key)
+      if (v === 'billing') setTab(t && keys.includes(t) ? t : keys[0])
+      else {
+        const bins = (readParam('bins') ?? '').split(',').filter((k): k is BucketKey => keys.includes(k as BucketKey))
+        if (bins.length) setCodBins(new Set(bins))
+      }
+    }
+  }, [])
+  const addrView = view === 'invoices' ? pipeline : view
+  // THE PEEK (option C, 2026-11-09): ▤ Calendar in the page top slides this
+  // week over the hub without leaving it. components/calendar/CalendarPeek.
+  const [peek, setPeek] = useState(false)
+  useAddress(
+    {
+      v: addrView === 'billing' ? undefined : addrView,       // default view leaves a clean address
+      tab: addrView === 'billing' && tab !== tabsFor('billing')[0].key ? tab : undefined,
+      bins: addrView === 'cod' ? [...codBins].join(',') : undefined,
+    },
+    addrView === 'tenants' ? 'Tenants'
+      : addrView === 'financials' ? 'Financials'
+      : addrView === 'cod' ? `COD · ${[...codBins].map(bucketLabel).join(' + ')}`
+      : bucketLabel(tab),
+  )
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState<string | null>(null)
@@ -646,27 +688,34 @@ export default function BillingPage() {
       dimViews={searching}
       actions={view === 'tenants' && !searching ? (
         <>
+          <button className="c-soft c-control" onClick={() => setPeek(true)} title="Peek at this week's calendar without leaving">▤ Calendar</button>
           <DateStep label={monthLabel(tenantMonth)} onPrev={() => setTenantMonth(shiftMonth(tenantMonth, -1))} onNext={() => setTenantMonth(shiftMonth(tenantMonth, 1))} />
           {canEditTenants && (
             <button className="c-btn c-control c-raised-primary" onClick={() => setNewTenantRequest(n => n + 1)}>+ Tenant</button>
           )}
         </>
       ) : view === 'invoices' || searching ? (
-        /* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
-           things that belong to the PAGE rather than to an invoice. It is not a
-           header button because a blank work order is rare — Eli: "these are
-           gonna be rare occasions". */
-        <button
-          className="c-bmore"
-          onClick={() => setPageMenu(true)}
-          title="More — blank work order, deleted work orders"
-          style={{ fontSize: 15, padding: '4px 6px' }}
-        >
-          ⋯
-        </button>
-      ) : undefined}
+        <>
+          <button className="c-soft c-control" onClick={() => setPeek(true)} title="Peek at this week's calendar without leaving">▤ Calendar</button>
+          {/* PAGE-LEVEL "⋯" (2026-08-13). Same control as the row's, one level up:
+             things that belong to the PAGE rather than to an invoice. It is not a
+             header button because a blank work order is rare — Eli: "these are
+             gonna be rare occasions". */}
+          <button
+            className="c-bmore"
+            onClick={() => setPageMenu(true)}
+            title="More — blank work order, deleted work orders"
+            style={{ fontSize: 15, padding: '4px 6px' }}
+          >
+            ⋯
+          </button>
+        </>
+      ) : (
+        <button className="c-soft c-control" onClick={() => setPeek(true)} title="Peek at this week's calendar without leaving">▤ Calendar</button>
+      )}
     />
   )
+  const peekEl = peek ? <CalendarPeek onClose={() => setPeek(false)} /> : null
 
   // Revenue is a different page that happens to live behind the same heading —
   // no search, no buckets, no rows, no modals. Rendering it as a branch rather
@@ -676,6 +725,7 @@ export default function BillingPage() {
     return (
       <div className="c-root">
         {top}
+        {peekEl}
         <FinancialsView />
       </div>
     )
@@ -689,6 +739,7 @@ export default function BillingPage() {
     return (
       <div className="c-root">
         {top}
+        {peekEl}
         <TenantsView month={tenantMonth} newTenantRequest={newTenantRequest} onNewTenantRequestHandled={() => setNewTenantRequest(0)} />
       </div>
     )
@@ -715,6 +766,7 @@ export default function BillingPage() {
           Since 2026-08-20 the heading also carries FINANCIALS for owners; it is
           built above as `header` because both views wear it. */}
       {top}
+      {peekEl}
 
       {/* SUMMARY — AR aging without leaving the page, computed from the same
           rows the tabs use, so a figure up here can never disagree with the

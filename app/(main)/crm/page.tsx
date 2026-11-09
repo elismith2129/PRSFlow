@@ -2,6 +2,8 @@
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
+import { readParam, useAddress } from '@/lib/navMemory'
+import { CalendarPeek } from '@/components/calendar/CalendarPeek'
 import { supabase, Lead, LeadStatus, Client, ClientContact, BillingType, StaffMode } from '@/lib/supabase'
 import { StaffPicker } from '@/components/shared/StaffPicker'
 import { NEXT_TOUCH_DAYS } from '@/lib/settings'
@@ -476,7 +478,23 @@ export default function CRMPage() {
       if (v) setView(v)
       if (s) setSelectedId(Number(s))
     } catch {}
+    // NAV MEMORY (Eli, 2026-11-09 — lib/navMemory). The address wins over the
+    // session memory above when it says something: ?t=leads|clients|
+    // registrations, ?cv=<CrmView>. The rail's CRM link carries the last one.
+    const t = readParam('t')
+    if (t === 'leads' || t === 'clients' || t === 'registrations') setTab(t)
+    const cv = readParam('cv')
+    if (cv === 'needs-action' || cv === 'follow-up' || cv === 'all-leads' || cv === 'analytics') setView(cv)
   }, [])
+  // THE PEEK (option C, 2026-11-09): ▤ Calendar in the page top slides this
+  // week over the CRM without leaving it. components/calendar/CalendarPeek.
+  const [peek, setPeek] = useState(false)
+  const CRM_VIEW_WORDS: Record<CrmView, string> = { 'needs-action': 'Needs action', 'follow-up': 'Follow-up', 'all-leads': 'All leads', analytics: 'Analytics' }
+  useAddress(
+    { t: tab === 'leads' ? undefined : tab, cv: tab === 'leads' && view !== 'all-leads' ? view : undefined },
+    tab === 'leads' ? CRM_VIEW_WORDS[view] : tab === 'clients' ? 'Clients' : 'Registrations',
+    ['lead', 'clientId', 'id'],
+  )
   useEffect(() => {
     try { sessionStorage.setItem('crm_selected', selectedId != null ? String(selectedId) : '') } catch {}
   }, [selectedId])
@@ -718,12 +736,14 @@ export default function CRMPage() {
           above). The page top must be the SAME size on every page, so it is
           zoomed back up by 1/0.9 — 0.9 × 1/0.9 = 1. When the page's 90% zoom
           goes (it is on the tidy list), delete this wrapper's zoom with it. */}
+      {peek && <CalendarPeek onClose={() => setPeek(false)} />}
       <div style={isMobile ? { flexShrink: 0 } : { zoom: 1 / 0.9, flexShrink: 0 }}>
         <PageTop<'leads' | 'clients' | 'registrations'>
           crumb="CRM"
           title="Leads & clients"
           search={{ value: query, onChange: setQuery, placeholder: 'Search leads, clients and registrations — name, label, artist, email, phone…' }}
           actions={<>
+            <button className="c-soft c-control" onClick={() => setPeek(true)} title="Peek at this week's calendar without leaving">▤ Calendar</button>
             <button
               onClick={() => { setQuery(''); setTab('clients'); setNewClientRequest(n => n + 1) }}
               className="c-soft c-control c-raised"

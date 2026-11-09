@@ -14,6 +14,8 @@ import { needsActionCounts } from '@/lib/crm'
 import { useMyMemos } from '@/hooks/useMyMemos'
 import { unreadCount } from '@/lib/memos'
 import { Sun, Moon } from 'lucide-react'
+import { MenuLink } from '@/components/layout/LinkMenu'
+import { ADDR_EVENT, basePath, rememberedAddress } from '@/lib/navMemory'
 
 /**
  * SIDE NAV RAIL — spec §14a, ported from docs/design-refs/dashboard-final.html.
@@ -137,6 +139,28 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   const [handOpen, setHandOpen] = useState<{ at: string; group: string | null } | null>(null)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  // NAV MEMORY (Eli, 2026-11-09 — lib/navMemory). A rail link points at the
+  // address you last had open on that page (/billing?v=cod&bins=balance), not
+  // the bare path, so "go look at the calendar, come back" lands where you
+  // were. Read after mount (localStorage) so the server and first client
+  // render agree; refreshed whenever a page rewrites its address.
+  const [addrTick, setAddrTick] = useState(0)
+  useEffect(() => {
+    const bump = () => setAddrTick(t => t + 1)
+    window.addEventListener(ADDR_EVENT, bump)
+    return () => window.removeEventListener(ADDR_EVENT, bump)
+  }, [])
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  function hrefFor(item: RailItem): string {
+    if (!mounted) return item.href
+    const base = basePath(item.href)
+    // A link that carries its own query (tech's /daily-ops?tab=flags) is a
+    // deliberate destination — leave it.
+    if (item.href.includes('?') || base === '/') return item.href
+    void addrTick
+    return rememberedAddress(base)
+  }
   const [badgeLeads, setBadgeLeads] = useState<BadgeLead[]>([])
   const [approvalsDue, setApprovalsDue] = useState(0)
   const { profile } = useUserProfile()
@@ -306,17 +330,18 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
   function renderItem(item: RailItem) {
     const active = isActive(item.href)
     return (
-      <Link
+      <MenuLink
         key={item.href}
-        href={item.href}
+        href={hrefFor(item)}
+        label={item.label}
         className={`c-rail-link${active ? ' c-on' : ''}`}
         style={item.dim && !active ? { opacity: 0.35 } : undefined}
-        onClick={() => setMenuOpen(false)}
+        onNavigate={() => setMenuOpen(false)}
       >
         <span className="c-rail-ic">{item.ic}</span>
         {item.label}
         {renderBadge(badgeFor(item.href))}
-      </Link>
+      </MenuLink>
     )
   }
 
@@ -372,16 +397,17 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
         {open && (
           <div className="c-rail-kids">
             {kids.map(child => (
-              <Link
+              <MenuLink
                 key={child.href}
-                href={child.href}
+                href={hrefFor(child)}
+                label={child.label}
                 className={`c-rail-kid${isActive(child.href) ? ' c-on' : ''}`}
-                aria-current={isActive(child.href) ? 'page' : undefined}
-                onClick={() => setMenuOpen(false)}
+                ariaCurrent={isActive(child.href) ? 'page' : undefined}
+                onNavigate={() => setMenuOpen(false)}
               >
                 {child.label}
                 {renderBadge(badgeFor(child.href))}
-              </Link>
+              </MenuLink>
             ))}
           </div>
         )}
@@ -456,7 +482,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             {crmShown && (
               <Link
-                href="/crm"
+                href={hrefFor({ href: '/crm', label: 'CRM', ic: '' })}
                 className={`c-rail-link${crmLit ? ' c-on' : ''}`}
                 style={{ width: 'auto', padding: '6px 12px' }}
               >
@@ -465,7 +491,7 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
             )}
             {!isRunner && (
               <Link
-                href="/calendar"
+                href={hrefFor({ href: '/calendar', label: 'Calendar', ic: '' })}
                 className={`c-rail-link${isActive('/calendar') ? ' c-on' : ''}`}
                 style={{ width: 'auto', padding: '6px 12px' }}
               >

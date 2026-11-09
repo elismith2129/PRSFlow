@@ -20,6 +20,19 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.51.0 — Nav memory: pages remember where you were, return pill, open in new window, calendar peek — Nov 9, 2026
+
+**Why.** Staff, via Eli: "Say you're in the billing hub and you need to look at the calendar real quick … when you come back it just defaults to the front page and it doesn't stick to where you are." Cause: the hub's view and bins (and the calendar's week, the CRM's view) lived in React state — leave the page, it's gone. Mock: `docs/design-refs/nav-memory-options.html`. Eli: "yes lets do a-d".
+
+- **A · Addresses.** `lib/navMemory.ts` — `useAddress()` writes a page's position into its query with `history.replaceState` (no navigation, no re-render) and remembers it per device under the page's path. Billing: `?v=billing|cod|tenants|financials`, `?tab=` on Billing, `?bins=a,b` on COD. Calendar: `?cv=day|studio|grid`, `?d=YYYY-MM-DD`, `?loc=`. CRM: `?t=leads|clients|registrations`, `?cv=<view>`. Default state leaves a clean address. One-shot deep links (`?newBooking=`, `?lead=`, `?clientId=`) are never remembered and are left alone while present.
+- **Rail.** Every link points at the remembered address for its page, not the bare path (`hrefFor`, read after mount so server and client agree). The phone bar's CRM / Calendar shortcuts too. A link that carries its own query (tech's `/daily-ops?tab=flags`) is left as-is.
+- **B · Return pill.** `components/layout/ReturnPill.tsx`, mounted once in `app/(main)/layout.tsx`. "← Back to Billing hub · Needs review" when you arrived from another page; one level deep, never a trail; ✕ dismisses; ↗ opens the previous page in a new window. It also keeps the one-hop history (sessionStorage) that makes it work.
+- **D · Open in a new window.** `components/layout/LinkMenu.tsx` wraps every rail row: ↗ on hover (desktop, `@media (hover: hover)`), right-click menu (Open · Open in new window · Copy link), long-press 550ms on touch → same menu. The ↗ is a sibling of the link, never nested in it.
+- **C · Calendar peek.** `components/calendar/CalendarPeek.tsx` — ▤ Calendar button in the Billing Hub and CRM page tops slides this week over the page (read-only, one `bookings` read per week shown, no realtime channel). ‹ Today ›, Open calendar, ↗, ✕; tap a day or session → `/calendar?cv=day&d=…` with the pill pointing back.
+- Rejected: in-app browser-style tabs (pages would stay mounted together — one-realtime-channel-per-table-per-page, iPad memory; the browser has tabs, D points at them). Rejected: a breadcrumb trail (the rail is the trail).
+
+**Migrations:** none. Nothing in the database — localStorage (per-device address memory) and sessionStorage (one hop). **Watch-outs:** the calendar's position params are `cv`/`d`, not `view`/`date`, because `?date=` already belongs to the new-booking deep link. CRM's view and selected lead still persist in sessionStorage as before; the address wins when it says something. **Files:** `lib/navMemory.ts`, `components/layout/{ReturnPill,LinkMenu}.tsx`, `components/calendar/CalendarPeek.tsx`, `components/layout/Rail.tsx`, `app/(main)/layout.tsx`, `app/(main)/{billing,calendar,crm}/page.tsx`, `styles/globals.css`, `docs/design-refs/nav-memory-options.html`.
+
 ## v1.50.2 — Owners other than Eli no longer see staff misses in the briefing — Nov 9, 2026
 
 **Why.** Eli, Nov 9, from his phone: the red "Fernando missed valley checks" / "Lori Beth missed the follow-up list" lines and the orange review line were showing to Adam and Mike. "They only use the phone to look at the cal, or stop in. I don't want them dealing with staff and I don't want them to see staff failures."

@@ -6,6 +6,7 @@ import { SopGate } from '@/components/SopGate'
 import { MemoGate } from '@/components/memos/MemoGate'
 import TestingFloater from '@/components/dev/TestingFloater'
 import { AskFlo } from '@/components/ask/AskFlo'
+import { ReturnPill } from '@/components/layout/ReturnPill'
 
 export default function MainLayout({
   children,
@@ -20,6 +21,10 @@ export default function MainLayout({
         <div className="c-frame">
           <NavGate />
           <main className="page-main" style={{ flex: 1, minWidth: 0, padding: '14px 20px 20px' }}>
+            {/* Nav memory (2026-11-09): "← Back to Billing hub · Needs review"
+                when you arrived from another page. Also keeps the one-hop
+                history that makes it work. lib/navMemory.ts. */}
+            <ReturnPill />
             {children}
           </main>
         </div>

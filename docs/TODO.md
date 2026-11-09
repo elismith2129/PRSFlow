@@ -5,6 +5,11 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Nav memory follow-ups (Nov 9, v1.51.0)
+
+- [ ] **Spread `useAddress` to the other pages with a position** — Daily Ops (already has `?tab=`), Memos, Punches, SRS month. Each is a few lines once the pattern is in. *(Nov 9)*
+- [ ] **Ask staff after a week** whether the peek (▤ Calendar) gets used or the pill alone did it. If unused, it can go. *(Nov 9)*
+
 ## $0 COD rows in the approval bin (Nov 6, v1.50.1)
 
 - [ ] **Open WO-1294, WO-1214, WO-1079** before approving — all three show a $0 total. If a session was really worked, the charges are missing on the work order (a separate problem from the bin fix). *(Nov 6)*

@@ -381,6 +381,20 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 9, 2026 — Nav memory (v1.51.0)
+
+Staff complaint: go from the billing hub to the calendar for a look, come back, and
+you're on the default view with nothing where you left it. The app had no memory to
+forget with — a page's position was React state. Eli asked for options ("maybe tabs
+or something"), added "a simple open in new window option", and after the mock said
+"yes lets do a-d". Ruling against in-app tabs: pages would have to stay mounted
+together, which fights the one-realtime-channel-per-table-per-page rule and the iPad;
+the browser already has tabs, so D makes every link open in one at the right address.
+Shape: the address is the memory (replaceState, per-device recall under the page's
+path), the pill is the address with a label, the peek is for the look-don't-touch case.
+Return pill is deliberately one level — a trail is a breadcrumb and the rail is the
+breadcrumb.
+
 ### November 9, 2026 — The other owners get the business, not the office (v1.50.2)
 
 The dashboard had one idea of "owner" and it was Eli: a non-Eli owner got the owner

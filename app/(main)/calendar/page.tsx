@@ -2,6 +2,7 @@
 import { useReloadOnReturn } from '@/hooks/useReloadOnReturn'
 import { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { readParam, useAddress } from '@/lib/navMemory'
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/lib/supabase'
 import { STUDIO_LOCATIONS, parseLocation } from '@/lib/studios'
@@ -1107,12 +1108,21 @@ function CalendarPageInner() {
   // (behind Suspense + useSearchParams), so reading matchMedia in the initializer is
   // safe — no SSR/hydration mismatch. The effect below is a backup for late breakpoint
   // resolution / resize.
+  // NAV MEMORY (Eli, 2026-11-09 — lib/navMemory, nav-memory-options.html).
+  // Where you are on the calendar lives in the address: ?cv=day|studio|grid,
+  // ?d=YYYY-MM-DD (the day in Day view, the Sunday in the others), ?loc=.
+  // This component is client-only (Suspense + useSearchParams above), so the
+  // initializers may read the address directly. ?newBooking= & friends are
+  // one-shot deep links and are never remembered (the `drop` list below).
   const [view, setView] = useState<ViewType>(() => {
+    const cv = readParam('cv')
+    if (cv === 'day' || cv === 'studio' || cv === 'grid') return cv
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       && window.matchMedia('(max-width: 768px)').matches) return 'day'
     return 'grid'
   })
-  const [startDate, setStartDate] = useState(() => getSunday(new Date()))
+  const addrDate = (() => { const d = readParam('d'); return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? parse(d) : null })()
+  const [startDate, setStartDate] = useState(() => getSunday(addrDate ?? new Date()))
   const [bookings, setBookings] = useState<Booking[]>([])
   // Step 6/8: the calendar opens the Work Order directly for ALL sessions and
   // blocks (BookingForm deleted — legacy WO-less blocks use the WO's block view).
@@ -1123,8 +1133,19 @@ function CalendarPageInner() {
   const [woLeadId, setWoLeadId] = useState<number | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [collapsedRooms, setCollapsedRooms] = useState<Set<string>>(() => new Set())
-  const [locFilter, setLocFilter] = useState('All')
-  const [dayViewDate, setDayViewDate] = useState<Date>(() => new Date())
+  const [locFilter, setLocFilter] = useState(() => readParam('loc') || 'All')
+  const [dayViewDate, setDayViewDate] = useState<Date>(() => addrDate ?? new Date())
+  useAddress(
+    {
+      cv: view,
+      d: fmt(view === 'day' ? dayViewDate : startDate),
+      loc: locFilter === 'All' ? undefined : locFilter,
+    },
+    view === 'day'
+      ? dayViewDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      : `Week of ${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+    ['newBooking', 'clientId', 'leadId', 'location', 'studio', 'date'],
+  )
   // THE FIND (2026-10-13, components/calendar/CalendarFind): the page top's
   // search. `found` is the session the last pick jumped to — its card is
   // outlined until the bar is cleared.
