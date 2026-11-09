@@ -1088,42 +1088,60 @@ select.c-input {
 }
 
 /* ── CALENDAR PEEK (option C, 2026-11-09; components/calendar/CalendarPeek).
-   The week slides over the page from the right. Surface + soft shadow, no
-   lines (the day columns are wash tiles). Phone: near-full width. */
+   The week slides over the page from the right, drawn like the grid view
+   (Eli: "same style as the grid view"): .c-calloc location bands, zebra room
+   rows (.c-calrow-alt), seven day columns with the grid's tick lines, and the
+   calendar's own chips (.c-ev + status fill). Phone: near-full width, the
+   label column narrows. */
 .c-peek-dim { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 9000; }
 .c-peek {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(880px, 64vw); z-index: 9001;
-  background: var(--c-srf); box-shadow: -12px 0 40px rgba(0, 0, 0, .55);
-  padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden;
+  --peek-lbl: 96px;
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(960px, 68vw); z-index: 9001;
+  background: var(--c-bg); box-shadow: -12px 0 40px rgba(0, 0, 0, .55);
+  padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden;
 }
 .c-peek-hd { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .c-peek-ttl { font-size: 13px; font-weight: 800; margin-right: 6px; }
 .c-peek-hd .c-soft { padding: 5px 10px; text-decoration: none; }
-.c-peek-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; flex: 1; min-height: 0; overflow: auto; }
-.c-peek-day { background: var(--c-bg); border-radius: 10px; padding: 8px 7px; min-width: 0; }
-.c-peek-day.c-today { box-shadow: inset 0 0 0 1.5px var(--c-wash2); }
+.c-peek-grid { flex: 1; min-height: 0; overflow: auto; border-radius: 6px; }
+.c-peek-hdr { display: flex; position: sticky; top: 0; z-index: 3; background: var(--c-bg); height: 30px; }
+.c-peek-lbl {
+  width: var(--peek-lbl); flex-shrink: 0; display: flex; align-items: center; padding: 0 12px;
+  font-size: 10px; color: var(--c-fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: sticky; left: 0; z-index: 2; background: inherit;
+}
 .c-peek-dayhd {
-  display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; color: var(--c-fg);
-  font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .55; margin-bottom: 6px; padding: 0; font-family: inherit;
+  flex: 1; min-width: 0; border: none; background: none; cursor: pointer; color: var(--c-fg-3); font-family: inherit;
+  font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  box-shadow: inset 1px 0 0 var(--c-grid-tick);
 }
-.c-peek-dayhd b { font-size: 12px; letter-spacing: 0; }
-.c-peek-day.c-today .c-peek-dayhd { opacity: 1; }
-.c-peek-empty { font-size: 11px; opacity: .3; padding: 2px 0; }
-.c-peek-sess {
-  display: block; width: 100%; text-align: left; border: none; cursor: pointer; color: var(--c-fg); font-family: inherit;
-  background: var(--c-wash2); border-radius: 7px; padding: 5px 7px; margin-bottom: 5px; font-size: 11px; line-height: 1.3; min-width: 0;
+.c-peek-dayhd b { font-size: 12px; letter-spacing: 0; color: var(--c-fg-2); }
+.c-peek-dayhd.c-today { color: var(--c-fg); }
+.c-peek-dayhd.c-today b { color: var(--c-fg); }
+.c-peek-loc { height: 22px; padding: 0 12px; position: sticky; left: 0; display: flex; align-items: center; font-family: 'Archivo Black', sans-serif; font-weight: 400; letter-spacing: .06em; font-size: 10px; }
+.c-peek-row {
+  display: flex; position: relative;
+  background-image: linear-gradient(var(--c-grid-line), var(--c-grid-line));
+  background-position: var(--peek-lbl) bottom; background-size: 100% 1px; background-repeat: repeat-x;
 }
-.c-peek-sess:hover { background: var(--c-wash); }
-.c-peek-sess.c-st-tentative { opacity: .7; }
-.c-peek-sess.c-st-lockout, .c-peek-sess.c-st-tenant { background: var(--c-wash); }
-.c-peek-time { display: block; font-family: 'DM Mono', ui-monospace, monospace; font-size: 10px; opacity: .6; }
-.c-peek-who { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.c-peek-room { display: block; font-size: 10px; opacity: .55; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-peek-row .c-peek-lbl { background: var(--c-bg); }
+.c-peek-row.c-calrow-alt .c-peek-lbl { background: color-mix(in srgb, var(--c-bg) 94%, var(--c-fg)); }
+.c-peek-cells { flex: 1; position: relative; display: flex; min-width: 0; }
+.c-peek-cell { flex: 1; min-width: 0; box-shadow: inset 1px 0 0 var(--c-grid-tick); }
+.c-peek-cell.c-today { background: var(--c-month-tint); }
+.c-peek-chip {
+  position: absolute; z-index: 2; border: none; cursor: pointer; text-align: left; font-family: inherit;
+  padding: 3px 7px; border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0;
+}
+.c-peek-name { font-size: 11px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.c-peek-time { font-size: 9px; line-height: 1.2; opacity: .85; white-space: nowrap; }
 .c-peek-note { font-size: 11px; opacity: .45; margin: 0; }
 @media (max-width: 768px) {
-  .c-peek { width: 94vw; padding: 12px 12px 14px; }
-  .c-peek-days { grid-template-columns: 1fr 1fr; }
+  .c-peek { --peek-lbl: 64px; width: 96vw; padding: 12px 10px 14px; }
+  .c-peek-lbl { padding: 0 6px; }
   .c-peek-ttl { width: 100%; }
+  .c-peek-dayhd span { display: none; }
 }
 
 /* Mobile: 52px top bar + the rail as a slide-in drawer over a dimmed backdrop. */
