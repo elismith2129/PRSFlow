@@ -680,6 +680,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.51.1', date:'Nov 9, 2026',
+    headline:'Deleted work orders moved: they are a tab beside Removed holds now.',
+    desc:'They used to hide behind the &#8943; at the top right of the Billing Hub.',
+    changes:[
+      'Billing Hub &rarr; the bin row &rarr; <b>Deleted WOs</b>, right after Removed holds. Same list, same Recover button.',
+      'The &#8943; menu now only has the blank work order.',
+    ],
+    affects:'Owners, managers and billing &mdash; the roles that can delete.',
+    dev:['parked: null | holds | deleted replaces holdsView; DeletedPanel in DeletedLog.tsx; modal unmounted.'],
+  },
+  {
     ver:'v1.51.0', date:'Nov 9, 2026',
     headline:'Pages remember where you were. A Back pill, a calendar peek, and open-in-new-window.',
     desc:'Go look at the calendar from the Billing Hub and come back &mdash; you land on the same view, same bins, same week.',

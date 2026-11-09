@@ -44,6 +44,86 @@ export function prettyDetail(detail: string): string {
     .replace(/ to /g, ' – ')
 }
 
+/**
+ * THE DELETED WOs TAB (Eli, 2026-11-09: "deleted WOs should be beside removed
+ * holds"). Same list as the modal below, drawn inline as a panel in the bin
+ * strip — the two parked piles side by side. The page owns the rows (it
+ * needs the count for the tab) and the one channel on deleted_work_orders.
+ */
+export function DeletedPanel({ rows, loading, onRecovered }: {
+  rows: DeletedEntry[]
+  loading: boolean
+  onRecovered: () => void
+}) {
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  async function recover(r: DeletedEntry) {
+    if (busyId) return
+    setBusyId(r.id)
+    const res = await recoverDeleted(r.id)
+    setBusyId(null)
+    setConfirmId(null)
+    if (!res.ok) { toast(`Could not recover — ${res.reason ?? 'unknown error'}`); return }
+    toast(`${r.wo_number || r.title || 'It'} is back`)
+    onRecovered()
+  }
+  return (
+    <div className="c-panel">
+      <div className="c-lozenge">
+        <b>Deleted WOs</b>
+        <span className="c-ct">{rows.filter(r => !r.recovered_at).length}</span>
+      </div>
+        <div style={{ height: LIST_H, maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {loading ? (
+            <div className="c-bempty">Loading…</div>
+          ) : rows.length === 0 ? (
+            <div className="c-bempty">Nothing has been deleted.</div>
+          ) : rows.map(r => {
+            const recovered = !!r.recovered_at
+            const confirming = confirmId === r.id
+            const busy = busyId === r.id
+            return (
+              <div key={r.id} style={{ flexShrink: 0, display: 'flex', gap: 10, alignItems: 'center', padding: '9px 10px', borderRadius: 12, background: confirming ? 'var(--c-wash2)' : 'var(--c-wash)', opacity: recovered ? 0.55 : 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+                    {r.wo_number && r.kind === 'work_order' && (
+                      <span className="c-mono" style={{ fontSize: 10.5, color: 'var(--c-fg-2)', flexShrink: 0 }}>{r.wo_number}</span>
+                    )}
+                    <b style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title || (r.kind === 'block' ? 'Block' : 'Work order')}</b>
+                  </div>
+                  {r.detail && (
+                    <div style={{ fontSize: 11, color: 'var(--c-fg-2)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prettyDetail(r.detail)}>
+                      {prettyDetail(r.detail)}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 10.5, color: 'var(--c-fg-3)', marginTop: 3 }}>
+                    Deleted by {r.deleted_by_name || 'someone'} · {fmtWhen(r.deleted_at)}
+                    {recovered && ` · recovered by ${r.recovered_by_name || 'someone'} ${fmtWhen(r.recovered_at as string)}`}
+                  </div>
+                </div>
+                {recovered ? (
+                  <span style={{ fontSize: 10.5, color: 'var(--c-fg-3)', flexShrink: 0 }}>Recovered</span>
+                ) : confirming ? (
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button type="button" className="c-btn" disabled={busy} onClick={() => recover(r)}>{busy ? 'Recovering…' : 'Put it back'}</button>
+                    <button type="button" className="c-soft" disabled={busy} onClick={() => setConfirmId(null)}>Cancel</button>
+                  </div>
+                ) : (
+                  <button type="button" className="c-soft" disabled={!!busyId} onClick={() => setConfirmId(r.id)} style={{ flexShrink: 0 }}>Recover</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      <div className="c-bnote">
+        Every deleted work order or calendar block is kept here with the name of who deleted it. Recover puts it back exactly as it was. A removed hold is under Removed holds, next door.
+      </div>
+    </div>
+  )
+}
+
+/** The old ⋯ modal (2026-10-05). Superseded by the Deleted WOs tab on
+ *  2026-11-09; kept exported for the SOP walkthrough until that is redrawn. */
 export function DeletedLogModal({ onClose, onRecovered, version }: {
   onClose: () => void
   /** Bumped by the hub whenever the deleted log changes — reload. */

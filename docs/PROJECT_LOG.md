@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 9, 2026 — Deleted WOs beside Removed holds (v1.51.1)
+
+Eli couldn't find deleted work orders (they were behind the page ⋯, chosen on
+Oct 5 because "it is opened a few times a year"). His ruling: put them beside
+Removed holds. Right call — the Oct 5 reasoning optimised for how often the list is
+opened, not for where someone looks when a WO has vanished, and "where did it go" is
+a bin-strip question. Both piles now sit at the end of the bin row. Kept the modal
+component exported, unmounted, so the SOP walkthrough does not break before it is
+redrawn.
+
 ### November 9, 2026 — Nav memory (v1.51.0)
 
 Staff complaint: go from the billing hub to the calendar for a look, come back, and

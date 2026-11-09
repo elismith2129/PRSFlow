@@ -20,6 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.51.1 — Deleted WOs is a tab beside Removed holds — Nov 9, 2026
+
+**Why.** Eli asked where deleted work orders were (⋯ at the top right → Deleted work orders), then: "deleted WOs should be beside removed holds." A parked pile next to a parked pile; one place for everything that was taken away.
+
+- Billing Hub bin strip: a **Deleted WOs** tab after Removed holds, with the count of not-yet-recovered entries. Same three roles (owner / manager / billing). `parked: null | 'holds' | 'deleted'` replaces the `holdsView` boolean; the invoice list hides (not unmounts) under either, as before.
+- `components/billing/DeletedLog.tsx`: new `DeletedPanel` — the modal's list drawn inline as a `.c-panel`, same Recover → "Put it back" confirm. `DeletedLogModal` stays exported but is no longer mounted anywhere (the SOP walkthrough still draws it — see TODO).
+- The ⋯ menu loses "Deleted work orders" (blank work order stays). Delete-confirm and toast text now point at the tab. `lib/testBatches.ts` v143-hub-log step updated.
+- The page loads both piles in one `loadHolds` (two reads, `Promise.all`) on the one `deleted_work_orders` channel; the modal's `deletedVersion` bump is gone with the modal.
+
+**Migrations:** none. **Watch-out:** `public/billing-sop.html` walkthrough and the v1.43.2 line in `public/sop.html` still describe the ⋯ route. **Files:** `app/(main)/billing/page.tsx`, `components/billing/{DeletedLog,RemovedHolds}.tsx`, `lib/testBatches.ts`.
+
 ## v1.51.0 — Nav memory: pages remember where you were, return pill, open in new window, calendar peek — Nov 9, 2026
 
 **Why.** Staff, via Eli: "Say you're in the billing hub and you need to look at the calendar real quick … when you come back it just defaults to the front page and it doesn't stick to where you are." Cause: the hub's view and bins (and the calendar's week, the CRM's view) lived in React state — leave the page, it's gone. Mock: `docs/design-refs/nav-memory-options.html`. Eli: "yes lets do a-d".

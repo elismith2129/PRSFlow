@@ -13,8 +13,8 @@
 //     one-day card until that work order is next saved.
 //
 // It is the same log as "Deleted work orders" (deleted_work_orders), split by
-// kind: holds here, where they are looked for weekly; real work orders and
-// blocks stay under the page ⋯, where they are looked for a few times a year.
+// kind: holds here; real work orders and blocks under the Deleted WOs tab
+// beside this one (Eli, 2026-11-09 — it was the page ⋯ modal before).
 //
 // The page owns the rows (it needs the count for the tab); this only draws
 // them. Owner / manager / billing — the log's own read rule.
@@ -112,7 +112,7 @@ export function RemovedHoldsPanel({ rows, loading, onRecovered }: {
       </div>
 
       <div className="c-bnote">
-        A hold taken off the calendar lands here — the whole hold, or just the days that were removed. Recover puts it back. Real work orders that were deleted are under the page ⋯ → Deleted work orders.
+        A hold taken off the calendar lands here — the whole hold, or just the days that were removed. Recover puts it back. Real work orders that were deleted are under Deleted WOs, next door.
       </div>
     </div>
   )

@@ -5,6 +5,10 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Deleted WOs tab (Nov 9, v1.51.1)
+
+- [ ] **Redraw the Billing SOP walkthrough** (`public/billing-sop.html`, `pm-deleted` step and the modal mock) for the Deleted WOs tab; then delete `DeletedLogModal` from `components/billing/DeletedLog.tsx`. *(Nov 9)*
+
 ## Nav memory follow-ups (Nov 9, v1.51.0)
 
 - [ ] **Spread `useAddress` to the other pages with a position** — Daily Ops (already has `?tab=`), Memos, Punches, SRS month. Each is a few lines once the pattern is in. *(Nov 9)*

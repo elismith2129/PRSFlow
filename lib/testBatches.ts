@@ -485,7 +485,7 @@ export const TEST_BATCHES: TestBatch[] = [
       {
         id: 'v143-hub-log', area: 'Billing',
         what: 'The deleted work order and the deleted block are both in the log',
-        how: 'In the billing hub press the three dots at the TOP RIGHT of the page, then "Deleted work orders". The throwaway work order and the Tour block should both be listed with the name of who deleted them and the time.',
+        how: 'In the billing hub click the "Deleted WOs" tab at the end of the bin row (beside Removed holds). The throwaway work order and the Tour block should both be listed with the name of who deleted them and the time.',
       },
       {
         id: 'v143-hub-recover', area: 'Billing',
