@@ -2289,7 +2289,11 @@ function TotalAndBalance({ row, compact }: { row: InvoiceRow; compact?: boolean 
       </span>
       <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
         <span style={lab}>{compact ? 'Due' : 'Balance due'}</span>
-        <span style={{ ...num, color: owed ? 'var(--c-st-hot)' : undefined, opacity: owed ? 1 : 0.45 }}>{money(Math.max(0, row.balance))}</span>
+        {/* GREEN WHEN PAID (Eli, 2026-11-11: "need indication that it's
+            paid"). A dim $0.00 read as nothing; green is the "money is in"
+            colour everywhere else on the hub. Billing rows not yet sent
+            have balance = total, so they never read green here. */}
+        <span style={{ ...num, color: owed ? 'var(--c-st-hot)' : row.total > 0 ? 'var(--c-st-booked)' : undefined, opacity: owed || row.total > 0 ? 1 : 0.45 }}>{money(Math.max(0, row.balance))}</span>
       </span>
     </span>
   )

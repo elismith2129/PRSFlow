@@ -24,7 +24,7 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 **Why.** Eli, looking at three rows in "Ready for your approval": "two have been paid and have a 0 balance, one has a small balance, but on the line you see the total amount … we need to see the balance on these lines, not the total. or both … base your decisions on enterprise accounting software." Mock `docs/design-refs/approval-amount-options.html` (A: total + status subline; B: balance as the big number; C: Amount · Paid · Balance columns). Ruling: "how about even simpler. total and balance due."
 
-- `TotalAndBalance` in `app/(main)/billing/page.tsx`: two labelled figures on every approval row, always — **TOTAL** and **BALANCE DUE**. Balance reads hot when anything is owed, dims to $0.00 when not. The drift ⚠ stays on the total. The package window's queue cards get the compact pair (mono, "Due").
+- `TotalAndBalance` in `app/(main)/billing/page.tsx`: two labelled figures on every approval row, always — **TOTAL** and **BALANCE DUE**. Balance reads hot when anything is owed, **green $0.00** when paid (14:48 — a dim $0.00 read as nothing). The drift ⚠ stays on the total. The package window's queue cards get the compact pair (mono, "Due").
 - Rejected A's "no subline on an unsent label invoice" rule — Eli wanted no rules: both numbers, every row. Rejected B (a paid COD reads as a big $0.00 in a queue of unfinished things) and C (a header row in a strip that is one loose line per invoice).
 
 **Migrations:** none. **Files:** `app/(main)/billing/page.tsx`, `docs/design-refs/approval-amount-options.html`.
