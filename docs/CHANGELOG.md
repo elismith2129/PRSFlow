@@ -20,6 +20,14 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.53.1 — Approval box sizes to its rows — Nov 11, 2026
+
+**Why.** Eli: "approval box is not auto sizing. staying too big." The strip was a fixed 286px (Oct 12 fixed-box rule; Oct 26 "five rows tall"), set when a row was one line. v1.52.2's Total / Balance due pair made rows ~64px, so two rows left a block of air and five would not have fit.
+
+- The box is now as tall as its rows, capped at five (`maxHeight: APPROVAL_ROW_H * 5 + 6` on the list; a sixth scrolls inside); Show all lifts the cap. The pills and the list below move up with it — the Oct 12 reason for fixing the height (the box pushing the pills around as rows came and went) is accepted as the lesser evil now that a row is two lines.
+
+**Migrations:** none. **Files:** `app/(main)/billing/page.tsx`.
+
 ## v1.53.0 — Notes is a button on the billing row — Nov 11, 2026
 
 **Why.** Eli: "the far right little pencil and the orange dot doesn't work for me. since we have room I want there to be a notes button to the left of flags. grey if no notes and lit up if notes. hover to see notes preview, click to open and write." Mock `docs/design-refs/row-notes-button-options.html`; ruling: A.

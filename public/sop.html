@@ -680,6 +680,14 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.53.1', date:'Nov 11, 2026',
+    headline:'The approval box fits its rows.',
+    desc:'Owners only. It was a fixed height and left empty space under one or two invoices.',
+    changes:['Ready for your approval is now as tall as what is in it, up to five rows. More than five scrolls inside; Show all opens it out.'],
+    affects:'Owners.',
+    dev:['maxHeight APPROVAL_ROW_H*5 on the list instead of height 286 on the box.'],
+  },
+  {
     ver:'v1.53.0', date:'Nov 11, 2026',
     headline:'Collection notes are a Notes button on the row.',
     desc:'The little &#9998; and orange dot at the far right are gone. Notes has its own spot, left of the flag.',

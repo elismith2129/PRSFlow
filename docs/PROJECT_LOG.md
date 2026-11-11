@@ -381,6 +381,13 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — Approval box sizes to its rows (v1.53.1)
+
+The fixed-height approval strip (Oct 12) assumed one-line rows. Two-line amounts broke
+that both ways. Eli's ask was "auto sizing"; the cap at five rows keeps the Oct 26 ruling.
+The pills now move when the queue changes — the thing the fixed box was there to stop —
+and that is the trade accepted.
+
 ### November 11, 2026 — The Notes button (v1.53.0)
 
 The Sept 24 collection notes were a ✎ with an orange dot in the ⋯ cell, by Eli's own

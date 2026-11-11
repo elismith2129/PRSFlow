@@ -829,7 +829,14 @@ export default function BillingPage() {
         /* FIVE, THEN ALL (Eli, 2026-10-26: "keep that. but expand it to 5. also
            have a button to expand to all. but default is 5"). Still one fixed
            size by default — five rows tall; Show all opens it to the whole queue. */
-        <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column', ...(approvalsAll ? {} : { height: 286 }) }}>
+        /* SIZED TO ITS ROWS, CAPPED AT FIVE (Eli, 2026-11-11: "approval box is
+           not auto sizing. staying too big"). The Oct 12 fixed 286px, then
+           Oct 26's "five rows tall", were set when a row was one line; the
+           Total / Balance due pair (v1.52.2) made rows taller, so the fixed
+           height left air under two rows and could not hold five. Now the
+           box is as tall as its rows up to five; a sixth scrolls inside;
+           Show all lifts the cap. */
+        <div style={{ borderRadius: 14, background: 'var(--c-wash)', padding: '12px 14px', marginBottom: 12, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 3, flexShrink: 0 }}>
             <span style={{
               minWidth: 19, height: 17, borderRadius: 99, padding: '0 6px',
@@ -848,7 +855,7 @@ export default function BillingPage() {
               </span>
             )}
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', margin: '0 -4px', padding: '0 4px 4px' }}>
+          <div style={{ minHeight: 0, overflowY: 'auto', margin: '0 -4px', padding: '0 4px 4px', ...(approvalsAll ? {} : { maxHeight: APPROVAL_ROW_H * 5 + 6 }) }}>
           {(approvalsAll ? approvals : approvals.slice(0, 5)).map(r => (
             <div
               key={r.workOrderId}
@@ -1453,6 +1460,10 @@ function SortHd({ col, label, right, searching, sortCol, sortDir, clickSort }: {
     </span>
   )
 }
+
+/** One approval-strip row with the Total / Balance due pair: 9px padding ×2
+ *  + two-line amount (~40px) + 6px gap. The strip's five-row cap reads it. */
+const APPROVAL_ROW_H = 64
 
 function Row({
   row, searching, isOwner, busy, dragOver, showAge, badge, stage,
