@@ -873,12 +873,7 @@ export default function BillingPage() {
                   style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.05em', background: 'var(--c-wash2)', padding: '3px 8px', borderRadius: 99, opacity: 0.8, flexShrink: 0 }}
                 >AWAITING PO</span>
               )}
-              <span
-                title={r.invoiceDrift ? `The work order changed after the invoice was attached — invoiced ${formatCurrency(String(r.invoicedTotal ?? 0))}, now ${formatCurrency(String(r.total))}. Approving re-snapshots the total.` : undefined}
-                style={{ marginLeft: 'auto', fontWeight: 800, fontSize: 12.5, whiteSpace: 'nowrap', color: r.invoiceDrift ? 'var(--c-st-hot)' : undefined }}
-              >
-                {formatCurrency(String(r.total))}{r.invoiceDrift ? ' ⚠' : ''}
-              </span>
+              <span style={{ marginLeft: 'auto' }}><TotalAndBalance row={r} /></span>
               <button
                 className="c-bact"
                 disabled={busy === r.workOrderId}
@@ -2266,6 +2261,40 @@ function CloseModal({ row, onCancel, onConfirm }: {
 // places: the hub's approval strip and the bar across the top of the package
 // window. "not a fan of the small bubbles, but maybe make them small cards?"
 
+/**
+ * TOTAL and BALANCE DUE on an approval row (Eli, 2026-11-11: "two have been
+ * paid and have a 0 balance, one has a small balance, but on the line you
+ * see the total amount … how about even simpler. total and balance due").
+ * The AR convention is Amount · Paid · Balance Due with Balance Due carrying
+ * the weight; Eli's cut is the two that matter here, on every row, always —
+ * no rules about when a line shows. Balance reads hot when anything is
+ * owed and dims to $0.00 when it isn't. The ⚠ for a total that drifted
+ * since the invoice went on stays on the total, as before.
+ */
+function TotalAndBalance({ row, compact }: { row: InvoiceRow; compact?: boolean }) {
+  const owed = row.balance > 0
+  const lab: React.CSSProperties = { fontSize: 8, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', opacity: 0.4, lineHeight: 1 }
+  const num: React.CSSProperties = { fontWeight: 800, fontSize: compact ? 11 : 12.5, whiteSpace: 'nowrap', lineHeight: 1.2, fontFamily: compact ? "'DM Mono', ui-monospace, monospace" : undefined }
+  const money = (n: number) => compact ? formatCurrency(String(Math.round(n))).replace(/\.00$/, '') : formatCurrency(String(n))
+  return (
+    <span style={{ display: 'inline-flex', gap: compact ? 8 : 16, alignItems: 'flex-end' }}>
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+        <span style={lab}>Total</span>
+        <span
+          title={row.invoiceDrift ? `The work order changed after the invoice was attached — invoiced ${formatCurrency(String(row.invoicedTotal ?? 0))}, now ${formatCurrency(String(row.total))}. Approve to accept the new figure.` : undefined}
+          style={{ ...num, color: row.invoiceDrift ? 'var(--c-st-hot)' : undefined }}
+        >
+          {money(row.total)}{row.invoiceDrift ? ' ⚠' : ''}
+        </span>
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+        <span style={lab}>{compact ? 'Due' : 'Balance due'}</span>
+        <span style={{ ...num, color: owed ? 'var(--c-st-hot)' : undefined, opacity: owed ? 1 : 0.45 }}>{money(Math.max(0, row.balance))}</span>
+      </span>
+    </span>
+  )
+}
+
 function QueueCard({ row, idx, on, decided, onClick, grow }: {
   row: InvoiceRow; idx: number | null; on?: boolean; decided?: 'ok' | 'ret'; onClick: () => void; grow?: boolean
 }) {
@@ -2291,7 +2320,7 @@ function QueueCard({ row, idx, on, decided, onClick, grow }: {
         <div style={{ fontSize: 10, opacity: 0.55, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }}>{row.artist || row.dateRange || ' '}</div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-        <span className="c-mono" style={{ fontSize: 11 }}>{formatCurrency(String(Math.round(row.total))).replace(/\.00$/, '')}</span>
+        <TotalAndBalance row={row} compact />
         {status && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{status}</span>}
       </div>
     </div>

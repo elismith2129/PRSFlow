@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRSFlo — Approval row: amount vs balance</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- APPROVAL ROW: AMOUNT vs BALANCE (Eli, 2026-11-11).
+     "these three WOs that are in approval, two have been paid and have a 0 balance, one has a
+     small balance, but for me it's confusing because on the line you see the total amount. I
+     think overall we need to see the balance on these lines, not the total. or both. make
+     this very clear. base your decisions on enterprise accounting software."
+     Convention (QuickBooks, NetSuite, Xero AR): an open-invoice line carries Amount, Paid and
+     Balance Due; Balance Due is the emphasized figure because it is the one someone acts on.
+     The hub's list rows already do a version of this (total + "$180 due" subline, dimmed when
+     settled); the approval strip never got it.
+     Ruling (Eli, 2026-11-11 14:41): "how about even simpler. total and balance due" — two labelled
+     figures on every row, always: TOTAL and BALANCE DUE. Balance hot when owed, dim $0.00 when not.
+     Same pair, compact, on the package window's queue cards. None of A/B/C as drawn; built as D. -->
+<style>
+:root{--c-bg:#0b0a09;--c-fg:#f2efe7;--c-wash:rgba(242,239,231,.06);--c-wash2:rgba(242,239,231,.12);--c-chip-ink:#1c2626;
+  --c-st-hot:#ff5a4d;--c-st-warm:#ffa94d;--c-st-booked:#43dfae;--c-fg-2:rgba(242,239,231,.72);--c-fg-3:rgba(242,239,231,.45);
+  --c-srf:#151412;--c-softsh:0 2px 5px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.22)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--c-bg);color:var(--c-fg);font-family:Inter,-apple-system,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;padding:24px 16px 80px;max-width:1180px;margin:0 auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:20px;font-weight:400}
+.lede{font-size:13px;opacity:.6;margin:4px 0 22px;max-width:820px}
+.part{margin:34px 0 6px;display:flex;align-items:baseline;gap:12px}
+.part h2{font-family:'Archivo Black',sans-serif;font-size:16px;font-weight:400}
+.pick{font:800 9.5px Inter;letter-spacing:.08em;text-transform:uppercase;background:var(--c-st-booked);color:var(--c-chip-ink);border-radius:99px;padding:4px 10px}
+.why{font-size:12.5px;opacity:.65;margin:2px 0 14px;max-width:820px}
+.why b{opacity:1;color:var(--c-fg)}
+.bin{background:var(--c-wash);border-radius:14px;padding:12px 14px}
+.hd{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.hd .n{min-width:19px;height:17px;border-radius:99px;padding:0 6px;font-size:9.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:var(--c-st-booked);color:var(--c-chip-ink)}
+.hd .t{font-family:'Archivo Black',sans-serif;font-size:12px}
+.hd .hint{margin-left:auto;font-size:10px;opacity:.45}
+.row{display:flex;align-items:center;gap:12px;padding:9px 12px;margin-top:6px;background:var(--c-srf);border-radius:12px;box-shadow:var(--c-softsh)}
+.row .who{font-weight:700;font-size:12.5px;min-width:150px}
+.row .cod{font-size:9px;font-weight:800;letter-spacing:.05em;background:var(--c-wash2);padding:3px 8px;border-radius:99px;opacity:.8}
+.row .meta{font-size:11px;opacity:.55}
+.row .amt{margin-left:auto;font-weight:800;font-size:12.5px;white-space:nowrap;text-align:right;line-height:1.2}
+.row .amt.dim{opacity:.5}
+.row .sub{display:block;font-size:9.5px;font-weight:700}
+.row .sub.ok{color:var(--c-st-booked)}
+.row .sub.hot{color:var(--c-st-hot)}
+.row .btn{font:800 10.5px Inter;background:var(--c-wash2);border-radius:99px;padding:7px 14px}
+/* B */
+.row .bal{margin-left:auto;text-align:right;line-height:1.15;white-space:nowrap}
+.row .bal .big{font-weight:800;font-size:14px}
+.row .bal .big.hot{color:var(--c-st-hot)}
+.row .bal .big.ok{color:var(--c-st-booked)}
+.row .bal .of{font-size:9.5px;opacity:.5;font-weight:600}
+/* C */
+.cols{margin-left:auto;display:grid;grid-template-columns:90px 90px 90px;gap:10px;text-align:right;font-family:'DM Mono',monospace;font-size:12px}
+.cols .k{font:800 8.5px Inter;letter-spacing:.08em;text-transform:uppercase;opacity:.4;text-align:right}
+.cols .v{font-weight:600}
+.cols .v.dim{opacity:.4}
+.cols .v.hot{color:var(--c-st-hot);font-weight:800}
+.chead{display:grid;grid-template-columns:1fr 90px 90px 90px 70px;gap:10px;padding:4px 12px 0;margin-top:8px}
+.chead span{font:800 8.5px Inter;letter-spacing:.08em;text-transform:uppercase;opacity:.4;text-align:right}
+.chead span:first-child{text-align:left}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+.note{background:var(--c-srf);box-shadow:var(--c-softsh);border-radius:14px;padding:14px 16px;font-size:12.5px}
+.note .k{font:800 10px Inter;letter-spacing:.1em;text-transform:uppercase;opacity:.45;margin-bottom:8px}
+.note li{margin:0 0 6px 16px;opacity:.85}
+@media(max-width:800px){.notes{grid-template-columns:1fr}.row .meta{display:none}.cols{grid-template-columns:70px 70px 70px}}
+</style>
+</head>
+<body>
+
+<h1>Approval row: the amount, and where the money stands</h1>
+<p class="lede">Three rows waiting. Two are paid in full, one has $190 owed. Today every row shows only its total, so a paid COD and an unpaid one read the same. The AR convention is Amount · Paid · Balance Due, with Balance Due carrying the weight. Three ways to put that on a one-line row.</p>
+
+<!-- A -->
+<div class="part"><h2>A · Total, with the balance under it</h2><span class="pick">Recommended</span></div>
+<p class="why">The total stays as the headline, because that is the figure you are approving. A second small line says where the money stands: <b>Paid in full</b> in green, <b>$190.00 due</b> in red, and for a label invoice that hasn't gone out yet, nothing (the balance is the total; saying so is noise). The total dims once it's settled, the same cue the list rows below the strip already use. Built already.</p>
+<div class="bin">
+  <div class="hd"><span class="n">3</span><span class="t">Ready for your approval</span><span class="hint">click a row to read the package first</span></div>
+  <div class="row"><span class="who">Lonzo Ball — Gelo &amp; Lonzo</span><span class="meta">Nov 6–Nov 9 · B, A</span><span class="amt">$11,102.50</span><span class="btn">Approve</span></div>
+  <div class="row"><span class="who">Leilani Lemle-Macias — Warryn Campbell</span><span class="cod">COD</span><span class="meta">Nov 9–Nov 10 · A</span><span class="amt dim">$3,500.00<span class="sub ok">Paid in full</span></span><span class="btn">Approve</span></div>
+  <div class="row"><span class="who">Cris Osorio — Rance</span><span class="cod">COD</span><span class="meta">Nov 9 · C</span><span class="amt">$2,735.85<span class="sub hot">$2,545.85 paid · $190.00 due</span></span><span class="btn">Approve</span></div>
+</div>
+
+<!-- B -->
+<div class="part"><h2>B · Balance due is the big number</h2></div>
+<p class="why">What a QuickBooks "Open invoices" list does: Balance Due is the column, the invoice amount is the small print. Clearest answer to "is money owed", but on an <b>approval</b> row the number you are signing off is the total, and a paid COD would read as a big "$0.00" — a line that looks finished sitting in a queue of things that aren't.</p>
+<div class="bin">
+  <div class="hd"><span class="n">3</span><span class="t">Ready for your approval</span></div>
+  <div class="row"><span class="who">Lonzo Ball — Gelo &amp; Lonzo</span><span class="meta">Nov 6–Nov 9 · B, A</span><span class="bal"><span class="big">$11,102.50</span><br><span class="of">to invoice</span></span><span class="btn">Approve</span></div>
+  <div class="row"><span class="who">Leilani Lemle-Macias — Warryn Campbell</span><span class="cod">COD</span><span class="meta">Nov 9–Nov 10 · A</span><span class="bal"><span class="big ok">$0.00 due</span><br><span class="of">of $3,500.00 · paid</span></span><span class="btn">Approve</span></div>
+  <div class="row"><span class="who">Cris Osorio — Rance</span><span class="cod">COD</span><span class="meta">Nov 9 · C</span><span class="bal"><span class="big hot">$190.00 due</span><br><span class="of">of $2,735.85</span></span><span class="btn">Approve</span></div>
+</div>
+
+<!-- C -->
+<div class="part"><h2>C · Three columns: Amount · Paid · Balance</h2></div>
+<p class="why">The AR aging-report layout, with a header. Every row shows all three, lined up, mono. Nothing is implied. The cost is a header row and three aligned columns inside a strip that is otherwise one loose line per invoice; on the phone it needs to collapse to A anyway.</p>
+<div class="bin">
+  <div class="hd"><span class="n">3</span><span class="t">Ready for your approval</span></div>
+  <div class="chead"><span></span><span>Amount</span><span>Paid</span><span>Balance</span><span></span></div>
+  <div class="row"><span class="who">Lonzo Ball — Gelo &amp; Lonzo</span><span class="meta">Nov 6–Nov 9 · B, A</span><span class="cols"><span class="v">$11,102.50</span><span class="v dim">—</span><span class="v">$11,102.50</span></span><span class="btn">Approve</span></div>
+  <div class="row"><span class="who">Leilani Lemle-Macias — Warryn Campbell</span><span class="cod">COD</span><span class="meta">Nov 9–Nov 10 · A</span><span class="cols"><span class="v dim">$3,500.00</span><span class="v">$3,500.00</span><span class="v dim">$0.00</span></span><span class="btn">Approve</span></div>
+  <div class="row"><span class="who">Cris Osorio — Rance</span><span class="cod">COD</span><span class="meta">Nov 9 · C</span><span class="cols"><span class="v">$2,735.85</span><span class="v">$2,545.85</span><span class="v hot">$190.00</span></span><span class="btn">Approve</span></div>
+</div>
+
+<div class="notes">
+  <div class="note"><div class="k">The pick</div>
+    <ul>
+      <li><b>A.</b> It answers both questions on one line — what am I approving (the total) and is money owed (the subline) — and it matches how the list rows already read, so the strip and the list stop disagreeing.</li>
+      <li>Red on the subline means "collection was missed", the same meaning red has everywhere else on COD. Green "Paid in full" means the only thing left is your signature.</li>
+      <li>The same two lines go on the small cards across the top of the package window, so you see it there too.</li>
+    </ul>
+  </div>
+  <div class="note"><div class="k">The rules behind the subline</div>
+    <ul>
+      <li>Balance ≤ 0 and total &gt; 0 → <b>Paid in full</b> (green). Total dims.</li>
+      <li>Part paid → <b>$paid paid · $due due</b> (red).</li>
+      <li>COD, nothing collected → <b>$total due</b> (red).</li>
+      <li>Billing, not yet sent → no subline. The balance is the total; the row is about approval, not collection.</li>
+      <li>A total that changed since the invoice went on keeps its red ⚠ as today — that outranks everything.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

@@ -20,6 +20,15 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.52.2 — Approval rows show Total and Balance due — Nov 11, 2026
+
+**Why.** Eli, looking at three rows in "Ready for your approval": "two have been paid and have a 0 balance, one has a small balance, but on the line you see the total amount … we need to see the balance on these lines, not the total. or both … base your decisions on enterprise accounting software." Mock `docs/design-refs/approval-amount-options.html` (A: total + status subline; B: balance as the big number; C: Amount · Paid · Balance columns). Ruling: "how about even simpler. total and balance due."
+
+- `TotalAndBalance` in `app/(main)/billing/page.tsx`: two labelled figures on every approval row, always — **TOTAL** and **BALANCE DUE**. Balance reads hot when anything is owed, dims to $0.00 when not. The drift ⚠ stays on the total. The package window's queue cards get the compact pair (mono, "Due").
+- Rejected A's "no subline on an unsent label invoice" rule — Eli wanted no rules: both numbers, every row. Rejected B (a paid COD reads as a big $0.00 in a queue of unfinished things) and C (a header row in a strip that is one loose line per invoice).
+
+**Migrations:** none. **Files:** `app/(main)/billing/page.tsx`, `docs/design-refs/approval-amount-options.html`.
+
 ## v1.52.1 — A day can hold several rooms/times, each its own row — Nov 11, 2026
 
 **Why.** Eli, right after v1.52.0: "a card can hold multiple rooms, correct? … 2 4-hour sessions in one day in one room … accurately without having to have one entry on the card that spans the whole time." The v1.52.0 rule (one row per WO + date + room) would have refused exactly that.

@@ -381,6 +381,13 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — Total and Balance due on approval rows (v1.52.2)
+
+The approval strip showed one number per row, the total, so a paid-in-full COD and
+one with $190 outstanding looked identical. Mocked three AR-convention shapes; Eli cut
+it to the two figures that matter, on every row, no conditions: Total and Balance due.
+Fewer rules than the recommended option and easier to trust at a glance.
+
 ### November 11, 2026 — Several rows on one day (v1.52.1)
 
 Minutes after the duplicate-row rule, Eli asked the question that found its flaw: a day

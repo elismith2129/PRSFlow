@@ -680,6 +680,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.52.2', date:'Nov 11, 2026',
+    headline:'Approval rows show the Total and the Balance due.',
+    desc:'Owners only. A paid COD and an unpaid one used to look the same in the approval bin.',
+    changes:[
+      'Every row in Ready for your approval now carries two figures: <b>Total</b> and <b>Balance due</b>. Red balance = money still owed. $0.00 = paid up.',
+      'The small cards across the top of the package window show the same pair.',
+    ],
+    affects:'Owners.',
+    dev:['TotalAndBalance in billing/page.tsx; strip row + QueueCard (compact).'],
+  },
+  {
     ver:'v1.52.1', date:'Nov 11, 2026',
     headline:'One day, several sessions: add or delete a room/time inside the day.',
     desc:'Two four-hour sessions in one room on one day are now two rows on the day card, each with its own times, staff and charge.',
