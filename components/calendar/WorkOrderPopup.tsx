@@ -2592,14 +2592,18 @@ export function WorkOrderPopup({
    * last STUDIO row specifically — a standalone staff row has studio '' (the
    * eng-row encoding), and inheriting that would turn these into engineer rows.
    */
-  function addStRows(dates: string[], opts?: { studio?: string; location?: string }) {
+  function addStRows(dates: string[], opts?: { studio?: string; location?: string; blankTimes?: boolean }) {
     if (!dates.length) return
     const maxOrder = stRows.reduce((max, r) => Math.max(max, r.sort_order ?? -1), -1)
     const lastStudioRow = [...stRows].reverse().find(r => !!r.studio)
     const last = lastStudioRow ?? ([...stRows].reverse().find(r => !!(r.studio || r.date)) ?? stRows[stRows.length - 1])
     const rowRateType = last?.row_rate_type || 'hour'
-    const fromTime = last?.from_time || ''
-    const toTime = last?.to_time || ''
+    // A SECOND ROW ON THE SAME DAY (Eli, 2026-11-11: "2 4-hour sessions in
+    // one day in one room") starts with blank times — copying the first
+    // row's start would make it an identical row, which the database now
+    // refuses (one row per WO + date + room + start time).
+    const fromTime = opts?.blankTimes ? '' : (last?.from_time || '')
+    const toTime = opts?.blankTimes ? '' : (last?.to_time || '')
 
     // WHAT CARRIES OVER DEPENDS ON WHAT IS BEING ADDED (Eli, 2026-09-14, on
     // WO-1076). Times and rate type always copy. The RATE copies only when it
@@ -7410,7 +7414,10 @@ export function WorkOrderPopup({
                     // one is SHOWN, in red, with its own ×, never tidied away.
                     const seenRoom = new Set<string>()
                     const dupeRows = studioRows.filter(r => {
-                      const k = toStudioLetter(r.studio)
+                      // Same room AND same start = identical row (the index's
+                      // key since 2026-11-11 14:30). Same room, different
+                      // start is a split shift and is fine.
+                      const k = `${toStudioLetter(r.studio)}|${r.from_time || ''}`
                       if (seenRoom.has(k)) return true
                       seenRoom.add(k); return false
                     })
@@ -7517,7 +7524,34 @@ export function WorkOrderPopup({
                                 on ONE line, which is the whole point of the day
                                 reading at a glance. `whiteSpace: nowrap` makes
                                 that a guarantee rather than a hope. */}
-                            <div style={{ marginTop: 10, display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
+                            {/* SEVERAL ROWS ON ONE DAY (Eli, 2026-11-11): each
+                                room/time reads on its own line — room, times,
+                                hours, rate — instead of the first row standing
+                                in for all of them. A blanket day keeps its one
+                                line (one price, all rooms). */}
+                            {studioRows.length > 1 && !cardBundle && (
+                              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                {studioRows.map(r => {
+                                  const hrs = r.total_hours ?? calcHours(r.from_time, r.to_time)
+                                  const daily = r.row_rate_type === 'day'
+                                  const raw = ((daily ? r.rate_daily : r.rate) ?? '').toString().trim()
+                                  const money = raw ? (raw.startsWith('$') ? raw : `$${raw}`) : ''
+                                  return (
+                                    <div key={r.id + '-line'} style={{ display: 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
+                                      <span className="c-arch" style={{ fontSize: 11, width: 52, flexShrink: 0 }}>{roomCode(toStudioLetter(r.studio), r.location || booking.location)}</span>
+                                      <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 14, fontWeight: 600 }}>
+                                        {r.times_tbd ? 'TBD' : <>{r.from_time || '—'} – {r.to_time || <span style={{ color: 'var(--c-fg-3)', fontSize: 11 }}>tap to set</span>}</>}
+                                      </span>
+                                      {hrs != null && <span style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>{hrs}h</span>}
+                                      <span style={{ fontSize: 11, fontFamily: 'Inter', color: money ? 'var(--c-fg-2)' : 'var(--c-st-warm)', fontWeight: money ? 400 : 700 }}>
+                                        {money ? (daily ? `Day ${money}` : `${money}/hr`) : 'rate?'}
+                                      </span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                            <div style={{ marginTop: 10, display: studioRows.length > 1 && !cardBundle ? 'none' : 'flex', alignItems: 'baseline', gap: 8, whiteSpace: 'nowrap' }}>
                               <span style={{ fontFamily: "'DM Mono', ui-monospace, monospace", fontSize: 16, fontWeight: 600 }}>
                                 {first?.times_tbd
                                   ? <span style={{ fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'var(--c-st-warm)', color: 'var(--c-chip-ink)', borderRadius: 99, padding: '3px 9px', verticalAlign: 'middle' }}>Times TBD</span>
@@ -8698,7 +8732,25 @@ export function WorkOrderPopup({
                               }))}
                             </select>
                           )}
-                          <span style={hrsChip}>{rowHrs != null ? `${rowHrs}h` : '—'}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                            <span style={hrsChip}>{rowHrs != null ? `${rowHrs}h` : '—'}</span>
+                            {/* DELETE THIS ROW (Eli, 2026-11-11): a room/time
+                                line on a day comes off on its own, two-step,
+                                the same deleteStRow the table uses. Office
+                                only; never the last room on the day (that is
+                                "delete day", on the card). */}
+                            {!readOnly && !runner && !rowLocked && sheetStudioRows.length > 1 && (
+                              confirmDeleteRowId === r.id ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg-2)' }}>Delete row?</span>
+                                  <button type="button" className="c-x" onClick={() => { deleteStRow(r.id); setConfirmDeleteRowId(null) }} style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 800, color: 'var(--c-st-hot)', boxShadow: 'none' }}>Yes</button>
+                                  <button type="button" className="c-x" onClick={() => setConfirmDeleteRowId(null)} style={{ fontSize: 9.5, fontFamily: 'Inter', fontWeight: 700, boxShadow: 'none' }}>No</button>
+                                </span>
+                              ) : (
+                                <button type="button" className="c-x" aria-label="Delete this row" onClick={() => setConfirmDeleteRowId(r.id)} style={{ fontSize: 10, fontFamily: 'Inter', fontWeight: 800, color: 'var(--c-st-hot)', boxShadow: 'none', opacity: 0.8 }}>× delete row</button>
+                              )
+                            )}
+                          </span>
                         </div>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
                           {timeWell(r, 'from_time', 'Start', r.from_time)}
@@ -8994,6 +9046,27 @@ export function WorkOrderPopup({
                         onClick={() => addEngRowForDate('assistant', daySheetDate)}
                         style={{ fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-st-warm)', opacity: 1, background: 'none', boxShadow: 'none', padding: 0, cursor: 'pointer' }}
                       >+ Add assistant</button>
+                      {/* A SECOND ROOM / TIME ON THIS DAY (Eli, 2026-11-11):
+                          two 4-hour sessions in one room, or a second room,
+                          as its own row with its own times, staff and charge
+                          — not one row that spans the whole day. Starts in
+                          the same room with blank times; change the room in
+                          the select above if it is a different one. */}
+                      {daySheetDate && (
+                        <button
+                          type="button"
+                          className="c-x"
+                          onClick={() => {
+                            const firstRoom = sheetStudioRows[0]
+                            addStRows([daySheetDate], {
+                              studio: firstRoom ? toStudioLetter(firstRoom.studio) : undefined,
+                              location: firstRoom?.location,
+                              blankTimes: true,
+                            })
+                          }}
+                          style={{ fontSize: 11, fontFamily: 'Inter', fontWeight: 700, color: 'var(--c-fg)', opacity: 0.55, background: 'none', boxShadow: 'none', padding: 0, cursor: 'pointer' }}
+                        >+ Add room / time</button>
+                      )}
                     </div>
                   )}
 

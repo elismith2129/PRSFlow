@@ -381,6 +381,15 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — Several rows on one day (v1.52.1)
+
+Minutes after the duplicate-row rule, Eli asked the question that found its flaw: a day
+card holds several rooms, so why not the same room twice with different times? The rule
+was keyed on room; the thing we wanted refused was an identical row. Widened the key to
+include the start time — split shifts allowed, race copies still refused — and gave the
+day sheet the two controls it lacked: delete one row, add one row. The desktop card now
+lists each row when there are several instead of showing the first row's times for all.
+
 ### November 11, 2026 — Duplicate day rows (v1.52.0)
 
 A stray tentative card on the displays that the computer couldn't see. Chasing it in SQL

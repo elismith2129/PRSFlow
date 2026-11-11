@@ -20,6 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.52.1 — A day can hold several rooms/times, each its own row — Nov 11, 2026
+
+**Why.** Eli, right after v1.52.0: "a card can hold multiple rooms, correct? … 2 4-hour sessions in one day in one room … accurately without having to have one entry on the card that spans the whole time." The v1.52.0 rule (one row per WO + date + room) would have refused exactly that.
+
+- **Index widened** to `(work_order_id, date, studio, coalesce(from_time,''))` — migration file `20261111140000` rewritten in place (Eli ran the swap at 14:30; the narrower index is dropped by it). A split shift has two starts → allowed. The race duplicate is identical → still refused. The card's **Duplicate row** pill keys on room + start to match.
+- **Day sheet:** each room block has **× delete row** (two-step "Delete row?", `deleteStRow`, office only, hidden on the last room — that is "delete day" on the card). **+ Add room / time** beside + Add engineer adds a row to this day in the same room with **blank times** (`addStRows` gained `blankTimes`; copying the first row's start would be an identical row).
+- **Desktop day card:** with several room rows (and no blanket), one line per row — room · times · hours · rate — instead of the first row standing in for all. Single-row card unchanged.
+- Rejected: a per-row × on the card face itself — the card's editing surface is the day sheet (Sept 1 precedent), and the sheet is one tap away.
+
+**Migrations:** the rewritten `20261111140000` (already run). **Watch-out:** `confirmAddDay` (+ Add studio time) still skips a date the room already has — the in-sheet button is the route for a second row on the same day. **Files:** `components/calendar/WorkOrderPopup.tsx`, the migration.
+
 ## v1.52.0 — No duplicate day rows: the database refuses them, the card shows them, Delete day is findable — Nov 11, 2026
 
 **Why.** WO #35040 (Doechii, Ameraycan B, Nov 9–11) showed a tentative Wednesday card on the displays and Eli's phone but not his computer, and the work order showed three clean days. SQL: Nov 10 and Nov 11 each had TWO `studio_time_rows`, both copies created in the same second (2026-11-10 07:26 UTC); a save the next afternoon then projected the un-statused Nov 11 copy as its own one-day tentative card. The desktop grid merges a WO's cards in one room into one bar, so it hid the stray; phone and displays draw cards raw. Eli: "we shouldn't have anything built that hides things like this" and "there was no way to delete a day."

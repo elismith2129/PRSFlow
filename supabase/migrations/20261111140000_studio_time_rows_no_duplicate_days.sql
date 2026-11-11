@@ -5,13 +5,17 @@
 -- calendar projection then wrote a stray tentative card. The app had three
 -- read-then-insert paths and no rule behind them. This is the rule.
 --
--- One row per work order + date + room. Staff lines (studio '') are exempt:
--- a day legitimately holds several of them. Run the SWEEP first (box 1); the
--- index refuses to build while doubles exist.
+-- One row per work order + date + room + START TIME. Widened from
+-- (WO, date, room) the same afternoon (Eli: "2 4-hour sessions in one day in
+-- one room" must be two rows) — a split shift has two starts and is allowed;
+-- the race duplicate is an identical row and is still refused. Staff lines
+-- (studio '') are exempt: a day legitimately holds several of them.
 --
--- Idempotent.
-create unique index if not exists studio_time_rows_one_per_day_room
-  on public.studio_time_rows (work_order_id, date, studio)
+-- Run AFTER the sweep (docs/TODO.md): the index refuses to build while
+-- identical doubles exist. Idempotent; the first (narrower) index is dropped.
+drop index if exists public.studio_time_rows_one_per_day_room;
+create unique index if not exists studio_time_rows_one_per_day_room_start
+  on public.studio_time_rows (work_order_id, date, studio, coalesce(from_time, ''))
   where coalesce(studio, '') <> '' and date is not null;
 
 select count(*) as rows_guarded from public.studio_time_rows where coalesce(studio, '') <> '' and date is not null;

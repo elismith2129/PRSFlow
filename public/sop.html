@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.52.1', date:'Nov 11, 2026',
+    headline:'One day, several sessions: add or delete a room/time inside the day.',
+    desc:'Two four-hour sessions in one room on one day are now two rows on the day card, each with its own times, staff and charge.',
+    changes:[
+      'Open a day card. Beside <b>+ Add engineer</b> there is <b>+ Add room / time</b>: a second row for that day, same room, blank times for you to fill in. Change the room in its dropdown if it is a different one.',
+      'Each room row on the day has <b>&times; delete row</b> (it asks first). The last room on a day is removed with <b>&times; delete day</b> on the card.',
+      'A day card with several rows lists each one &mdash; room, times, hours, rate.',
+    ],
+    affects:'Office staff editing work orders.',
+    dev:['Index widened to (wo, date, studio, from_time). addStRows blankTimes. Day sheet per-row delete + add; card lists rows when > 1.'],
+  },
+  {
     ver:'v1.52.0', date:'Nov 11, 2026',
     headline:'A work order can no longer grow a second copy of a day. Delete day is easier to find.',
     desc:'Two people opening the same work order at the same moment could each add the same days, and the copies hid inside the day cards &mdash; one showed up as a stray tentative card on the displays.',
