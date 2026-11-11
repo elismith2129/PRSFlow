@@ -10,6 +10,10 @@ Newest at the top of each group.*
 - [x] ~~Run the sweep, then the migration, BEFORE the push~~ done Nov 11 14:30, including the widened (… + from_time) index. *(Nov 11)*
 - [ ] **If the sweep lists any WO other than #35040**, open each and remove the Duplicate row from the card after the push — or tell Claude the list and get a delete box. *(Nov 11)*
 
+## Billing SOP walkthrough is behind (Nov 11)
+
+- [ ] **Redraw `public/billing-sop.html` hub screens** for: Deleted WOs tab (v1.51.1), Total + Balance due on approval rows (v1.52.2), the Notes button replacing ✎ + dot (v1.53.0), × delete day / × delete row / + Add room / time (v1.52.x). One pass. *(Nov 11)*
+
 ## Deleted WOs tab (Nov 9, v1.51.1)
 
 - [ ] **Redraw the Billing SOP walkthrough** (`public/billing-sop.html`, `pm-deleted` step and the modal mock) for the Deleted WOs tab; then delete `DeletedLogModal` from `components/billing/DeletedLog.tsx`. *(Nov 9)*

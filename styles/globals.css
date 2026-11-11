@@ -2240,33 +2240,33 @@ select.c-input {
    not that row has a flag, which is what makes the column scannable. */
 .c-brow, .c-browhd {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 48px;
+  grid-template-columns: 76px minmax(0, 1fr) 72px 124px 210px 84px 46px 120px 34px;
   align-items: center; gap: 10px;
 }
 /* AGE IS ONLY MEANINGFUL ONCE SOMETHING HAS BEEN SENT (Eli, 2026-08-11). On
    In progress, Needs review and Upcoming it is a column of dashes, so the
    column is dropped rather than filled with nothing. */
 .c-bage-off .c-brow, .c-bage-off .c-browhd {
-  grid-template-columns: 76px minmax(0, 1fr) 124px 210px 84px 120px 48px;
+  grid-template-columns: 76px minmax(0, 1fr) 72px 124px 210px 84px 120px 34px;
 }
 /* COD LATCHED BINS (2026-08-19): with 2+ bins merged into one list, a leading
    badge column says each row's home bin. The class only exists on desktop —
    mobile rows never carry the badge. */
 .c-bmulti .c-brow, .c-bmulti .c-browhd {
-  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 46px 120px 48px;
+  grid-template-columns: 88px 76px minmax(0, 1fr) 72px 124px 210px 84px 46px 120px 34px;
 }
 .c-bmulti.c-bage-off .c-brow, .c-bmulti.c-bage-off .c-browhd {
-  grid-template-columns: 88px 76px minmax(0, 1fr) 124px 210px 84px 120px 48px;
+  grid-template-columns: 88px 76px minmax(0, 1fr) 72px 124px 210px 84px 120px 34px;
 }
 /* THE STAGE BADGE LAYOUT (Eli, 2026-09-03) — billing rows (and search, which
    mixes both pipelines) lead with a stage badge and the three lights are GONE:
    the ladder is linear, so the badge already says how far along a row is. The
    old 210px lights column becomes the flag column's room. */
 .c-bstaged .c-brow, .c-bstaged .c-browhd {
-  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 46px 120px 48px;
+  grid-template-columns: 100px 76px minmax(0, 1fr) 72px 234px 84px 46px 120px 34px;
 }
 .c-bstaged.c-bage-off .c-brow, .c-bstaged.c-bage-off .c-browhd {
-  grid-template-columns: 100px 76px minmax(0, 1fr) 234px 84px 120px 48px;
+  grid-template-columns: 100px 76px minmax(0, 1fr) 72px 234px 84px 120px 34px;
 }
 /* Sortable header (billing only): the active column is legible, the caret says
    which way. Sort only, never filter — the buckets already are the filters. */
@@ -2339,20 +2339,35 @@ select.c-input {
    that means "everything else" belongs at the end, in the same place on every
    row, out of the flow. */
 .c-bmorecell { display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
-/* The collection-notes glyph (2026-09-24), beside ⋯. Quiet until a note
-   exists; then the glyph brightens and a warm dot sits on its corner. The
-   dot is the whole indication — the row never shows the note. Last column
-   widened 26 → 48px to seat it. */
-.c-bnoteg {
-  position: relative; font-size: 11px; line-height: 1; padding: 4px 3px; border: none; background: none;
-  color: var(--c-fg); opacity: .25; cursor: pointer; border-radius: 5px;
+/* THE NOTES BUTTON (Eli, 2026-11-11; docs/design-refs/row-notes-button-options,
+   option A). Its own 72px column left of the flag. Grey outline when empty,
+   lit ink pill with the count when not. The hover card drops from it,
+   right-aligned so it never covers the amounts; the row itself carries no
+   note text (Sept 24 ruling). Replaces the ✎ + orange dot in the ⋯ cell. */
+.c-bnotecell { position: relative; display: flex; justify-content: flex-start; }
+.c-bnotes {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; cursor: pointer;
+  font: 800 10px Inter, sans-serif; letter-spacing: .04em; line-height: 1;
+  border: none; border-radius: 99px; padding: 5px 10px;
+  background: none; color: var(--c-fg-3); box-shadow: inset 0 0 0 1px var(--c-wash2);
 }
-.c-bnoteg:hover { opacity: .9; background: var(--c-wash2); }
-.c-bnoteg.c-has { opacity: .8; }
-.c-bnoteg.c-has::after {
-  content: ''; position: absolute; top: 1px; right: 0; width: 6px; height: 6px; border-radius: 99px;
-  background: var(--c-st-warm);
+.c-bnotes:hover { color: var(--c-fg); background: var(--c-wash2); }
+.c-bnotes.c-on { background: var(--c-fg); color: var(--c-bg); box-shadow: none; }
+.c-bnotes.c-on:hover { opacity: .85; }
+.c-bnotes-n { font-family: 'DM Mono', ui-monospace, monospace; font-weight: 600; opacity: .7; }
+.c-bnotes-hover {
+  position: absolute; left: 0; top: calc(100% + 6px); width: 340px; z-index: 50;
+  background: var(--c-srf, var(--c-bg)); border-radius: 12px; padding: 10px 12px;
+  box-shadow: var(--c-softsh), 0 0 0 1px var(--c-wash2);
+  display: flex; flex-direction: column; text-align: left; cursor: default;
+  font: 400 11.5px Inter, sans-serif; letter-spacing: 0; color: var(--c-fg);
 }
+.c-bnotes-hd { display: flex; justify-content: space-between; font: 800 9px Inter, sans-serif; letter-spacing: .1em; text-transform: uppercase; opacity: .45; margin-bottom: 4px; }
+.c-bnotes-nt { display: block; line-height: 1.4; padding: 6px 0; box-shadow: inset 0 1px 0 var(--c-wash); white-space: pre-wrap; }
+.c-bnotes-hd + .c-bnotes-nt { box-shadow: none; }
+.c-bnotes-m { display: block; font-family: 'DM Mono', ui-monospace, monospace; font-size: 9.5px; opacity: .5; margin-bottom: 1px; }
+.c-bnotes-ft { font-size: 10px; opacity: .45; margin-top: 6px; }
+@media (hover: none) { .c-bnotes-hover { display: none; } }
 .c-bmore {
   font-size: 12px; line-height: 1; padding: 4px 2px; border: none; background: none;
   color: var(--c-fg); opacity: .3; cursor: pointer;

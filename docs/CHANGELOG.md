@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.53.0 — Notes is a button on the billing row — Nov 11, 2026
+
+**Why.** Eli: "the far right little pencil and the orange dot doesn't work for me. since we have room I want there to be a notes button to the left of flags. grey if no notes and lit up if notes. hover to see notes preview, click to open and write." Mock `docs/design-refs/row-notes-button-options.html`; ruling: A.
+
+- `NotesButton` in `components/billing/CollectNotes.tsx`: its own 72px column between Client & session and Flag (header says Notes). Grey outline "Notes" when empty; lit ink pill "Notes · N" when not. Desktop hover (220ms) → card with the newest three (initials · time · body), "and N more", "Click to open and write"; fetched on first hover, cached, dropped when the live count changes. Click → the existing `CollectNotesModal`. Touch devices: no hover card (`@media (hover: none)`), tap opens the pop-up.
+- The ✎ + orange dot leave the ⋯ cell; last column 48 → 34px. All six `.c-brow` grid variants gained the column.
+- The Sept 24 ruling (the row carries no note text) holds: the preview is a hover card, one step off the row.
+
+**Migrations:** none. **Watch-out:** `public/billing-sop.html` still draws the ✎ + dot in its hub screens (`.scr-cod .c-bnoteg`) — redraw with the SOP pass already on the TODO. **Files:** `components/billing/CollectNotes.tsx`, `app/(main)/billing/page.tsx`, `styles/globals.css`, the mock.
+
 ## v1.52.2 — Approval rows show Total and Balance due — Nov 11, 2026
 
 **Why.** Eli, looking at three rows in "Ready for your approval": "two have been paid and have a 0 balance, one has a small balance, but on the line you see the total amount … we need to see the balance on these lines, not the total. or both … base your decisions on enterprise accounting software." Mock `docs/design-refs/approval-amount-options.html` (A: total + status subline; B: balance as the big number; C: Amount · Paid · Balance columns). Ruling: "how about even simpler. total and balance due."

@@ -56,7 +56,7 @@ import { supabase, type Booking } from '@/lib/supabase'
 import { WorkOrderPopup } from '@/components/calendar/WorkOrderPopup'
 import { ApCard, type ApProfile } from '@/components/billing/ApCard'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { CollectNotesModal, useCollectNoteCounts } from '@/components/billing/CollectNotes'
+import { CollectNotesModal, useCollectNoteCounts, NotesButton } from '@/components/billing/CollectNotes'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
 import { formatCurrency } from '@/lib/format'
@@ -998,6 +998,7 @@ export default function BillingPage() {
             <SortHd col="status" label="Status" {...{ searching, sortCol, sortDir, clickSort }} />
             <SortHd col="wo" label="WO" {...{ searching, sortCol, sortDir, clickSort }} />
             <SortHd col="client" label="Client & session" {...{ searching, sortCol, sortDir, clickSort }} />
+            <span>Notes</span>
             <span className="c-r">Flag</span>
             <SortHd col="balance" label="Amount" right {...{ searching, sortCol, sortDir, clickSort }} />
             {showAge && <SortHd col="age" label="Age" right {...{ searching, sortCol, sortDir, clickSort }} />}
@@ -1009,6 +1010,7 @@ export default function BillingPage() {
             {codMulti && <span>Bin</span>}
             <span>WO</span>
             <span>Client &amp; session</span>
+            <span>Notes</span>
             <span className="c-r">Flag</span>
             <span>Progress</span>
             <span className="c-r">Amount</span>
@@ -1577,6 +1579,12 @@ function Row({
         {searching ? <span> · {bucketLabel(row.bucket)}</span> : null}
       </span>
 
+      {/* NOTES (Eli, 2026-11-11): the button, left of the flag — grey when
+          empty, lit with the count when not; hover for the newest three,
+          click to open and write. Was a ✎ + orange dot in the ⋯ cell.
+          components/billing/CollectNotes NotesButton. */}
+      <NotesButton workOrderId={row.workOrderId} count={noteCount} onOpen={onNotes} />
+
       {/* FLAG COLUMN — locked, so a row without a flag leaves the space empty
           rather than sliding everything else left. */}
       <span className="c-bflagcell">
@@ -1779,14 +1787,8 @@ function Row({
         )}
       </span>
       <span className="c-bmorecell" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
-        {/* COLLECTION NOTES (Eli, 2026-09-24): a ✎ that only says a note EXISTS
-            (the dot) — never the note itself. The pop-up is the log. */}
-        <button
-          className={`c-bnoteg${noteCount > 0 ? ' c-has' : ''}`}
-          onClick={onNotes}
-          title={noteCount > 0 ? `${noteCount} collection note${noteCount === 1 ? '' : 's'} — internal` : 'Add a collection note — internal'}
-          aria-label="Collection notes"
-        >✎</button>
+        {/* The ✎ + dot that lived here (2026-09-24) is the Notes button
+            left of the flag since 2026-11-11. */}
         {hasMore && (
           <button className="c-bmore" onClick={onMore} title="More — open the invoice, write it off, void it">⋯</button>
         )}

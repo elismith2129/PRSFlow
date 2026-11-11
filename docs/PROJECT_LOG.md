@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — The Notes button (v1.53.0)
+
+The Sept 24 collection notes were a ✎ with an orange dot in the ⋯ cell, by Eli's own
+ruling then ("just an indication that a note exists"). Seven weeks on: "doesn't work for
+me." A pencil reads as edit; a dot is a dot. Ruling: a button that says Notes, its own
+column left of the flag, grey or lit with the count, hover for a preview, click to open.
+Kept the Sept 24 principle — no note text on the row — by making the preview a hover
+card. Rejected B (last author + age on the row: a third thing to read) and C (an icon,
+which is what didn't work).
+
 ### November 11, 2026 — Total and Balance due on approval rows (v1.52.2)
 
 The approval strip showed one number per row, the total, so a paid-in-full COD and

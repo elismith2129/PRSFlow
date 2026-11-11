@@ -25,7 +25,7 @@
 //                             for the dot on every row (no per-row fetch).
 //   CollectNotesModal       — the pop-up: composer, log newest-first, edit.
 // ─────────────────────────────────────────────────────────────────────────────
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { dbResult } from '@/lib/db'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -87,6 +87,86 @@ function Initials({ v }: { v: string }) {
       width: 26, height: 26, borderRadius: 99, fontSize: 10, fontWeight: 600, letterSpacing: '0.02em',
       background: 'var(--c-wash2)', color: 'var(--c-fg)',
     }}>{v || '—'}</span>
+  )
+}
+
+/**
+ * THE NOTES BUTTON (Eli, 2026-11-11 — docs/design-refs/row-notes-button-options.html,
+ * option A). "the far right little pencil and the orange dot doesn't work for
+ * me … a notes button to the left of flags. grey if no notes and lit up if
+ * notes. hover to see notes preview, click to open and write."
+ *
+ * Grey outline "Notes" when empty; lit ink pill "Notes · 2" when there are.
+ * Hover (desktop) → a card with the newest three, initials + time, "and N
+ * more", fetched on first hover and cached for the row's lifetime. Click →
+ * the pop-up above. The Sept 24 ruling — the ROW carries no note text — still
+ * holds: the preview is a hover card, one step off the row.
+ *
+ * Replaces the ✎ + orange dot that lived in the row's ⋯ cell.
+ */
+export function NotesButton({ workOrderId, count, onOpen }: {
+  workOrderId: string
+  count: number
+  onOpen: () => void
+}) {
+  const [hover, setHover] = useState(false)
+  const [preview, setPreview] = useState<CollectNote[] | null>(null)
+  const [loading, setLoading] = useState(false)
+  const timer = useRef<number | null>(null)
+
+  async function fetchPreview() {
+    if (preview || loading || count === 0) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('wo_collection_notes')
+      .select('*')
+      .eq('work_order_id', workOrderId)
+      .order('created_at', { ascending: false })
+      .limit(3)
+    setPreview((data ?? []) as CollectNote[])
+    setLoading(false)
+  }
+  // The count is live (one channel); a new note on this row makes the cached
+  // preview stale, so a count change drops it and the next hover refetches.
+  useEffect(() => { setPreview(null) }, [count])
+
+  const enter = () => {
+    if (count === 0) return
+    fetchPreview()
+    if (timer.current) window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setHover(true), 220)
+  }
+  const leave = () => {
+    if (timer.current) { window.clearTimeout(timer.current); timer.current = null }
+    setHover(false)
+  }
+
+  return (
+    <span className="c-bnotecell" onMouseEnter={enter} onMouseLeave={leave} onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        className={`c-bnotes${count > 0 ? ' c-on' : ''}`}
+        onClick={onOpen}
+        title={count > 0 ? `${count} collection note${count === 1 ? '' : 's'} — internal. Click to open.` : 'Add a collection note — internal'}
+        aria-label="Collection notes"
+      >
+        Notes{count > 0 && <span className="c-bnotes-n">{count}</span>}
+      </button>
+      {hover && count > 0 && (
+        <span className="c-bnotes-hover" role="tooltip">
+          <span className="c-bnotes-hd"><span>Collection notes · internal</span><span>{count}</span></span>
+          {loading && !preview ? <span className="c-bnotes-nt" style={{ opacity: 0.5 }}>…</span>
+            : (preview ?? []).map(n => (
+              <span key={n.id} className="c-bnotes-nt">
+                <span className="c-bnotes-m">{n.initials || '—'} · {fmtWhen(n.created_at)}</span>
+                {n.body}
+              </span>
+            ))}
+          {count > 3 && <span className="c-bnotes-ft">and {count - 3} more</span>}
+          <span className="c-bnotes-ft">Click to open and write</span>
+        </span>
+      )}
+    </span>
   )
 }
 

@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.53.0', date:'Nov 11, 2026',
+    headline:'Collection notes are a Notes button on the row.',
+    desc:'The little &#9998; and orange dot at the far right are gone. Notes has its own spot, left of the flag.',
+    changes:[
+      'Grey <b>Notes</b> = none yet. Lit <b>Notes &middot; 2</b> = two on this work order.',
+      'Hover it on a computer to read the newest three. Click to open the log and write.',
+      'On a phone or iPad, tap it to open.',
+    ],
+    affects:'Billing and owners.',
+    dev:['NotesButton in CollectNotes.tsx; 72px column in all c-brow grids; ✎ removed from the ⋯ cell.'],
+  },
+  {
     ver:'v1.52.2', date:'Nov 11, 2026',
     headline:'Approval rows show the Total and the Balance due.',
     desc:'Owners only. A paid COD and an unpaid one used to look the same in the approval bin.',
