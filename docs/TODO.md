@@ -5,6 +5,11 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Duplicate day rows (Nov 11, v1.52.0)
+
+- [ ] **Run the sweep, then the migration, BEFORE the push** (both boxes in the Nov 11 chat). The index will not build while doubles exist. *(Nov 11)*
+- [ ] **If the sweep lists any WO other than #35040**, open each and remove the Duplicate row from the card after the push — or tell Claude the list and get a delete box. *(Nov 11)*
+
 ## Deleted WOs tab (Nov 9, v1.51.1)
 
 - [ ] **Redraw the Billing SOP walkthrough** (`public/billing-sop.html`, `pm-deleted` step and the modal mock) for the Deleted WOs tab; then delete `DeletedLogModal` from `components/billing/DeletedLog.tsx`. *(Nov 9)*

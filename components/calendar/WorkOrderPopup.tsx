@@ -1336,7 +1336,10 @@ export function WorkOrderPopup({
       const toDelete = (freshRows ?? []).filter((r: any) => r.date && !newDateSet.has(r.date)).map((r: any) => r.id)
       if (toDelete.length > 0) await supabase.from('studio_time_rows').delete().in('id', toDelete)
 
-      // Insert rows for new dates
+      // Insert rows for new dates. RACE-SAFE (2026-11-11): the database
+      // refuses a second row for the same WO + date + room, so if two clients
+      // extend the range together only one insert lands and the reload below
+      // picks it up for both.
       const missing = allDates.filter(d => !coveredDates.has(d))
       if (missing.length > 0) {
         const rateRaw = isDayRate ? (liveForm.rate_daily || liveForm.rate || '') : (liveForm.rate || '')
@@ -1626,29 +1629,14 @@ export function WorkOrderPopup({
             .eq('work_order_id', existing.id)
             .order('created_at', { ascending: true })
 
-          // 2. Dedup: keep the earliest row per DATE + ROOM, delete later
-          //    duplicates of that same room on that same day.
-          //
-          //    WAS KEYED ON DATE ALONE (fixed 2026-10-29, WO-1113 — Lori: "Rob
-          //    is still not being saved … once you exit and go back in it
-          //    removes him from the first day"). A day legitimately holds more
-          //    than one row: a separate STAFF line (studio '') and a second
-          //    ROOM. Keyed on date, every open of a day-rate booking's work
-          //    order silently DELETED them from the database — the staff line
-          //    Lori added for Rob, and any second room. Staff lines (studio '')
-          //    are never duplicates of anything and are never touched.
-          const keepByKey: Record<string, string> = {}
-          const dupeIds: string[] = []
-          for (const r of freshSt ?? []) {
-            const room = (r.studio ?? '').trim()
-            if (!room || !r.date) continue
-            const key = `${r.date}|${toStudioLetter(room)}`
-            if (keepByKey[key]) dupeIds.push(r.id)
-            else keepByKey[key] = r.id
-          }
-          if (dupeIds.length > 0) {
-            await supabase.from('studio_time_rows').delete().in('id', dupeIds)
-          }
+          // 2. NO DEDUP ANY MORE (Eli, 2026-11-11: "we shouldn't have anything
+          //    built that hides things like this"). This step used to delete
+          //    later copies of a date+room on every open — a silent delete that
+          //    on 2026-10-29 (keyed on date alone) took Lori's staff line and
+          //    a second room with it. Duplicates are now refused by the
+          //    database (migration 20261111140000, one row per WO + date +
+          //    room) and, should an old one exist, the day card shows a red
+          //    "Duplicate row" with its own ×. Nothing is deleted on open.
 
           // 3. Insert rows for dates not yet in DB (any row on a date covers it)
           const allDates = dateRange(booking.start_date, booking.end_date)
@@ -1656,6 +1644,10 @@ export function WorkOrderPopup({
           const missingDates = allDates.filter(d => !coveredDates.has(d))
           if (missingDates.length > 0) {
             const dayRateNum = parseFloat((booking.rate_daily ?? '').replace(/[^0-9.]/g, ''))
+            // RACE-SAFE (2026-11-11): two clients opening this WO together both
+            // see the same dates missing. The database now refuses the second
+            // insert (unique WO + date + room); that error means the other
+            // client already did it, and the reload below picks its rows up.
             await supabase.from('studio_time_rows').insert(missingDates.map((d, i) => ({
               work_order_id: existing.id,
               studio: studioLetter || toStudioLetter(booking.studio ?? ''),
@@ -1722,6 +1714,9 @@ export function WorkOrderPopup({
           }
         })
         if (stPayloads.length) {
+          // RACE-SAFE (2026-11-11): a 23505 here means another client just
+          // inserted these dates — the WO #35040 duplicate. Not an error; the
+          // reload below reads what won.
           await supabase.from('studio_time_rows').insert(stPayloads)
         }
         const { data: reloaded } = await supabase.from('studio_time_rows')
@@ -7409,6 +7404,16 @@ export function WorkOrderPopup({
                     .sort((x, y) => (x.date || 'zzzz').localeCompare(y.date || 'zzzz'))
                   return groups.map(g => {
                     const studioRows = g.rows.filter(r => r.studio !== '')
+                    // DUPLICATE ROW (Eli, 2026-11-11). Two rows on one date in
+                    // one room is never right — it was WO #35040's stray
+                    // tentative card. The database refuses new ones; an old
+                    // one is SHOWN, in red, with its own ×, never tidied away.
+                    const seenRoom = new Set<string>()
+                    const dupeRows = studioRows.filter(r => {
+                      const k = toStudioLetter(r.studio)
+                      if (seenRoom.has(k)) return true
+                      seenRoom.add(k); return false
+                    })
                     // THE SLOT SHOWS EVEN WHEN EMPTY (2026-08-20). This used to
                     // require a name or a rate, which hid the legitimate
                     // "engineer, TBD" state and meant a fresh session showed no
@@ -7705,16 +7710,29 @@ export function WorkOrderPopup({
                                 <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, alignSelf: 'flex-end' }}>
                                   <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                                     <span style={kLabel}>{cardLocked ? '👁 view' : '✎ edit'}</span>
-                                    {/* Day-card × — ADMIN ONLY (runner renders the
-                                        phone card, never this branch). */}
+                                    {/* DELETE DAY — ADMIN ONLY (runner renders the
+                                        phone card, never this branch). Was a
+                                        13px × nobody found (Eli, 2026-11-11:
+                                        "there was no way to delete a day").
+                                        Now it says what it does. */}
                                     <button
                                       type="button"
                                       aria-label="Delete this day"
                                       className="c-x"
                                       onClick={e => { e.stopPropagation(); setConfirmDeleteDay(g.date || '') }}
-                                      style={{ fontSize: 13, boxShadow: 'none' }}
-                                    >×</button>
+                                      style={{ ...kLabel, boxShadow: 'none', color: 'var(--c-st-hot)', cursor: 'pointer' }}
+                                    >× delete day</button>
                                   </span>
+                                  {dupeRows.length > 0 && (
+                                    <span
+                                      onClick={e => e.stopPropagation()}
+                                      title="Two rows for this day in the same room. The second one is a mistake — remove it."
+                                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 9, fontFamily: 'Inter', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', background: 'var(--c-st-hot)', color: 'var(--c-hot-text)', borderRadius: 99, padding: '3px 8px' }}
+                                    >
+                                      Duplicate row
+                                      <button type="button" className="c-x" style={{ fontSize: 11, boxShadow: 'none', color: 'inherit' }} aria-label="Remove the duplicate row" onClick={() => deleteDayRows(dupeRows)}>×</button>
+                                    </span>
+                                  )}
                                   {/* THE REVIEW CHIP, top right where the eye
                                       goes (Eli, 2026-09-23: "top right where
                                       the x is") — on its OWN line under edit/×

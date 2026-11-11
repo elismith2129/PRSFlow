@@ -20,6 +20,19 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.52.0 — No duplicate day rows: the database refuses them, the card shows them, Delete day is findable — Nov 11, 2026
+
+**Why.** WO #35040 (Doechii, Ameraycan B, Nov 9–11) showed a tentative Wednesday card on the displays and Eli's phone but not his computer, and the work order showed three clean days. SQL: Nov 10 and Nov 11 each had TWO `studio_time_rows`, both copies created in the same second (2026-11-10 07:26 UTC); a save the next afternoon then projected the un-statused Nov 11 copy as its own one-day tentative card. The desktop grid merges a WO's cards in one room into one bar, so it hid the stray; phone and displays draw cards raw. Eli: "we shouldn't have anything built that hides things like this" and "there was no way to delete a day."
+
+- **Cause.** Three read-then-insert paths in `WorkOrderPopup.initWO` / the date-range effect ("which dates exist → insert the missing ones") with no database rule. Two clients opening the WO together both insert. The day-rate-only dedup from v1.48.1 deleted copies silently on open; hourly WOs got neither cleanup nor warning.
+- **Migration `20261111140000_studio_time_rows_no_duplicate_days.sql`:** partial unique index `(work_order_id, date, studio) where studio <> '' and date is not null`. Staff lines (studio '') are exempt. The losing insert now fails with 23505; all three paths already reload from the database right after, so the winner's rows show up for both clients. The index refuses to build while doubles exist — **sweep first** (box in the chat / TODO).
+- **The silent dedup is gone** (initWO day-rate step 2). Nothing is deleted on open any more.
+- **Day card:** a second row for the same date + room wears a red **Duplicate row** pill with its own ×. Visible, never tidied away.
+- **Delete day** reads "× delete day" in red beside ✎ edit (was a 13px × beside it). Same two-step "Delete day?" confirm, same `deleteDayRows`.
+- Rejected: an upsert with `ignoreDuplicates` — PostgREST cannot target a partial unique index's predicate, so the insert-and-tolerate-23505 shape is the one that works. Rejected: keeping the dedup "just for day-rate" — a delete nobody asked for is the thing being removed.
+
+**Migrations:** the one above, AFTER the sweep. **Watch-out:** if the sweep ever finds a legitimate same-room-same-day pair (a split shift entered as two rows), say so before running the index — those would need the second row to carry a different room or be merged. `lib/seedStudioTimeRows.ts` already skips existing dates, so + Seed is unaffected. **Files:** `components/calendar/WorkOrderPopup.tsx`, the migration.
+
 ## v1.51.1 — Deleted WOs is a tab beside Removed holds — Nov 9, 2026
 
 **Why.** Eli asked where deleted work orders were (⋯ at the top right → Deleted work orders), then: "deleted WOs should be beside removed holds." A parked pile next to a parked pile; one place for everything that was taken away.

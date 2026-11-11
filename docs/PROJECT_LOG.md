@@ -381,6 +381,17 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — Duplicate day rows (v1.52.0)
+
+A stray tentative card on the displays that the computer couldn't see. Chasing it in SQL
+found two rows per day on WO #35040, written in the same second: the work order's
+"insert the dates that are missing" logic has no rule behind it, so two clients racing
+both insert. The v1.48.1 dedup had been papering over this on day-rate WOs by deleting
+copies on open — which is the kind of thing Eli explicitly does not want ("nothing built
+that hides things like this"). Ruling: the database refuses duplicates; the app shows an
+old one in red with a ×; the silent delete goes. Delete day already existed but as a
+13px × beside "✎ edit" that Eli never found — it now says what it does.
+
 ### November 9, 2026 — Deleted WOs beside Removed holds (v1.51.1)
 
 Eli couldn't find deleted work orders (they were behind the page ⋯, chosen on

@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.52.0', date:'Nov 11, 2026',
+    headline:'A work order can no longer grow a second copy of a day. Delete day is easier to find.',
+    desc:'Two people opening the same work order at the same moment could each add the same days, and the copies hid inside the day cards &mdash; one showed up as a stray tentative card on the displays.',
+      changes:[
+      'The database now refuses a second row for the same day in the same room on one work order.',
+      'If an old copy exists, the day card shows a red <b>Duplicate row</b> with a &times; to remove it. Nothing is cleaned up silently any more.',
+      'On a day card, <b>&times; delete day</b> sits beside &#9998; edit (it used to be a tiny &times;). It still asks before deleting.',
+    ],
+    affects:'Office staff editing work orders.',
+    dev:['Partial unique index on studio_time_rows (work_order_id, date, studio) where studio <> \'\'; initWO dedup removed; inserts tolerate 23505 and reload.'],
+  },
+  {
     ver:'v1.51.1', date:'Nov 9, 2026',
     headline:'Deleted work orders moved: they are a tab beside Removed holds now.',
     desc:'They used to hide behind the &#8943; at the top right of the Billing Hub.',
