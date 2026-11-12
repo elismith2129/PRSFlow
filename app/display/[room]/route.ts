@@ -22,11 +22,11 @@
 //
 // Ten-foot minimums (§13): artist ≥15px equivalent, mono ≥12px, COD strip
 // full-width and unmissable. Dark register only — the wall runs dark.
-import { createHash } from 'crypto'
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { timeToMins, toStudioLetter } from '@/lib/time'
 import { findDisplayRoom } from '@/lib/displayRooms'
+import { DISPLAY_COLS, DISPLAY_ST_COLS, UNAVAILABLE_HASH, displayHash, sortForHash } from '@/lib/displayHash'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -41,10 +41,9 @@ const supabaseAdmin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 )
 
-const COLS =
-  'id,location,studio,start_date,end_date,from_time,to_time,status,session_type,' +
-  'payment_type,cod_method,artist,label,client_name,engineer_name,assistant_name,invoice_num,' +
-  'work_order_id'
+// The column lists and the hash live in lib/displayHash (2026-11-11) so the
+// shared probe (app/display/probe) computes the same bytes as this page.
+const COLS = DISPLAY_COLS
 
 // PER-DAY TIMES AND STAFF (Eli, 2026-09-25, WO-1240 Molly Santana: "on my cal
 // it shows 9p day one and 7p day 2 ... the cal displays just [have] two days
@@ -467,7 +466,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
 
   // Stable ordering first, or an arbitrary row order from Postgres would change
   // the hash on its own and reload the wall every few seconds for no reason.
-  bookings.sort((a, b) => String(a.id).localeCompare(String(b.id)))
+  // (sorted together with the rows below — sortForHash)
 
   // Per-day rows for every WO on screen — one query, never per-card. Sorted so
   // the hash below is stable. Whitelisted columns only: no rates, no notes.
@@ -477,13 +476,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   if (!error && woIds.length) {
     const r = await supabaseAdmin
       .from('studio_time_rows')
-      .select('work_order_id,date,studio,from_time,to_time,times_tbd,eng_name,eng_role,eng_visible,rate,row_rate_type')
+      .select(DISPLAY_ST_COLS)
       .in('work_order_id', woIds)
     stRows = r.data ?? []
     stError = r.error
-    stRows.sort((a, b) => `${a.work_order_id}|${a.date}|${a.studio}|${a.eng_role}|${a.eng_name}`
-      .localeCompare(`${b.work_order_id}|${b.date}|${b.studio}|${b.eng_role}|${b.eng_name}`))
   }
+  sortForHash(bookings, stRows)
   const perDay: PerDay = { times: {}, staff: {} }
   for (const row of stRows) {
     if (!row.date) continue
@@ -511,9 +509,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ room: strin
   // The rows are hashed too: a WO time edit changes what the wall shows, so
   // it must change the hash, or the panel would sit on the old time until the
   // 15-minute meta refresh.
-  const hash = error || stError
-    ? 'unavailable'
-    : createHash('sha1').update(JSON.stringify([bookings, stRows])).digest('hex').slice(0, 16)
+  const hash = error || stError ? UNAVAILABLE_HASH : displayHash(bookings, stRows)
 
   // The probe: same query, no HTML. Answered before anything is rendered, so a
   // check costs one query and 16 bytes rather than a full page build. Must sit

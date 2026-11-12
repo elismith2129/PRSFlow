@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.54.0 — TV walls: one shared probe per building; proxy never parks on a 5xx — Nov 11, 2026
+
+**Why.** Every wall went to "503 Service Unavailable" at 5:26 PM; `/display/*` returned Vercel's "This request was blocked · 403" in a browser while the app itself was fine — Vercel's abuse protection on a path that eleven panels polled every 15s (~63k calls/day; the Oct 6 TODO). The proxy also passed the error page straight to the panels, which never retry on their own, so the walls stayed stuck after the block lifted.
+
+- **`app/display/probe/route.ts`** — every room's wall hash in one JSON call (two queries, all rooms; split per room in memory). `lib/displayHash.ts` now holds the column lists, the window maths and the hash so the per-room page and the probe compute identical bytes (or a wall would reload forever). The room route imports from it; no behaviour change there.
+- **`scripts/display-proxy.mjs`** — fetches `/display/probe` every `PROBE_MS` (10s), answers each panel's `?probe=1` from memory. Vercel sees one call per building per 10s instead of one per panel per 15s (four buildings ≈ 35k/day → well under the trip point, and the real number is the page loads, which only happen on change). Page HTML is never cached. Stale (>60s without a good probe): a panel gets its last known hash, so an outage does not make every wall reload every 15s; unknown → 'unavailable' → one reload into the Reconnecting notice. A 5xx from upstream now shows the auto-refreshing Reconnecting notice instead of the raw error.
+- Rejected: Supabase realtime on the panels (Android 4.4 WebView, no TLS to Supabase either — the same wall that forced the proxy). Rejected: per-building probes — one small page for all rooms is simpler and a panel can move buildings.
+
+**Not code:** the Vercel Firewall needs a **bypass rule for `/display/*`** (Project → Firewall → Rules). The probe change stops the walls from tripping it again; it does not lift a block already in place. **Restart the proxy on every building's machine** after the push — the walls keep working on the old script until then (they just keep forwarding probes). **Migrations:** none. **Files:** `app/display/probe/route.ts`, `lib/displayHash.ts`, `app/display/[room]/route.ts`, `scripts/display-proxy.mjs`.
+
 ## v1.53.3 — Financials: the owner check runs once, not 55,000 times — Nov 11, 2026
 
 **Why.** Eli: "the financials are not working" — "Loading revenue history failed: canceling statement due to statement timeout."

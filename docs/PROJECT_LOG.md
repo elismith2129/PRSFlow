@@ -381,6 +381,16 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — The walls went 503 (v1.54.0)
+
+Vercel's firewall blocked /display after eleven panels polled it every 15s for two
+months — the Oct 6 TODO item, now a wall outage. The shape of the fix was already written
+down: one shared probe. Built it where it belongs, in the building proxy, because that is
+the only thing the panels talk to and it already runs per building. The panels change
+nothing. Also fixed the proxy passing a 5xx straight to a browser that never retries.
+The firewall bypass rule is Eli's to add in the Vercel dashboard; the probe keeps it from
+being needed again.
+
 ### November 11, 2026 — Save merges first (v1.53.2)
 
 Lori's "mgmt's times don't show up on my end" was the live feed dropping on a desktop

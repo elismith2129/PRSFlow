@@ -32,6 +32,37 @@ const PORT = Number(process.env.PORT || 8080)
 const BG = '#1b1a17'
 const FG = '#d9d6cd'
 
+// ── THE SHARED PROBE (Eli, 2026-11-11) ──────────────────────────────────────
+// Each panel asks "has my room changed?" every 15s (?probe=1). Forwarding every
+// one of those to Vercel was ~63k calls a day across the walls and is what
+// tripped Vercel's abuse firewall on 2026-11-11 (every wall went 503). Now this
+// proxy fetches ONE page listing every room's hash every PROBE_MS, keeps it
+// here, and answers the panels from memory. Vercel sees one call per building
+// per 10s. The page itself is never cached — only the probe answer — so a
+// reload always draws the live wall.
+//
+// If the upstream probe has not succeeded for STALE_MS, a panel is answered
+// with the last hash it was told (so an outage does not make eleven walls
+// reload every 15s), or 'unavailable' when nothing is known yet — which makes
+// the panel reload once into the Reconnecting notice and wait there.
+const PROBE_MS = Number(process.env.PROBE_MS || 10000)
+const STALE_MS = 60000
+let probeCache = { hashes: {}, at: 0, key: '' }
+
+async function refreshProbe() {
+  try {
+    const url = `${UPSTREAM}/display/probe${probeCache.key ? '?k=' + encodeURIComponent(probeCache.key) : ''}`
+    const r = await fetch(url, { headers: { 'user-agent': 'prsflo-display-proxy' }, signal: AbortSignal.timeout(8000) })
+    if (!r.ok) throw new Error(`upstream ${r.status}`)
+    const j = await r.json()
+    probeCache = { ...probeCache, hashes: j, at: Date.now() }
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] probe: ${err.message}`)
+  }
+}
+setInterval(refreshProbe, PROBE_MS)
+refreshProbe()
+
 function notice(msg) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8">`
     + `<meta http-equiv="refresh" content="15">`
@@ -51,6 +82,18 @@ const server = http.createServer(async (req, res) => {
     return res.end(notice('Add a room to the address, e.g. /ers-b'))
   }
 
+  // A panel's probe is answered from the shared cache, never forwarded.
+  const params = new URLSearchParams(query || '')
+  if (params.get('probe')) {
+    const k = params.get('k')
+    if (k && k !== probeCache.key) { probeCache.key = k; refreshProbe() }
+    const fresh = Date.now() - probeCache.at < STALE_MS
+    const h = probeCache.hashes[room]
+    const body = fresh && h ? h : (h || 'unavailable')
+    res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
+    return res.end(body)
+  }
+
   const target = `${UPSTREAM}/display/${encodeURIComponent(room)}${query ? '?' + query : ''}`
 
   try {
@@ -59,6 +102,16 @@ const server = http.createServer(async (req, res) => {
       signal: AbortSignal.timeout(20000),
     })
     const body = await upstream.text()
+    // A 5xx FROM UPSTREAM IS NOT A PAGE (2026-11-11: every wall sat on a bare
+    // "503 Service Unavailable" with no way back). Passing it through parked
+    // the panels on it — the Sharp browser never retries on its own. Treat it
+    // like a failed request: the notice carries a 15s meta refresh, so the
+    // wall recovers by itself once upstream answers again.
+    if (upstream.status >= 500) {
+      console.error(`[${new Date().toISOString()}] ${room}: upstream ${upstream.status}`)
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+      return res.end(notice('Reconnecting&hellip;'))
+    }
     res.writeHead(upstream.status, {
       'content-type': upstream.headers.get('content-type') || 'text/html; charset=utf-8',
       // The panels cache hard. Never let a wall freeze on a stale copy.
