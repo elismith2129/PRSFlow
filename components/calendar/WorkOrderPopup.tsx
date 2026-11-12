@@ -4371,7 +4371,7 @@ export function WorkOrderPopup({
   const foodSpent = expenses.reduce((s, e) => s + (parseFloat((e.amount || '').replace(/[^0-9.-]/g, '')) || 0), 0)
   const foodBudgetNum = wo ? (parseFloat((wo.food_amount || '').replace(/[^0-9.-]/g, '')) || 0) : 0
   const foodRemaining = foodBudgetNum - foodSpent
-  // The bill: receipts + 35% service fee (lib/woTotals). Budget stays vs receipts.
+  // The bill: receipts + the service fee (45% default, lib/woTotals; adjustable per WO). Budget stays vs receipts.
   const foodPct = foodFeePct(wo?.food_fee_pct)
   const foodFee = foodServiceFee(foodSpent, foodPct)
   const foodBilled = foodSpent + foodFee
@@ -5513,7 +5513,7 @@ export function WorkOrderPopup({
                     </div>
                   </div>
                 </div>
-                {/* THE BILL (Eli, 2026-09-17): receipts + 35% service fee. The
+                {/* THE BILL (Eli, 2026-09-17): receipts + the service fee (45% default). The
                     tiles above are the runner's view (budget vs spent); this
                     line is what the label is charged, and what the package prints. */}
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', margin: '8px 2px 12px', fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-2)' }}>
