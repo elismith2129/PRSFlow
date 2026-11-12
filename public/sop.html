@@ -680,6 +680,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.53.2', date:'Nov 11, 2026',
+    headline:'Saving a work order picks up what someone else changed first.',
+    desc:'If a work order was open on your screen a while, another person\'s changes (a runner\'s submitted times, a manager\'s edit) could be missing from your copy &mdash; and your Save could write over them.',
+    changes:[
+      'Save now checks the database first. Anything someone else changed is merged in; the fields you edited yourself are kept.',
+      'When that happens, an amber line at the top of the work order says so, with the time.',
+    ],
+    affects:'Office staff. Runners unchanged.',
+    dev:['handleClose pre-save refreshFromDb(); re-enters after the merged render. Per-field merge; same-field edits still last-save-wins.'],
+  },
+  {
     ver:'v1.53.1', date:'Nov 11, 2026',
     headline:'The approval box fits its rows.',
     desc:'Owners only. It was a fixed height and left empty space under one or two invoices.',

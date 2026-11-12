@@ -20,6 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.53.2 — Save merges what others changed first — Nov 11, 2026
+
+**Why.** Lori's note (via Eli): "Tristan's submitted times on mgmt WOs don't show up on my computer … if mgmt updates client actual times on their computer it looks like it is not updated on my end." The work order's live feed (Aug 16) merges remote changes field by field — but a desktop tab's realtime socket can drop quietly (Chrome throttling; missed events are never replayed), so a long-open WO goes stale with no sign. Worse: its Save wrote every field back, stale ones included, over the other person's work. No check at save time that the database had moved.
+
+- `handleClose(close, afterMerge)`: before validation, office saves call `refreshFromDb()` (the same per-field merge the live feed uses — your edited fields win, everything else is the database's). If anything moved, a warm line says so at the top of the work order ("Someone else changed this work order since you opened it (2:04 PM). Their changes were merged in before saving — your own edits were kept."), the merged render is awaited (`presaveResolveRef`, 400ms fallback), and the save re-enters via `handleCloseRef` so it builds its payloads from the merged state.
+- `refreshFromDb` now returns `{ changed, at }`: rows compared on the human-edited fields as strings by id (`canon`), the header on `updated_at` against the last seen. A whole-row compare would have called every save "changed" (the baseline is sometimes set from local state).
+- Runners are exempt (their save path is the phone's; the office owns structure).
+- Rejected: a hard conflict dialog ("someone changed this — reload?"). The merge already knows which fields are yours; a dialog would make Lori re-do work the app can do.
+
+**Migrations:** none. **Watch-out:** the merge is per field, so two people editing the SAME field still lose one of them (last save wins) — the notice shows, but it does not say which field. **Files:** `components/calendar/WorkOrderPopup.tsx`.
+
 ## v1.53.1 — Approval box sizes to its rows — Nov 11, 2026
 
 **Why.** Eli: "approval box is not auto sizing. staying too big." The strip was a fixed 286px (Oct 12 fixed-box rule; Oct 26 "five rows tall"), set when a row was one line. v1.52.2's Total / Balance due pair made rows ~64px, so two rows left a block of air and five would not have fit.

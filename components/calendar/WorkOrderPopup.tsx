@@ -791,6 +791,17 @@ export function WorkOrderPopup({
   // put while you go and fix the rows it just named.
   const [timeErrorRows, setTimeErrorRows] = useState<Set<string>>(new Set())
   const [timeErrorMsg, setTimeErrorMsg] = useState<string | null>(null)
+  // PRE-SAVE MERGE (Eli / Lori, 2026-11-11): "if mgmt updates client actual
+  // times on their computer it looks like it is not updated on my end." A
+  // desktop tab's live feed can quietly drop (Chrome throttles a tab you
+  // haven't looked at; missed events are never replayed), so a long-open
+  // work order can be stale — and its Save wrote every field back, stale
+  // ones included, over the other person's work. Now Save re-pulls first and
+  // merges exactly as the live feed does (your edited fields win, everything
+  // else is the database's), then saves. This line tells you it happened.
+  const [mergeNotice, setMergeNotice] = useState<string | null>(null)
+  const presaveResolveRef = useRef<(() => void) | null>(null)
+  const lastWoUpdatedAtRef = useRef<string | null>(null)
   const [showEngRows, setShowEngRows] = useState(false)
   // Seed panel (bulk row generation — see docs/WO-SPEC.md §6)
   const [seedOpen, setSeedOpen] = useState(false)
@@ -1754,9 +1765,10 @@ export function WorkOrderPopup({
   // comparing local state against the load-time original, so it covers single
   // edits, batch edit and the seed panel without separate bookkeeping. Your
   // unsaved edits always win locally; everything else is the database's.
-  async function refreshFromDb() {
+  async function refreshFromDb(): Promise<{ changed: boolean; at: string | null }> {
+    const none: { changed: boolean; at: string | null } = { changed: false, at: null }
     const id = woIdRef.current
-    if (!id || loadingRef.current) return
+    if (!id || loadingRef.current) return none
     const gen = refreshGenRef.current
     const [{ data: woRow }, { data: st }, { data: eq }, { data: eqNotes }, { data: rent }, { data: pay }, { data: exp }] = await Promise.all([
       supabase.from('work_orders').select('*').eq('id', id).maybeSingle(),
@@ -1770,8 +1782,25 @@ export function WorkOrderPopup({
     // A Remove hold landed while this read was in the air (2026-10-07): what
     // came back may still hold the removed days. Drop it — the removal's own
     // change event queues a fresh read.
-    if (gen !== refreshGenRef.current) return
+    if (gen !== refreshGenRef.current) return none
     setExpenses((exp ?? []) as WoExpense[])
+
+    // DID THE DATABASE MOVE SINCE THIS SCREEN LAST SAW IT? Rows against the
+    // last baseline (what the live feed last adopted), header against its
+    // updated_at. The pre-save merge reads this to know whether to say so.
+    // Compared on the fields a person changes, as strings, by id — not the
+    // whole row. The baseline is sometimes set from local state after a save
+    // (number vs string, a computed charge), and a whole-row compare would
+    // call every save "changed by someone else".
+    const canon = (rows: StRow[]) => {
+      const keys: (keyof StRow)[] = ['date', 'studio', 'location', 'from_time', 'to_time', 'actual_from_time', 'actual_to_time', 'no_show', 'times_tbd',
+        'eng_name', 'eng_role', 'eng_rate', 'eng_from_time', 'eng_to_time', 'rate', 'rate_daily', 'row_rate_type', 'ot_hours', 'day_status', 'status', 'submitted_at', 'session_info']
+      return JSON.stringify(rows.map(r => [r.id, ...keys.map(k => String((r as any)[k] ?? ''))]).sort((a, b) => a[0].localeCompare(b[0])))
+    }
+    const rowsMoved = canon((st ?? []).map(normalizeStRow)) !== canon(originalStRowsRef.current)
+    const woAt = (woRow as any)?.updated_at ?? null
+    const woMoved = lastWoUpdatedAtRef.current !== null && woAt !== null && woAt !== lastWoUpdatedAtRef.current
+    lastWoUpdatedAtRef.current = woAt
 
     // Blanket rates: adopt remote unless this screen has touched them.
     if (!bundlesDirtyRef.current) {
@@ -1860,6 +1889,7 @@ export function WorkOrderPopup({
         return arr.length ? arr : prev
       })
     }
+    return { changed: rowsMoved || woMoved, at: woAt }
   }
 
   // Debounced trigger — a save on the other side lands as several row events
@@ -1868,6 +1898,14 @@ export function WorkOrderPopup({
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
     refreshTimerRef.current = setTimeout(() => { refreshFromDb() }, 350)
   }
+  // The pre-save merge sets state and must wait for the render that carries
+  // it before the save builds its payloads (the save reads `wo` / `stRows`
+  // from its closure). This resolves that wait; a timeout in handleClose
+  // covers the case where the merge changed nothing on screen.
+  useEffect(() => {
+    if (presaveResolveRef.current) { const r = presaveResolveRef.current; presaveResolveRef.current = null; r() }
+  }, [stRows, wo])
+  const handleCloseRef = useRef<(close?: boolean, afterMerge?: boolean) => Promise<boolean>>(async () => false)
 
   // ── Admin canvas signature ──────────────────────────────────────────────────
 
@@ -3735,8 +3773,22 @@ export function WorkOrderPopup({
     }
   }
 
-  async function handleClose(close = true): Promise<boolean> {
+  async function handleClose(close = true, afterMerge = false): Promise<boolean> {
     if (!wo) { if (close) onClose(); return false }
+    // PRE-SAVE MERGE (2026-11-11, see mergeNotice). Re-pull, merge, and if
+    // anything moved, let the merged render land and run the save from it.
+    if (!afterMerge && woIdRef.current && !loadingRef.current && !runner) {
+      const r = await refreshFromDb()
+      if (r.changed) {
+        const when = r.at ? new Date(r.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
+        setMergeNotice(`Someone else changed this work order since you opened it${when ? ` (${when})` : ''}. Their changes were merged in before saving — your own edits were kept.`)
+        await new Promise<void>(res => {
+          presaveResolveRef.current = res
+          window.setTimeout(() => { if (presaveResolveRef.current === res) { presaveResolveRef.current = null; res() } }, 400)
+        })
+        return handleCloseRef.current(close, true)
+      }
+    }
     // Tour/Tech/Open-Hours → save as a simple block, skip the WO body + projection.
     if (BLOCK_STATUSES.includes(wo.session_status)) { await handleBlockSave(); return true }
     if (!woIdRef.current) {
@@ -4034,6 +4086,7 @@ export function WorkOrderPopup({
   }
 
   const saveOnly = () => handleClose(false)
+  handleCloseRef.current = handleClose
 
   /**
    * Has anything been touched? Drives the Close prompt and the greyed-out
@@ -5222,6 +5275,21 @@ export function WorkOrderPopup({
               onClick={() => { setClientStop(false); clientPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }) }}
               style={{ background: 'var(--c-st-hot)', color: 'var(--c-hot-text)', border: 'none', borderRadius: 99, padding: '7px 13px', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'Inter' }}
             >Find or add the client</button>
+          </div>
+        )}
+        {mergeNotice && (
+          <div
+            data-no-print=""
+            role="status"
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
+              background: 'color-mix(in srgb, var(--c-st-warm) 16%, transparent)',
+              color: 'var(--c-fg)', fontFamily: 'Inter', fontSize: 11, lineHeight: 1.5,
+              padding: isMobile ? '8px 16px' : '8px 22px',
+            }}
+          >
+            <span style={{ flex: 1 }}>{mergeNotice}</span>
+            <button type="button" className="c-x" onClick={() => setMergeNotice(null)} style={{ fontSize: 12, boxShadow: 'none' }} aria-label="Dismiss">✕</button>
           </div>
         )}
         {timeErrorMsg && (

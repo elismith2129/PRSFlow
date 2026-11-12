@@ -381,6 +381,14 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 11, 2026 — Save merges first (v1.53.2)
+
+Lori's "mgmt's times don't show up on my end" was the live feed dropping on a desktop
+tab, which is invisible — and the real cost was the save after it, which wrote her stale
+copy over Tristan's entry. The fix reuses the merge the live feed already has: pull right
+before saving, keep the fields you touched, take theirs for the rest, say so in one line.
+Rejected a conflict dialog; the app knows which fields are whose, so asking is make-work.
+
 ### November 11, 2026 — Approval box sizes to its rows (v1.53.1)
 
 The fixed-height approval strip (Oct 12) assumed one-line rows. Two-line amounts broke
