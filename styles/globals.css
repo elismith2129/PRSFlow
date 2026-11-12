@@ -2430,6 +2430,16 @@ select.c-input {
   flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .c-bflag.c-po { color: var(--c-st-cold); }
+/* PO REQUESTED (Lori, 2026-11-12): the office's own chase mark on an
+   Awaiting PO row. Grey outline until tapped; lit cold when on. */
+.c-bporeq {
+  font: 800 9.5px Inter, sans-serif; letter-spacing: .04em; white-space: nowrap; cursor: pointer;
+  border: none; border-radius: 99px; padding: 4px 9px; background: none;
+  color: var(--c-fg-3); box-shadow: inset 0 0 0 1px var(--c-wash2);
+}
+.c-bporeq:hover { color: var(--c-fg); background: var(--c-wash2); }
+.c-bporeq.c-on { background: var(--c-st-cold); color: var(--c-chip-ink); box-shadow: none; }
+.c-bporeq.c-on:hover { opacity: .85; }
 /* "Submitted · Hunter 12:14 AM" — the runner's line (v1.33.3). Warm like the
    Needs-review badge it sits beside; the time drops to mono and quiets. */
 .c-bflag.c-bsub { color: var(--c-st-warm); }

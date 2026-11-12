@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.55.0 — "PO requested" mark on Awaiting PO rows — Nov 12, 2026
+
+**Why.** Lori (via Eli): a way to tell the invoices she has already sent out to the label to request a PO from the ones just approved and not yet chased. "Not a rule, just a manual indication."
+
+- Migration `20261112150000_wo_po_requested.sql`: `work_orders.po_requested_at timestamptz`, `po_requested_by text`.
+- Awaiting PO rows (billing pipeline) carry a chip in the flag cell: grey **Request PO** until tapped; then **PO requested · LB · Nov 12** (lit cold); tap again to undo. `setPoRequested` in `lib/billing.ts`. `recordPoNumber` clears it — the PO landing ends the chase. Untouched rows stay plain, so they stand out.
+- Nothing reads the mark: no sort, no count, no Flo line. It is the office's own note to itself on the row.
+
+**Migrations:** the one above (run before the push — the hub's select names the columns). **Files:** `lib/billing.ts`, `app/(main)/billing/page.tsx`, `styles/globals.css`, the migration.
+
 ## v1.54.1 — Reopened = In progress; reopen takes the invoice off; adding a day reopens — Nov 12, 2026
 
 **Why.** Lori, WO-1510: completed after three days, invoiced and ready to go; the session extended; she reopened it to add a day; the hub kept reading **Needs invoice**. Eli: "it should be in progress … when we reopen, any invoice attached is now irrelevant and should be removed automatically."

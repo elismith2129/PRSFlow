@@ -59,7 +59,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { CollectNotesModal, useCollectNoteCounts, NotesButton } from '@/components/billing/CollectNotes'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useWoInvoicesVersion } from '@/hooks/useWoInvoicesVersion'
-import { formatCurrency } from '@/lib/format'
+import { formatCurrency, profileInitials } from '@/lib/format'
 import { toast } from '@/components/ui/Toaster'
 import { deleteWorkOrderEverywhere, fetchDeleted, type DeletedEntry } from '@/lib/deleteSession'
 import { DeletedPanel } from '@/components/billing/DeletedLog'
@@ -77,7 +77,7 @@ import {
   approveInvoice, rejectInvoice, previewPackageUrl,
   markSent, markPaid, undoSent, undoPaid, closeInvoice, reopenInvoice,
   uploadInvoiceDoc, detachInvoice, canDetachInvoice, signedInvoiceUrl, signedPackageUrl, downloadPackage, pullBack, markDownloaded,
-  pipelineCount, recordPoNumber, setNoPoNeeded, billingStage, sortByColumn,
+  pipelineCount, recordPoNumber, setNoPoNeeded, setPoRequested, billingStage, sortByColumn,
   downloadBlankWorkOrder, staleDownloads, pageSizeFor, approvalQueue,
   BILLING_LIGHTS, COD_LIGHTS,
   type InvoiceRow, type BucketKey, type ClosedReason, type Pipeline,
@@ -1073,6 +1073,7 @@ export default function BillingPage() {
               onMore={() => setMoreFor(r)}
               noteCount={noteCounts[r.workOrderId] ?? 0}
               onNotes={() => setNotesFor(r)}
+              onPoRequested={on => run(r.workOrderId, () => setPoRequested(r, on, profile?.initials || profileInitials(profile?.display_name) || ''))}
               onOpen={() => openRow(r)}
               onAp={() => setApFor(r)}
               dragOver={dragOver === r.workOrderId}
@@ -1468,7 +1469,7 @@ const APPROVAL_ROW_H = 64
 function Row({
   row, searching, isOwner, busy, dragOver, showAge, badge, stage,
   onAct, onAttach, onMore, onOpen, onAp, onDragOver, onDragLeave, onDrop,
-  noteCount, onNotes,
+  noteCount, onNotes, onPoRequested,
 }: {
   row: InvoiceRow
   searching: boolean
@@ -1493,6 +1494,8 @@ function Row({
   /** Collection notes on this work order (2026-09-24) — the dot, never the text. */
   noteCount: number
   onNotes: () => void
+  /** PO requested (Lori, 2026-11-12): toggle the chase mark on an Awaiting PO row. */
+  onPoRequested: (on: boolean) => void
 }) {
   const overdue = isPastDue(row)
   const label = nextAction(row)
@@ -1671,13 +1674,32 @@ function Row({
           >
             Changed since invoiced
           </span>
-        ) : row.awaitingPo && !stage ? (
-          /* On the staged layout the badge already SAYS Awaiting PO — the chip
-             here would say it twice, so the cell shows when it was approved
-             instead (the useful second fact while chasing a label). */
-          <span className="c-bflag c-po">Awaiting PO</span>
-        ) : row.awaitingPo && stage && row.approvedAt ? (
-          <span className="c-bhint">Approved {fmtDayHeading(row.approvedAt.slice(0, 10))}</span>
+        ) : row.awaitingPo && !row.isCod ? (
+          /* PO REQUESTED (Lori, 2026-11-12): the Awaiting PO pile was one
+             pile — nothing said which invoices she had already sent out to
+             the label for a PO. A manual mark: grey "Request PO" until she
+             taps it, then "PO requested · LB · Nov 12"; tap again to undo.
+             Lands beside the approved date (staged) or the Awaiting PO chip. */
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', minWidth: 0 }} onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+            {stage && row.approvedAt && !row.poRequestedAt && (
+              <span className="c-bhint">Approved {fmtDayHeading(row.approvedAt.slice(0, 10))}</span>
+            )}
+            {!stage && !row.poRequestedAt && <span className="c-bflag c-po">Awaiting PO</span>}
+            {row.poRequestedAt ? (
+              <button
+                type="button"
+                className="c-bporeq c-on"
+                title={`Sent to the label for a PO${row.poRequestedBy ? ` by ${row.poRequestedBy}` : ''} · ${fmtDayHeading(row.poRequestedAt.slice(0, 10))}. Click to undo.`}
+                onClick={() => onPoRequested(false)}
+              >
+                PO requested{row.poRequestedBy ? ` · ${row.poRequestedBy}` : ''} · {fmtDayHeading(row.poRequestedAt.slice(0, 10))}
+              </button>
+            ) : (
+              <button type="button" className="c-bporeq" title="Mark that this invoice went out to the label to get its PO" onClick={() => onPoRequested(true)}>
+                Request PO
+              </button>
+            )}
+          </span>
         ) : row.closedReason ? (
           // The note renders ON THE ROW, not behind a click. The entire value of
           // recording a reason is that someone who was not there can read it.

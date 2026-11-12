@@ -680,6 +680,18 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.55.0', date:'Nov 12, 2026',
+    headline:'Awaiting PO: mark the ones you have already sent out for a PO.',
+    desc:'Every row on Awaiting PO looked the same whether you had chased the label or not.',
+    changes:[
+      'On an Awaiting PO row, tap <b>Request PO</b> once you have sent the invoice to the label for its PO. It turns into <b>PO requested &middot; your initials &middot; the date</b>.',
+      'Tap it again to undo. When you Add PO, the mark clears on its own.',
+      'Rows you have not sent yet stay plain, so they are the ones to work.',
+    ],
+    affects:'Billing.',
+    dev:['work_orders.po_requested_at / _by (migration 20261112150000); setPoRequested; cleared in recordPoNumber.'],
+  },
+  {
     ver:'v1.54.1', date:'Nov 12, 2026',
     headline:'A reopened work order reads In progress, and the old invoice comes off it.',
     desc:'WO-1510 was invoiced, then the session extended and it was reopened to add a day &mdash; the hub kept saying Needs invoice.',

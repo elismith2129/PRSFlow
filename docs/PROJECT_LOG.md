@@ -381,6 +381,13 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 12, 2026 — PO requested (v1.55.0)
+
+Lori's ask, Eli's framing: "not a rule, just a manual indication." The Awaiting PO pile
+had no memory of who had been chased. One tap, who and when, cleared when the PO
+arrives. Asked first whether "sent" meant the invoice itself had gone out (which would
+have contradicted the no-PO-no-send rule) — it meant sent to request the PO.
+
 ### November 12, 2026 — WO-1510: reopened means in progress (v1.54.1)
 
 Lori reopened an invoiced, ready-to-send work order to add a day and the hub said

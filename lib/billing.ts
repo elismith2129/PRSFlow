@@ -269,6 +269,11 @@ export type InvoiceRow = {
    */
   paidAt: string | null
   poNumber: string | null
+  /** PO REQUESTED (Lori, 2026-11-12): a manual mark on an Awaiting PO row —
+   *  "I sent this out to the label to get the PO" — who and when. No rule
+   *  reads it; it is the office's own chase marker. Cleared when the PO lands. */
+  poRequestedAt: string | null
+  poRequestedBy: string | null
   /** Set on the WORK ORDER — this package can go out without a PO. */
   noPoNeeded: boolean
   /**
@@ -638,7 +643,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // this at compile time, and a `+`-concatenated string is not a literal to
     // TypeScript — every column then types as an error object. Do not "tidy"
     // this onto several lines with concatenation.
-    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, food_fee_pct, invoice_closed_note, completed_by_name, reopened_at, reopened_by_name')
+    .select('id, booking_id, client_id, invoice_number, wo_number, client, label, artist, session_date, session_status, payment_status, po_number, po_requested_at, po_requested_by, no_po_needed, status, invoice_state, invoice_closed_reason, invoice_sent_at, invoice_paid_at, invoice_approved_at, invoice_doc_path, invoice_total, invoice_downloaded_at, invoice_package_path, invoice_rejected_at, invoice_reject_note, ap_ticks, discount_kind, discount_value, discount_label, food_fee_pct, invoice_closed_note, completed_by_name, reopened_at, reopened_by_name')
     .order('session_date', { ascending: false })
     // Secondary order = id: without it Postgres returns equal-date rows in
     // ARBITRARY order that can differ per refetch (the page-2 churn bug —
@@ -885,6 +890,8 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     if (w.reopened_at && (w.status ?? '') !== 'completed' && step >= 1 && step <= 3) step = 0
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
+    const poRequestedAt = ((w as any).po_requested_at as string | null) ?? null
+    const poRequestedBy = ((w as any).po_requested_by as string | null) ?? null
     const notStarted = ((firstDate ?? w.session_date) ?? '') > today
 
     return {
@@ -950,6 +957,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
       awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
       hasInvoiceDoc: hasDoc,
       approvedAt: w.invoice_approved_at ?? null,
+      poRequestedAt, poRequestedBy,
       rejectedAt: (w as any).invoice_rejected_at ?? null,
       rejectNote: (w as any).invoice_reject_note ?? null,
       invoicedTotal,
@@ -1567,7 +1575,8 @@ export async function recordPoNumber(
 ): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
-    .update({ po_number: poNumber })
+    // The PO landing ends the chase — the "PO requested" mark comes off.
+    .update({ po_number: poNumber, po_requested_at: null, po_requested_by: null })
     .eq('id', row.workOrderId)
   const ok = dbResult('Saving PO number', error)
   if (ok) {
@@ -1588,6 +1597,18 @@ export async function recordPoNumber(
 }
 
 /** This package can go out without a PO. Same field the WO screen writes. */
+/** PO requested (Lori, 2026-11-12): mark / unmark that the invoice went out
+ *  to the label to get its PO. Who and when; undo clears both. */
+export async function setPoRequested(row: InvoiceRow, on: boolean, who: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('work_orders')
+    .update(on
+      ? { po_requested_at: new Date().toISOString(), po_requested_by: who || null }
+      : { po_requested_at: null, po_requested_by: null })
+    .eq('id', row.workOrderId)
+  return dbResult('Saving PO requested', error)
+}
+
 export async function setNoPoNeeded(row: InvoiceRow, value: boolean): Promise<boolean> {
   const { error } = await supabase
     .from('work_orders')
