@@ -1656,8 +1656,11 @@ function Row({
           // which is a legal path. There is exactly ONE reopen path
           // (WorkOrderPopup.handleComplete), and it stamps reopened_at; the
           // same function clears it on the next Complete.
-          <span className="c-bdrift" title={`Reopened ${fmtDayHeading(row.reopenedAt.slice(0, 10))}${row.reopenedBy ? ` by ${row.reopenedBy}` : ''} after the invoice was attached. Check the invoice still matches; completing the work order again clears this.`}>
-            Reopened{row.reopenedBy ? ` · ${row.reopenedBy}` : ''} · recheck the invoice
+          // SINCE 2026-11-12 a reopen detaches the invoice, so the chip says
+          // "recheck the invoice" only when one is still on the row (older
+          // reopens) and plain "Reopened" otherwise.
+          <span className="c-bdrift" title={`Reopened ${fmtDayHeading(row.reopenedAt.slice(0, 10))}${row.reopenedBy ? ` by ${row.reopenedBy}` : ''}${row.hasInvoiceDoc ? ' after the invoice was attached — make sure the invoice still matches before it is approved' : ' — finish it and press Complete WO again'}`}>
+            Reopened{row.reopenedBy ? ` · ${row.reopenedBy}` : ''}{row.hasInvoiceDoc ? ' · recheck the invoice' : ''}
           </span>
         ) : row.invoiceDrift ? (
           // DRIFT: edited after the invoice went out. Hot, because the

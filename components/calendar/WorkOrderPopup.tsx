@@ -2778,8 +2778,25 @@ export function WorkOrderPopup({
    * List view does NOT open the sheet — the rows are simply there in the table,
    * dated and roomed, which is what a table user asked for.
    */
-  function confirmAddDay() {
+  async function confirmAddDay() {
     if (!newDay || !newDay.date || !newDay.letter) return
+    // ADDING A DAY TO A COMPLETED WORK ORDER REOPENS IT (Eli, 2026-11-12,
+    // WO-1510: "the session extended and we reopened it to add a day. it
+    // should be in progress"). A completed WO with a new day is not complete;
+    // make that the act instead of trusting someone to press Reopen first.
+    // Same stamp, same invoice detach as the Reopen button; office only.
+    if (wo && wo.status === 'completed' && !runner && woIdRef.current) {
+      if (!window.confirm('This work order is completed. Adding a day reopens it: it goes back to In progress and any attached invoice is removed. Continue?')) return
+      const now = new Date().toISOString()
+      const { error } = await supabase.from('work_orders').update({
+        status: 'open', admin_approved_at: null, completed_by_name: null,
+        reopened_at: now, reopened_by_name: (profile?.display_name || '').trim() || null,
+      }).eq('id', woIdRef.current)
+      if (!dbResult('Reopening work order', error)) return
+      await detachOnReopen()
+      setWo(prev => prev ? { ...prev, status: 'open' } : prev)
+      onStatusChange?.('open')
+    }
     // End before start is a mistyped end, not a request for nothing. Treat it
     // as a single day rather than silently adding zero rows and looking broken.
     const end = newDay.end && newDay.end >= newDay.date ? newDay.end : newDay.date
@@ -3561,6 +3578,45 @@ export function WorkOrderPopup({
 
   // ── Complete WO ───────────────────────────────────────────────────────────
 
+  /**
+   * REOPEN = THE INVOICE COMES OFF (Eli, 2026-11-12, WO-1510). A work order
+   * that was completed and invoiced, then reopened to add a day: the PDF on
+   * it is wrong by definition, and until today the row kept it, read "Needs
+   * invoice" and carried a chip asking someone to recheck. Now a reopen
+   * detaches the invoice (the file stays in storage; the row loses it), clears
+   * the approval and the billing state, and says so. On the next Complete the
+   * row reads Needs invoice and the corrected PDF goes on fresh.
+   *
+   * NEVER PAST SENT. A sent or paid invoice is with the client; Pull it back
+   * (owners) is the deliberate act, exactly as before. The filter refuses it.
+   *
+   * MONEY CHANGES WITHOUT A REOPEN ARE NOT THIS. Those keep the invoice and
+   * raise "Changed since invoiced" (lib/billing drift) — most of them are
+   * corrections, often fixing the work order to match the PDF.
+   */
+  async function detachOnReopen(): Promise<void> {
+    const id = woIdRef.current
+    if (!id) return
+    const { data: before } = await supabase.from('work_orders').select('invoice_doc_path, invoice_state').eq('id', id).limit(1)
+    const hadDoc = !!before?.[0]?.invoice_doc_path
+    const { data: hit, error } = await supabase.from('work_orders')
+      .update({
+        invoice_doc_path: null, invoice_package_path: null, invoice_total: null, invoice_downloaded_at: null,
+        invoice_state: null,
+        invoice_approved_at: null, invoice_approved_by: null,
+        invoice_rejected_at: null, invoice_rejected_by: null, invoice_reject_note: null,
+      })
+      .eq('id', id)
+      .or('invoice_state.is.null,invoice_state.in.(needs_invoice,needs_approval,approved,awaiting_po)')
+      .select('id')
+    if (!dbResult('Reopening work order', error)) return
+    if ((hit ?? []).length === 0) {
+      toast('Reopened — the invoice is already sent, so it stays. Use Pull it back if it has to start over.')
+      return
+    }
+    if (hadDoc) toast('Reopened — the attached invoice was removed. Re-issue it when you complete the work order again.')
+  }
+
   async function handleComplete() {
     if (!woIdRef.current || !wo) return
 
@@ -3634,19 +3690,10 @@ export function WorkOrderPopup({
       reopened_by_name: reopening ? completedBy : null,
     }).eq('id', woIdRef.current)
 
-    // Reopening also takes it back OUT of billing — but only from
-    // 'needs_invoice', the state Complete itself set. An invoice already in
-    // flight (sent/paid/approved) is never dragged back by a reopen.
-    // CHECKED (2026-11-12, WO-1510): this used to run unchecked, so a reopen
-    // could leave invoice_state behind and the hub kept saying Needs invoice.
-    // The hub also no longer trusts the state on a reopened row (lib/billing).
-    if (!completeErr && reopening) {
-      const { error: stateErr } = await supabase.from('work_orders')
-        .update({ invoice_state: null })
-        .eq('id', woIdRef.current)
-        .eq('invoice_state', 'needs_invoice')
-      dbResult('Reopening work order', stateErr)
-    }
+    // REOPEN TAKES THE INVOICE OFF (Eli, 2026-11-12, WO-1510: "when we
+    // reopen, any invoice attached is now irrelevant and should be removed
+    // automatically"). See detachOnReopen.
+    if (!completeErr && reopening) await detachOnReopen()
 
     // COMPLETING STARTS THE BILLING PROCESS (ruling 2026-08-11).
     //

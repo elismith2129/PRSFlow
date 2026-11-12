@@ -20,15 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
-## v1.54.1 — A reopened work order with no invoice reads In progress, not Needs invoice — Nov 12, 2026
+## v1.54.1 — Reopened = In progress; reopen takes the invoice off; adding a day reopens — Nov 12, 2026
 
-**Why.** Lori: "I reopened this WO but it still says needs invoice even though it's not ready yet. 1510."
+**Why.** Lori, WO-1510: completed after three days, invoiced and ready to go; the session extended; she reopened it to add a day; the hub kept reading **Needs invoice**. Eli: "it should be in progress … when we reopen, any invoice attached is now irrelevant and should be removed automatically."
 
-- **Cause.** Reopen (`handleComplete`, reopening branch) sets status open + the `reopened_at` stamp, then clears `invoice_state` in a second, unchecked write that only matches `'needs_invoice'`. The hub's reopen rule (v1.45.4) only demoted step 2/3 → 1. A reopened WO at step 1 with no invoice attached was left reading Needs invoice whenever the state survived.
-- `lib/billing.ts`: `reopened_at && status !== 'completed' && step === 1 && !hasDoc → step 0`. The stamp is the truth; the row reads Needs review / In progress until Complete is pressed again. Derived, nothing written.
-- `WorkOrderPopup`: the `invoice_state` clear on reopen is now checked (`dbResult('Reopening work order')`), so a failed clear is seen.
+- **`lib/billing.ts`:** a reopened, not-completed row reads **step 0** (Needs review / In progress) whatever its billing state, as long as it has not been Sent. Replaces the v1.45.4 rule that dropped it to step 1 — "Needs invoice" was the wrong word for "the session isn't over." Derived, nothing written.
+- **`WorkOrderPopup.detachOnReopen`:** Reopen now removes the attached invoice (file stays in storage; the row loses it), clears the approval, rejection and billing state, and says so in the toast. Guarded in the database: never past Sent/Paid — the filter refuses those and the toast says to use Pull it back. Re-completing lands at Needs invoice the ordinary way.
+- **Adding a day to a completed WO reopens it** (`confirmAddDay`, office only, confirm first): same stamp, same detach as the Reopen button. That is exactly the 1510 path.
+- Hub chip reads "Reopened · <who>" and adds "· recheck the invoice" only when a doc is still on the row (older reopens).
+- Discussed, parked: money changes without a reopen (completed WOs are fully editable; the "Changed since invoiced" flag covers them). Eli's idea — any change to the bill on a completed WO reopens it on Save, with a confirm — is on the TODO as an idea, not a plan.
 
-**Migrations:** none. **Watch-out:** if WO-1510 still reads Needs invoice after deploy, its `invoice_state` is something other than `needs_invoice` with no doc — paste `select wo_number,status,invoice_state,invoice_doc_path,reopened_at from work_orders where wo_number ilike '%1510%'`. **Files:** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`.
+**Migrations:** none. **Files:** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`, `app/(main)/billing/page.tsx`.
 
 ## v1.54.0 — TV walls: one shared probe per building; proxy never parks on a 5xx — Nov 11, 2026
 

@@ -681,11 +681,16 @@ const PETTY_STEPS=[
 const VERSIONS=[
   {
     ver:'v1.54.1', date:'Nov 12, 2026',
-    headline:'A reopened work order goes back to In progress, even if it had not been invoiced yet.',
-    desc:'Lori reopened WO-1510 and the hub kept saying Needs invoice.',
-    changes:['Reopen a work order that has no invoice on it and the row reads Needs review / In progress until you press Complete WO again.'],
+    headline:'A reopened work order reads In progress, and the old invoice comes off it.',
+    desc:'WO-1510 was invoiced, then the session extended and it was reopened to add a day &mdash; the hub kept saying Needs invoice.',
+    changes:[
+      'Reopen a work order and its row reads Needs review / In progress until you press Complete WO again.',
+      'Reopening removes the attached invoice (it was for the old total). Re-issue it when you complete again.',
+      'Adding a day to a completed work order reopens it for you &mdash; it asks first.',
+      'A sent or paid invoice is never touched by Reopen. Pull it back (owners) is still the way to restart one of those.',
+    ],
     affects:'Billing.',
-    dev:['billing.ts: reopened_at && !completed && step 1 && !hasDoc → step 0; reopen state-clear now dbResult-checked.'],
+    dev:['billing.ts: reopened_at && !completed && step 1–3 → 0. WorkOrderPopup.detachOnReopen (guarded: not past Sent). confirmAddDay reopens a completed WO.'],
   },
   {
     ver:'v1.54.0', date:'Nov 11, 2026',

@@ -872,16 +872,17 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
     // was written — it is a derivation — and keying on reopened_at (written
     // only by the one Reopen path, cleared by Complete) says exactly what the
     // ruling meant. Do not widen this to bare status again.
-    if (w.reopened_at && (w.status ?? '') !== 'completed' && (step === 2 || step === 3)) step = 1
-    // …AND A REOPENED WORK ORDER WITH NO INVOICE IS NOT "NEEDS INVOICE"
-    // (Lori, 2026-11-12, WO-1510: "I reopened this WO but it still says needs
-    // invoice even though it's not ready yet"). Reopen clears invoice_state
-    // only when it is exactly 'needs_invoice' and does so in a second write
-    // nobody checked; anything that leaves the state set kept the row at
-    // step 1. The stamp is the truth: reopened + not completed + no invoice
-    // on it = the office is still working it. Step 0 → Needs review / In
-    // progress, the same as before Complete was ever pressed.
-    if (w.reopened_at && (w.status ?? '') !== 'completed' && step === 1 && !hasDoc) step = 0
+    //
+    // REOPENED = IN PROGRESS, FULL STOP (Eli, 2026-11-12, WO-1510 — Lori: "I
+    // reopened this WO but it still says needs invoice even though it's not
+    // ready yet"). The Oct 21 rule above dropped a reopened row to step 1,
+    // whose badge reads "Needs invoice" — the wrong word: the session is not
+    // over; finish it, re-complete, then re-issue. A reopened, not-completed
+    // row now reads step 0 (Needs review / In progress) whatever its state,
+    // as long as it has not been SENT. The Reopened chip rides along; since
+    // today a reopen also detaches the invoice (WorkOrderPopup.detachOnReopen),
+    // so re-completing lands at Needs invoice the ordinary way.
+    if (w.reopened_at && (w.status ?? '') !== 'completed' && step >= 1 && step <= 3) step = 0
     const poNumber = (w.po_number ?? '').trim() || null
     const noPoNeeded = !!(w as any).no_po_needed
     const notStarted = ((firstDate ?? w.session_date) ?? '') > today

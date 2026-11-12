@@ -381,6 +381,18 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 12, 2026 — WO-1510: reopened means in progress (v1.54.1)
+
+Lori reopened an invoiced, ready-to-send work order to add a day and the hub said
+Needs invoice. The Oct 21 rule put reopened rows in the In progress tab but gave them
+the Needs invoice badge; the tab was right, the word was wrong. Ruling: reopened reads
+In progress until Complete is pressed again; reopen also takes the now-wrong invoice
+off (Eli: "irrelevant and should be removed automatically"); adding a day to a completed
+WO is a reopen. Pushed back on auto-removing the invoice on any money change without a
+reopen — most of those are corrections, and the drift flag already guards them. Eli then
+raised the better rule (a bill change on a completed WO reopens it on Save, with a
+confirm) and chose to park it for a clearer day. In the TODO.
+
 ### November 11, 2026 — The walls went 503 (v1.54.0)
 
 Vercel's firewall blocked /display after eleven panels polled it every 15s for two
