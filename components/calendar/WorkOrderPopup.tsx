@@ -3637,11 +3637,15 @@ export function WorkOrderPopup({
     // Reopening also takes it back OUT of billing — but only from
     // 'needs_invoice', the state Complete itself set. An invoice already in
     // flight (sent/paid/approved) is never dragged back by a reopen.
+    // CHECKED (2026-11-12, WO-1510): this used to run unchecked, so a reopen
+    // could leave invoice_state behind and the hub kept saying Needs invoice.
+    // The hub also no longer trusts the state on a reopened row (lib/billing).
     if (!completeErr && reopening) {
-      await supabase.from('work_orders')
+      const { error: stateErr } = await supabase.from('work_orders')
         .update({ invoice_state: null })
         .eq('id', woIdRef.current)
         .eq('invoice_state', 'needs_invoice')
+      dbResult('Reopening work order', stateErr)
     }
 
     // COMPLETING STARTS THE BILLING PROCESS (ruling 2026-08-11).

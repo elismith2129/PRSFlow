@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.54.1 — A reopened work order with no invoice reads In progress, not Needs invoice — Nov 12, 2026
+
+**Why.** Lori: "I reopened this WO but it still says needs invoice even though it's not ready yet. 1510."
+
+- **Cause.** Reopen (`handleComplete`, reopening branch) sets status open + the `reopened_at` stamp, then clears `invoice_state` in a second, unchecked write that only matches `'needs_invoice'`. The hub's reopen rule (v1.45.4) only demoted step 2/3 → 1. A reopened WO at step 1 with no invoice attached was left reading Needs invoice whenever the state survived.
+- `lib/billing.ts`: `reopened_at && status !== 'completed' && step === 1 && !hasDoc → step 0`. The stamp is the truth; the row reads Needs review / In progress until Complete is pressed again. Derived, nothing written.
+- `WorkOrderPopup`: the `invoice_state` clear on reopen is now checked (`dbResult('Reopening work order')`), so a failed clear is seen.
+
+**Migrations:** none. **Watch-out:** if WO-1510 still reads Needs invoice after deploy, its `invoice_state` is something other than `needs_invoice` with no doc — paste `select wo_number,status,invoice_state,invoice_doc_path,reopened_at from work_orders where wo_number ilike '%1510%'`. **Files:** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`.
+
 ## v1.54.0 — TV walls: one shared probe per building; proxy never parks on a 5xx — Nov 11, 2026
 
 **Why.** Every wall went to "503 Service Unavailable" at 5:26 PM; `/display/*` returned Vercel's "This request was blocked · 403" in a browser while the app itself was fine — Vercel's abuse protection on a path that eleven panels polled every 15s (~63k calls/day; the Oct 6 TODO). The proxy also passed the error page straight to the panels, which never retry on their own, so the walls stayed stuck after the block lifted.
