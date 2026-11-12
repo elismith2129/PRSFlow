@@ -20,6 +20,16 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.53.3 — Financials: the owner check runs once, not 55,000 times — Nov 11, 2026
+
+**Why.** Eli: "the financials are not working" — "Loading revenue history failed: canceling statement due to statement timeout."
+
+- **Cause.** `financial_history` (~55k rows) is behind `using (get_my_role() = 'owner')`. Postgres evaluates the policy per row and `get_my_role()` is a SECURITY DEFINER lookup that is not inlined, so one Financials load did 55k profile lookups and crossed Supabase's 8s statement timeout. The archive was smaller when the policy was written (Aug 20).
+- **Migration `20261111170000_financial_history_policy_once.sql`:** same policy, written `using ((select public.get_my_role()) = 'owner')` — evaluated once per statement as an InitPlan. No code change.
+- Rejected: making the rollup RPCs SECURITY DEFINER with an in-function owner check — the Aug 20 reasoning (the aggregate is exactly as sensitive as the rows) still holds; the policy stays the gate.
+
+**Migrations:** the one above (run by hand). **Watch-out:** every other policy that calls `get_my_role()` has the same per-row shape; they guard small tables today. If any table approaches tens of thousands of rows (shift notes, activity, duties log), wrap its policy the same way first. **Files:** the migration.
+
 ## v1.53.2 — Save merges what others changed first — Nov 11, 2026
 
 **Why.** Lori's note (via Eli): "Tristan's submitted times on mgmt WOs don't show up on my computer … if mgmt updates client actual times on their computer it looks like it is not updated on my end." The work order's live feed (Aug 16) merges remote changes field by field — but a desktop tab's realtime socket can drop quietly (Chrome throttling; missed events are never replayed), so a long-open WO goes stale with no sign. Worse: its Save wrote every field back, stale ones included, over the other person's work. No check at save time that the database had moved.

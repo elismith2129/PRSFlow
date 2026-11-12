@@ -10,6 +10,10 @@ Newest at the top of each group.*
 - [x] ~~Run the sweep, then the migration, BEFORE the push~~ done Nov 11 14:30, including the widened (… + from_time) index. *(Nov 11)*
 - [ ] **If the sweep lists any WO other than #35040**, open each and remove the Duplicate row from the card after the push — or tell Claude the list and get a delete box. *(Nov 11)*
 
+## RLS per-row policies (Nov 11, v1.53.3)
+
+- [ ] **Audit the other `get_my_role()` policies** for the same per-row shape and wrap the ones on tables that could grow large (`wo_activity`, `myday_note_posts`, `myday_duty_log`, `leads`). Query: `select tablename, policyname, qual from pg_policies where qual like '%get_my_role()%' and qual not like '%(select%'`. *(Nov 11)*
+
 ## Resolved on retest (Nov 11)
 
 - [x] ~~Sept 25 note: "adding assistants to an existing session adds an additional card with no times, same date"~~ — Eli retested Nov 11 on a live session: no extra card. Not fixed by name; no longer reproduces. *(Nov 11)*
