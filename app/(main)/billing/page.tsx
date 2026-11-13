@@ -2350,20 +2350,26 @@ function QueueCard({ row, idx, on, decided, onClick, grow }: {
     <div onClick={onClick} className={on ? undefined : 'c-qcard'} data-on={on ? '1' : undefined}
       title={[row.client, row.artist, row.dateRange, row.rooms].filter(Boolean).join(' · ')}
       style={{
-        flex: grow ? '1 1 0' : '0 0 156px', minWidth: 0, height: 66, borderRadius: 12, padding: '8px 10px', cursor: 'pointer',
+        // 156 → 176 wide, 66 → 72 tall (Eli, 2026-11-13: "some ui issue here")
+        // — since v1.52.2 the foot carries Total + Due, and the status word
+        // ("Approved", "COD") no longer fits beside them; it moved up next to
+        // the card number, so the foot is money only.
+        flex: grow ? '1 1 0' : '0 0 176px', minWidth: 0, height: 72, borderRadius: 12, padding: '8px 10px', cursor: 'pointer',
         position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
         ...(on
           ? { background: 'var(--c-srf, var(--c-bg))', boxShadow: 'var(--c-softsh), inset 0 0 0 1.5px var(--c-fg)' }
           : { background: 'var(--c-bg)', opacity: decided ? 0.45 : grow ? 1 : 0.65 }),
       }}>
-      {idx !== null && <span className="c-mono" style={{ position: 'absolute', top: 6, right: 9, fontSize: 9.5, opacity: 0.4 }}>{idx + 1}</span>}
-      <div style={{ minWidth: 0, paddingRight: idx !== null ? 14 : 0 }}>
+      <span style={{ position: 'absolute', top: 6, right: 9, display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+        {status && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{status}</span>}
+        {idx !== null && <span className="c-mono" style={{ fontSize: 9.5, opacity: 0.4 }}>{idx + 1}</span>}
+      </span>
+      <div style={{ minWidth: 0, paddingRight: idx !== null || status ? 70 : 0 }}>
         <div style={{ fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25 }}>{row.client}</div>
         <div style={{ fontSize: 10, opacity: 0.55, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3 }}>{row.artist || row.dateRange || ' '}</div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline' }}>
         <TotalAndBalance row={row} compact />
-        {status && <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{status}</span>}
       </div>
     </div>
   )
