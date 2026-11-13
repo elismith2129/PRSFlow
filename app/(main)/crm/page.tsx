@@ -1446,7 +1446,16 @@ function AllLeadsView({ leads, latestTouches, selectedId, onSelect, onMarkTouche
             onClick={() => setStarOnly(v => !v)}
             className={`c-pill c-control ${starOnly ? 'c-pressed' : 'c-raised-chip'}`}
             title="Every starred lead, whatever its status"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap', opacity: starOnly ? 1 : 0.55 }}
+            // IT HAS A FILL NOW (Eli, 2026-11-12: "can't see allstars"). Every
+            // other pill carries a status colour; this one had none, so it was
+            // the pill's dark chip-ink text on the dark panel at 55% — invisible.
+            // Off: ink on wash. On: ink pill, bg text, like a pressed tab.
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, whiteSpace: 'nowrap',
+              background: starOnly ? 'var(--c-fg)' : 'var(--c-wash2)',
+              color: starOnly ? 'var(--c-bg)' : 'var(--c-fg)',
+              opacity: starOnly ? 1 : 0.8,
+            }}
           >
             ★ All-Stars ({starLeads.length})
           </button>

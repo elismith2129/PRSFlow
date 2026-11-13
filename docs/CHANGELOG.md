@@ -20,6 +20,14 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.55.1 — The All-Stars pill is visible again — Nov 12, 2026
+
+**Why.** Eli: "can't see allstars." On All Leads, the ★ All-Stars pill had no background fill (every other pill carries a status colour), so it rendered as `.c-pill`'s dark chip-ink text on the dark panel at 55% opacity.
+
+- `app/(main)/crm/page.tsx`: off = ink on `--c-wash2` at 80%; on = ink pill with bg text, like a pressed tab. Clients tab unaffected (its All-Stars is a normal tab).
+
+**Migrations:** none. **Files:** `app/(main)/crm/page.tsx`.
+
 ## v1.55.0 — "PO requested" mark on Awaiting PO rows — Nov 12, 2026
 
 **Why.** Lori (via Eli): a way to tell the invoices she has already sent out to the label to request a PO from the ones just approved and not yet chased. "Not a rule, just a manual indication."
