@@ -32,6 +32,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { supabase, Client, ClientContact, CLIENT_TYPE_LABELS } from '@/lib/supabase'
 import PhoneInput from '@/components/shared/PhoneInput'
 import { RegViewModal } from '@/components/shared/RegViewModal'
+import { RegKindModal, type RegKind } from '@/components/shared/RegKindModal'
 import { STARTER_TAGS } from '@/lib/tags'
 import { dbResult } from '@/lib/db'
 import { toast } from '@/components/ui/Toaster'
@@ -247,6 +248,7 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [regLinkUrl, setRegLinkUrl] = useState<string | null>(null)
+  const [regKindOpen, setRegKindOpen] = useState(false)
   const [regLinkCopied, setRegLinkCopied] = useState(false)
   const [regLinkGenerating, setRegLinkGenerating] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
@@ -486,17 +488,21 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
     }
   }, [client, contacts, onDelete])
 
-  // ── Registration link (individuals) ────────────────────────────────────────
-  const generateRegLink = useCallback(async () => {
+  // ── Registration link — individuals AND labels (v1.56.0) ──────────────────
+  // The kind comes from the picker modal; a label's token opens the business
+  // form, which UPDATES this client (fills contacts, AP preference, T&Cs)
+  // rather than creating a second one.
+  const generateRegLink = useCallback(async (kind: RegKind = 'individual') => {
     if (!client) return
     setRegLinkGenerating(true)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     const { error } = await supabase.from('registration_tokens').insert({
-      token, client_id: client.id, lead_id: null,
+      token, kind, client_id: client.id, lead_id: null,
       prefill_email: client.email || null, prefill_name: client.name || null, expires_at: expiresAt,
     })
     setRegLinkGenerating(false)
+    setRegKindOpen(false)
     if (!dbResult('Creating registration link', error)) return
     setRegLinkUrl(`${window.location.origin}/register/${token}`)
   }, [client])
@@ -822,8 +828,8 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
           )}
         </Section>
 
-        {/* ── Registration (individuals) ── */}
-        {!isLabel && !editing && (
+        {/* ── Registration — individuals and labels (v1.56.0) ── */}
+        {!editing && (
           <Section title="Registration">
             {client.registered_at ? (
               <button onClick={() => setRegViewOpen(true)} style={{ background: 'none', padding: 0, cursor: 'pointer', fontSize: 12.5, color: 'var(--c-st-booked)', textAlign: 'left' }}>
@@ -836,10 +842,18 @@ export function ClientProfile({ client, contacts, bookingCount, loading, isMobil
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: 12.5, opacity: 0.55 }}>Not registered yet</span>
-                  <button className="c-btn" onClick={generateRegLink} disabled={regLinkGenerating || !!regLinkUrl}
+                  <button className="c-btn" onClick={() => setRegKindOpen(true)} disabled={regLinkGenerating || !!regLinkUrl}
                     style={{ opacity: regLinkGenerating ? 0.6 : 1 }}>
                     {regLinkGenerating ? 'Creating…' : regLinkUrl ? '✓ Link created' : 'Send registration link'}
                   </button>
+                  {regKindOpen && (
+                    <RegKindModal
+                      defaultKind={isLabel ? 'business' : 'individual'}
+                      busy={regLinkGenerating}
+                      onClose={() => setRegKindOpen(false)}
+                      onPick={k => generateRegLink(k)}
+                    />
+                  )}
                 </div>
                 {regLinkUrl && (
                   <div style={{ background: 'var(--c-wash)', borderRadius: 12, padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>

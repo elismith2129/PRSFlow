@@ -102,6 +102,16 @@ export interface Client {
   sms_opt_in_at?: string | null
   sms_opt_in_phone?: string | null
   sms_opt_out_at?: string | null
+  // Email campaign opt-IN (v1.56.0) — given on the business registration form.
+  // email_opt_out (below) is the older suppression flag; both exist.
+  email_opt_in?: boolean | null
+  email_opt_in_at?: string | null
+  // Business registration (v1.56.0): label | management | publisher | brand | other
+  business_kind?: string | null
+  website?: string | null
+  // Title of the person who signed the T&Cs for the company. Their printed
+  // name lives in signature_url, same as the individual form.
+  terms_signer_title?: string | null
   how_heard: string | null
   registered_at: string | null
   source_lead_id: number | null

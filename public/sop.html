@@ -680,6 +680,19 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.56.0', date:'Nov 16, 2026',
+    headline:'A registration form for labels and businesses.',
+    desc:'The registration form was built for COD individuals. Labels, management companies, publishers and brands now get their own.',
+    changes:[
+      '<b>Send Reg</b> (lead panel) and <b>Send registration link</b> (client profile) first ask: <b>Individual &middot; COD</b> or <b>Business</b>. Then copy, email or text the link as before. Billing leads get the button now too.',
+      'The business form asks for the company, <b>one billing &amp; admin contact</b>, the A&amp;R(s), whether invoices need a PO and how to send them, and the T&amp;Cs signed for the company with a printed name and title. Email and text opt-ins are separate boxes.',
+      'When it comes back you get a label client with the contacts already on it and the PO / invoicing answers on its AP card. The Registration Record and its PDF show the business version.',
+      'Links already sent keep working as individual registrations.',
+    ],
+    affects:'Front office, sales, billing.',
+    dev:['registration_tokens.kind decides the form; action submit_business in /api/register creates the label client + client_contacts + an ap_profiles row named after the company. Migration 20261116120000.'],
+  },
+  {
     ver:'v1.55.0', date:'Nov 12, 2026',
     headline:'Awaiting PO: mark the ones you have already sent out for a PO.',
     desc:'Every row on Awaiting PO looked the same whether you had chased the label or not.',

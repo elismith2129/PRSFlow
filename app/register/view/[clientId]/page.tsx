@@ -21,11 +21,22 @@ export default async function RegPrintPage({ params }: { params: Promise<{ clien
   const { clientId } = await params
   const { data: client } = await supabase
     .from('clients')
-    .select('fname, lname, email, phone, address_street, address_street2, address_city, address_state, address_zip, instagram, how_heard, terms_accepted, terms_accepted_at, registered_at, id_file_url')
+    .select('fname, lname, email, phone, address_street, address_street2, address_city, address_state, address_zip, instagram, how_heard, terms_accepted, terms_accepted_at, registered_at, id_file_url, type, name, business_kind, website, signature_url, terms_signer_title, email_opt_in, email_opt_in_at, ap_profile_id')
     .eq('id', clientId)
     .single()
 
   if (!client) notFound()
+
+  // Business registration (v1.56.0): the company signs, the people are
+  // contacts, and the invoicing answers sit on the AP profile.
+  const isBiz = client.type === 'label'
+  const { data: contacts } = isBiz
+    ? await supabase.from('client_contacts').select('fname, lname, email, phone, role, contact_type').eq('client_id', clientId).order('contact_type')
+    : { data: null }
+  const { data: apRows } = isBiz && client.ap_profile_id
+    ? await supabase.from('ap_profiles').select('submission_method, po_required, po_notes, submit_to').eq('id', client.ap_profile_id).limit(1)
+    : { data: null }
+  const ap = apRows?.[0] ?? null
 
   // Generate a 1-hour signed URL for the ID photo server-side
   let idUrl: string | null = null
@@ -43,7 +54,7 @@ export default async function RegPrintPage({ params }: { params: Promise<{ clien
     ? new Date(d).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—'
 
-  const fullName = [client.fname, client.lname].filter(Boolean).join(' ') || '—'
+  const fullName = isBiz ? (client.name || '—') : ([client.fname, client.lname].filter(Boolean).join(' ') || '—')
   const fullAddress = [
     client.address_street,
     client.address_street2,
@@ -209,15 +220,20 @@ export default async function RegPrintPage({ params }: { params: Promise<{ clien
             <div className="studio-sub">Recording Studios</div>
           </div>
           <div>
-            <div className="doc-title">Client Registration</div>
+            <div className="doc-title">{isBiz ? 'Business Registration' : 'Client Registration'}</div>
             <div className="doc-date">Submitted {fmtDateTime(client.registered_at)}</div>
           </div>
         </div>
 
         {/* Client name */}
         <div className="client-name-block">
-          <div className="client-name-label">Client Name</div>
+          <div className="client-name-label">{isBiz ? 'Company' : 'Client Name'}</div>
           <div className="client-name">{fullName}</div>
+          {isBiz && (client.business_kind || client.website) && (
+            <div className="field-value" style={{ marginTop: 4 }}>
+              {[client.business_kind ? client.business_kind[0].toUpperCase() + client.business_kind.slice(1) : null, client.website].filter(Boolean).join(' · ')}
+            </div>
+          )}
         </div>
 
         {/* Contact */}
@@ -264,8 +280,47 @@ export default async function RegPrintPage({ params }: { params: Promise<{ clien
           </div>
         </div>
 
+        {/* Business: contacts + invoicing answers + signer */}
+        {isBiz && (
+          <div className="section">
+            <div className="section-title">Contacts</div>
+            {(contacts || []).length === 0 && <div className="field-value field-empty">No contacts on file</div>}
+            {(contacts || []).map((c, i) => (
+              <div className="grid-2" key={i} style={{ marginTop: i ? 8 : 0 }}>
+                <div>
+                  <div className="field-label">{c.role || (c.contact_type === 'anr' ? 'A&R' : 'Contact')}</div>
+                  <div className="field-value">{[c.fname, c.lname].filter(Boolean).join(' ') || '—'}</div>
+                </div>
+                <div>
+                  <div className="field-label">Reach</div>
+                  <div className="field-value">{[c.email, c.phone].filter(Boolean).join(' · ') || '—'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {isBiz && (
+          <div className="section">
+            <div className="section-title">Invoicing</div>
+            <div className="grid-3">
+              <div>
+                <div className="field-label">PO Required</div>
+                <div className={`field-value ${!ap ? 'field-empty' : ''}`}>{ap ? (ap.po_required ? 'Yes, always' : ap.po_notes?.startsWith('Sometimes') ? 'Sometimes' : 'No') : '—'}</div>
+              </div>
+              <div>
+                <div className="field-label">Send Invoices</div>
+                <div className={`field-value ${!ap ? 'field-empty' : ''}`}>{ap ? (ap.submission_method === 'mixed' ? 'Email + portal' : ap.submission_method === 'portal' ? 'Vendor portal' : 'Email') : '—'}</div>
+              </div>
+              <div>
+                <div className="field-label">Invoices To</div>
+                <div className={`field-value ${!ap?.submit_to ? 'field-empty' : ''}`}>{ap?.submit_to || '—'}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Additional info */}
-        <div className="section">
+        {!isBiz && <div className="section">
           <div className="section-title">Additional Information</div>
           <div className="grid-2">
             <div>
@@ -279,7 +334,7 @@ export default async function RegPrintPage({ params }: { params: Promise<{ clien
               <div className={`field-value ${!client.how_heard ? 'field-empty' : ''}`}>{client.how_heard || '—'}</div>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Terms */}
         <div className="section">
@@ -288,17 +343,33 @@ export default async function RegPrintPage({ params }: { params: Promise<{ clien
             {client.terms_accepted ? '✓ Accepted' : 'Not accepted'}
             {client.terms_accepted_at ? ` · ${fmtDate(client.terms_accepted_at)}` : ''}
           </span>
+          {isBiz && (
+            <div className="grid-2" style={{ marginTop: 10 }}>
+              <div>
+                <div className="field-label">Signed By</div>
+                <div className={`field-value ${!client.signature_url ? 'field-empty' : ''}`}>{client.signature_url || '—'}</div>
+              </div>
+              <div>
+                <div className="field-label">Title</div>
+                <div className={`field-value ${!client.terms_signer_title ? 'field-empty' : ''}`}>{client.terms_signer_title || '—'}</div>
+              </div>
+              <div>
+                <div className="field-label">Email Campaigns</div>
+                <div className="field-value">{client.email_opt_in ? `Opted in${client.email_opt_in_at ? ' · ' + fmtDate(client.email_opt_in_at) : ''}` : 'Not opted in'}</div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* ID Photo */}
-        <div className="section">
+        {/* ID Photo — individuals only */}
+        {!isBiz && <div className="section">
           <div className="section-title">Government-Issued ID</div>
           {idUrl ? (
             <img src={idUrl} alt="Client ID" className="id-photo" />
           ) : (
             <div className="no-id">No ID on file</div>
           )}
-        </div>
+        </div>}
 
         {/* Footer */}
         <div className="footer">

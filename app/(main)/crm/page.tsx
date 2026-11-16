@@ -14,6 +14,7 @@ import PhoneInput from '@/components/shared/PhoneInput'
 import TimeInput from '@/components/shared/TimeInput'
 import StudioSelect from '@/components/shared/StudioSelect'
 import { RegViewModal, RegField } from '@/components/shared/RegViewModal'
+import { RegKindModal, type RegKind } from '@/components/shared/RegKindModal'
 import { combineLocation, parseLocation } from '@/lib/studios'
 import { STARTER_TAGS } from '@/lib/tags'
 import { StatusDot, NewLeadPulse, statusFillClass } from '@/components/carved'
@@ -1640,6 +1641,8 @@ function LeadDetail({ lead, missing, latestTouch, focusField, onFocusConsumed, d
   const [existingTokenStr, setExistingTokenStr] = useState<string | null>(null)
   const [regPanelOpen, setRegPanelOpen] = useState(false)
   const [regActioned, setRegActioned] = useState(false)
+  // v1.56.0: "Send Reg" opens the Individual / Business picker first.
+  const [regKindOpen, setRegKindOpen] = useState(false)
   const [regViewOpen, setRegViewOpen] = useState(false)
   const [localTags, setLocalTags] = useState<string[]>(lead.tags || [])
   const [tagsOpen, setTagsOpen] = useState(false)
@@ -2038,12 +2041,13 @@ const parsedLoc0 = parseLocation(lead.location || '')
   // NOTE: registration is an EDIT-mode action only — the new-lead modal has no
   // reg control by design (F-6/3c). A lead has to exist before a token can point
   // at it. Don't "fix" this by adding one to the create modal.
-  async function generateRegLink() {
+  async function generateRegLink(kind: RegKind = 'individual') {
     setRegLinkGenerating(true)
     const token = crypto.randomUUID()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
     const { error: tokenErr } = await supabase.from('registration_tokens').insert({
       token,
+      kind,
       lead_id: lead.id,
       client_id: lead.client_id || null,
       prefill_email: lead.email || null,
@@ -2056,6 +2060,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
     setExistingTokenStr(token)
     setRegLinkUrl(`${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}/register/${token}`)
     setRegLinkGenerating(false)
+    setRegKindOpen(false)
     setRegPanelOpen(true)
   }
 
@@ -2344,7 +2349,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
             >
               Start Booking
             </button>
-            {lead.billing !== 'Billing' && (regTokenDates?.used_at ? (
+            {(regTokenDates?.used_at ? (
               <button onClick={() => setRegViewOpen(true)} className="c-pill c-fill-booked c-control c-raised-chip" style={{ cursor: 'pointer' }}>
                 ✓ Registered
               </button>
@@ -2353,10 +2358,18 @@ const parsedLoc0 = parseLocation(lead.location || '')
                 Reg Sent
               </button>
             ) : (
-              <button onClick={generateRegLink} disabled={regLinkGenerating} className="c-mini" style={{ cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={() => setRegKindOpen(true)} disabled={regLinkGenerating} className="c-mini" style={{ cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Send Reg'}
               </button>
             ))}
+            {regKindOpen && (
+              <RegKindModal
+                defaultKind={lead.billing === 'Billing' ? 'business' : 'individual'}
+                busy={regLinkGenerating}
+                onClose={() => setRegKindOpen(false)}
+                onPick={k => generateRegLink(k)}
+              />
+            )}
           </div>
         </div>
 
@@ -2396,7 +2409,7 @@ const parsedLoc0 = parseLocation(lead.location || '')
                   Text
                 </button>
               )}
-              <button onClick={generateRegLink} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--c-st-warm)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
+              <button onClick={() => setRegKindOpen(true)} disabled={regLinkGenerating} style={{ padding: '3px 10px', background: 'transparent', color: 'var(--c-st-warm)', borderRadius: 3, fontFamily: 'Inter', fontSize: 8, cursor: regLinkGenerating ? 'default' : 'pointer' }}>
                 {regLinkGenerating ? '…' : 'Resend'}
               </button>
             </div>

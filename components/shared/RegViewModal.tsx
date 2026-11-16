@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import { supabase, Client } from '@/lib/supabase'
+import { supabase, Client, ClientContact } from '@/lib/supabase'
 import { toast } from '@/components/ui/Toaster'
 
 function isImagePath(path: string | null | undefined): boolean {
@@ -48,6 +48,9 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
   const [copied, setCopied] = useState(false)
+  // Business registrations (v1.56.0): the people and the invoicing answers.
+  const [contacts, setContacts] = useState<ClientContact[]>([])
+  const [ap, setAp] = useState<{ submission_method: string; po_required: boolean; po_notes: string | null; submit_to: string | null } | null>(null)
   // Only a PDF gets an <iframe>. NEVER iframe anything else.
   //
   // This used to be `!isImagePath(...) || imgFailed`, so a failed <img> flipped the
@@ -65,6 +68,14 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
     supabase.from('clients').select('*').eq('id', clientId).single().then(({ data }) => {
       if (data) {
         setClient(data as Client)
+        if (data.type === 'label') {
+          supabase.from('client_contacts').select('*').eq('client_id', clientId).order('contact_type')
+            .then(({ data: cs }) => setContacts((cs || []) as ClientContact[]))
+          if (data.ap_profile_id) {
+            supabase.from('ap_profiles').select('submission_method, po_required, po_notes, submit_to').eq('id', data.ap_profile_id).limit(1)
+              .then(({ data: p }) => setAp(p?.[0] ?? null))
+          }
+        }
         if (data.id_file_url) {
           // The client-ids bucket is private; a service-role server route mints the
           // signed URL (the browser anon key can't sign paths it doesn't own).
@@ -134,14 +145,30 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
             <div style={{ color: 'var(--c-st-hot)', fontFamily: 'Inter', fontSize: 11 }}>Could not load registration data.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <RegField label="First Name" value={client.fname} />
-                <RegField label="Last Name" value={client.lname} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <RegField label="Email" value={client.email} />
-                <RegField label="Phone" value={client.phone} />
-              </div>
+              {client.type === 'label' ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+                    <RegField label="Company" value={client.name} />
+                    <RegField label="Kind" value={client.business_kind ? client.business_kind[0].toUpperCase() + client.business_kind.slice(1) : null} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <RegField label="Billing Email" value={client.email} />
+                    <RegField label="Billing Phone" value={client.phone} />
+                  </div>
+                  {client.website && <RegField label="Website" value={client.website} />}
+                </>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <RegField label="First Name" value={client.fname} />
+                    <RegField label="Last Name" value={client.lname} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <RegField label="Email" value={client.email} />
+                    <RegField label="Phone" value={client.phone} />
+                  </div>
+                </>
+              )}
               {/* Billing address — grouped into one bordered block so the whole
                   thing can be copied in a single action. Staff previously had to
                   select and copy each cell separately to fill an invoice. */}
@@ -175,10 +202,43 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                   <RegField label="ZIP" value={client.address_zip} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <RegField label="Instagram" value={client.instagram ? `@${client.instagram.replace(/^@/, '')}` : null} />
-                <RegField label="How They Heard" value={client.how_heard} />
-              </div>
+              {client.type === 'label' ? (
+                <>
+                  {/* The people — ONE billing/admin contact, then A&R */}
+                  <div style={{ borderRadius: 8, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--c-wash)' }}>
+                    <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)' }}>Contacts</div>
+                    {contacts.length === 0 && <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>No contacts on file</div>}
+                    {contacts.map(c => (
+                      <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <RegField label={c.role || (c.contact_type === 'anr' ? 'A&R' : 'Contact')} value={[c.fname, c.lname].filter(Boolean).join(' ')} />
+                        <RegField label="Reach" value={[c.email, c.phone].filter(Boolean).join(' · ')} />
+                      </div>
+                    ))}
+                  </div>
+                  {/* Invoicing answers — what the AP card reads */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <RegField label="PO Required" value={ap ? (ap.po_required ? 'Yes, always' : ap.po_notes?.startsWith('Sometimes') ? 'Sometimes' : 'No') : null} />
+                    <RegField label="Send Invoices" value={ap ? (ap.submission_method === 'mixed' ? 'Email + portal' : ap.submission_method === 'portal' ? 'Vendor portal' : 'Email') : null} />
+                    <RegField label="Invoices To" value={ap?.submit_to} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <RegField label="Signed By" value={client.signature_url} />
+                    <RegField label="Title" value={client.terms_signer_title} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
+                    <span style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)' }}>Email Campaigns</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'Inter', background: client.email_opt_in ? 'rgba(78,240,162,0.12)' : 'var(--c-wash)', color: client.email_opt_in ? 'var(--c-st-booked)' : 'var(--c-fg-3)' }}>
+                      {client.email_opt_in ? '✓ Opted in' : client.email_opt_out ? 'Opted out' : 'Not opted in'}
+                      {client.email_opt_in && client.email_opt_in_at ? ` · ${new Date(client.email_opt_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <RegField label="Instagram" value={client.instagram ? `@${client.instagram.replace(/^@/, '')}` : null} />
+                  <RegField label="How They Heard" value={client.how_heard} />
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 2 }}>
                 <span style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)' }}>Terms & Conditions</span>
                 <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 9, fontFamily: 'Inter', background: client.terms_accepted ? 'rgba(78,240,162,0.12)' : 'rgba(240,78,122,0.12)', color: client.terms_accepted ? 'var(--c-st-booked)' : 'var(--c-st-hot)', border: `1px solid ${client.terms_accepted ? 'rgba(78,240,162,0.3)' : 'rgba(240,78,122,0.3)'}` }}>
@@ -194,7 +254,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                   {client.sms_opt_in && client.sms_opt_in_phone ? ` · ${client.sms_opt_in_phone}` : ''}
                 </span>
               </div>
-              <div>
+              {client.type !== 'label' && <div>
                 <div style={{ fontSize: 9, fontFamily: "'Archivo Black', sans-serif", fontWeight: 400, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: 'var(--c-fg-3)', marginBottom: 8 }}>Government-Issued ID</div>
                 {!client.id_file_url ? (
                   <div style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--c-fg-3)' }}>No ID on file</div>
@@ -245,7 +305,7 @@ export function RegViewModal({ clientId, onClose }: { clientId: string; onClose:
                     </a>
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
           )}
         </div>

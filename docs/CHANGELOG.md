@@ -20,6 +20,31 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.56.0 — Business registration — Nov 16, 2026
+
+**Why.** Eli: "i have a registration form on my platform for new clients. it's mostly geared toward COD individuals, but i need one focused for businesses and indie labels. what's important is to gain contact info for reps for payment, admin personnel and the most important acknowledging our terms and conditions and email/text campaign opt in." After the mock: "combine admin/billing person into one. theres never two." Registration page keeps its own skin for now ("old ui but info is good").
+
+**What.** A second form behind the same `/register/<token>` link. The **token decides which form opens** (`registration_tokens.kind`). "Send Reg" / "Send registration link" now open a small Individual · COD / Business picker first (`RegKindModal`); the copy / email / text panel after it is unchanged. Billing leads, which previously had no reg button at all, now get one (defaults to Business).
+
+- `app/register/[token]/BusinessForm.tsx` (new): company (name, kind, website, address) → **one** billing & admin contact (name, email, phone, optional "invoices should go to") → *PO required? yes / no / sometimes* → *send invoices by email / portal / both* → A&R contact(s), "+ Add another" up to 4 → T&Cs signed **for the company** (agree + "I am authorised" + printed name + title) → email opt-in + SMS opt-in for the signer, each its own unticked box. No photo ID, no Instagram, no "how heard". Own conflict screen (billing email already on a client → Use & Link / Create anyway) and success screen.
+- `app/register/[token]/ui.tsx` (new): Header / SectionLabel / Input / TermsScroller etc. moved out of `page.tsx` so both forms share them; `Segmented` and `CheckRow` added. `page.tsx` reads `kind` from the GET and hands business tokens to `BusinessForm`.
+- `app/api/register/route.ts`: GET returns `kind`; POST action **`submit_business`** (`submitBusiness()`): creates a `label` client (or updates it when the token was minted from an existing label's profile), inserts `client_contacts` (billing → `contact_type 'admin'`, role `Billing / AP`; A&R → `'anr'`, role = their title), creates an **`ap_profiles` row named after the company** carrying the PO / send-method / invoices-to answers and links it via `clients.ap_profile_id` — so the invoice's AP card reads them from day one. If a procedure with that name already exists it links instead of clobbering. Opt-ins only ever turn ON; SMS writes `sms_consent_log` exactly as the individual form does.
+- `components/shared/RegKindModal.tsx` (new). Wired in `app/(main)/crm/page.tsx` (Send Reg + Resend) and `components/clients/ClientProfile.tsx` (Registration section now shows for labels too).
+- `components/shared/RegViewModal.tsx` + `app/register/view/[clientId]/page.tsx`: a label's Registration Record / print view shows company, contacts, invoicing answers, signer + title, email opt-in — no ID block.
+- `lib/terms.ts`: `EMAIL_CONSENT_TEXT`. `lib/supabase.ts`: `Client` gains `email_opt_in/_at`, `business_kind`, `website`, `terms_signer_title`.
+
+**Migrations:** `20261116120000_business_registration.sql` — `registration_tokens.kind` (default `individual`, so every link already sent keeps working), `clients.email_opt_in/_at`, `business_kind`, `website`, `terms_signer_title`. Run before the push.
+
+**Watch-outs.** The signer's printed name goes in `clients.signature_url` (same column the individual form uses) with the title in `terms_signer_title`. The billing contact's email/phone double as the label's own `email`/`phone` (that is what "Billing email / phone" on a label profile shows). Email opt-in is a new positive flag beside the older `email_opt_out` suppression — campaign lists should honour both. `ap_profiles.name` is unique: the company name is the key.
+
+**Files:** `app/register/[token]/{page,BusinessForm,ui}.tsx`, `app/api/register/route.ts`, `app/register/view/[clientId]/page.tsx`, `app/(main)/crm/page.tsx`, `components/clients/ClientProfile.tsx`, `components/shared/{RegKindModal,RegViewModal}.tsx`, `lib/{terms,supabase}.ts`, `supabase/migrations/20261116120000_business_registration.sql`, `docs/design-refs/business-registration-options.html`.
+
+## v1.55.2 — Package-window queue cards: status moves up, money has the foot — Nov 13, 2026
+
+**Why.** Eli: "some ui issue here" — since v1.52.2 the card foot carries Total + Due and the status word no longer fit beside them. Cards 156 → 176 wide, 66 → 72 tall; status sits top-right next to the card number; the foot is money only. (Entry backfilled Nov 16 — it shipped without one.)
+
+**Migrations:** none. **Files:** `app/(main)/billing/page.tsx`.
+
 ## v1.55.1 — The All-Stars pill is visible again — Nov 12, 2026
 
 **Why.** Eli: "can't see allstars." On All Leads, the ★ All-Stars pill had no background fill (every other pill carries a status colour), so it rendered as `.c-pill`'s dark chip-ink text on the dark panel at 55% opacity.

@@ -4,6 +4,11 @@
 export const SMS_CONSENT_TEXT =
   'Yes, text me. I agree to receive promotional and session-related text messages from Paramount Recording Studios at the number above. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Consent is not a condition of booking.'
 
+// Email opt-in (v1.56.0) — the business form's email-campaign consent line.
+// Shown beside its own unticked box, never bundled into the T&C "I agree".
+export const EMAIL_CONSENT_TEXT =
+  'Yes, email me. I agree to receive studio news, availability and offers from Paramount Recording Studios at the email address I gave above. You can unsubscribe at any time.'
+
 export const TERMS_SECTIONS: { heading: string; body: string }[] = [
   {
     heading: 'Explanation of Rates',

@@ -5,6 +5,12 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Business registration (Nov 16, v1.56.0)
+
+- [ ] **Send one real business link and read it back** — pick a Billing lead, Send Reg → Business, fill it as the label would, then check the client: contacts on the profile, AP card on a work order says PO / send method, Registration Record shows the business block. *(Nov 16)*
+- [ ] **Campaign lists and `email_opt_in`** — the email-campaign segment builder still only honours `email_opt_out`. Decide whether a business list should be opt-in-only. *(Nov 16)*
+- [ ] **Registration page skin** — kept the old Syne/lime look on purpose ("old ui but info is good"). Reskin to the app's look when there is a quiet day. *(Nov 16)*
+
 ## Duplicate day rows (Nov 11, v1.52.0)
 
 - [x] ~~Run the sweep, then the migration, BEFORE the push~~ done Nov 11 14:30, including the widened (… + from_time) index. *(Nov 11)*

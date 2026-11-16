@@ -381,6 +381,22 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 16, 2026 — Business registration (v1.56.0)
+
+Eli: the registration form is built for COD individuals; labels and businesses need
+their own, and what matters is "contact info for reps for payment, admin personnel and
+the most important acknowledging our terms and conditions and email/text campaign opt
+in." Mocked first (`docs/design-refs/business-registration-options.html`) with three
+people — billing, admin, A&R. Ruling: "combine admin/billing person into one. theres
+never two." So the business form carries ONE billing & admin contact plus A&R(s).
+Decisions: the token decides which form opens (no second route, old links unaffected);
+the PO / send-method / invoices-to answers become an `ap_profiles` row named after the
+company so the AP card has something to say on the first invoice — not new columns on
+`clients`; the T&Cs are signed for the company with printed name + title + "I am
+authorised"; opt-ins are the signer's, each its own box, same consent log. Eli kept the
+registration page's own skin for now ("old ui but info is good"). Billing leads, which
+had no reg button before, now get one.
+
 ### November 12, 2026 — PO requested (v1.55.0)
 
 Lori's ask, Eli's framing: "not a rule, just a manual indication." The Awaiting PO pile
