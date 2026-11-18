@@ -680,6 +680,17 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.56.1', date:'Nov 17, 2026',
+    headline:'A COD invoice the owner sent back now shows in Needs review.',
+    desc:'It used to stay in the Paid tab, which the COD side does not open on, so a bounce could sit unseen.',
+    changes:[
+      'When an owner presses <b>Don&rsquo;t approve</b> on a COD invoice, the row moves to <b>Needs review</b> with the <b>Not approved</b> badge and the note.',
+      'Fix the work order, drop the corrected invoice on the row, and it goes back to Paid for approval as before.',
+    ],
+    affects:'Billing, owners.',
+    dev:['deriveBucket: COD + step 2 + invoice_rejected_at → review; nextAction null-guard widened.'],
+  },
+  {
     ver:'v1.56.0', date:'Nov 16, 2026',
     headline:'A registration form for labels and businesses.',
     desc:'The registration form was built for COD individuals. Labels, management companies, publishers and brands now get their own.',

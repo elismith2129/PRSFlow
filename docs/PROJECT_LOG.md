@@ -381,6 +381,14 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 17, 2026 — Bounced COD invoice back to Needs review (v1.56.1)
+
+Eli noticed a COD invoice the owner had sent back (Jibril / Lil Surf) stayed in the
+Paid tab. Sep 1 put paid COD rows awaiting sign-off in Paid, and the rejection logic
+inherited that — but Paid is not a default tab on the COD side, so a bounce was
+invisible until someone opened Paid. Ruling: a not-approved COD row is billing's work
+again, so it lives in Needs review until the corrected invoice is dropped on it.
+
 ### November 16, 2026 — Business registration (v1.56.0)
 
 Eli: the registration form is built for COD individuals; labels and businesses need

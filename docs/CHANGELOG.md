@@ -20,6 +20,15 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.56.1 — A bounced COD invoice goes back to Needs review — Nov 17, 2026
+
+**Why.** Eli: a sent-back invoice on a COD work order (Jibril / Lil Surf) "was kept under the paid tab instead of populating" — the COD hub opens on Balance due + Needs review, so a row the owner had bounced sat in Paid where nobody looks by default.
+
+- `lib/billing.ts` `deriveBucket`: new `rejected` arg. COD + step 2 + a standing rejection → `review`. Billing rows were already in In progress; unchanged.
+- `nextAction`: the "owner already looked, no button" guard now covers a COD row in `review` as well as `paid`, so the bounce still stays out of the approval queue. Badge still reads **Not approved**; the flag still carries the note; dropping the corrected invoice clears the rejection and the row goes back to Paid → Approve, as before.
+
+**Migrations:** none. **Files:** `lib/billing.ts`.
+
 ## v1.56.0 — Business registration — Nov 16, 2026
 
 **Why.** Eli: "i have a registration form on my platform for new clients. it's mostly geared toward COD individuals, but i need one focused for businesses and indie labels. what's important is to gain contact info for reps for payment, admin personnel and the most important acknowledging our terms and conditions and email/text campaign opt in." After the mock: "combine admin/billing person into one. theres never two." Registration page keeps its own skin for now ("old ui but info is good").

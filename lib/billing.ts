@@ -583,8 +583,10 @@ export function deriveBucket(args: {
   notStarted?: boolean
   /** Billing only: approved and no PO on the work order → parked in Awaiting PO. */
   awaitingPo?: boolean
+  /** The owner pressed Don't approve and nobody has re-queued it yet. */
+  rejected?: boolean
 }): BucketKey {
-  const { state, isCod, step, balance, grand, ended, notStarted, awaitingPo } = args
+  const { state, isCod, step, balance, grand, ended, notStarted, awaitingPo, rejected } = args
   if (state === 'closed') return 'closed'
 
   if (isCod) {
@@ -613,6 +615,14 @@ export function deriveBucket(args: {
     // getting eyes on it that it's correct and we don't need to charge more."
     // A $0 work order with NO invoice still needs reviewing (grand <= 0 is
     // not a balance, it is nothing entered), so that branch is unchanged.
+    //
+    // NOT APPROVED COMES BACK TO NEEDS REVIEW (Eli, 2026-11-17: a sent-back
+    // COD invoice "was kept under the paid tab instead of populating"). The
+    // owner bounced it, so it is billing's work again — and the COD hub opens
+    // on Balance due + Needs review, not Paid. Left in Paid, a bounce was
+    // invisible until someone thought to look there. Dropping the corrected
+    // invoice clears the rejection and the row returns to Paid for approval.
+    if (step === 2 && rejected) return 'review'
     return step >= 2 ? 'paid' : 'review'
   }
 
@@ -910,6 +920,7 @@ export async function fetchInvoices(): Promise<InvoiceRow[]> {
         ended: arrived,
         notStarted,
         awaitingPo: !isCod && step >= 2 && !poNumber && !noPoNeeded,
+        rejected: !!(w as any).invoice_rejected_at,
       }),
       step,
       state,
@@ -1371,7 +1382,7 @@ export function nextAction(row: InvoiceRow): string | null {
   // rejection on a replacement attach, so there is no button here. Returning
   // null ALSO keeps the row out of approvalQueue, which is the point — the
   // owner already looked.
-  if (row.rejectedAt && row.step === 2 && (row.bucket === 'progress' || row.bucket === 'notstarted' || (row.isCod && row.bucket === 'paid'))) {
+  if (row.rejectedAt && row.step === 2 && (row.bucket === 'progress' || row.bucket === 'notstarted' || (row.isCod && (row.bucket === 'paid' || row.bucket === 'review')))) {
     return null
   }
   // A PAID COD session that is reviewed + invoiced still owes the owner's
