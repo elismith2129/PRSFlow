@@ -680,6 +680,19 @@ const PETTY_STEPS=[
 // to whoever built it, it doesn't belong here.
 const VERSIONS=[
   {
+    ver:'v1.57.0', date:'Nov 17, 2026',
+    headline:'A hold on the calendar is a Hot lead in the CRM. Confirm it and the lead turns Booked.',
+    desc:'Confirmed sessions already wrote a Booked line in the CRM. Now holds do too, and the CRM follows the calendar from there.',
+    changes:[
+      'Save a <b>tentative</b> session with a client on it and a <b>Hot</b> lead appears in the CRM (source: Calendar). Flip a day to <b>confirmed</b> and that lead turns <b>Booked</b> on its own. Cancel and it goes Cold (hold) or Dead (was booked).',
+      'A hold now needs a <b>client on file</b> before it saves &mdash; same stop as confirmed sessions. Type two letters of the name in the client box.',
+      'On a lead that already has a hold on the calendar, Start Booking becomes <b>Open Hold</b> and takes you to that day instead of making a second booking.',
+      'Leads booked from the CRM as a tentative now stay Hot until you confirm a day.',
+    ],
+    affects:'Front office, sales.',
+    dev:['WorkOrderPopup post-save CRM block: linkedLead = leadId ?? wo.lead_id; writeCalendarLead(id, booked|hot); client stop covers tentative. No migration.'],
+  },
+  {
     ver:'v1.56.1', date:'Nov 17, 2026',
     headline:'A COD invoice the owner sent back now shows in Needs review.',
     desc:'It used to stay in the Paid tab, which the COD side does not open on, so a bounce could sit unseen.',

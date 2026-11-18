@@ -1990,6 +1990,14 @@ const parsedLoc0 = parseLocation(lead.location || '')
     : `${bookBlockers.slice(0, -1).join(', ')} and ${bookBlockers[bookBlockers.length - 1]}`
 
   function startBooking() {
+    // A HOLD ALREADY ON THE CALENDAR (2026-11-17): the calendar wrote this
+    // lead (or Start Booking did, as a tentative). Starting a second booking
+    // would double it — open the day it lives on instead. Before the
+    // blockers: a calendar-made lead may carry no room on the lead itself.
+    if (lead.work_order_id && lead.session_date) {
+      leadRouter.push(`/calendar?cv=day&d=${lead.session_date}`)
+      return
+    }
     // SAY WHAT IS MISSING, don't just sit there greyed out. A disabled control
     // that explains nothing is the defect the login-screen ruling names: a
     // surface may only claim what it knows, and it must say what it knows.
@@ -2340,14 +2348,16 @@ const parsedLoc0 = parseLocation(lead.location || '')
             <button
               onClick={startBooking}
               title={
-                bookBlockers.length > 0
+                lead.work_order_id && lead.session_date
+                  ? 'This lead already has a hold on the calendar — open that day'
+                  : bookBlockers.length > 0
                   ? `Needs ${bookMissingList} on the lead first`
                   : lead.client_id ? 'Open a Work Order for this lead' : 'Confirm the client profile, then open a Work Order'
               }
               className="c-btn c-control c-raised-primary"
-              style={{ whiteSpace: 'nowrap' as const, opacity: bookBlockers.length > 0 ? 0.4 : 1 }}
+              style={{ whiteSpace: 'nowrap' as const, opacity: bookBlockers.length > 0 && !lead.work_order_id ? 0.4 : 1 }}
             >
-              Start Booking
+              {lead.work_order_id && lead.session_date && lead.status !== 'booked' ? 'Open Hold' : 'Start Booking'}
             </button>
             {(regTokenDates?.used_at ? (
               <button onClick={() => setRegViewOpen(true)} className="c-pill c-fill-booked c-control c-raised-chip" style={{ cursor: 'pointer' }}>

@@ -3772,7 +3772,7 @@ export function WorkOrderPopup({
   const [clientStop, setClientStop] = useState(false)
   const clientPanelRef = useRef<HTMLDivElement | null>(null)
 
-  async function writeCalendarLead(workOrderId: string) {
+  async function writeCalendarLead(workOrderId: string, status: 'booked' | 'hot') {
     if (!wo || !wo.client_id) return
     const { data: cRows } = await supabase.from('clients')
       .select('id, type, name, fname, lname, email, phone').eq('id', wo.client_id).limit(1)
@@ -3796,7 +3796,7 @@ export function WorkOrderPopup({
       phone: wo.phone || c.phone || '',
       source: 'Calendar',
       booking: bookingType,
-      status: 'booked',
+      status,
       billing: wo.payment_status === 'Billing' ? 'Billing' : 'COD',
       notes: '',
       quote: rate || '',
@@ -3908,13 +3908,19 @@ export function WorkOrderPopup({
       // "people are just double-clicking a square, typing a name (spelled
       // wrong, first name only, nickname) — we need to prevent this." A
       // name alone is not a client: billing, COD collection and the CRM all
-      // key on the profile. Tentative holds still save with just a name
-      // (holds are fast by design) and wear the panel's "Not on file" chip
-      // until fixed; confirming is the moment it has to be real. Lockouts
-      // are confirmed sessions too. Office-only — runners never touch the
-      // client block.
+      // key on the profile. Lockouts are confirmed sessions too. Office-only
+      // — runners never touch the client block.
+      //
+      // HOLDS TOO (Eli, 2026-11-17). The Sep 18 rule let a tentative save
+      // with just a name ("holds are fast by design"). Now a hold writes a
+      // Hot lead to the CRM, and a lead needs a client behind it — Eli:
+      // "we need to force staff to input correctly... sessions that go on
+      // cals immediately are def returning regulars, so it should be easy
+      // to have the client autofilled." Tour / Tech / Open Hrs are internal
+      // and never stop.
       const anyConfirmedDay = wo.session_status === 'lockout' || stRows.some(r => r.studio !== '' && r.date && effDayStatus(r) === 'confirmed')
-      if (anyConfirmedDay && !wo.client_id) {
+      const anyClientDay = anyConfirmedDay || stRows.some(r => r.studio !== '' && r.date && effDayStatus(r) === 'tentative')
+      if (anyClientDay && !wo.client_id) {
         setSaving(false)
         setClientStop(true)
         return false
@@ -4066,33 +4072,65 @@ export function WorkOrderPopup({
     // is the all-or-nothing unit for the WO + its line items + the booking cards,
     // and a CRM status change is not part of that unit. A failure here must not
     // roll back a saved session — it just reports and leaves the lead as-is.
-    if (leadId && wo.session_status !== 'cancelled') {
-      const { error: leadErr } = await supabase
-        .from('leads')
-        .update({ status: 'booked', keep_hot_until: null, work_order_id: id })
-        .eq('id', leadId)
-      dbResult('Marking lead booked', leadErr)
+    // THE LINKED STRING (Eli, 2026-11-17): "when a session gets added to the
+    // cal it goes on the CRM based on its status. tentative → hot lead,
+    // confirmed → booked, and the CRM auto-switches to booked once we change
+    // it on the cal." One lead per work order, linked both ways, and the
+    // lead's status FOLLOWS the calendar from then on:
+    //   hold (tentative days only)  → Hot      (follow-up cadence as usual)
+    //   any day confirmed / lockout → Booked
+    //   cancelled                   → Dead if it was booked, Cold if it was
+    //                                 still a hold (a hold that fell through
+    //                                 is a lead gone cold, not a lost booking)
+    // This applies whether the lead came first (Start Booking from the CRM,
+    // `leadId`) or the session did (the calendar wrote the lead). Before
+    // today a CRM-started booking was marked Booked on its first save even
+    // as a hold; now it waits for the confirm, like everything else.
+    // Separate writes from the atomic save on purpose: a CRM row failing
+    // must never un-save a session.
+    const datedRows = stRows.filter(r => r.studio !== '' && r.date)
+    const anyConfirmed = wo.session_status === 'lockout' || datedRows.some(r => effDayStatus(r) === 'confirmed')
+    const anyTentative = !anyConfirmed && datedRows.some(r => effDayStatus(r) === 'tentative')
+    const linkedLead = leadId ?? wo.lead_id ?? null
+
+    if (!runner && linkedLead) {
+      if (wo.session_status === 'cancelled') {
+        // Two writes because the destination depends on where it was.
+        const { error: deadErr } = await supabase.from('leads')
+          .update({ status: 'dead' }).eq('id', linkedLead).eq('status', 'booked')
+        dbResult('Closing the CRM lead', deadErr)
+        const { error: coldErr } = await supabase.from('leads')
+          .update({ status: 'cold' }).eq('id', linkedLead).in('status', ['hot', 'warm', 'uncontacted'])
+        dbResult('Cooling the CRM lead', coldErr)
+      } else if (anyConfirmed) {
+        const { error: leadErr } = await supabase
+          .from('leads')
+          .update({ status: 'booked', keep_hot_until: null, work_order_id: id })
+          .eq('id', linkedLead).neq('status', 'dead')
+        dbResult('Marking lead booked', leadErr)
+      } else if (anyTentative) {
+        // A hold: make sure the lead is linked and is at least Hot. A lead
+        // that was Booked and whose session slipped back to a hold stays
+        // Booked — un-booking is a human call, not a save side-effect.
+        const { error: holdErr } = await supabase
+          .from('leads')
+          .update({ status: 'hot', work_order_id: id })
+          .eq('id', linkedLead).in('status', ['warm', 'cold', 'uncontacted'])
+        dbResult('Marking lead hot', holdErr)
+      }
       if (!wo.lead_id) {
-        await supabase.from('work_orders').update({ lead_id: leadId }).eq('id', id)
-        setWo(w => w ? { ...w, lead_id: leadId } : w)
+        await supabase.from('work_orders').update({ lead_id: linkedLead }).eq('id', id)
+        setWo(w => w ? { ...w, lead_id: linkedLead } : w)
       }
     }
 
-    // ── THE CRM LINE, WRITTEN FOR YOU (Eli, 2026-09-18): "tie any booking
-    // made straight to the cal and confirmed to a booked line in the CRM so
-    // it plays into the metrics." A confirmed session with a client on file
-    // and no lead behind it writes ONE lead — status booked, source
-    // 'Calendar', linked both ways — and remembers it on the work order so a
-    // re-save never writes a second. Cancelling later flips that lead to
-    // dead, the way a CRM lead would go. Separate from the atomic save on
-    // purpose: a CRM row failing must never un-save a session.
-    if (!runner && !leadId && !wo.lead_id && wo.client_id
-        && (wo.session_status === 'lockout' || stRows.some(r => r.studio !== '' && r.date && effDayStatus(r) === 'confirmed'))) {
-      await writeCalendarLead(id)
-    } else if (!runner && wo.lead_id && wo.session_status === 'cancelled') {
-      const { error: deadErr } = await supabase.from('leads')
-        .update({ status: 'dead' }).eq('id', wo.lead_id).eq('status', 'booked')
-      dbResult('Closing the CRM lead', deadErr)
+    // ── THE CRM LINE, WRITTEN FOR YOU (Eli, 2026-09-18, extended 2026-11-17):
+    // a session with a client on file and no lead behind it writes ONE lead —
+    // Booked when any day is confirmed, Hot when it is still a hold — source
+    // 'Calendar', linked both ways, remembered on the work order so a re-save
+    // never writes a second.
+    if (!runner && !linkedLead && wo.client_id && wo.session_status !== 'cancelled' && (anyConfirmed || anyTentative)) {
+      await writeCalendarLead(id, anyConfirmed ? 'booked' : 'hot')
     }
 
     // ── History (lib/woActivity): diff the baselines against what was just
@@ -5319,7 +5357,7 @@ export function WorkOrderPopup({
             <span style={{ width: 20, height: 20, borderRadius: 99, background: 'var(--c-st-hot)', color: 'var(--c-hot-text)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>!</span>
             <span style={{ flex: 1, minWidth: 200 }}>
               <b style={{ fontFamily: "'Archivo Black', sans-serif", fontWeight: 400 }}>Who&apos;s this session for?</b>{' '}
-              A confirmed session needs a client on file — that&apos;s how billing, COD collection and the CRM know who to chase. Holds can save with just a name.
+              A session or hold needs a client on file — that&apos;s how billing, COD collection and the CRM know who to chase. Regulars are a two-letter search away.
             </span>
             <button
               type="button"

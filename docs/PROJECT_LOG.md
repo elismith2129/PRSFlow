@@ -381,6 +381,15 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 17, 2026 — Calendar ↔ CRM linked string (v1.57.0)
+
+Staff thought calendar bookings "magically" land in the CRM; it was the Sep 18 hook, confirmed-only.
+Eli's gap: phone-and-pencil sessions never become an inquiry. Rulings: tentative → **Hot** ("should be
+hot for sure"); confirm → Booked automatically; and rather than writing leads from a bare name, holds
+now require a client on file ("force staff to input correctly... sessions that go on cals immediately
+are def returning regulars"). My calls, flagged: a cancelled hold goes Cold not Dead; a Booked lead
+whose session slips back to a hold stays Booked; CRM-started tentatives now wait for the confirm.
+
 ### November 17, 2026 — Bounced COD invoice back to Needs review (v1.56.1)
 
 Eli noticed a COD invoice the owner had sent back (Jibril / Lil Surf) stayed in the

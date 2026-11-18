@@ -20,6 +20,28 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.57.0 — Calendar ↔ CRM: holds are Hot leads, confirms flip them to Booked — Nov 17, 2026
+
+**Why.** A staff member noticed calendar bookings "also" appear in the CRM and Eli asked whether that was logic or a person. It was logic (v1.37, Sep 18) — but only for *confirmed* sessions. Eli: "a gap we have is last minute sessions that are a client calling and confirming on the spot, go straight to the cal... it does miss the record as an inquiry. when a session gets added to the cal it goes on the CRM based on its status. tentative = hot lead, confirmed = booked, and the CRM auto-switches to booked once we change it on cal."
+
+**The linked string.** One lead per work order, linked both ways (`leads.work_order_id` ↔ `work_orders.lead_id`); the lead's status now **follows the calendar** on every office save:
+
+| Calendar | Lead |
+|---|---|
+| Hold (tentative days only), client on file, no lead | **Hot** lead written, source Calendar, normal follow-up cadence |
+| Any day confirmed / lockout | **Booked** (`keep_hot_until` cleared) |
+| Cancelled | **Dead** if it was Booked; **Cold** if it was still a hold |
+| Booked session slips back to a hold | stays Booked — un-booking is a human call |
+
+Applies whether the lead came first (Start Booking from the CRM) or the session did. **Behaviour change:** a CRM-started booking saved as a *tentative* used to be marked Booked on first save; it now stays Hot until a day is confirmed.
+
+- `components/calendar/WorkOrderPopup.tsx`: `writeCalendarLead(id, 'booked' | 'hot')`; the post-save CRM block rewritten around `linkedLead = leadId ?? wo.lead_id`. **The client stop now covers holds** (Eli: "force staff to input correctly" — a hold without a client can't write a lead). Tour / Tech / Open Hrs never stop.
+- `app/(main)/crm/page.tsx`: a lead that already has a hold on the calendar (`work_order_id` + not Booked) shows **Open Hold** instead of Start Booking and routes to that day — a second Start Booking would double it.
+
+**Migrations:** none. **Watch-out.** Holds now require a client on file before Save — the two-letter client search in the panel. Deleting a work order (not cancelling) still leaves its lead where it was.
+
+**Files:** `components/calendar/WorkOrderPopup.tsx`, `app/(main)/crm/page.tsx`.
+
 ## v1.56.1 — A bounced COD invoice goes back to Needs review — Nov 17, 2026
 
 **Why.** Eli: a sent-back invoice on a COD work order (Jibril / Lil Surf) "was kept under the paid tab instead of populating" — the COD hub opens on Balance due + Needs review, so a row the owner had bounced sat in Paid where nobody looks by default.
