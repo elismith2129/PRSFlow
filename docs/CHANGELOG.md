@@ -20,6 +20,12 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.58.5 — Room lock: Lock now is one click — Nov 19, 2026
+
+**What.** Eli: "lets make the lock room button one click. no warning popup." The "Lock … ?" confirm on `/rooms` is removed; Lock now locks at once. Page only, no migration. **Watch-out.** A mis-tap now locks a room with no question asked. It is undone with one click on Unlock, and both are in the log.
+
+---
+
 ## v1.58.4 — Room lock: the lock screen is look B, with the logo — Nov 19, 2026
 
 **What.** Eli picked look B of `docs/design-refs/room-lock-screen-options.html` ("B is great lets run it"): logo on a light panel on the left, message on black on the right. Wording: "SESSION PAUSED / Your booked time is up. / To keep working, see the front desk to add time. Overtime is paid before the room reopens. / Your session is still open. Nothing has been lost." Agent only (`main.swift` `buildLockContent`, `LogoView`); `build.sh` ships `fonts/ArchivoBlack-Regular.ttf` (SIL Open Font License, `fonts/OFL.txt`) and an optional `logo.png`.

@@ -15,6 +15,10 @@
 // writes the change and its log line together. Nothing here writes a table
 // directly.
 //
+// LOCK NOW IS ONE CLICK (Eli, 2026-11-19: "lets make the lock room button one
+// click. no warning popup."). The mock's "Lock Studio A?" confirm was built
+// and then removed. A mis-tap is undone with one click on Unlock.
+//
 // THE STAFF PIN IS NOT ON THE LOCK SCREEN (Eli, 2026-11-19: "if it exists on
 // the screen, clients will bully my staff into just clearing it"). The lock
 // screen shows no box. Typing the six digits blind and pressing Return clears
@@ -85,7 +89,6 @@ export default function RoomsPage() {
   const [newPin, setNewPin] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const [confirmLock, setConfirmLock] = useState<RoomLock | null>(null)
   const [setupFor, setSetupFor] = useState<RoomLock | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [showAll, setShowAll] = useState(false)
@@ -242,11 +245,11 @@ export default function RoomsPage() {
                         <button className="c-control" disabled={isBusy} onClick={() => act(r, 'unlock')}
                           style={bigBtn('var(--c-st-booked)', 'var(--c-chip-ink)')}>Unlock room</button>
                       ) : warning ? (<>
-                        <button className="c-control" disabled={isBusy} onClick={() => setConfirmLock(r)} style={bigBtn('var(--c-st-hot)', '#1a0b09')}>Lock now</button>
+                        <button className="c-control" disabled={isBusy} onClick={() => act(r, 'lock')} style={bigBtn('var(--c-st-hot)', '#1a0b09')}>Lock now</button>
                         <button className="c-soft c-control c-raised" disabled={isBusy} onClick={() => act(r, 'unlock')}>Cancel warning</button>
                       </>) : (<>
                         <button className="c-control" disabled={isBusy} onClick={() => act(r, 'warn')} style={bigBtn('var(--c-st-warm)', '#1f1408')}>30-min warning</button>
-                        <button className="c-soft c-control c-raised" disabled={isBusy} onClick={() => setConfirmLock(r)}>Lock now</button>
+                        <button className="c-soft c-control c-raised" disabled={isBusy} onClick={() => act(r, 'lock')}>Lock now</button>
                       </>)}
                     </div>
                   </div>
@@ -279,20 +282,6 @@ export default function RoomsPage() {
           </div>
         ))}
       </div>
-
-      {confirmLock && (
-        <Overlay onClose={() => setConfirmLock(null)}>
-          <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>Lock {confirmLock.location} · {confirmLock.studio}?</div>
-          <div style={{ fontSize: 12.5, opacity: 0.65 }}>
-            The room&apos;s Mac goes to the lock screen and its sound is muted. The session stays open underneath; nothing is lost.
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button className="c-soft c-control c-raised" style={{ flex: 1 }} onClick={() => setConfirmLock(null)}>Cancel</button>
-            <button className="c-control" style={{ ...bigBtn('var(--c-st-hot)', '#1a0b09'), flex: 1 }}
-              onClick={() => { const r = confirmLock; setConfirmLock(null); act(r, 'lock') }}>Lock room</button>
-          </div>
-        </Overlay>
-      )}
 
       {setupFor && (
         <Overlay onClose={() => setSetupFor(null)} width={560}>
