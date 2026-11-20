@@ -20,9 +20,17 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.58.4 — Room lock: the lock screen is look B, with the logo — Nov 19, 2026
+
+**What.** Eli picked look B of `docs/design-refs/room-lock-screen-options.html` ("B is great lets run it"): logo on a light panel on the left, message on black on the right. Wording: "SESSION PAUSED / Your booked time is up. / To keep working, see the front desk to add time. Overtime is paid before the room reopens. / Your session is still open. Nothing has been lost." Agent only (`main.swift` `buildLockContent`, `LogoView`); `build.sh` ships `fonts/ArchivoBlack-Regular.ttf` (SIL Open Font License, `fonts/OFL.txt`) and an optional `logo.png`.
+
+**Watch-outs.** The logo drawn is Claude's REDRAW of the wave lockup. Put the real file at `scripts/room-lock/logo.png` (dark on clear) and rebuild to replace it. "Still open", not "saved" — the lock saves nothing in Pro Tools. The labels are deliberately not selectable (a selectable label would take the keyboard from the blind PIN). The warning banner still has its old wording. Not compiled or run by Claude; rooms need a rebuild + reinstall.
+
+---
+
 ## v1.58.3 — Room lock agent: builds for Intel Macs too; the installer checks it started — Nov 19, 2026
 
-**Why.** First install, on an Intel Mac Pro: "Installed and running", no green dot. The program was built Apple-chip-only and never started; the database side answered correctly when called by hand. **What.** `build.sh` builds arm64 + x86_64 and joins them (`lipo`). `install.command` waits 5s and checks the process; if it is not running it prints the Mac type, macOS version, the log and launchd's last exit instead of claiming success. **Watch-out.** Needs macOS 12 or newer on the room Mac. Existing folders must be rebuilt. Also: every set-up card now has a small **Setup** link that reopens the setup line (it used to vanish once the room had checked in).
+**Why.** First install, on an Intel Mac Pro: "Installed and running", no green dot. The program was built Apple-chip-only and never started; the database side answered correctly when called by hand. **What.** `build.sh` builds arm64 + x86_64 and joins them (`lipo`). `install.command` waits 5s and checks the process; if it is not running it prints the Mac type, macOS version, the log and launchd's last exit instead of claiming success. **Watch-out.** Needs macOS 10.15 Catalina or newer (Intel) / 11 or newer (Apple chip). The first test Mac was a 2013 "trashcan" Mac Pro — Intel, tops out at macOS 12 — so a pass there does not prove behaviour on the rooms' Mac Studios. Existing folders must be rebuilt. Also: every set-up card now has a small **Setup** link that reopens the setup line (it used to vanish once the room had checked in).
 
 ---
 

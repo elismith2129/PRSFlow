@@ -8,7 +8,7 @@
 //   warning   a small countdown banner at the top of the screen; a click
 //             closes it (it returns at 15 and at 5 minutes left); when the
 //             countdown runs out it locks by itself, internet or not
-//   locked    a black screen over every display, above every app; keyboard and
+//   locked    the lock screen (logo panel + message) over every display, above every app; keyboard and
 //             mouse go nowhere; the Mac's sound is muted. Pro Tools keeps
 //             running underneath — nothing is closed, nothing is lost.
 //
@@ -33,6 +33,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import AppKit
+import CoreText
 import CryptoKit
 
 struct Config: Codable {
@@ -79,6 +80,59 @@ final class LockView: NSView {
     override func draw(_ dirtyRect: NSRect) { NSColor.black.setFill(); dirtyRect.fill() }
 }
 
+/// The Paramount lockup on the lock screen's light panel. If a logo.png sits
+/// beside config.json it is drawn; otherwise the wave + PARAMOUNT / RECORDING
+/// STUDIOS lockup is redrawn here (a REDRAW, not Eli's file — drop the real
+/// one in scripts/room-lock/logo.png, dark on clear, and rebuild).
+/// Drawn in a 300 x 182 box scaled to the view.
+final class LogoView: NSView {
+    var ink = NSColor.black
+    var image: NSImage?
+    override var isFlipped: Bool { true }
+    override func draw(_ dirtyRect: NSRect) {
+        if let img = image, img.size.width > 0, img.size.height > 0 {
+            let s = min(bounds.width / img.size.width, bounds.height / img.size.height)
+            let w = img.size.width * s, h = img.size.height * s
+            img.draw(in: NSRect(x: (bounds.width - w) / 2, y: (bounds.height - h) / 2, width: w, height: h),
+                     from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
+            return
+        }
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        ctx.saveGState()
+        let k = bounds.width / 300
+        ctx.scaleBy(x: k, y: k)
+
+        // The wave (same shape as PRSFlo's icon), sitting above the words.
+        func pt(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: 86 + x * 0.64, y: -22 + y * 0.64) }
+        let p = CGMutablePath()
+        p.move(to: pt(14, 100))
+        p.addQuadCurve(to: pt(113, 100), control: pt(70, -10))
+        p.addQuadCurve(to: pt(186, 100), control: pt(156, 210))
+        p.addQuadCurve(to: pt(113, 100), control: pt(156, 130))
+        p.addQuadCurve(to: pt(14, 100), control: pt(70, 70))
+        p.closeSubpath()
+        ctx.addPath(p)
+        ctx.setFillColor(ink.cgColor)
+        ctx.fillPath()
+
+        // PARAMOUNT, sized to span the full 300.
+        var f1 = NSFont(name: "ArchivoBlack-Regular", size: 49) ?? NSFont.systemFont(ofSize: 49, weight: .black)
+        let w1 = NSAttributedString(string: "PARAMOUNT", attributes: [.font: f1]).size().width
+        if w1 > 0 { f1 = NSFont(descriptor: f1.fontDescriptor, size: 49 * 300 / w1) ?? f1 }
+        NSAttributedString(string: "PARAMOUNT", attributes: [.font: f1, .foregroundColor: ink])
+            .draw(at: CGPoint(x: 0, y: 132 - f1.ascender))
+
+        // RECORDING STUDIOS, spaced out to the same width.
+        let f2 = NSFont.systemFont(ofSize: 24, weight: .bold)
+        let s2 = "RECORDING STUDIOS"
+        let w2 = NSAttributedString(string: s2, attributes: [.font: f2]).size().width
+        let kern = max(0, (298 - w2) / CGFloat(s2.count - 1))
+        NSAttributedString(string: s2, attributes: [.font: f2, .kern: kern, .foregroundColor: ink])
+            .draw(at: CGPoint(x: 1, y: 172 - f2.ascender))
+        ctx.restoreGState()
+    }
+}
+
 /// The warning banner. A click anywhere on it closes it (Eli, 2026-11-19: "the
 /// banner warning should be click out able").
 final class BannerView: NSView {
@@ -113,6 +167,15 @@ final class Agent: NSObject, NSApplicationDelegate {
         config = c
         if let d = try? Data(contentsOf: savedURL), let s = try? JSONDecoder().decode(Saved.self, from: d) { saved = s }
         log("Started for room \(config.room); last known state \(saved.state)")
+
+        // The headline font ships in the folder (fonts/). If it is missing the
+        // Mac's own heavy font is used instead — the screen still works.
+        let fontsDir = supportDir.appendingPathComponent("fonts")
+        if let files = try? FileManager.default.contentsOfDirectory(at: fontsDir, includingPropertiesForKeys: nil) {
+            for f in files where f.pathExtension.lowercased() == "ttf" {
+                CTFontManagerRegisterFontsForURL(f as CFURL, .process, nil)
+            }
+        }
 
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),
             name: NSApplication.didChangeScreenParametersNotification, object: nil)
@@ -242,19 +305,7 @@ final class Agent: NSObject, NSApplicationDelegate {
             v.agent = self
             v.autoresizingMask = [.width, .height]
 
-            let title = label("Session time has ended.", size: 54, weight: .heavy, alpha: 1)
-            let sub = label("Please see the front desk.", size: 22, weight: .regular, alpha: 0.65)
-            let room = label(config.roomLabel, size: 12, weight: .medium, alpha: 0.3)
-            let stack = NSStackView(views: [title, sub, room])
-            stack.orientation = .vertical
-            stack.spacing = 14
-            stack.setCustomSpacing(40, after: sub)
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            v.addSubview(stack)
-            NSLayoutConstraint.activate([
-                stack.centerXAnchor.constraint(equalTo: v.centerXAnchor),
-                stack.centerYAnchor.constraint(equalTo: v.centerYAnchor),
-            ])
+            buildLockContent(in: v, size: screen.frame.size)
             w.contentView = v
             w.setFrame(screen.frame, display: true)
             w.orderFrontRegardless()
@@ -270,6 +321,81 @@ final class Agent: NSObject, NSApplicationDelegate {
         typed = ""
         if !saved.weMuted && !isMuted() { saved.weMuted = true; save() }
         setMuted(true)
+    }
+
+    // ── what the lock screen looks like ──────────────────────────────────────
+    // Look B of docs/design-refs/room-lock-screen-options.html (Eli, 2026-11-19:
+    // "B is great lets run it"): the logo on a light panel on the left, the
+    // message on black on the right. Everything is sized off the screen's
+    // width (u = 1% of it) so it looks the same on any monitor.
+    // No PIN box, by ruling: the staff PIN is typed blind.
+    func buildLockContent(in v: NSView, size: NSSize) {
+        let u = size.width / 100
+        let ink = NSColor(red: 0.043, green: 0.039, blue: 0.035, alpha: 1)
+        let paper = NSColor(red: 0.957, green: 0.949, blue: 0.925, alpha: 1)
+
+        let left = NSView(frame: NSRect(x: 0, y: 0, width: 38 * u, height: size.height))
+        left.wantsLayer = true
+        left.layer?.backgroundColor = paper.cgColor
+        left.autoresizingMask = [.height]
+        v.addSubview(left)
+
+        let logoW = 24 * u
+        let logoH = logoW * 182 / 300
+        let logo = LogoView(frame: NSRect(x: (38 * u - logoW) / 2, y: (size.height - logoH) / 2, width: logoW, height: logoH))
+        logo.ink = ink
+        logo.image = NSImage(contentsOf: supportDir.appendingPathComponent("logo.png"))
+        left.addSubview(logo)
+
+        let textW = 50 * u
+        let kicker = NSTextField(labelWithAttributedString: NSAttributedString(string: "SESSION PAUSED", attributes: [
+            .font: NSFont.systemFont(ofSize: 1.05 * u, weight: .heavy),
+            .kern: 0.21 * u,
+            .foregroundColor: paper.withAlphaComponent(0.45),
+        ]))
+        let headFont = NSFont(name: "ArchivoBlack-Regular", size: 4.1 * u) ?? NSFont.systemFont(ofSize: 4.1 * u, weight: .black)
+        let head = wrapping("Your booked time is up.", font: headFont, color: paper, width: textW)
+        let para = wrapping("To keep working, see the front desk to add time. Overtime is paid before the room reopens.",
+                            font: NSFont.systemFont(ofSize: 1.75 * u), color: paper.withAlphaComponent(0.7), width: textW)
+        let safe = wrapping("Your session is still open. Nothing has been lost.",
+                            font: NSFont.systemFont(ofSize: 1.2 * u), color: paper.withAlphaComponent(0.42), width: textW)
+
+        let stack = NSStackView(views: [kicker, head, para, safe])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 1.8 * u
+        stack.setCustomSpacing(1.6 * u, after: kicker)
+        stack.setCustomSpacing(1.8 * u, after: head)
+        stack.setCustomSpacing(2.6 * u, after: para)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        v.addSubview(stack)
+
+        let room = NSTextField(labelWithAttributedString: NSAttributedString(string: config.roomLabel, attributes: [
+            .font: NSFont.monospacedSystemFont(ofSize: 1.0 * u, weight: .medium),
+            .kern: 0.14 * u,
+            .foregroundColor: paper.withAlphaComponent(0.32),
+        ]))
+        room.translatesAutoresizingMaskIntoConstraints = false
+        v.addSubview(room)
+
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 44 * u),
+            stack.widthAnchor.constraint(equalToConstant: textW),
+            stack.centerYAnchor.constraint(equalTo: v.centerYAnchor),
+            room.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -6 * u),
+            room.bottomAnchor.constraint(equalTo: v.bottomAnchor, constant: -3 * u),
+        ])
+    }
+
+    /// A label that wraps. NOT selectable: a selectable label would take the
+    /// keyboard, and the blind PIN has to reach the lock view.
+    func wrapping(_ text: String, font: NSFont, color: NSColor, width: CGFloat) -> NSTextField {
+        let l = NSTextField(wrappingLabelWithString: text)
+        l.font = font
+        l.textColor = color
+        l.isSelectable = false
+        l.preferredMaxLayoutWidth = width
+        return l
     }
 
     func closeLockWindows() {

@@ -11,7 +11,9 @@ Newest at the top of each group.*
 - [ ] **Build and install the Studio A agent** — Room lock → Studio A → Set up this room → paste the line on Eli's Mac → AirDrop the Desktop folder to the room → README. Try it on Eli's own Mac first. *(Nov 19)*
 - [ ] **Test list for Studio A:** dot goes green · 30-min warning shows the banner · Lock now covers every screen · **press spacebar while locked — does Pro Tools play?** · blind PIN + Return clears it · Unlock from PRSFlo clears it · restart the Mac while locked — does it come back locked? · pull the network cable while locked — PIN still works? *(Nov 19)*
 - [ ] **Turn `testEscape` off** on a room once it is trusted (rebuild with it false). *(Nov 19)*
-- [ ] **Lock-screen wording** — currently "Session time has ended. / Please see the front desk." Eli to confirm. *(Nov 19)*
+- [x] ~~Lock-screen wording~~ — look B picked and built, v1.58.4. *(Nov 19)*
+- [ ] **Real logo file** — the lock screen draws a redraw of the wave lockup. Put Eli's file at `scripts/room-lock/logo.png` (dark on clear), rebuild, reinstall. *(Nov 19)*
+- [ ] **Warning banner wording** — still "Session ends in … see the front desk to add time"; match it to the lock screen? *(Nov 19)*
 - [ ] **Next round:** start the warning automatically 30 minutes before the booked end on the work order. *(Nov 19)*
 - [ ] **Phase 2 (Eli):** QuickBooks merchant-services payment link on the lock screen. *(Nov 19)*
 - [ ] **Parked:** speaker / headphone cut (mute relay after the console; power relay on the headphone amp). Until then a client's own laptop and the aux cord still make sound. *(Nov 19)*

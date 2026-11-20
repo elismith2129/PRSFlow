@@ -52,11 +52,18 @@ echo "Building…"
 # Build for BOTH kinds of Mac (Apple chip and Intel) and glue them into one
 # program. The first install (Nov 19) was Apple-only and went onto an Intel
 # Mac Pro, where it could not start at all.
+# Oldest macOS it will run on: 10.15 Catalina (Intel), 11 Big Sur (Apple chip).
 TMP="$(mktemp -d)"
-swiftc -O -target arm64-apple-macos12.0  "$HERE/main.swift" -o "$TMP/arm64"
-swiftc -O -target x86_64-apple-macos12.0 "$HERE/main.swift" -o "$TMP/x86_64"
+swiftc -O -target arm64-apple-macos11.0  "$HERE/main.swift" -o "$TMP/arm64"
+swiftc -O -target x86_64-apple-macos10.15 "$HERE/main.swift" -o "$TMP/x86_64"
 lipo -create -output "$OUT/PRSFloRoomLock" "$TMP/arm64" "$TMP/x86_64"
 rm -rf "$TMP"
+
+# The headline font (Archivo Black, open licence — fonts/OFL.txt) and, if there
+# is one, the real logo file (scripts/room-lock/logo.png, dark on clear).
+mkdir -p "$OUT/fonts"
+cp "$HERE/fonts/"*.ttf "$OUT/fonts/"
+if [ -f "$HERE/logo.png" ]; then cp "$HERE/logo.png" "$OUT/logo.png"; fi
 
 # testEscape: TEST ROOMS ONLY. Control+Option+Command+U clears a lock at the
 # room. Set it to false (and re-run the installer) once the room is trusted.
@@ -84,6 +91,8 @@ mkdir -p "$DEST" "$HOME/Library/LaunchAgents"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 cp "$SRC/PRSFloRoomLock" "$DEST/PRSFloRoomLock"
 cp "$SRC/config.json" "$DEST/config.json"
+rm -rf "$DEST/fonts"; if [ -d "$SRC/fonts" ]; then cp -R "$SRC/fonts" "$DEST/fonts"; fi
+rm -f "$DEST/logo.png"; if [ -f "$SRC/logo.png" ]; then cp "$SRC/logo.png" "$DEST/logo.png"; fi
 chmod 700 "$DEST"; chmod 755 "$DEST/PRSFloRoomLock"; chmod 600 "$DEST/config.json"
 xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
 

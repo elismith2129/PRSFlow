@@ -422,6 +422,13 @@ Mac was a Mac Studio) and the installer never checked. Calling the database by h
 Mac returned the right answer, so the server side is proven. Fixed: build for both chips; the
 installer now checks and reports.
 
+**The lock screen's look (v1.58.4).** Eli: "needs to say the paid time has ended, please see
+the front desk to extend and pay for the overtime ... i want our logo and stuff too." Three
+mocks (`docs/design-refs/room-lock-screen-options.html`): A centered (Claude's lean), B split,
+C the wave. Eli: "B is great lets run it." Built as shown, with B's wording. The logo is a
+redraw until Eli supplies the file. Claude added "Your session is still open. Nothing has been
+lost." to all three — it answers "you deleted my session" without claiming anything was saved.
+
 **Claude's own calls (flag if wrong).**
 - The 30-minute warning is a **button** staff presses, not automatic from the booked end
   time. Eli asked for manual lock/unlock this round; tying it to the work order is next.
