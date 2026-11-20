@@ -405,6 +405,9 @@ Studio that makes the computer unusable until staff clears it, controllable from
 - The PIN is changed live from the Rooms page ("a very easy interface to change this pin").
 - "ultimately i want it to be done from the office computer since thats where clients pay."
 - A 30-minute warning, then "Session time has ended."
+- Same evening: "the banner warning should be click out able." A click closes the banner.
+  It comes back at 15 minutes left (Eli: "maybe another 15 minute warning") and at 5 (Claude's
+  call), each clickable away.
 
 **Claude's own calls (flag if wrong).**
 - The 30-minute warning is a **button** staff presses, not automatic from the booked end

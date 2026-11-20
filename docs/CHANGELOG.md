@@ -20,6 +20,12 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.58.1 — Room lock: the warning banner can be clicked away — Nov 19, 2026
+
+**What.** Eli: "the banner warning should be click out able" and "maybe another 15 minute warning." A click on the banner closes it; it returns at 15 minutes left and at 5, each closable. The banner is now a non-activating panel so the click does not take the keyboard from Pro Tools. **Agent only** (`scripts/room-lock/main.swift`) — no migration, no page change. **A room only gets this after its folder is rebuilt and reinstalled.** Still never compiled or run.
+
+---
+
 ## v1.58.0 — Room lock: lock / unlock a room's Mac from the office — Nov 19, 2026
 
 **Why.** COD clients running unpaid overtime at 3am (Eli). Round one: screen lock only, manual, one test room (Paramount · Studio A).
@@ -30,6 +36,7 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 **Watch-outs.**
 - **The Mac agent has never been compiled or run.** Treat the first build as the test.
+- The warning banner closes on a click (non-activating panel, so Pro Tools keeps the keyboard) and returns at 15 and at 5 minutes left. Changing `main.swift` means rebuilding and reinstalling on each room.
 - Nothing writes these tables directly — there are no insert/update policies on purpose. Add an act by adding to the functions.
 - `room_locks.agent_key` is a secret per room. It is visible to owners/managers (the Set-up dialog prints it). The built folder on the Desktop holds it; it is written outside the repo so it cannot be committed.
 - `testEscape: true` is baked into every built `config.json` (Control+Option+Command+U clears a lock). Set false before a room is trusted.

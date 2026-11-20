@@ -5,7 +5,8 @@
 //
 // Every 3 seconds it asks PRSFlo "what state is my room in?" and does one of:
 //   unlocked  nothing on screen
-//   warning   a small countdown banner at the top of the screen; when the
+//   warning   a small countdown banner at the top of the screen; a click
+//             closes it (it returns at 15 and at 5 minutes left); when the
 //             countdown runs out it locks by itself, internet or not
 //   locked    a black screen over every display, above every app; keyboard and
 //             mouse go nowhere; the Mac's sound is muted. Pro Tools keeps
@@ -78,6 +79,15 @@ final class LockView: NSView {
     override func draw(_ dirtyRect: NSRect) { NSColor.black.setFill(); dirtyRect.fill() }
 }
 
+/// The warning banner. A click anywhere on it closes it (Eli, 2026-11-19: "the
+/// banner warning should be click out able").
+final class BannerView: NSView {
+    weak var agent: Agent?
+    override func hitTest(_ point: NSPoint) -> NSView? { self }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseDown(with event: NSEvent) { agent?.dismissBanner() }
+}
+
 final class Agent: NSObject, NSApplicationDelegate {
     var config: Config!
     var saved = Saved()
@@ -85,6 +95,8 @@ final class Agent: NSObject, NSApplicationDelegate {
     var lockWindows: [LockWindow] = []
     var banner: NSWindow?
     var bannerLabel: NSTextField?
+    var dismissedFor: Double? = nil     // which warning (its lock time) was clicked away
+    var hideUntilLeft: Int? = nil       // stay hidden until this many seconds are left (-1 = for good)
     var typed = ""
     var lastKeyAt = Date.distantPast
     var ticks = 0
@@ -276,21 +288,31 @@ final class Agent: NSObject, NSApplicationDelegate {
     func showBanner() {
         guard let at = saved.lockAt else { return }
         let left = max(0, Int(at - serverNow))
-        let text = String(format: "Session ends in %d:%02d  ·  see the front desk to add time", left / 60, left % 60)
+        // Clicked away? It stays away, but comes back at 15 minutes left and
+        // again at 5 (Eli: "maybe another 15 minute warning"), so the lock is
+        // never a surprise. Each return can be clicked away too. A new
+        // warning starts fresh.
+        if dismissedFor != at { dismissedFor = nil; hideUntilLeft = nil }
+        if let h = hideUntilLeft, left > h { hideBanner(); return }
+        let text = String(format: "Session ends in %d:%02d  ·  see the front desk to add time    ✕", left / 60, left % 60)
         if let l = bannerLabel { l.stringValue = text; return }
 
         guard let screen = NSScreen.main else { return }
-        let size = NSSize(width: 560, height: 46)
+        let size = NSSize(width: 600, height: 46)
         let origin = NSPoint(x: screen.frame.midX - size.width / 2, y: screen.visibleFrame.maxY - size.height - 10)
-        let w = NSWindow(contentRect: NSRect(origin: origin, size: size), styleMask: .borderless, backing: .buffered, defer: false)
+        // A non-activating panel: clicking it does NOT pull the keyboard away
+        // from Pro Tools.
+        let w = NSPanel(contentRect: NSRect(origin: origin, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        w.becomesKeyOnlyIfNeeded = true
         w.level = .statusBar
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         w.isOpaque = false
         w.backgroundColor = .clear
-        w.ignoresMouseEvents = true      // clicks pass straight through to Pro Tools
+        w.ignoresMouseEvents = false     // a click on the banner closes it
         w.hasShadow = true
         w.isReleasedWhenClosed = false
-        let box = NSView(frame: NSRect(origin: .zero, size: size))
+        let box = BannerView(frame: NSRect(origin: .zero, size: size))
+        box.agent = self
         box.wantsLayer = true
         box.layer?.backgroundColor = NSColor(red: 1.0, green: 0.66, blue: 0.30, alpha: 0.97).cgColor
         box.layer?.cornerRadius = 23
@@ -309,6 +331,15 @@ final class Agent: NSObject, NSApplicationDelegate {
         banner = w
         bannerLabel = l
         log("Showing the warning banner")
+    }
+
+    func dismissBanner() {
+        guard let at = saved.lockAt else { return }
+        dismissedFor = at
+        let left = Int(at - serverNow)
+        hideUntilLeft = [900, 300].first { $0 < left } ?? -1
+        log("Warning banner clicked away")
+        hideBanner()
     }
 
     func hideBanner() {
