@@ -5,6 +5,27 @@ says what's still owed. Add when something is parked, strike when it ships
 (move it to the CHANGELOG), and date every line so stale items are obvious.
 Newest at the top of each group.*
 
+## Room lock (Nov 19, v1.58.0)
+
+- [ ] **Run the migration** `20261119150000_room_locks.sql` before the push; expect `rooms_ready = 11`. *(Nov 19)*
+- [ ] **Build and install the Studio A agent** — Room lock → Studio A → Set up this room → paste the line on Eli's Mac → AirDrop the Desktop folder to the room → README. Try it on Eli's own Mac first. *(Nov 19)*
+- [ ] **Test list for Studio A:** dot goes green · 30-min warning shows the banner · Lock now covers every screen · **press spacebar while locked — does Pro Tools play?** · blind PIN + Return clears it · Unlock from PRSFlo clears it · restart the Mac while locked — does it come back locked? · pull the network cable while locked — PIN still works? *(Nov 19)*
+- [ ] **Turn `testEscape` off** on a room once it is trusted (rebuild with it false). *(Nov 19)*
+- [ ] **Lock-screen wording** — currently "Session time has ended. / Please see the front desk." Eli to confirm. *(Nov 19)*
+- [ ] **Next round:** start the warning automatically 30 minutes before the booked end on the work order. *(Nov 19)*
+- [ ] **Phase 2 (Eli):** QuickBooks merchant-services payment link on the lock screen. *(Nov 19)*
+- [ ] **Parked:** speaker / headphone cut (mute relay after the console; power relay on the headphone amp). Until then a client's own laptop and the aux cord still make sound. *(Nov 19)*
+- [ ] **Hardening before real use:** room sessions on a non-admin macOS account; SOP page for staff. *(Nov 19)*
+
+## Wrap-up, Nov 18 — the open threads in one place
+
+- [ ] **Invoice quick view on the billing hub** — mocked (`docs/design-refs/invoice-quick-view-options.html`: A popover under a PDF chip beside the WO number, B right-hand drawer that steps through rows). Claude's lean: B. **Eli's pick owed**, then build. *(Nov 18)*
+- [ ] **TV walls — the real path is the WordPress plugin.** The Nov 11 diagnosis was wrong in one respect: there is no display machine in the buildings and `scripts/display-proxy.mjs` is not what the panels use — they reach PRSFlo through the `prsflow-display` plugin on paramountrecordingla.com (`wordpress/prsflow-display-proxy.php`). The Nov 11 outage was that site's `nav-forge` plugin fatal-erroring (host log), not the Vercel firewall. **Still to do:** move the shared `/display/probe` poll and the don't-park-on-5xx retry into the PHP plugin; retire the Node script (or mark it dev-only in its header). *(Nov 18)*
+- [ ] **Calendar ↔ CRM linked string (v1.57.0) — tell the front desk**: a hold now needs a client on file before it saves; Start Booking on a lead with a hold reads Open Hold. *(Nov 18)*
+- [ ] **Business registration (v1.56.0) — send one real link** (see the group below). *(Nov 18)*
+- [ ] **Billing SOP walkthrough** is now four versions behind (Deleted WOs tab, Total + Balance, Notes button, × delete day / + Add room, PO requested, bounced COD → Needs review). One redraw pass. *(Nov 18)*
+- [ ] **"To run" groups from Oct 13–28 below** — Eli to confirm which of those migrations actually ran (`select * from pg_policies` / `\d` the tables) and strike them; the list has grown past what anyone will read. *(Nov 18)*
+
 ## Business registration (Nov 16, v1.56.0)
 
 - [ ] **Send one real business link and read it back** — pick a Billing lead, Send Reg → Business, fill it as the label would, then check the client: contacts on the profile, AP card on a work order says PO / send method, Registration Record shows the business block. *(Nov 16)*
@@ -158,7 +179,7 @@ Newest at the top of each group.*
 
 ## Infrastructure
 
-- [x] ~~**TV walls: one shared probe instead of eleven.**~~ Built Nov 11 (v1.54.0) after the walls went 503. **Still to do: (1) Vercel → Project → Firewall → add a bypass rule for path `/display/*`; (2) restart `node scripts/display-proxy.mjs` on each building's display machine (PRS, ARS, ERS, TRS) — until then that building's walls still forward every probe.** *(Nov 11)* Original note: *(Oct 6: `POLL_MS` 5s → 15s as a stopgap - usage was $16.38 in ten days, ~240k calls/day. Check the next Vercel export: calls should sit near 80k/day. Still open: the shared probe, and/or remembering the probe answer in memory for a few seconds.)* Every panel polls its own `/display/<room>?probe=1` every 5 s with a cache-buster — 11 panels ≈ 190k function calls/day, and that's the Sep 8 step in the Vercel bill (invocations, CPU, memory). Fix: a single `/display/version` hash all panels hit, `s-maxage=5` so the CDN answers once per 5 s for the building; any booking edit refreshes every panel (harmless). **The catch, and why it's parked:** the panels reach Vercel through the WordPress proxy, which only forwards the `/display/<room>` paths — so a new path means touching the proxy and re-entering the URL on 11 signage panels, which Eli does by hand: "updating the TV URLs is such a bitch." Do it the next time the panels have to be touched anyway. Until then the cost is a few dollars a month. *(Sep 17)*
+- [x] ~~**TV walls: one shared probe instead of eleven.**~~ Built Nov 11 (v1.54.0) in the Node script — **but that script is not the live path; see the Nov 18 wrap-up item at the top.** The Vercel firewall bypass for `/display/*` is still worth adding as belt-and-braces. *(Nov 11)* Original note: *(Oct 6: `POLL_MS` 5s → 15s as a stopgap - usage was $16.38 in ten days, ~240k calls/day. Check the next Vercel export: calls should sit near 80k/day. Still open: the shared probe, and/or remembering the probe answer in memory for a few seconds.)* Every panel polls its own `/display/<room>?probe=1` every 5 s with a cache-buster — 11 panels ≈ 190k function calls/day, and that's the Sep 8 step in the Vercel bill (invocations, CPU, memory). Fix: a single `/display/version` hash all panels hit, `s-maxage=5` so the CDN answers once per 5 s for the building; any booking edit refreshes every panel (harmless). **The catch, and why it's parked:** the panels reach Vercel through the WordPress proxy, which only forwards the `/display/<room>` paths — so a new path means touching the proxy and re-entering the URL on 11 signage panels, which Eli does by hand: "updating the TV URLs is such a bitch." Do it the next time the panels have to be touched anyway. Until then the cost is a few dollars a month. *(Sep 17)*
 - [ ] **Flo cron JSON** — the 8:50 briefing cron's schedule file. *(Sep 16)*
 
 ## Features parked

@@ -20,6 +20,28 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.58.0 — Room lock: lock / unlock a room's Mac from the office — Nov 19, 2026
+
+**Why.** COD clients running unpaid overtime at 3am (Eli). Round one: screen lock only, manual, one test room (Paramount · Studio A).
+
+**What.** `/rooms` (Admin → Room lock; owner/manager): a fixed-size card per room with 30-min warning / Lock now / Unlock, the staff PIN panel (show, change), and a log. A Mac agent per room polls the database every 3s and shows a countdown banner (warning) or a full lock screen (locked). The staff PIN clears a lock at the room; it is typed blind — there is no PIN box on the lock screen, by ruling.
+
+**Migration — run BEFORE the push:** `20261119150000_room_locks.sql`. Tables `room_locks` (11 rooms seeded), `room_lock_settings` (one row, random starting PIN), `room_lock_log`. Functions `room_lock_set`, `room_lock_set_pin` (owner/manager), `room_lock_poll`, `room_lock_pin_unlock` (callable without a login, but only with the room's key). Ends with `rooms_ready = 11`.
+
+**Watch-outs.**
+- **The Mac agent has never been compiled or run.** Treat the first build as the test.
+- Nothing writes these tables directly — there are no insert/update policies on purpose. Add an act by adding to the functions.
+- `room_locks.agent_key` is a secret per room. It is visible to owners/managers (the Set-up dialog prints it). The built folder on the Desktop holds it; it is written outside the repo so it cannot be committed.
+- `testEscape: true` is baked into every built `config.json` (Control+Option+Command+U clears a lock). Set false before a room is trusted.
+- The Mac's mute is the system output mute. Hardware monitoring, the console, the aux cord and a client's laptop ignore it.
+- A room card says "Not set up" until its Mac has checked in once (`agent_seen_at`), "offline" after 90s of silence.
+- A warning that has run out is treated as locked by the page and the Mac even before the database row flips (the flip happens on the Mac's next check-in).
+- The agent's Mac build needs Apple's command-line developer tools (`xcode-select --install`).
+
+**Files.** `app/(main)/rooms/page.tsx` · `scripts/room-lock/main.swift` · `scripts/room-lock/build.sh` · `components/layout/Rail.tsx` · `lib/navMemory.ts` · `supabase/migrations/20261119150000_room_locks.sql` · mock `docs/design-refs/room-lock-options.html`.
+
+---
+
 ## v1.57.0 — Calendar ↔ CRM: holds are Hot leads, confirms flip them to Booked — Nov 17, 2026
 
 **Why.** A staff member noticed calendar bookings "also" appear in the CRM and Eli asked whether that was logic or a person. It was logic (v1.37, Sep 18) — but only for *confirmed* sessions. Eli: "a gap we have is last minute sessions that are a client calling and confirming on the spot, go straight to the cal... it does miss the record as an inquiry. when a session gets added to the cal it goes on the CRM based on its status. tentative = hot lead, confirmed = booked, and the CRM auto-switches to booked once we change it on cal."
@@ -107,6 +129,8 @@ Applies whether the lead came first (Start Booking from the CRM) or the session 
 **Migrations:** none. **Files:** `lib/billing.ts`, `components/calendar/WorkOrderPopup.tsx`, `app/(main)/billing/page.tsx`.
 
 ## v1.54.0 — TV walls: one shared probe per building; proxy never parks on a 5xx — Nov 11, 2026
+
+> **Correction (Nov 18).** The diagnosis below was wrong about the cause and the path. The panels do not use `scripts/display-proxy.mjs` — there is no display machine in the buildings; they go through the `prsflow-display` WordPress plugin (`wordpress/prsflow-display-proxy.php`) on paramountrecordingla.com. The outage was that site's `nav-forge` plugin fatal-erroring (host error log). The probe route and `lib/displayHash.ts` are real and stay; the shared poll + 5xx retry still need to be ported into the PHP plugin (TODO, Nov 18).
 
 **Why.** Every wall went to "503 Service Unavailable" at 5:26 PM; `/display/*` returned Vercel's "This request was blocked · 403" in a browser while the app itself was fine — Vercel's abuse protection on a path that eleven panels polled every 15s (~63k calls/day; the Oct 6 TODO). The proxy also passed the error page straight to the panels, which never retry on their own, so the walls stayed stuck after the block lifted.
 

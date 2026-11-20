@@ -47,7 +47,7 @@ export const PAGE_NAMES: Record<string, string> = {
   '/ap-protocols': 'Client AP protocols', '/memos': 'Memos', '/shift-notes': 'Shift notes',
   '/daily-ops': 'Daily ops', '/runner': 'Runner hub', '/mic-inventory': 'Mic inventory',
   '/engineers': 'Engineers', '/nadines': "Nadine's", '/punches': 'Punches', '/hiring': 'Hiring',
-  '/training': 'Training', '/rates': 'Rates', '/positions': 'Positions', '/feedback': 'DEV',
+  '/training': 'Training', '/rates': 'Rates', '/positions': 'Positions', '/rooms': 'Room lock', '/feedback': 'DEV',
 }
 export function pageName(base: string): string {
   return PAGE_NAMES[base] ?? base.replace(/^\//, '').replace(/-/g, ' ')

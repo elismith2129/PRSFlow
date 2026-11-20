@@ -113,6 +113,9 @@ const GROUPS: RailItem[] = [
       { href: '/rates', label: 'Rates', ic: '·' },
       // Job titles and what each carries — read by Hiring.
       { href: '/positions', label: 'Positions', ic: '·' },
+      // Room lock (2026-11-19) — lock / unlock a room's Mac. Owner/manager
+      // only (filtered below; RLS and the database functions say the same).
+      { href: '/rooms', label: 'Room lock', ic: '·' },
     ],
   },
 ]
@@ -198,6 +201,9 @@ export function Rail({ hiddenForWelcome = false }: { hiddenForWelcome?: boolean 
       && profile?.role !== 'manager'
       && profile?.role !== 'billing') return false
     if (item.href === '/lakers' && profile?.role !== 'owner' && !isEli) return false
+    if (item.href === '/rooms'
+      && profile?.role !== 'owner'
+      && profile?.role !== 'manager') return false
     if (item.href === '/rates'
       && profile?.role !== 'owner'
       && profile?.role !== 'manager'

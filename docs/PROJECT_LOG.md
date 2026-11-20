@@ -381,6 +381,77 @@ See the "Security hardening" Decisions Log subsection for what shipped. Original
 
 ## 4. Session Notes
 
+### November 19, 2026 — Room lock: a switch in the office for each room's Mac (v1.58.0, NOT YET TESTED ON A MAC)
+
+**Why.** Eli: "an issue we have with some of our COD clients is they book six hours and then
+they wanna go overtime. It's three in the morning. All I have is minimal staff ... they won't
+pay, and they'll continue to go, and then leave." He asked for something on each room's Mac
+Studio that makes the computer unusable until staff clears it, controllable from anywhere.
+
+**What was built (round one — Eli: "on the just computer shut down ... test it on one room").**
+- `/rooms` (Admin → Room lock), option A of `docs/design-refs/room-lock-options.html`: one
+  fixed-size card per room. Three acts: **30-min warning**, **Lock now**, **Unlock**. Owners
+  and managers. A log of every act underneath.
+- A small Mac program (`scripts/room-lock/main.swift`) that asks PRSFlo every 3 seconds what
+  state its room is in. Warning = an orange countdown banner over Pro Tools, then it locks by
+  itself. Locked = black screen over every display, keyboard and mouse blocked, Mac muted.
+  Pro Tools keeps running underneath.
+- Test room: **Paramount · Studio A** (`prs-a`).
+
+**Eli's rulings.**
+- The staff PIN must work at the room but **must not be visible**: "if it exists on the
+  screen, clients will bully my staff into just clearing it." So the lock screen has no PIN
+  box; staff types six digits blind and presses Return. No feedback on a wrong try.
+- The PIN is changed live from the Rooms page ("a very easy interface to change this pin").
+- "ultimately i want it to be done from the office computer since thats where clients pay."
+- A 30-minute warning, then "Session time has ended."
+
+**Claude's own calls (flag if wrong).**
+- The 30-minute warning is a **button** staff presses, not automatic from the booked end
+  time. Eli asked for manual lock/unlock this round; tying it to the work order is next.
+- One staff PIN for all rooms, not one per room.
+- The Mac never holds the PIN, only a one-way scramble of it mixed with that room's key, so
+  the PIN still works with the internet down and reading the Mac's files does not reveal it.
+- The Mac polls the database directly (a function that needs the room's key) rather than a
+  Vercel route: eleven rooms every 3 seconds would be ~9.5M Vercel calls a month.
+- If the internet drops, the Mac stays in its last state. An outage never locks a session.
+- State is saved on the Mac and the program restarts itself and starts at login, so a
+  restart while locked comes back locked.
+- `testEscape` in the Mac's config: Control+Option+Command+U clears a lock. On for the test
+  room so an untested build cannot trap the machine. Turn off before trusting a room.
+
+**Rejected / parked.**
+- A visible PIN pad on the lock screen — rejected by Eli (above).
+- Speaker / headphone hardware cut — parked. Without it, a client on their own laptop, the
+  aux cord, or hardware monitoring still makes sound.
+- QuickBooks merchant-services payment link on the lock screen — Eli: "phase 2."
+- Auto-lock at the end of booked time; card-on-file overtime — discussed, not built.
+
+**Not verified.** The Swift was written without a Mac to compile or run it on. First real
+test is Eli building it. Known unknown: on recent macOS an app cannot always take keyboard
+focus from another app, so check whether the spacebar still plays Pro Tools while locked.
+
+### November 18, 2026 — Wrap-up, and a correction to Nov 11's TV-walls entry
+
+**Correction.** The Nov 11 entry blames Vercel's firewall and fixes the Node display proxy.
+Eli, same day: "nope no computer. i think you need to read the logs." There is no display
+machine in the buildings; the panels reach PRSFlo through the `prsflow-display` WordPress
+plugin on paramountrecordingla.com (`wordpress/prsflow-display-proxy.php`), and the host's
+error log showed the real cause — that site's `nav-forge` plugin fatal-erroring, which took
+every wall down while paramountrecording.com (a separate site) stayed up. The shared-probe
+idea is still right; it has to land in the PHP plugin to count. `scripts/display-proxy.mjs`
+is dead code until then. Lesson for the log: when the walls fail, read the host's log before
+the app's — the app was never the thing that broke.
+
+**State at wrap-up.** v1.50.0 → v1.57.0 shipped Nov 5–17 (18 commits): blanket-day OT,
+$0 COD approvals, owner briefing scope, nav memory + return pill + calendar peek, Deleted
+WOs tab, no-duplicate day rows + multi-room days, Total + Balance on approval rows, Notes
+button, approval box sizing, save-merges-first, Financials timeout, reopened = in progress,
+PO requested, All-Stars pill, queue cards, business registration, bounced COD → Needs
+review, calendar ↔ CRM linked string. Open: invoice quick view (mock out), TV probe into
+PHP, Billing SOP walkthrough redraw, RLS per-row audit, the parked "bill change reopens"
+idea. `docs/TODO.md` has the list.
+
 ### November 17, 2026 — Calendar ↔ CRM linked string (v1.57.0)
 
 Staff thought calendar bookings "magically" land in the CRM; it was the Sep 18 hook, confirmed-only.
