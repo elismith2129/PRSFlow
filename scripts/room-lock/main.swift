@@ -101,6 +101,7 @@ final class Agent: NSObject, NSApplicationDelegate {
     var lastKeyAt = Date.distantPast
     var ticks = 0
     var polling = false
+    var lastFailLog = Date.distantPast
 
     // ── start ────────────────────────────────────────────────────────────────
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -157,10 +158,20 @@ final class Agent: NSObject, NSApplicationDelegate {
         req.setValue(config.anonKey, forHTTPHeaderField: "apikey")
         req.setValue("Bearer \(config.anonKey)", forHTTPHeaderField: "Authorization")
         req.httpBody = try? JSONSerialization.data(withJSONObject: ["p_room": config.room, "p_key": config.key])
-        URLSession.shared.dataTask(with: req) { data, resp, _ in
-            let ok = (resp as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        URLSession.shared.dataTask(with: req) { data, resp, err in
+            let code = (resp as? HTTPURLResponse)?.statusCode
+            let ok = code.map { (200..<300).contains($0) } ?? false
             let obj = data.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]
-            DispatchQueue.main.async { done(obj, ok) }
+            DispatchQueue.main.async {
+                // A failed check-in is written to agent.log, at most once a
+                // minute, so "why is the dot not green" has an answer on disk.
+                if !ok, Date().timeIntervalSince(self.lastFailLog) > 60 {
+                    self.lastFailLog = Date()
+                    let body = data.flatMap { String(data: $0, encoding: .utf8) }?.prefix(300) ?? ""
+                    log("\(name) FAILED: \(code.map { "HTTP \($0)" } ?? "no answer") \(err?.localizedDescription ?? "") \(body)")
+                }
+                done(obj, ok)
+            }
         }.resume()
     }
 

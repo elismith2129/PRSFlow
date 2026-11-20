@@ -21,6 +21,16 @@
 // it. The PIN is changed live from the panel at the top of this page.
 //
 // EVERY CARD IS ONE FIXED SIZE (house rule, 2026-10-05).
+//
+// ENCORE AND TRACK ARE HIDDEN BY DEFAULT (Eli, 2026-11-19: "dont need track or
+// encore ... we dont operate those now. maybe make it hideable"). A line under
+// the cards says they are hidden and shows them again; the choice is
+// remembered on this browser. A hidden studio with a room that is locked or in
+// its warning is shown anyway — nothing locked is ever out of sight.
+//
+// THE PAGE FITS ONE SCREEN on an office computer (same message: "all rooms
+// sized so you can see them without scrolling"): Paramount's five on one row,
+// Ameraycan's two under it, a slim PIN bar, a short log that scrolls inside.
 // Owners + managers (RLS and the functions say the same; migration
 // 20261119150000). Rail item under Admin.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,7 +58,10 @@ type LogLine = { id: string; room_slug: string | null; action: string; by_name: 
 
 const lbl: CSSProperties = { fontSize: 9.5, fontWeight: 800, letterSpacing: '.11em', textTransform: 'uppercase', opacity: 0.45 }
 const CARD_W = 210
-const CARD_H = 206
+const CARD_H = 184
+/** Studios not operating right now — hidden unless shown (see header). */
+const HIDDEN_BY_DEFAULT = ['Encore', 'Track']
+const SHOW_ALL_KEY = 'prsflo.rooms.showAll'
 /** A Mac that has not checked in for this long is shown as offline. It checks
  *  in every 3s and the stamp moves every 20s, so 90s is several misses. */
 const OFFLINE_AFTER_MS = 90_000
@@ -75,6 +88,12 @@ export default function RoomsPage() {
   const [confirmLock, setConfirmLock] = useState<RoomLock | null>(null)
   const [setupFor, setSetupFor] = useState<RoomLock | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [showAll, setShowAll] = useState(false)
+  useEffect(() => { try { setShowAll(localStorage.getItem(SHOW_ALL_KEY) === '1') } catch { /* private mode */ } }, [])
+  const toggleShowAll = () => setShowAll(v => {
+    try { localStorage.setItem(SHOW_ALL_KEY, v ? '0' : '1') } catch { /* private mode */ }
+    return !v
+  })
 
   const load = useCallback(async () => {
     const [r, s, l] = await Promise.all([
@@ -141,7 +160,7 @@ export default function RoomsPage() {
       <PageTop crumb="Admin" title="Room lock" />
 
       {/* THE STAFF PIN — typed blind on a locked room's keyboard, then Return. */}
-      <div className="c-panel" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, padding: '12px 16px', marginBottom: 18 }}>
+      <div className="c-panel" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, padding: '8px 16px', marginBottom: 12 }}>
         <div style={{ minWidth: 150 }}>
           <div style={lbl}>Staff PIN</div>
           <div className="c-mono" style={{ fontSize: 20, letterSpacing: '.18em', marginTop: 2 }}>
@@ -149,7 +168,9 @@ export default function RoomsPage() {
           </div>
         </div>
         <button className="c-soft c-control c-raised" onClick={() => setPinShown(v => !v)}>{pinShown ? 'Hide' : 'Show'}</button>
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minWidth: 180, fontSize: 11.5, opacity: 0.5, lineHeight: 1.4 }}>
+          Not shown on the lock screen. On a locked room, type the six digits on that room&apos;s keyboard and press Return.
+        </div>
         <input
           className="c-input c-mono"
           inputMode="numeric" maxLength={6} placeholder="New six digits"
@@ -159,9 +180,6 @@ export default function RoomsPage() {
           style={{ width: 150, textAlign: 'center', letterSpacing: '.14em' }}
         />
         <button className="c-btn c-control c-raised-primary" disabled={newPin.length !== 6} style={{ opacity: newPin.length === 6 ? 1 : 0.4 }} onClick={savePin}>Change PIN</button>
-        <div style={{ flexBasis: '100%', fontSize: 11.5, opacity: 0.5 }}>
-          The lock screen shows no PIN box. On a locked room, type the six digits on that room&apos;s keyboard and press Return.
-        </div>
       </div>
 
       {loading && <div style={{ opacity: 0.5 }}>Loading…</div>}
@@ -171,9 +189,12 @@ export default function RoomsPage() {
           .map(studio => rooms.find(r => r.location === loc.name && r.studio === studio))
           .filter((r): r is RoomLock => !!r)
         if (!list.length) return null
+        // Hidden studios stay hidden only while every room in them is plainly unlocked.
+        const quiet = list.every(r => r.state === 'unlocked')
+        if (!showAll && HIDDEN_BY_DEFAULT.includes(loc.name) && quiet) return null
         return (
-          <div key={loc.name} style={{ marginBottom: 18 }}>
-            <div style={{ ...lbl, marginBottom: 8 }}>{loc.name}</div>
+          <div key={loc.name} style={{ marginBottom: 12 }}>
+            <div style={{ ...lbl, marginBottom: 6 }}>{loc.name}</div>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, ${CARD_W}px)`, gap: 12 }}>
               {list.map(r => {
                 const setUp = !!r.agent_seen_at
@@ -186,7 +207,7 @@ export default function RoomsPage() {
                 const isBusy = busy === r.room_slug
                 return (
                   <div key={r.room_slug} style={{
-                    width: CARD_W, height: CARD_H, borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column',
+                    width: CARD_W, height: CARD_H, borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column',
                     background: 'var(--c-srf, var(--c-bg))',
                     boxShadow: locked ? 'inset 0 0 0 2px var(--c-st-hot), 0 8px 22px rgba(0,0,0,.22)'
                       : warning ? 'inset 0 0 0 2px var(--c-st-warm), 0 8px 22px rgba(0,0,0,.22)'
@@ -202,7 +223,7 @@ export default function RoomsPage() {
                         {!setUp ? 'Not set up' : locked ? 'Locked' : warning ? `Locks in ${fmtLeft(left)}` : 'Unlocked'}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, opacity: 0.5, marginTop: 3, height: 34, overflow: 'hidden', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 11, opacity: 0.5, marginTop: 3, height: 31, overflow: 'hidden', lineHeight: 1.4 }}>
                       {!setUp ? 'No Mac connected yet'
                         : !online ? 'Mac offline — it will catch up when it is back'
                         : r.changed_by ? `${r.changed_by} · ${fmtWhen(r.changed_at)}` : ''}
@@ -229,9 +250,19 @@ export default function RoomsPage() {
         )
       })}
 
+      {/* Nothing is hidden silently: this line says what is, and undoes it. */}
+      {!loading && (
+        <div style={{ fontSize: 11.5, opacity: 0.55, marginBottom: 10 }}>
+          {showAll ? 'Showing every studio.' : `${HIDDEN_BY_DEFAULT.join(' and ')} are hidden (not operating).`}{' '}
+          <button onClick={toggleShowAll} style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+            {showAll ? `Hide ${HIDDEN_BY_DEFAULT.join(' and ')}` : 'Show them'}
+          </button>
+        </div>
+      )}
+
       {/* THE LOG — fixed height, scrolls inside. */}
-      <div style={{ ...lbl, margin: '8px 0' }}>Log</div>
-      <div className="c-panel" style={{ height: 220, overflowY: 'auto', padding: '8px 14px', fontSize: 12.5 }}>
+      <div style={{ ...lbl, margin: '4px 0 6px' }}>Log</div>
+      <div className="c-panel" style={{ height: 132, overflowY: 'auto', padding: '8px 14px', fontSize: 12.5 }}>
         {log.length === 0 && <div style={{ opacity: 0.45, padding: '8px 0' }}>Nothing yet.</div>}
         {log.map(l => (
           <div key={l.id} style={{ display: 'grid', gridTemplateColumns: '130px 190px 1fr', gap: 10, padding: '5px 0' }}>

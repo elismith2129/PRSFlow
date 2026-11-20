@@ -20,6 +20,14 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.58.2 — Room lock page: Encore and Track hidden, everything on one screen — Nov 19, 2026
+
+**What.** Eli: "dont need track or encore on the room lock admin page. we dont operate those now. maybe make it hideable ... all rooms sized so you can see them without scrolling." `HIDDEN_BY_DEFAULT = ['Encore','Track']` in `app/(main)/rooms/page.tsx`; a line under the cards says they are hidden and has Show them / Hide (remembered per browser, `localStorage` key `prsflo.rooms.showAll`). Cards 206 → 184 tall, PIN bar one line, log 220 → 132. No migration; the four rooms keep their rows.
+
+**Watch-outs.** A hidden studio is shown anyway while any room in it is locked or in its warning. When Encore or Track reopen, remove them from `HIDDEN_BY_DEFAULT`. "One screen" is for an office computer; a phone still scrolls.
+
+---
+
 ## v1.58.1 — Room lock: the warning banner can be clicked away — Nov 19, 2026
 
 **What.** Eli: "the banner warning should be click out able" and "maybe another 15 minute warning." A click on the banner closes it; it returns at 15 minutes left and at 5, each closable. The banner is now a non-activating panel so the click does not take the keyboard from Pro Tools. **Agent only** (`scripts/room-lock/main.swift`) — no migration, no page change. **A room only gets this after its folder is rebuilt and reinstalled.** Still never compiled or run.

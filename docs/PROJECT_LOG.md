@@ -409,6 +409,13 @@ Studio that makes the computer unusable until staff clears it, controllable from
   It comes back at 15 minutes left (Eli: "maybe another 15 minute warning") and at 5 (Claude's
   call), each clickable away.
 
+**Later the same evening (v1.58.2).** Eli: "dont need track or encore on the room lock admin
+page. we dont operate those now. maybe make it hideable." and "all rooms sized so you can see
+them without scrolling." Encore and Track are hidden by default behind a visible "Show them"
+line (remembered per browser) — Claude's call over deleting their rows, so they come back with
+one click. A hidden studio still appears if one of its rooms is locked. Cards, PIN bar and log
+were shortened so Paramount + Ameraycan fit one office screen.
+
 **Claude's own calls (flag if wrong).**
 - The 30-minute warning is a **button** staff presses, not automatic from the booked end
   time. Eli asked for manual lock/unlock this round; tying it to the work order is next.
