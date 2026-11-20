@@ -215,6 +215,13 @@ export default function RoomsPage() {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800, fontSize: 15 }}>
                       {r.studio}
+                      {/* The setup line stays reachable after a room is set up
+                          (2026-11-19: once the dot went green the only way to
+                          it was gone, and a rebuild needs it). */}
+                      {setUp && (
+                        <button title="Setup line for this room’s Mac" onClick={() => setSetupFor(r)}
+                          style={{ marginLeft: 'auto', marginRight: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', opacity: 0.4 }}>Setup</button>
+                      )}
                       <span title={!setUp ? 'No Mac connected yet' : online ? 'This room’s Mac is listening' : 'This room’s Mac is offline'}
                         style={{ width: 8, height: 8, borderRadius: 99, background: online ? 'var(--c-st-booked)' : 'var(--c-fg)', opacity: online ? 1 : 0.3 }} />
                     </div>

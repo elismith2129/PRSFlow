@@ -49,8 +49,14 @@ OUT="$HOME/Desktop/PRSFloRoomLock-$ROOM"
 rm -rf "$OUT"; mkdir -p "$OUT"
 
 echo "Building…"
-# Room Macs are Apple-silicon Mac Studios; build for that whatever this Mac is.
-swiftc -O -target arm64-apple-macos12.0 "$HERE/main.swift" -o "$OUT/PRSFloRoomLock"
+# Build for BOTH kinds of Mac (Apple chip and Intel) and glue them into one
+# program. The first install (Nov 19) was Apple-only and went onto an Intel
+# Mac Pro, where it could not start at all.
+TMP="$(mktemp -d)"
+swiftc -O -target arm64-apple-macos12.0  "$HERE/main.swift" -o "$TMP/arm64"
+swiftc -O -target x86_64-apple-macos12.0 "$HERE/main.swift" -o "$TMP/x86_64"
+lipo -create -output "$OUT/PRSFloRoomLock" "$TMP/arm64" "$TMP/x86_64"
+rm -rf "$TMP"
 
 # testEscape: TEST ROOMS ONLY. Control+Option+Command+U clears a lock at the
 # room. Set it to false (and re-run the installer) once the room is trusted.
@@ -96,8 +102,19 @@ cat > "$PLIST" <<PL
 PL
 
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
+# Do not SAY it is running — check. (The first installer printed "Installed and
+# running" on a Mac where the program could not start.)
+sleep 5
 echo
-echo "Installed and running. In PRSFlo → Room lock, this room's dot should turn green within a minute."
+if pgrep -f "PRSFloRoomLock/PRSFloRoomLock" >/dev/null; then
+  echo "Installed and RUNNING. In PRSFlo → Room lock, this room's dot should turn green within a minute."
+else
+  echo "INSTALLED BUT NOT RUNNING. Send everything below to Eli:"
+  echo "Mac: $(uname -m), macOS $(sw_vers -productVersion)"
+  file "$DEST/PRSFloRoomLock" | cut -c1-220
+  tail -5 "$DEST/agent.log" 2>/dev/null
+  launchctl print "gui/$(id -u)/$LABEL" 2>/dev/null | grep -iE "state =|last exit|spawn" | head -6
+fi
 SH
 
 cat > "$OUT/uninstall.command" <<'SH'

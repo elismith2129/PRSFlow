@@ -20,6 +20,12 @@ Four docs, four questions. Keeping them separate is the point — a single docum
 
 ---
 
+## v1.58.3 — Room lock agent: builds for Intel Macs too; the installer checks it started — Nov 19, 2026
+
+**Why.** First install, on an Intel Mac Pro: "Installed and running", no green dot. The program was built Apple-chip-only and never started; the database side answered correctly when called by hand. **What.** `build.sh` builds arm64 + x86_64 and joins them (`lipo`). `install.command` waits 5s and checks the process; if it is not running it prints the Mac type, macOS version, the log and launchd's last exit instead of claiming success. **Watch-out.** Needs macOS 12 or newer on the room Mac. Existing folders must be rebuilt. Also: every set-up card now has a small **Setup** link that reopens the setup line (it used to vanish once the room had checked in).
+
+---
+
 ## v1.58.2 — Room lock page: Encore and Track hidden, everything on one screen — Nov 19, 2026
 
 **What.** Eli: "dont need track or encore on the room lock admin page. we dont operate those now. maybe make it hideable ... all rooms sized so you can see them without scrolling." `HIDDEN_BY_DEFAULT = ['Encore','Track']` in `app/(main)/rooms/page.tsx`; a line under the cards says they are hidden and has Show them / Hide (remembered per browser, `localStorage` key `prsflo.rooms.showAll`). Cards 206 → 184 tall, PIN bar one line, log 220 → 132. No migration; the four rooms keep their rows.

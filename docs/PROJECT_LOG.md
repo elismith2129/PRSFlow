@@ -416,6 +416,12 @@ line (remembered per browser) — Claude's call over deleting their rows, so the
 one click. A hidden studio still appears if one of its rooms is locked. Cards, PIN bar and log
 were shortened so Paramount + Ameraycan fit one office screen.
 
+**First install (v1.58.3).** On an Intel Mac Pro the installer said "Installed and running"
+and the dot stayed grey. Cause: Claude built the program for Apple chips only (assumed every
+Mac was a Mac Studio) and the installer never checked. Calling the database by hand from that
+Mac returned the right answer, so the server side is proven. Fixed: build for both chips; the
+installer now checks and reports.
+
 **Claude's own calls (flag if wrong).**
 - The 30-minute warning is a **button** staff presses, not automatic from the booked end
   time. Eli asked for manual lock/unlock this round; tying it to the work order is next.
